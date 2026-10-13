@@ -20,9 +20,8 @@
 //!
 //! The sweep and the enumeration add up a [`Tally`]: [`Models`] counts the
 //! feasible assignments, [`WeightedModels`] sums their weight for PWMC. CaDiCaL
-//! is only a SAT decision oracle: it answers yes/no per show assignment and
-//! TiDiDi does the counting, so no model counter is on the critical path.
-//! Each SAT answer means "this show assignment extends to a model" (projected
+//! only decides whether each show assignment extends to a model; the counting
+//! is done here. Each SAT answer means "this show assignment extends to a model" (projected
 //! variables are free in the solve), so both counts are exact; the two
 //! estimates only route.
 
@@ -82,6 +81,10 @@ const SWEEP_MAX_SHOW: usize = 16;
 
 /// Wall the 2^K sweep may spend before it declines. Checked between solves.
 const SWEEP_WALL: Duration = Duration::from_secs(60);
+
+/// The AllSAT model cap for a caller that sets none of its own: past it the
+/// enumeration stops and the count falls through to the compile.
+const MODEL_CAP: u64 = 200_000;
 
 /// A CaDiCaL solver loaded with `formula`, the `constrained` vars frozen so
 /// inprocessing cannot eliminate the vars the caller will assume or read.
@@ -258,11 +261,11 @@ pub(crate) enum AllsatStop {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct WallGrant {
     /// Extra wall, measured from now.
-    pub extra: Duration,
+    pub(crate) extra: Duration,
     /// Tally past which this grant's own justification no longer holds: once
     /// the running model count exceeds it, the enumeration stops with
     /// [`AllsatStop::TallyCeiling`].
-    pub abort_at_models: u64,
+    pub(crate) abort_at_models: u64,
 }
 
 /// Caller control and observation for a single projected-AllSAT enumeration.
@@ -281,18 +284,18 @@ pub(crate) struct AllsatCtl<'a> {
     /// supervising the enumeration and gets a wall-clock terminator with it,
     /// which bounds each single solve, not just the gap between solves: an
     /// enumeration that is going to bust must never burn wall the recovery
-    /// cascade is owed. PMC/PWMC supply none: they check only between solves, because cutting
-    /// a solve they would have finished turns a complete count into a
-    /// fall-through.
-    pub at_wall: Option<&'a mut dyn FnMut(u64, Duration) -> Option<WallGrant>>,
+    /// cascade is owed. PMC/PWMC supply none: they check only between
+    /// solves, because cutting a solve they would have finished turns a
+    /// complete count into a fall-through.
+    pub(crate) at_wall: Option<&'a mut dyn FnMut(u64, Duration) -> Option<WallGrant>>,
     /// Which cap actually tripped, set on every `None` return that is a
     /// bust. Left as the caller set it when [`allsat`] returns `None` because
     /// the SAT solver could not be created.
-    pub bust: Option<AllsatStop>,
+    pub(crate) bust: Option<AllsatStop>,
     /// Feasible projections tallied when the enumeration returned, complete
     /// or not. On a bust this is a lower bound on the true count — which is
     /// exactly what a caller estimating the count from a truncated run wants.
-    pub models: u64,
+    pub(crate) models: u64,
 }
 
 /// Projected AllSAT: enumerate the feasible constrained-show projections via
@@ -416,11 +419,11 @@ fn allsat<T: Tally>(
 pub(crate) struct PathEstimate {
     /// One unbiased estimate of the feasible-projection count per completed
     /// path (each is a power of two: the number of free branch points taken).
-    pub weights: Vec<f64>,
+    pub(crate) weights: Vec<f64>,
     /// Paths abandoned because their solves ran past the per-path wall.
-    pub truncated: u32,
+    pub(crate) truncated: u32,
     /// The formula itself is unsatisfiable — the projected count is 0.
-    pub unsat: bool,
+    pub(crate) unsat: bool,
 }
 
 impl PathEstimate {
@@ -443,7 +446,7 @@ fn lcg_next(state: &mut u64) -> u64 {
 }
 
 /// Estimate the number of feasible constrained-show projections N by walking
-/// random paths down the projection tree — TiDiDi's own answer to "will this
+/// random paths down the projection tree: the answer to "will this
 /// enumeration finish?", asked before spending the wall on it.
 ///
 /// Walk the constrained-show vars in order, maintaining a partial projection
@@ -474,7 +477,7 @@ fn lcg_next(state: &mut u64) -> u64 {
 /// A cut path's partial product is not folded in: it covers only the solved
 /// prefix, so it would pull the mean further below the true count, which
 /// this estimator already under-reads (see `TALLY_CEILING` in
-/// `stage::support_enum`).
+/// `stage::mc::support_enum`).
 pub(crate) fn estimate_count_by_random_paths(
     formula: &CnfFormula,
     show_vars: &[VarId],
@@ -659,9 +662,9 @@ fn feasible_fraction_estimate(formula: &CnfFormula, split: &ShowSplit) -> Option
 
 /// Largest constrained-show set the projected AllSAT enumeration takes on.
 /// A crude proxy: the real gates are PMC's near-full feasibility skip and the
-/// model cap. It is 1024 rather than tighter so a high-cs instance with few
-/// feasible projections, which enumerates in seconds while its compile times
-/// out, still reaches the enumeration.
+/// model cap. It is 1024 rather than tighter so an instance with many
+/// constrained show variables but few feasible projections, which enumerates
+/// in seconds while its compile times out, still reaches the enumeration.
 pub(crate) const MAX_ENUM_SHOW: usize = 1024;
 
 /// The bounds on [`show_enum_fastpath`]'s AllSAT run.
@@ -670,7 +673,7 @@ pub(crate) struct EnumLimits {
     /// The AllSAT wall in milliseconds; [`allsat_share_ms`] sizes it from the
     /// run's time limit.
     pub(crate) allsat_wall_ms: u64,
-    /// The model cap, in place of 200 000.
+    /// The model cap, in place of [`MODEL_CAP`].
     pub(crate) model_budget_override: Option<u64>,
     /// Skip the enumeration when [`feasible_fraction_estimate`] finds the
     /// projection near full, an estimate taken just before it would
@@ -714,13 +717,13 @@ pub(crate) fn show_enum_fastpath<T: Tally + Clone>(
     let mut result = sweep(formula, &split, tally.clone(), deadline).map(|v| (v, "small-show enumeration"));
 
     // The sweep also declines at small constrained-show counts when a large
-    // formula does not fit its 60 s budget, so the AllSAT band starts at 1.
+    // formula does not fit in `SWEEP_WALL`, so the AllSAT band starts at 1.
     // AllSAT enumerates only the feasible projections; the model cap sends an
     // instance with many of them back to compile.
     if result.is_none() {
         let constrained_show = split.constrained.len();
         if (1..=MAX_ENUM_SHOW).contains(&constrained_show) {
-            let model_budget = model_budget_override.unwrap_or(200_000);
+            let model_budget = model_budget_override.unwrap_or(MODEL_CAP);
             // The wall, its 10 s floor included, stops at the run's. Without
             // a run wall it stands as given, zero included: a supervising
             // caller's callback decides at the wall whether to go on.
