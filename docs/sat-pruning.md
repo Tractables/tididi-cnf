@@ -13,9 +13,10 @@ WMC, after each vtree step's clauses are folded in (`src/compile/step.rs`). It
 stands down for the rest of a compile once it stops paying;
 `PruneStop` lists the reasons. `TIDIDI_SAT_PRUNE=off` turns
 it off for a whole run, a diagnostic off-switch for paired on/off
-measurements ([`env.md`](env.md#tididi_sat_prune)): the command line
-reads it into `Config::sat_prune`, the driver then hands the run's compiles
-no `SatPrune` pass, and `compile_component` builds no solver.
+measurements ([`env.md`](env.md#tididi_sat_prune)): the command line reads
+it into `Settings::sat_prune`, `Config::new` sets `Config::sat_prune` from
+it, the driver then hands the run's compiles no `SatPrune` pass, and
+`compile_component` builds no solver.
 
 Where each part is documented:
 
@@ -29,4 +30,5 @@ Where each part is documented:
   `src/compile/sat_prune/ctx.rs`.
 
 The `sat_prune_*` fields of the `--stats` record report per-run pass counts,
-timings and the disable reason; see `docs/stats.md`.
+timings and the disable reason; see
+[SAT pruning tallies](stats.md#sat-pruning-tallies).

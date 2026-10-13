@@ -1,6 +1,6 @@
 # Marginal TDD levels
 
-On the counting tracks the compiler needs a count, not a circuit. Once every
+In the counting modes the compiler needs a count, not a circuit. Once every
 clause touching a vtree node's subtree has been conjoined, no later step can
 change that node's level, so the compiler replaces the level with per-node
 counts (weights, on a weighted compile) and frees its pairs. The library owns
@@ -8,8 +8,8 @@ the representation and what each operation does with it:
 
 | Topic | Library item |
 |---|---|
-| Marginalization and the count it keeps | the `tididi::marginal` module doc, `Engine::marginalize_levels` |
-| Downward closure, value-slot uniqueness | invariants 5 and 10 of the library's architecture reference |
+| Marginalization and the count it keeps | `Engine::marginalize_levels`, and the library's [architecture reference](https://github.com/Tractables/tididi/blob/main/docs/architecture.md) |
+| Downward closure, value-slot uniqueness | invariants 5 and 10 in the library's [invariant table](https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants) |
 | A clause reaching a marginal level | `OperationError::MarginalLevel` |
 | Rotating next to marginal levels | `Engine::rotate_marginal_cluster` |
 | The weighted arm | [weighted-marginal-levels.md](weighted-marginal-levels.md) |
@@ -19,12 +19,12 @@ and how the peak is measured.
 
 ## Which modes marginalize
 
-Every counting mode compiles to a counting `Output`: `Count`,
-`WeightedCount` or `ProjectedCount`. Circuit output (`Mode::Compile`) compiles
-`Output::Function` and keeps every level explicit. The projected weighted count
-compiles `Output::ProjectedFunction`, which forgets its projected variables on
-the schedule below but sums no level out, so its weighted fold reads the whole
-diagram.
+The model count, the weighted count and the projected count compile to a
+counting `Output`: `Count`, `WeightedCount` or `ProjectedCount`. Circuit
+output (`Mode::Compile`) compiles `Output::Function` and keeps every level
+explicit. The projected weighted count compiles `Output::ProjectedFunction`,
+which forgets its projected variables on the schedule below but sums no
+level out, so its weighted fold reads the whole diagram.
 
 ## The schedule
 
@@ -53,12 +53,13 @@ clause (`src/compile/batch.rs`). After each internal step, `run_marginalize_at`
 and applies the projected ∃-forget. The marginal-clustering rotation pass runs
 after that.
 
-`peak_pairs` is the largest `tdd.pair_count()` observed at any step,
-taken by `compile_component`'s per-step check after the step's fold (which has
-already marginalized what it completed) and before the step-end pass. It is a property of a compile run,
-not of the diagram it produced, so the compile returns it beside the diagram
-(`Compiled::peak_pairs`); for a multi-component compile it is the maximum over
-the per-component compiles, which run one after another.
+`peak_pairs` is the largest `tdd.pair_count()` observed at any step, taken
+by `compile_component`'s per-step check after the step's fold (which has
+already marginalized what it completed) and before the step-end pass. It is a
+property of a compile run, not of the diagram it produced, so the compile
+returns it beside the diagram (`Compiled::peak_pairs`); for a
+multi-component compile it is the maximum over the per-component compiles,
+which run one after another.
 
 Because the root stays structural, `model_count` on a finished counting
 diagram folds over the root level and reads its children's counts from their
