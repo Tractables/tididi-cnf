@@ -152,7 +152,7 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             })?;
             let tdd = compiled.diagram;
             let compile_ms = clock.compile_ms(0);
-            let tdd = crate::compile::expand::expand_to_originals(eng, &tdd, &expansion)
+            let tdd = crate::frontend::expand::expand_to_originals(eng, &tdd, &expansion)
                 .map_err(Error::stage_failed("diagram expansion"))?;
             // The expanded diagram is the run's last and can be its largest.
             let peak = compiled.peak_pairs.max(tdd.pair_count());
@@ -170,7 +170,7 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             if expansion.is_all_constants() {
                 eprintln!("[compile] preprocessing: every variable is a backbone");
             }
-            let tdd = crate::compile::expand::fully_resolved_tdd(eng, &expansion)
+            let tdd = crate::frontend::expand::fully_resolved_tdd(eng, &expansion)
                 .map_err(Error::stage_failed("diagram expansion of the resolved formula"))?;
             (tdd, 0, 0)
         }

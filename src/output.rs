@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 use crate::cli::Cli;
-use crate::compile::WeightedCount;
+use crate::problem::WeightedCount;
 use crate::config::{Config, Mode, OutputFormat};
 use crate::run::{Answer, Count};
 use crate::Error;

@@ -8,9 +8,11 @@
 //! `--vtree`. Vitri owns the pairing: every tree it builds has one leaf per
 //! reduced variable, and it builds none for a refuted or fully resolved
 //! record, so nothing here re-checks it. [`request`] builds every vitri
-//! request from the run's configuration, and [`record`] reads what a
-//! preprocessing call returns.
+//! request from the run's configuration, [`record`] reads what a
+//! preprocessing call returns, and [`expand`] puts a compiled diagram back
+//! into the variables the record maps.
 
+pub(crate) mod expand;
 pub(crate) mod record;
 pub(crate) mod request;
 

@@ -62,9 +62,9 @@ everything below is called, and nothing below calls back up. Below the stages,
 | `src/stage/` | `Run`, what every stage reads — the engine, the configuration, the run's wall and the SAT-prune pass its compiles share — and `run_isolated`, which a leaf compile that may panic runs under; `count_streaming`, the component-at-a-time count the model count and the weighted projected count share; the WMC, PMC and PWMC runners the driver dispatches to, each returning its answer for the driver to record; the stages the two projected counts share, run in order until one answers, from a list each picks once by whether the problem has a show set; and PMC's show-variable conditioning and its count over a separator. |
 | `src/enumeration.rs` | Counting a show set's feasible assignments with a SAT solver: the small-show sweep, projected AllSAT, and the estimates that gate them. |
 | `src/compile/` | `compile_cnf`, what it takes and what it returns; the bottom-up pass beneath it; and the counts the stages build on it. See below. |
-| `src/problem.rs` | The counting problem every runner works on: a formula, its show set, its weights and the domain of its answer. |
+| `src/problem.rs` | The counting problem every runner works on: a formula, its show set, its weights and the domain of its answer, and the weighted count that carries whether the formula has a model. |
 | `src/vtree.rs` | Vtree construction from a spec, whole or one tree per independent component: the public calls and their options, the vitri request and selection context every construction makes, the conversion of the trees vitri returns, and the descriptors of a formula's independent components. |
-| `src/frontend/` | The run's calls into vitri's preprocessing. `mod.rs` runs them, preprocessing paired with a vtree or alone; `request.rs` builds every vitri request from the run's configuration and reads vitri's environment settings when a run starts; `record.rs` reads what a call returns: the problem it reduced to, the Arjun reduction, and a compile's map back to the original variables. |
+| `src/frontend/` | The run's calls into vitri's preprocessing. `mod.rs` runs them, preprocessing paired with a vtree or alone; `request.rs` builds every vitri request from the run's configuration and reads vitri's environment settings when a run starts; `record.rs` reads what a call returns: the problem it reduced to, the Arjun reduction, and a compile's map back to the original variables; `expand.rs` puts a compiled diagram back into those variables. |
 | `src/convert.rs` | The conversions between vitri's types and the diagram's — a variable, a clause literal, a vtree — and a weight table as the diagram's weighted-counting algebra. |
 | `src/formula.rs` | `parse_dimacs`, and the occurrence count and one-literal conditioning the case splits share. |
 | `src/output.rs` | Every stdout line the run emits, and the record `--stats` writes. |
@@ -95,7 +95,6 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |
 | `config.rs` | The pass's fixed parameters. |
 | `sat_prune/` | SAT-based pruning of nodes no model of the formula reaches. |
-| `expand.rs` | A compiled diagram put back into the variables the formula had before preprocessing. |
 
 ## Paper sections to code
 

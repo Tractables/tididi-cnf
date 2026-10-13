@@ -34,7 +34,7 @@ fn a_compile_without_a_vtree_builds_its_own() {
     let config = crate::test_support::minimal_config();
     let got = compile_weighted(&crate::test_support::run(eng, &config), &sub, &w, None, None)
         .expect("the compile must answer");
-    let crate::compile::WeightedCount::Satisfiable(got) = got else {
+    let crate::problem::WeightedCount::Satisfiable(got) = got else {
         panic!("the fixture is satisfiable");
     };
     // The stage counts in the log domain, so the comparison is to a tolerance.

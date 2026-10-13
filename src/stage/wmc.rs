@@ -8,7 +8,7 @@
 use std::time::Instant;
 
 use vitri::cnf::CnfFormula;
-use crate::compile::WeightedCount;
+use crate::problem::WeightedCount;
 use crate::problem::Weighted;
 use crate::frontend::record::Outcome;
 

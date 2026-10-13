@@ -284,7 +284,7 @@ fn two_show_formula() -> CnfFormula {
 /// and the same verdict.
 #[test]
 fn pwmc_matches_across_the_sweep_and_the_allsat_walk() {
-    use crate::compile::WeightedCount::{Satisfiable, Unsatisfiable};
+    use crate::problem::WeightedCount::{Satisfiable, Unsatisfiable};
     let free_show_formula = || {
         crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true), lit(1, true)])])
     };

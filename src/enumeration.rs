@@ -36,7 +36,7 @@ use num_traits::Zero;
 use vitri::cnf::CnfFormula;
 use tididi::vtree::VarId;
 
-use crate::compile::WeightedCount;
+use crate::problem::WeightedCount;
 use crate::problem::ShowSet;
 
 /// Split the show set into the constrained vars (in range and occurring in

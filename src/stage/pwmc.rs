@@ -13,7 +13,7 @@ use super::{Run, run_isolated};
 use super::projected::{
     CountVtree, Stage, Step, Trace, enumerate_show, pmc_vtree, projection_step, run_stages, trivial_residual,
 };
-use crate::compile::WeightedCount;
+use crate::problem::WeightedCount;
 use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
 use crate::output::Projected;
 use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};

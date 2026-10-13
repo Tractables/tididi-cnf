@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tididi::diagram::*;
 use tididi::{Engine, OperationError};
 use tididi::restructure::GraftError;
-use crate::frontend::record::OriginalExpansion;
+use super::record::OriginalExpansion;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
 /// Expand one reduced TDD into the original variables: rebuild it over the

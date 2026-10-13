@@ -9,7 +9,44 @@
 use num_traits::One;
 use vitri::cnf::CnfFormula;
 
-use crate::compile::WeightedCount;
+/// A weighted count, and whether the formula it counts has a model at all.
+///
+/// The count cannot say which: a zero weight, or positive and negative weights
+/// that cancel, make the count of a satisfiable formula zero. So the path that
+/// answers reports what it found — a refutation in preprocessing, an empty
+/// clause, no feasible assignment, a diagram that is the false constant — and
+/// the count of an unsatisfiable formula is zero without being stored.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum WeightedCount<V> {
+    /// The formula has no model; its count is zero.
+    Unsatisfiable,
+    /// The formula has a model, and this is its count, which may be zero.
+    Satisfiable(V),
+}
+
+impl<V> WeightedCount<V> {
+    /// The count with `f` applied — a lift, a weight factor — and the same
+    /// verdict.
+    pub(crate) fn map(self, f: impl FnOnce(V) -> V) -> Self {
+        match self {
+            WeightedCount::Unsatisfiable => WeightedCount::Unsatisfiable,
+            WeightedCount::Satisfiable(value) => WeightedCount::Satisfiable(f(value)),
+        }
+    }
+}
+
+/// The count of two formulas over disjoint variables: the product of theirs,
+/// satisfiable when both are.
+impl<V: std::ops::Mul<Output = V>> std::ops::Mul for WeightedCount<V> {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        match (self, other) {
+            (WeightedCount::Satisfiable(a), WeightedCount::Satisfiable(b)) => WeightedCount::Satisfiable(a * b),
+            _ => WeightedCount::Unsatisfiable,
+        }
+    }
+}
 
 /// The value domain of a count: its answer, its weights and its lift.
 pub(crate) trait Domain {
