@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::{clause, formula, tididi_formula};
+use crate::test_support::{clause, formula, three_variable_formula};
 
 /// A spec is vitri's grammar, whose own tests cover it: a spec it reads is
 /// accepted, and one it does not is a vtree-spec error.
@@ -85,7 +85,7 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
 #[test]
 fn a_linear_vitri_vtree_converts_its_root_shape_and_variable_ids() {
     let root = build_vtree(
-        &tididi_formula(),
+        &three_variable_formula(),
         "linear",
         &VtreeOptions::default(),
     )
@@ -133,8 +133,10 @@ fn vitri_build_preserves_component_clause_and_variable_mappings() {
     assert_eq!(root_vars, [1, 2, 3, 4, 5]);
 }
 
+/// The default options select vtrees by vitri's clause-balance objective,
+/// and `by_peak_width` by its peak-width one.
 #[test]
-fn selection_objectives_map_to_vitri_in_global_numbering() {
+fn selection_objectives_map_to_vitri_objectives() {
     let plain = vitri_selection_ctx(&VtreeOptions::default());
     assert!(matches!(
         plain.objective,

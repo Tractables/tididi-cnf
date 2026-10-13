@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::{self as fixtures, clause, tididi_formula};
+use crate::test_support::{self as fixtures, clause, three_variable_formula};
 use tididi::test_helpers::rat;
 
 #[test]
@@ -83,7 +83,7 @@ fn streaming_mc_preprocess_crosses_without_arjun_outputs() {
         preprocess_level: crate::config::PreprocessLevel::Full,
         ..fixtures::minimal_config()
     };
-    let bundle = mc_streaming_preprocess(&tididi_formula(), &parent, None)
+    let bundle = mc_streaming_preprocess(&three_variable_formula(), &parent, None)
         .expect("the simplify-only MC bundle crosses the boundary");
     assert_eq!(
         bundle.stages.arjun,
@@ -100,7 +100,7 @@ fn plain_mc_frontend_scopes_one_conversion_and_the_prepared_session() {
         time_limit_ms: Some(5_000),
         ..fixtures::minimal_config()
     };
-    let formula = tididi_formula();
+    let formula = three_variable_formula();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
 
     let reduced_vars =

@@ -78,8 +78,9 @@ pub(crate) fn with_clause(formula: CnfFormula, clause: Clause) -> CnfFormula {
     self::formula(num_vars, clauses)
 }
 
-pub(crate) fn tididi_formula() -> CnfFormula {
-    // (x1 ∨ ¬x2) ∧ (x2 ∨ x3)
+/// `(x1 ∨ ¬x2) ∧ (x2 ∨ x3)`: a small satisfiable formula, for tests that
+/// need some formula to run on.
+pub(crate) fn three_variable_formula() -> CnfFormula {
     formula(3, vec![clause(&[1, -2]), clause(&[2, 3])])
 }
 
