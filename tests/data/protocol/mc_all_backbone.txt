@@ -6,5 +6,5 @@ model count: 1
 --- stderr
 [input] reading tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf
 [input] 762 variables, 2469 clauses
-[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1479 width_cv=0.1653)
 [mc] preprocessing: start
+[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1479 width_cv=0.1653)

@@ -7,6 +7,6 @@ model count: 134746112245856
 [input] reading tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf
 [input] 63 variables, 66 clauses
 [mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 63v/66c, lift=2^0, <t>
-[vtree] portfolio, streaming over 1 components
+[vtree] portfolio
 [mc] compile: start
 [mc] answered by compile in <t>

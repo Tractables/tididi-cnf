@@ -7,4 +7,4 @@ projected model count: 2788232208432269748684480513
 [input] reading tests/data/cnfs/mcc/2026/track3/mc2026_track3_187.cnf
 [input] 342 variables, 812 clauses
 [pmc] shatter: no useful shatter (detect <t>)
-[pmc] compile: preprocessing <t> (812c→102c), vtree <t>, compile <t> (8 projected variables forgotten in the diagram), show 96, vars 342
+[pmc] compile: preprocessing <t> (812c→102c), vtree <t>, compile <t> (1 projected variables forgotten in the diagram), show 96, vars 342

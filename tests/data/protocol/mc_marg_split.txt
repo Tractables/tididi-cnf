@@ -6,8 +6,8 @@ model count: 134746112245856
 --- stderr
 [input] reading tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf
 [input] 63 variables, 66 clauses
-[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1113 width_cv=0.0000)
 [mc] preprocessing: start
+[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1113 width_cv=0.0000)
 [mc] arjun: reduced in <t> — 63v/66c → 63v/66c, lift=2^0
 [mc] compile: start
 [mc] answered by compile in <t>

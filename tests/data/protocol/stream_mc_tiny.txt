@@ -7,6 +7,6 @@ model count: 7
 [input] reading tests/data/mc_header_tiny.cnf
 [input] 3 variables, 1 clauses
 [mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 3v/1c, lift=2^0, <t>
-[vtree] portfolio, streaming over 1 components
+[vtree] portfolio
 [mc] compile: start
 [mc] answered by compile in <t>

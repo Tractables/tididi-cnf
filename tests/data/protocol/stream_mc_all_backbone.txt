@@ -8,6 +8,6 @@ model count: 1
 [input] 762 variables, 2469 clauses
 [mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 1v/1c, lift=2^0, <t>
 [mc] preprocessing: every variable is a backbone
-[vtree] portfolio, streaming over 1 components
+[vtree] portfolio
 [mc] compile: start
 [mc] answered by compile in <t>

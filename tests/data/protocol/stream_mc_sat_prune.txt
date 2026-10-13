@@ -7,6 +7,6 @@ model count: 16963
 [input] reading tests/data/cnfs/satlib/uf100/uf100-01000.cnf
 [input] 100 variables, 430 clauses
 [mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 73v/217c, lift=2^0, <t>
-[vtree] portfolio, streaming over 1 components
+[vtree] portfolio
 [mc] compile: start
 [mc] answered by compile in <t>

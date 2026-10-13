@@ -7,6 +7,6 @@ model count: 12
 [input] reading tests/data/onehot_free_residual.cnf
 [input] 5 variables, 4 clauses
 [mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 2v/1c, lift=2^2, <t>
-[vtree] portfolio, streaming over 1 components
+[vtree] portfolio
 [mc] compile: start
 [mc] answered by compile in <t>
