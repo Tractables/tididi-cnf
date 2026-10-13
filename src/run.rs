@@ -174,6 +174,15 @@ impl Answer {
     }
 }
 
+/// A run that stopped without an answer: why, and the run's record when it
+/// got far enough to open one — what it was doing when it stopped, which is
+/// the row worth reading. The record is boxed so a failure stays as small as
+/// the error.
+pub(crate) struct Failure {
+    pub(crate) error: Error,
+    pub(crate) stats: Option<Box<Stats>>,
+}
+
 /// Count, or compile, one instance: the task `mode` names, or the one its
 /// header declares, under `limits`.
 ///

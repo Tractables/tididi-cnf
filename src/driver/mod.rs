@@ -21,8 +21,7 @@ use vitri::cnf::CnfFormula;
 use crate::compile::{CompileOptions, CompileRun, ComponentPlan, GiveUp, compile_with};
 use crate::compile::sat_prune::SatPrune;
 use crate::config::{Config, Limits, Mode, Settings};
-use crate::output::Stats;
-use crate::run::{Answer, Input};
+use crate::run::{Answer, Failure, Input};
 use crate::Error;
 use crate::output::{
     CompileAnswer, PreprocessReport, Verdict, record_compile, record_mc, record_pmc, record_pwmc, record_wmc,
@@ -158,15 +157,6 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
 fn gave_up(give_up: GiveUp) -> Error {
     give_up.report();
     Error::from(give_up)
-}
-
-/// A run that stopped without an answer: why, and the run's record when it
-/// got far enough to open one — what it was doing when it stopped, which is
-/// the row worth reading. The record is boxed so a failure stays as small as
-/// the error.
-pub(crate) struct Failure {
-    pub(crate) error: Error,
-    pub(crate) stats: Option<Box<Stats>>,
 }
 
 /// The run: read `input`, resolve its mode from `mode_flag` and the header,

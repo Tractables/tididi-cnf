@@ -25,7 +25,7 @@ use serde::Serialize;
 use crate::cli::{Cli, OutputFormat};
 use crate::config::{Config, Mode};
 use crate::problem::WeightedCount;
-use crate::run::{Answer, Count};
+use crate::run::{Answer, Count, Failure};
 use crate::Error;
 
 /// Which stage of a model count produced the answer: the record's
@@ -502,7 +502,7 @@ pub(crate) fn record_compile(stats: &mut Stats, config: &Config, answer: Compile
 /// answer, a circuit or a record that cannot be written fails a run that
 /// otherwise succeeded, because the operator asked for it; a reader that
 /// closed stdout early is the exception ([`print`]).
-pub(crate) fn finish(solved: Result<Answer, crate::driver::Failure>, cli: &Cli) -> Result<(), Error> {
+pub(crate) fn finish(solved: Result<Answer, Failure>, cli: &Cli) -> Result<(), Error> {
     let mcc = cli.output_format == OutputFormat::Mcc;
     let (outcome, stats) = match solved {
         Ok(answer) => {
@@ -521,7 +521,7 @@ pub(crate) fn finish(solved: Result<Answer, crate::driver::Failure>, cli: &Cli) 
             stats.exit_reason = Some(exit_reason(&delivered));
             (delivered, Some(stats))
         }
-        Err(crate::driver::Failure { error, stats }) => {
+        Err(Failure { error, stats }) => {
             // The give-up is the run's outcome, whether or not its status
             // line reaches stdout.
             let _ = report_give_up(&error, mcc);
