@@ -16,12 +16,12 @@ use crate::test_support::{brute_projected_count, lit};
 /// count, the other's leaf compile must return zero.
 fn fixture() -> CnfFormula {
     crate::test_support::formula(4, vec![
-            Clause::new(vec![lit(0, true), lit(3, true)]), // x0 ∨ x3   ┐ x0=F ⊢ □
-            Clause::new(vec![lit(0, true), lit(3, false)]), // x0 ∨ ¬x3  ┘
-            Clause::new(vec![lit(0, false), lit(2, true)]), // ¬x0 ∨ x2  (x0=T BCP-forces x2)
-            Clause::new(vec![lit(1, true), lit(2, true)]), // x1 ∨ x2   (coupling)
-            Clause::new(vec![lit(1, false), lit(2, true), lit(3, true)]), // ¬x1 ∨ x2 ∨ x3
-        ])
+        Clause::new(vec![lit(0, true), lit(3, true)]), // x0 ∨ x3   ┐ x0=F ⊢ □
+        Clause::new(vec![lit(0, true), lit(3, false)]), // x0 ∨ ¬x3  ┘
+        Clause::new(vec![lit(0, false), lit(2, true)]), // ¬x0 ∨ x2  (x0=T BCP-forces x2)
+        Clause::new(vec![lit(1, true), lit(2, true)]), // x1 ∨ x2   (coupling)
+        Clause::new(vec![lit(1, false), lit(2, true), lit(3, true)]), // ¬x1 ∨ x2 ∨ x3
+    ])
 }
 
 #[test]

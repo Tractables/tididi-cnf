@@ -15,12 +15,12 @@ fn a_compile_without_a_vtree_builds_its_own() {
         (rat(3, 8), rat(5, 2)),
     ];
     let sub = fixtures::formula(5, vec![
-            fixtures::clause(&[-3, -5]),
-            fixtures::clause(&[-4, 5]),
-            fixtures::clause(&[3, 4]),
-            fixtures::clause(&[1]),
-            fixtures::clause(&[-2]),
-        ]);
+        fixtures::clause(&[-3, -5]),
+        fixtures::clause(&[-4, 5]),
+        fixtures::clause(&[3, 4]),
+        fixtures::clause(&[1]),
+        fixtures::clause(&[-2]),
+    ]);
     let expected = fixtures::brute_projected_weighted_count(&sub, 0..sub.num_vars() as usize, &w);
 
     let config = fixtures::minimal_config();

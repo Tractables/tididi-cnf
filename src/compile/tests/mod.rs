@@ -80,9 +80,9 @@ fn streaming_cannot_extend_or_clear_the_enclosing_deadline() {
 
 fn decomposable_formula_and_split() -> (CnfFormula, Arc<Vtree>, Vec<ComponentVtree>) {
     let formula = crate::test_support::formula(4, vec![
-            crate::test_support::clause(&[1, 2]),
-            crate::test_support::clause(&[3, 4]),
-        ]);
+        crate::test_support::clause(&[1, 2]),
+        crate::test_support::clause(&[3, 4]),
+    ]);
     let root = Arc::new(Vtree::linear_from_order(&[
         VarId(4),
         VarId(2),

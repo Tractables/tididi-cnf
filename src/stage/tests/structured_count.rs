@@ -77,10 +77,10 @@ fn decomposable_boundary_function_reads_the_supplied_whole_vtree() {
     // b0=false forces own s1; b0=true leaves it free. The second component
     // admits both values of own s2 after existentially forgetting h3.
     let formula = fixtures::formula(4, vec![
-            clause(&[1, 2]),
-            clause(&[3, 4]),
-            clause(&[-3, -4]),
-        ]);
+        clause(&[1, 2]),
+        clause(&[3, 4]),
+        clause(&[-3, -4]),
+    ]);
     assert!(
         formula.detect_components().is_some(),
         "fixture must exercise the decomposable Whole-vs-Detect boundary",
