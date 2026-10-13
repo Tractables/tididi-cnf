@@ -79,12 +79,12 @@ macro_rules! fixture {
 // Small formulas whose marginal counts sit in store slots beside inline
 // ones: each reference reads the count it names, a slot's from the store
 // and an inline one from the reference itself.
-fixture!(marg_canary_a, "marg_canary_a.cnf", "7");
-fixture!(marg_toy_nr6, "marg_toy_nr6.cnf", "19");
+fixture!(marginal_one_clause, "marginal_one_clause.cnf", "7");
+fixture!(marginal_slots_beside_inline, "marginal_slots_beside_inline.cnf", "19");
 // A reference to slot 0 reads the slot, not the inline count 0.
-fixture!(marg_toy_nr6b, "marg_toy_nr6b.cnf", "26");
-fixture!(marg_toy_inline_nr, "marg_toy_inline_nr.cnf", "8");
-fixture!(marg_toy_nr8_overcount, "marg_toy_nr8_overcount.cnf", "10");
+fixture!(marginal_slot_zero, "marginal_slot_zero.cnf", "26");
+fixture!(marginal_inline_decode, "marginal_inline_decode.cnf", "8");
+fixture!(marginal_with_unit_clauses, "marginal_with_unit_clauses.cnf", "10");
 // Model-counting competition instances whose counts run far past the inline
 // width, so their larger marginal counts live in store slots.
 fixture!(mc2020_track1_007, "cnfs/mcc/2020/track1/mc2020_track1_007.cnf", "428545652041973760");

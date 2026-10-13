@@ -1,0 +1,12 @@
+c Nine clauses over six variables: 19 of the 64 assignments satisfy them.
+c The marginal compile keeps counts in store slots beside inline ones.
+p cnf 6 9
+4 -3 -5 0
+-6 1 -3 0
+-3 -1 4 0
+5 2 -6 0
+-3 1 6 0
+-5 -2 -4 0
+-6 2 -1 0
+6 -5 4 0
+-2 1 4 0
