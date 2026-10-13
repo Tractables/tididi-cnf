@@ -111,7 +111,7 @@ for the driver to record.
 | file | what it holds |
 |---|---|
 | `mod.rs` | `Run`, what every stage reads: the engine, the configuration, the run's deadline and the SAT-pruning pass its compiles share. `run_isolated`, which a leaf compile that may panic runs under, and `count_streaming`, the component-at-a-time count the model count and the projected weighted count share. |
-| `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
+| `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, the stall recompile takes over from a primary compile whose step ran past its wall, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
 | `wmc.rs` | The weighted count: Arjun's reduction first, then the simplified formula. |
 | `pmc.rs` | The projected count: a first compile, show-variable conditioning when it fails, and a last compile on the time left. |
 | `pwmc.rs` | The projected weighted count, the independent-component decomposition two of its stages share, and the weighted compile it ends in. |

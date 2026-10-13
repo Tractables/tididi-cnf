@@ -76,8 +76,10 @@ pub(super) fn attempt_from_vitri_build(
 }
 
 /// An attempt for `formula` on vitri's portfolio, every component's
-/// vtree built up front by vitri, with no Arjun lift: the unreduced retry's and
-/// a Shannon cofactor's. `None` when the construction fails, as
+/// vtree built up front by vitri, with no Arjun lift: the unreduced retry's,
+/// a Shannon cofactor's and the stall recompile's, whose caller sets the lift
+/// of the reduction it compiles. The portfolio is vitri's default, or the one
+/// catalog entry `only_entry` names. `None` when the construction fails, as
 /// [`built_or_give_up`] reads it.
 ///
 /// `deadline` is the wall the attempt will be compiled against, and its vtree
@@ -87,8 +89,9 @@ pub(super) fn portfolio_attempt(
     run: &Run<'_>,
     formula: &CnfFormula,
     deadline: Option<Instant>,
+    only_entry: Option<&'static str>,
 ) -> Option<CompileAttempt> {
-    let ctx = VtreeOptions::default()
+    let ctx = VtreeOptions { only_portfolio_entry: only_entry, ..VtreeOptions::default() }
         .with_deadline(vtree_deadline(deadline))
         .with_run_policy(run.config);
     let built = run.config.vtree_time.time(|| build_vtree_with_components(formula, PORTFOLIO_VTREE_SPEC, &ctx));

@@ -1,11 +1,40 @@
-//! What each fallback behind the primary compile is allowed to spend.
+//! What each fallback behind the primary compile is allowed to spend, and how
+//! long one step of the primary compile may run before the stall recompile
+//! takes over.
 //!
 //! Every window here is pure arithmetic over the declared time limit, the
 //! program deadline and the clock, so the whole window order is unit-testable
-//! without a run: the wall Shannon split is owed, the unreduced retry's
-//! reserve, the predicate-gated no-SBVA retry and the support-enumeration
-//! re-reduce. Keeping them together keeps two stages from carving the same
-//! wall twice.
+//! without a run: the primary compile's stall rule, the wall Shannon split is
+//! owed, the unreduced retry's reserve, the predicate-gated no-SBVA retry and
+//! the support-enumeration re-reduce. Keeping them together keeps two stages
+//! from carving the same wall twice.
+
+use crate::compile::StallRule;
+
+/// The stall rule's per-step wall as a share of the declared time limit: one
+/// internal vtree-node step of the primary compile may run a sixth of the
+/// run's limit, 20 s at a two-minute limit. Chosen together with
+/// [`STALL_MIN_STEPS_LEFT`].
+const STALL_WALL_DIVISOR: u64 = 6;
+
+/// The fewest internal steps, the step itself included, that must be left in
+/// its component's bottom-up schedule for the stall rule to bound a step
+/// ([`StallRule::min_left`]). A step that stalls this far from the root has
+/// most of the compile still ahead of it; one that stalls near the root more
+/// often belongs to a compile that finishes, and is left to run.
+const STALL_MIN_STEPS_LEFT: usize = 50;
+
+/// The stall rule the model count's primary compile runs under: a wall of
+/// [`STALL_WALL_DIVISOR`]'s share of the declared limit on each internal step
+/// with at least [`STALL_MIN_STEPS_LEFT`] steps left. `None` without a time
+/// limit, where no step has a wall.
+pub(super) fn stall_rule(time_limit_ms: Option<u64>) -> Option<StallRule> {
+    let total_ms = time_limit_ms?;
+    Some(StallRule {
+        wall: std::time::Duration::from_millis(total_ms / STALL_WALL_DIVISOR),
+        min_left: STALL_MIN_STEPS_LEFT,
+    })
+}
 
 /// Absolute floor on the wall reserved for the recovery cascade behind a
 /// fallback.

@@ -204,3 +204,41 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
         Some(deadline)
     );
 }
+
+/// The catalog's base names here are vitri's: every candidate vitri can
+/// publish belongs to one of them, and each of them has a candidate. A
+/// catalog entry vitri adds would otherwise slip into every one-entry
+/// portfolio.
+#[test]
+fn the_portfolio_catalog_is_vitris() {
+    let vitris: std::collections::BTreeSet<String> = vitri::decompose::PortfolioKnobs::candidate_names()
+        .iter()
+        .map(|name| name.split(':').next().unwrap_or_default().to_owned())
+        .collect();
+    let ours: std::collections::BTreeSet<String> =
+        PORTFOLIO_CATALOG.iter().map(|&entry| entry.to_owned()).collect();
+    assert_eq!(ours, vitris);
+}
+
+/// A portfolio of one entry skips every other, and the tree it builds is
+/// that entry's.
+#[test]
+fn a_one_entry_portfolio_builds_on_that_entry_alone() {
+    let options = VtreeOptions { only_portfolio_entry: Some("goatd-primal"), ..VtreeOptions::default() };
+    let selection = resolve_vitri_selection_ctx(&options).expect("the selection resolves");
+    let mut skipped = selection.portfolio.skip.clone();
+    skipped.sort_unstable();
+    let mut others: Vec<&str> = PORTFOLIO_CATALOG.into_iter().filter(|&e| e != "goatd-primal").collect();
+    others.sort_unstable();
+    assert_eq!(skipped, others);
+
+    // A connected 3-CNF over ten variables, built on the one entry.
+    let clauses = [
+        [1, 2, 3], [-2, 4, 5], [3, -5, 6], [-1, 6, 7], [4, -7, 8],
+        [-3, 5, -8], [2, -6, 9], [-4, 7, 10], [8, -9, -10], [1, -5, 10],
+    ];
+    let formula = formula(10, clauses.iter().map(|c| clause(c)).collect());
+    build_vtree(&formula, "portfolio", &options).expect("the portfolio builds");
+    let winner = options.portfolio_history.last_winning_spec().expect("the portfolio recorded its winner");
+    assert_eq!(winner.split(':').next(), Some("goatd-primal"), "the winner was {winner}");
+}

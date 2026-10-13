@@ -38,9 +38,21 @@ fn recovery_passes_through_when_compile_succeeds() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = fixtures::formula(2, vec![clause(&[1])]);
-    let first = || Some((BigUint::from(42u32), 1024usize));
+    let first = || Some(((BigUint::from(42u32), 1024usize), AnsweredBy::Compile));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
     assert_eq!((got.count, got.peak_pairs, got.answered_by), (BigUint::from(42u32), 1024, AnsweredBy::Compile));
+}
+
+/// The first call names the stage that answered it, a stage of the caller's
+/// behind the first compile included.
+#[test]
+fn recovery_names_the_stage_the_first_call_ran() {
+    let eng = &Engine::new();
+    let config = fixtures::minimal_config();
+    let f = fixtures::formula(2, vec![clause(&[1])]);
+    let first = || Some(((BigUint::from(2u32), 0usize), AnsweredBy::StallRecompile));
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
+    assert_eq!((got.count, got.answered_by), (BigUint::from(2u32), AnsweredBy::StallRecompile));
 }
 
 /// A count a fallback produced is the fallback's.
@@ -49,7 +61,7 @@ fn recovery_names_the_fallback_that_answers() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = fixtures::formula(2, vec![clause(&[1, 2])]);
-    let first = || -> Option<Counted> { panic!("the first compile fails") };
+    let first = || -> Option<(Counted, AnsweredBy)> { panic!("the first compile fails") };
     let fallbacks = || Some(((BigUint::from(3u32), 0usize), AnsweredBy::SupportEnumeration));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, Some(&fallbacks), no_cofactor).unwrap();
     assert_eq!((got.count, got.answered_by), (BigUint::from(3u32), AnsweredBy::SupportEnumeration));
@@ -64,7 +76,7 @@ fn recovery_names_the_split_when_no_cofactor_compiles() {
     let config = fixtures::minimal_config();
     let f = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
     let calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<Counted> {
+    let first = || -> Option<(Counted, AnsweredBy)> {
         calls.set(calls.get() + 1);
         panic!("the first compile fails")
     };
@@ -146,7 +158,7 @@ fn mc_recovery_honors_past_deadline_without_compiling() {
     let past = std::time::Instant::now() - std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(past), ..fixtures::run(eng, &config) };
     let calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<Counted> {
+    let first = || -> Option<(Counted, AnsweredBy)> {
         calls.set(calls.get() + 1);
         panic!("compile forced to fail — must not be reached past the deadline");
     };
@@ -168,7 +180,7 @@ fn mc_recovery_skips_the_fallbacks_once_the_wall_passes_mid_attempt() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(deadline), ..fixtures::run(eng, &config) };
     let compile_calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<Counted> {
+    let first = || -> Option<(Counted, AnsweredBy)> {
         compile_calls.set(compile_calls.get() + 1);
         // An attempt (an OOM, say) that eats the rest of the wall before
         // dying.

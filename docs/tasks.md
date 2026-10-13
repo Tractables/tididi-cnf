@@ -125,6 +125,17 @@ second and another not finish. Without `--vtree`, the run chooses:
   the formula, the portfolio picks a vtree for what is left, and if that
   compile gives up, further stages follow. The record's `answered_by`
   ([`stats.md`](stats.md)) says which stage produced a model count.
+- Under `mc`, a compile of the reduced formula that stalls is given up early.
+  The compile works up the vtree one node at a time, and with a time limit
+  each node's step may run for a sixth of it, as long as at least 50 steps,
+  that one included, are still to come in its part of the formula. A step
+  that runs longer ends the compile, and the same reduced formula is compiled
+  again, to the end of the run, on a vtree from vitri's portfolio restricted
+  to `goatd-primal`, a construction the portfolio otherwise leaves out. The
+  record's `answered_by` is then `stall-recompile`, and its `vtree_candidate`
+  names the tree. A recompile that gives up leaves the formula to the stages
+  that follow any failed compile. Without a time limit, no step has a limit
+  of its own. `wmc` has no such step limit.
 
 With `--vtree <spec>`, the run compiles on that construction instead, and a
 `compile` that gives up on it has no retry. Under `mc` that also skips the

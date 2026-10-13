@@ -4,7 +4,9 @@
 //! scope group's clauses to [`super::batch`] to fold (or, at a node whose
 //! smaller child spans a few variables, to the cofactor step in
 //! [`super::cofactor`]), applies the marginalize schedule through
-//! [`super::marginalize`], and stops on the deadline.
+//! [`super::marginalize`], and stops on the deadline, or, for a compile
+//! handed a [`super::StallWatch`], on a single internal step's own wall
+//! ([`super::stall`]).
 
 use std::collections::HashSet;
 use std::ops::ControlFlow;
@@ -213,14 +215,34 @@ pub(crate) fn compile_component(
     // subtree(t) for the just-processed t, and t plus all its descendants are
     // already consumed. Future iteration items are strict ancestors of t,
     // whose (left, right) entries are unchanged.
-    for &t in topo {
+    for (k, &t) in topo.iter().enumerate() {
+        // The step's own wall, when the run's stall watch bounds it: this
+        // step, its satisfiability check and the marginalization after it run
+        // under a deadline cut to the step's start plus the wall, the job's
+        // included, which the step's own checks read. A stop while it is up
+        // is the watch's to record ([`WalledStep::note_stop`]).
+        let walled =
+            ctx.job.run.stall_watch.and_then(|watch| watch.start_step(eng, t, k, topo.len(), ctx.job.deadline));
+        let stopped = |give_up: GiveUp| {
+            if let (GiveUp::Stopped, Some(step)) = (&give_up, &walled) {
+                step.note_stop();
+            }
+            give_up
+        };
+        let walled_ctx = walled.as_ref().map(|step| StepContext {
+            job: CompileJob { deadline: Some(step.deadline), ..ctx.job },
+            ..ctx
+        });
+        let ctx = walled_ctx.as_ref().unwrap_or(&ctx);
         let step = if deadline_passed(ctx.job.deadline) {
             Err(OperationError::Stopped)
         } else {
-            run_internal_step(eng, t, &ctx, &mut tdds, &mut state, &current_vtree)
+            run_internal_step(eng, t, ctx, &mut tdds, &mut state, &current_vtree)
         };
         if let ControlFlow::Break(out) = check(step, tdds[t.idx()].as_ref()) {
-            return out.map(|diagram| Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size });
+            return out
+                .map(|diagram| Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size })
+                .map_err(stopped);
         }
         // Then the scheduled marginalization, and the targeted
         // marginal-clustering rotation pass: after step `t` marginalized levels
@@ -232,7 +254,7 @@ pub(crate) fn compile_component(
         // failure aborts the pass like one from the step above: a cut leaves
         // the accumulator count-exact, but there is no wall left to finish
         // the step.
-        let marginalized = run_marginalize_at(eng, t, &ctx, &mut state.forgotten, &mut tdds, &current_vtree)
+        let marginalized = run_marginalize_at(eng, t, ctx, &mut state.forgotten, &mut tdds, &current_vtree)
         .and_then(|()| match tdds[t.idx()].as_mut() {
             Some(tdd) => eng
                 .rotate_marginal_cluster(tdd, t, MARGINAL_CLUSTER_BOUND_FACTOR, &mut cluster_tried)
@@ -240,7 +262,7 @@ pub(crate) fn compile_component(
             None => Ok(()),
         });
         if let Err(e) = marginalized {
-            return Err(GiveUp::from_operation(eng, e));
+            return Err(stopped(GiveUp::from_operation(eng, e)));
         }
         propagate_vtree_arc(&mut tdds, &mut current_vtree, t);
     }

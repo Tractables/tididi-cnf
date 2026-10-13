@@ -44,9 +44,15 @@ pub struct VtreeOptions {
     /// starts an independent history.
     pub(crate) portfolio_history: vitri::decompose::PortfolioBuildHistory,
     pub(crate) source_structure_profile: Option<vitri::score::StructureProfile>,
+    /// Build a portfolio of this one entry of vitri's built-in catalog
+    /// ([`PORTFOLIO_CATALOG`]), every other entry skipped; `None` builds the
+    /// default portfolio. The model count's stall recompile asks for one. Read
+    /// in one place, [`resolve_vitri_selection_ctx`].
+    pub(crate) only_portfolio_entry: Option<&'static str>,
 }
 
-/// Clause-balance selection, no deadline, a fresh portfolio history.
+/// Clause-balance selection, no deadline, a fresh portfolio history, the
+/// default portfolio.
 impl Default for VtreeOptions {
     fn default() -> Self {
         Self {
@@ -54,6 +60,7 @@ impl Default for VtreeOptions {
             deadline: None,
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             source_structure_profile: None,
+            only_portfolio_entry: None,
         }
     }
 }
@@ -179,12 +186,40 @@ fn vitri_selection_ctx(ctx: &VtreeOptions) -> vitri::decompose::SelectionCtx {
     selection
 }
 
+/// The base names of vitri's built-in portfolio catalog, the names its
+/// `PortfolioKnobs::skip` takes. vitri publishes the catalog's candidate specs
+/// but not this list; a test holds the two equal.
+pub(crate) const PORTFOLIO_CATALOG: [&str; 7] = [
+    "flowcutter-incidence",
+    "flowcutter-primal",
+    "goatd-incidence",
+    "goatd-primal",
+    "force",
+    "hypergraph-bisect",
+    "guided-bisect",
+];
+
 /// The selection context for `ctx` with the `VITRI_*` selection settings
 /// applied: every construction's, standalone or in a frontend.
+///
+/// A request for one catalog entry ([`VtreeOptions::only_portfolio_entry`])
+/// skips every other entry, set after the environment's settings, so that
+/// `VITRI_PORTFOLIO_SKIP` can neither add an entry back nor take the one
+/// asked for away.
+///
+/// # Panics
+///
+/// When the entry asked for is not in [`PORTFOLIO_CATALOG`]: the crate asks
+/// only for entries it names.
 pub(crate) fn resolve_vitri_selection_ctx(
     ctx: &VtreeOptions,
 ) -> Result<vitri::decompose::SelectionCtx, vitri::VitriError> {
-    vitri_selection_ctx(ctx).with_env_defaults()
+    let mut selection = vitri_selection_ctx(ctx).with_env_defaults()?;
+    if let Some(only) = ctx.only_portfolio_entry {
+        assert!(PORTFOLIO_CATALOG.contains(&only), "{only:?} is not a portfolio catalog entry");
+        selection.portfolio.skip = PORTFOLIO_CATALOG.into_iter().filter(|&entry| entry != only).collect();
+    }
+    Ok(selection)
 }
 
 /// Convert one vitri construction result into this crate's types.

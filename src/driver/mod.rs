@@ -339,7 +339,7 @@ fn solve_on(
             eng,
             config,
             deadline: program_deadline,
-            compile: CompileRun { sat_prune: config.sat_prune.then_some(&sat_prune), cofactor: false },
+            compile: CompileRun { sat_prune: config.sat_prune.then_some(&sat_prune), ..CompileRun::default() },
         };
         let stats = &mut stats;
         Ok(match config.mode {

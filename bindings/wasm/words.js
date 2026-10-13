@@ -21,6 +21,7 @@ export const MODE_NAMES = {
 export const ANSWERED_BY = {
   compile: "the compile",
   preprocessing: "preprocessing, with nothing left to compile",
+  "stall-recompile": "a second compile of the reduced formula, on another vtree",
   "support-enumeration": "enumerating the reduced formula's independent support",
   "no-sbva-retry": "a compile reduced again without SBVA",
   "unreduced-retry": "a compile of the formula Arjun was given",

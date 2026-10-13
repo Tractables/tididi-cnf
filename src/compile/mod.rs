@@ -28,6 +28,7 @@ mod minimize;
 pub(crate) mod sat_prune;
 mod schedule;
 mod scope;
+mod stall;
 mod step;
 
 use std::cell::Cell;
@@ -48,6 +49,8 @@ use crate::vtree::{Component, ComponentVtree};
 use component::{CompileJob, PassOutput, compile_split, detected_split};
 use minimize::minimize_full;
 use step::compile_component;
+
+pub(crate) use stall::{StallRule, StallWatch};
 
 /// Which independent components a compile splits the formula into.
 #[derive(Clone, Copy, Default)]
@@ -74,8 +77,8 @@ impl<'a> ComponentPlan<'a> {
 }
 
 /// What a run sets for one compile, beyond what the compile is asked to
-/// produce: the run's SAT pruning, and whether the compile is a Shannon
-/// cofactor's.
+/// produce: the run's SAT pruning, whether the compile is a Shannon
+/// cofactor's, and the per-step wall its internal steps run under.
 #[derive(Clone, Copy, Default)]
 pub(crate) struct CompileRun<'a> {
     /// The run's SAT pruning, which a compile that runs to its end adds its
@@ -85,6 +88,10 @@ pub(crate) struct CompileRun<'a> {
     /// cascade recompiles cofactors under memory pressure, and scanning a
     /// diagram about to be split or dropped adds no useful work.
     pub(crate) cofactor: bool,
+    /// The per-step wall the compile's internal steps run under, and where it
+    /// reports a step that stopped on it ([`StallWatch`]); `None` for no
+    /// per-step wall. Only the model count's primary compile has one.
+    pub(crate) stall_watch: Option<&'a StallWatch>,
 }
 
 /// Why a compile has no diagram to return.
@@ -336,7 +343,7 @@ pub fn compile_cnf(
     opts: CompileOptions<'_>,
 ) -> Result<Compiled, GiveUp> {
     let sat_prune = sat_prune::SatPrune::default();
-    compile_with(eng, formula, vtree, opts, CompileRun { sat_prune: Some(&sat_prune), cofactor: false })
+    compile_with(eng, formula, vtree, opts, CompileRun { sat_prune: Some(&sat_prune), ..CompileRun::default() })
 }
 
 /// [`compile_cnf`] under what the run sets for it (`run`).
