@@ -520,15 +520,15 @@ fn streaming_mc_runs_the_simplify_only_frontend() {
     }
 }
 
-/// Streaming MC detects the reduced formula's components once: the root compile
-/// runs over the components the `[vtree]` line counted.
+/// Streaming MC detects the reduced formula's components once, when the root
+/// compile splits it.
 #[test]
 fn streaming_mc_detects_components_once() {
     // Two copies of a 4-variable formula with 9 models.
     let two = TempCnf::new("two_components", "p cnf 8 6\n1 2 3 0\n-1 -2 0\n-2 -3 4 0\n5 6 7 0\n-5 -6 0\n-6 -7 8 0\n");
     let out = run(&["--mode", "mc", "--vtree", "portfolio", two.path()], &[]);
     assert!(out.prints("model count: 81"), "{}", out.stdout);
-    assert!(out.stderr.contains("[vtree] portfolio, streaming over 2 components"), "{}", out.stderr);
+    assert!(out.stderr.contains("[vtree] portfolio\n"), "{}", out.stderr);
     assert_eq!(out.stderr.matches("[vtree] 2 independent components").count(), 1, "{}", out.stderr);
 }
 

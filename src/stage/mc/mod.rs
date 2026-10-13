@@ -297,22 +297,14 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
             },
         });
     }
-    let root_components = crate::vtree::split_components(&reduced, run.config.vtree_spec());
-    eprintln!(
-        "[vtree] {}, streaming over {} components",
-        run.config.vtree_spec(),
-        root_components.len().max(1)
-    );
+    eprintln!("[vtree] {}", run.config.vtree_spec());
     eprintln!("[mc] compile: start");
     // In-loop sub-vtree builds bill to `vtree_ms`, not `compile_ms`.
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
-    // The first compile streams over the components detected above; a
-    // cofactor carries an extra unit clause, so it may decompose differently
-    // and detects its own. Each builds its vtrees as the compile reaches them.
-    let first = || super::count_streaming(run, &reduced, &root_components, None);
-    let cofactor = |run: &Run<'_>, form: &CnfFormula| {
-        super::count_streaming(run, form, &crate::vtree::split_components(form, run.config.vtree_spec()), None)
-    };
+    // The first compile and each cofactor's stream over their own components,
+    // building each vtree as the compile reaches it.
+    let first = || super::count_streaming(run, &reduced, None);
+    let cofactor = |run: &Run<'_>, form: &CnfFormula| super::count_streaming(run, form, None);
     let Recovered { count, peak_pairs, answered_by, cascade_ms } =
         count_with_recovery(run, &reduced, first, None, cofactor)
             .ok_or_else(crate::Error::compile_gave_up)?;

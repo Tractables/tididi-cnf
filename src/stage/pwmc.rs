@@ -492,10 +492,7 @@ fn symmetric_subsumption(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Tra
     // does not. Streaming runs first, on the run's whole wall, and a `None`
     // falls through to the monolithic compile.
     let t_stream = Instant::now();
-    let streamed = {
-        let components = crate::vtree::split_components(work, run.config.vtree_spec());
-        super::count_streaming(run, work, &components, Some(&forget))
-    };
+    let streamed = super::count_streaming(run, work, Some(&forget));
     if let Some((pmc_present, _peak)) = streamed {
         // `pmc_present` is the projected count over `work`'s full var space:
         // The forget set ∃-forgets the projected vars (free projected vars

@@ -25,7 +25,7 @@ use vitri::cnf::CnfFormula;
 use crate::budget::vtree_deadline;
 use crate::compile::{CompileRun, model_count_streaming};
 use crate::config::Config;
-use crate::vtree::{Component, VtreeOptions, build_vtree, built_or_give_up};
+use crate::vtree::{VtreeOptions, build_vtree, built_or_give_up, split_components};
 
 mod conditioning;
 mod mc;
@@ -58,7 +58,7 @@ pub(crate) struct Run<'a> {
     pub(crate) compile: CompileRun<'a>,
 }
 
-/// Count `formula` by the streaming compile over `components`, as
+/// Count `formula` by the streaming compile over its components, as
 /// `vtree::split_components` gives them for the run's spec, one component at
 /// a time, forgetting `forget` as [`model_count_streaming`] does, under what
 /// the run sets for each compile; `None` if a component's vtree could not be
@@ -71,12 +71,8 @@ pub(crate) struct Run<'a> {
 /// the run's wall now; deriving it per component would leave the total
 /// unbounded. Components build one at a time, so an early one may spend it
 /// all and later ones fall back to Vitri's last-resort build.
-pub(crate) fn count_streaming(
-    run: &Run<'_>,
-    formula: &CnfFormula,
-    components: &[Component],
-    forget: Option<&[VarId]>,
-) -> Option<(BigUint, usize)> {
+fn count_streaming(run: &Run<'_>, formula: &CnfFormula, forget: Option<&[VarId]>) -> Option<(BigUint, usize)> {
+    let components = split_components(formula, run.config.vtree_spec());
     let options = VtreeOptions::default()
         .with_deadline(vtree_deadline(run.deadline))
         .with_run_policy(run.config);
@@ -84,7 +80,7 @@ pub(crate) fn count_streaming(
         let spec = if component.num_vars() <= 30 { "minfill-primal" } else { run.config.vtree_spec() };
         built_or_give_up(run.config.vtree_time.time(|| build_vtree(component, spec, &options)))
     };
-    model_count_streaming(run.eng, formula, components, build, forget, run.deadline, run.compile)
+    model_count_streaming(run.eng, formula, &components, build, forget, run.deadline, run.compile)
 }
 
 /// Best-effort extraction of a human-readable message from a panic
