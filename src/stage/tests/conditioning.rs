@@ -1,4 +1,4 @@
-//! The conditioning recursion is checked by FORCING it to condition on the
+//! The conditioning recursion is checked by forcing it to condition on the
 //! hub show var and asserting the branch-sum equals both an independent
 //! brute-force projected count and the direct depth-0 leaf (the identity
 //! PMC(F) = Σ_cutset PMC(F|assignment)). `arjun_ms = 0` keeps the leaf
@@ -12,7 +12,7 @@ use crate::test_support::{brute_projected_count, lit};
 /// show = {0,1,2}, hidden = {3}. x0 is the hub (occurs most): under x0=T the
 /// clause ¬x0∨x2 forces the show var x2=T, and the x0=F branch is UNSAT —
 /// (x0∨x3)∧(x0∨¬x3) forces x3 both ways ⊢ □. So a shallow single-var cutset on x0
-/// is a CLEAN partition ({x0=T}, {x0=F UNSAT}): one branch carries the whole
+/// is a clean partition ({x0=T}, {x0=F UNSAT}): one branch carries the whole
 /// count, the other's leaf compile must return zero.
 fn fixture() -> CnfFormula {
     crate::test_support::formula(4, vec![

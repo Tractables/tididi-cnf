@@ -111,14 +111,14 @@ fn commit_decision_admits_or_refuses_by_outcome() {
 
 // ── the entry gate is the exit gate ─────────────────────────────────────
 
-/// The entry ask and the exit ask are ONE call on ONE estimate, differing
+/// The entry ask and the exit ask are one call on one estimate, differing
 /// only in the two probe-dependent arguments — so the entry gate can never
 /// turn away a candidate the exit gate would have admitted, which is the
 /// whole reason it is safe to ask before paying for the probe.
 ///
 /// Pinned as an implication over the estimate shapes the policy distinguishes
 /// rather than by listing verdicts, because the property that must hold is
-/// the ORDERING of the two answers, not either one of them.
+/// the ordering of the two answers, not either one of them.
 #[test]
 fn the_entry_gate_never_refuses_what_the_exit_gate_would_admit() {
     let estimates = [
@@ -235,7 +235,7 @@ fn estimator_recovers_a_known_projection_count() {
     assert_eq!(e.weights.len() as u32, ESTIMATOR_SAMPLES, "{e:?}");
     assert_eq!(e.truncated, 0, "{e:?}");
     assert!(!e.unsat, "{e:?}");
-    // True count 21. Path weights are powers of two, so no sample can BE 21;
+    // True count 21. Path weights are powers of two, so no sample can be 21;
     // the mean has to bracket it and must never collapse to 0.
     let n_hat = e.mean().expect("every path completed");
     assert!((8.0..=64.0).contains(&n_hat), "{e:?}");

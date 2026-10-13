@@ -102,7 +102,7 @@ fn no_deadline_reserves_the_fixed_tail() {
 fn declared_wall_returns_a_quarter_of_the_declared_total() {
     let now = Instant::now();
     // 1000s declared wall, none of it consumed yet -> reserve = 0.25 * 1000s,
-    // sized off the DECLARED total, not the (here, identical) remaining wall.
+    // sized off the declared total, not the (here, identical) remaining wall.
     let pd = now + Duration::from_secs(1000);
     assert_eq!(
         no_sbva_retry_window(Some(1_000_000), Some(pd), now),

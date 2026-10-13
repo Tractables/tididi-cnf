@@ -92,7 +92,16 @@ fn decomposable_boundary_function_reads_the_supplied_whole_vtree() {
         VarId(1),
     ]).unwrap());
 
-    let got = component_boundary_function(eng, Default::default(), &formula, &vtree, &[VarId(4)], &[VarId(2), VarId(3)], &[VarId(1)], ).unwrap();
+    let got = component_boundary_function(
+        eng,
+        Default::default(),
+        &formula,
+        &vtree,
+        &[VarId(4)],
+        &[VarId(2), VarId(3)],
+        &[VarId(1)],
+    )
+    .unwrap();
 
     assert_eq!(got, vec![BigUint::from(2u32), BigUint::from(4u32)]);
 }
@@ -129,7 +138,9 @@ fn detect_and_count_matches_bruteforce() {
     assert_eq!(plan.separator, vec![VarId(1)], "separator should be the high-occ var");
     assert!(plan.components.len() >= 2, "expected >= 2 components");
 
-    let total = structured_count_with(eng, Default::default(), &plan, |f| Some(Arc::new(Vtree::balanced(f.num_vars().max(1))))).unwrap();
+    let total =
+        structured_count_with(eng, Default::default(), &plan, |f| Some(Arc::new(Vtree::balanced(f.num_vars().max(1)))))
+            .unwrap();
     let want = brute_projected_count(&formula, show.iter_vars().map(|v| v.idx()));
     assert_eq!(total, want, "structured count != brute projected count");
 }
