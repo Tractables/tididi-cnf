@@ -78,8 +78,9 @@ everything below is called, and nothing below calls back up. Below the stages,
 
 `compile_cnf` takes a formula, a vtree and `CompileOptions`: a
 `ComponentPlan` (find the independent components, compile the formula whole,
-or take the caller's component vtrees) and an `Output` (the Boolean
-diagram, a counting diagram, weighted or not, or a projection of either). It
+or take the caller's component vtrees), an `Output` (the Boolean diagram, a
+counting diagram, weighted or not, or a projection of the Boolean or the
+unweighted counting diagram) and the deadline the compile gives up at. It
 returns `Compiled` — the diagram, its peak size and how many projected
 variables it left free — or a `GiveUp` that says why it has no diagram.
 
