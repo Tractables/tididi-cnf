@@ -3,13 +3,15 @@
 //! don't-care variables are compiled on every vtree shape and checked against
 //! their counts, `is_sat` and the library's invariant checks. Clause and
 //! literal order must change nothing, and an ISCAS'89 circuit counts right on
-//! its FlowCutter vtree.
+//! its FlowCutter vtree and, with its inverters substituted away, on a saved
+//! vtree.
 
 mod common;
 
 use std::sync::Arc;
 
 use num_bigint::BigUint;
+use vitri::cnf::CnfFormula;
 
 use tididi::Engine;
 use tididi::test_helpers::check::{check_all_fast, check_determinism};
@@ -164,4 +166,77 @@ fn s641_counts_right_on_its_flowcutter_vtree() {
     let tdd = compile_cnf(&Engine::new(), &formula, &vtree, options).unwrap().diagram;
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(1u64) << 54, "s641");
     check_all_fast(&tdd, "s641");
+}
+
+// ── The same circuit without its inverters ───────────────────────────
+
+/// The literal each of s641's 433 variables becomes, over 161 variables: an
+/// inverter's output is its input negated, so an inverter's two clauses
+/// become tautologies and are left out.
+const S641_LITERALS: [i32; 433] = [
+    158, 100, -11, 94, -18, 96, -20, 98, -22, 92, -29, -1, -6, -5, -7, 143, -23, 139, -21, 137,
+    122, 128, -27, 125, -15, 123, 114, -2, 108, -25, 107, -17, 106, -28, 105, -24, 102, 160, 101, 159,
+    -12, -9, -8, -10, -3, 90, -19, 89, -16, 88, -26, -4, 13, 14, 132, 134, 147, 153, 11, 161,
+    133, 149, 154, 109, 115, 118, -79, 79, -79, 79, -79, 79, 157, -63, -53, 11, -11, -30, 30, -30,
+    30, -30, 99, 18, -18, 4, -35, 35, -35, 93, 20, -20, 4, -36, 36, -36, 95, 22, -22, 4,
+    -37, 37, -37, 97, 29, -29, 4, -34, 34, -34, 91, 156, 33, 155, -78, 78, -78, 78, 68, -74,
+    74, -74, 74, -74, 74, 146, 152, 1, -1, 111, 110, -77, 77, -77, 145, 151, 6, -6, 127, 126,
+    -76, 76, -76, 69, 144, 150, 5, -5, 117, 116, -75, 75, -75, 129, 33, -33, 33, -33, 68, -68,
+    68, -68, 148, 7, -7, 141, 140, -73, 73, -73, 142, -72, 72, -72, 69, -69, -71, 71, 23, -23,
+    138, -69, 69, -69, 69, -69, 21, -21, 67, -67, 67, -67, 67, -67, 67, -67, -68, 68, -68, -70,
+    70, 48, 121, 130, 84, 80, -64, 64, -64, 64, -64, 64, -67, 67, 136, 31, 135, -66, 66, -66,
+    66, 31, -31, 31, -31, 58, -58, 58, -58, 58, -65, 65, -65, 65, -65, 65, 59, 48, -48, 48,
+    -48, 131, -131, 131, -61, 61, -61, 59, -59, -62, 62, 27, -27, 124, -59, 59, -59, 59, -59, 15,
+    -15, 57, -57, 57, -57, 57, -57, 57, -57, -58, 58, -58, -60, 60, 9, 86, 46, 113, 82, -54,
+    54, -54, 54, -54, 54, -57, 57, 120, 32, 119, -56, 56, -56, 56, 32, -32, 32, -32, 47, -47,
+    47, -47, 47, -55, 55, -55, 55, -55, 55, 45, -45, 45, -45, 45, -45, 45, -45, 45, -45, 46,
+    -46, 46, -46, 2, 112, -112, 112, 25, -25, 104, -48, 48, -48, -52, 52, 17, -17, 43, -43, 43,
+    -43, 43, -43, 43, -43, -47, 47, -47, -51, 51, 28, -28, 103, -46, 46, -46, -50, 50, 24, -24,
+    44, -44, 44, -44, 44, -44, -45, 45, -45, -49, 49, 87, 83, -39, 39, -39, 39, -39, 39, -44,
+    44, 12, -12, 12, 9, -9, 8, -8, 8, 85, 10, -10, 10, 3, 81, -38, 38, -38, 38, -38,
+    38, -43, 43, 19, -19, 4, -33, 33, -33, -42, 42, 16, -16, 4, -32, 32, -32, -41, 41, 26,
+    -26, 4, -4, 4, -31, 31, -31, -40, 40, -13, 13, -14, 14,
+];
+
+/// s641's gates, each by the index of its long clause, which the circuit
+/// lists ahead of one binary clause per input.
+const S641_GATES: [usize; 107] = [
+    836, 17, 39, 57, 768, 816, 800, 784, 515, 85, 346, 136, 518, 96, 355, 139, 10, 32, 50, 761,
+    809, 793, 777, 825, 68, 119, 153, 181, 200, 232, 146, 174, 193, 225, 878, 711, 714, 246, 844, 349,
+    874, 655, 658, 870, 319, 289, 324, 527, 329, 371, 402, 364, 684, 687, 425, 414, 643, 523, 433, 847,
+    914, 891, 910, 488, 458, 493, 498, 542, 573, 535, 612, 615, 600, 585, 596, 670, 699, 725, 906, 622,
+    886, 665, 694, 721, 902, 883, 753, 739, 758, 852, 81, 132, 342, 316, 511, 485, 608, 651, 680, 707,
+    896, 750, 865, 184, 235, 405, 576,
+];
+
+/// s641 with its inverters substituted away: the gates in [`S641_GATES`]
+/// order, each gate's binary clauses ahead of its long clause, over the
+/// literals [`S641_LITERALS`] gives.
+fn s641_without_inverters() -> CnfFormula {
+    let circuit = load_cnf("tests/data/cnfs/iscas89/s641.scan.cnf");
+    let clauses = circuit.clauses();
+    let mut reduced = Vec::new();
+    for &gate in &S641_GATES {
+        let inputs = &clauses[gate + 1..gate + clauses[gate].literals.len()];
+        for clause in inputs.iter().chain([&clauses[gate]]) {
+            let mut literals: Vec<i32> = clause.literals.iter()
+                .map(|l| if l.positive { S641_LITERALS[l.var.idx()] } else { -S641_LITERALS[l.var.idx()] })
+                .collect();
+            literals.sort_by_key(|l| l.abs());
+            reduced.push(literals);
+        }
+    }
+    make_formula(161, reduced)
+}
+
+/// On this saved FlowCutter incidence vtree, a sort of seven child pairs that
+/// leaves two equal pairs apart keeps them both, and the diagram passes every
+/// structural check yet counts 2^54 + 205 · 2^29.
+#[test]
+fn s641_without_inverters_counts_right_on_a_saved_vtree() {
+    let formula = s641_without_inverters();
+    let vtree = load_vtree("tests/data/s641_without_inverters.vtree");
+    let tdd = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions::default()).unwrap().diagram;
+    assert_eq!(tdd.model_count().unwrap(), BigUint::from(1u64) << 54, "s641 without inverters");
+    check_all_fast(&tdd, "s641 without inverters");
 }

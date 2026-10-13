@@ -24,6 +24,13 @@ pub fn load_cnf(path: &str) -> CnfFormula {
         .0
 }
 
+/// Read the saved vtree text at `path`, relative to the crate root.
+pub fn load_vtree(path: &str) -> Arc<Vtree> {
+    let path = format!("{}/{path}", env!("CARGO_MANIFEST_DIR"));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    Arc::new(Vtree::from_text(&text).unwrap_or_else(|e| panic!("{path}: {e}")))
+}
+
 /// A path in the temp directory, unique to this test process.
 pub fn tmp_path(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("tididi_test_{}_{name}", std::process::id()))
