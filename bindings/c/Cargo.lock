@@ -359,16 +359,13 @@ dependencies = [
 name = "tididi-bonsai"
 version = "0.1.0"
 dependencies = [
- "itoa",
  "libc",
  "num-bigint",
  "num-rational",
  "num-traits",
- "rand",
  "rustc-hash",
  "serde",
  "serde_json",
- "smallvec",
  "tididi",
  "tikv-jemalloc-ctl",
  "tikv-jemalloc-sys",
