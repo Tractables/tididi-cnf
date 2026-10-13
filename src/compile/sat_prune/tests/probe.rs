@@ -93,7 +93,7 @@ fn inline_marg_refs_probe_and_rewrite_natively() {
             // p survives alone at v4, its inline reference unchanged.
             let v4_lvl = &new_tdd.levels()[v4.idx()];
             assert_eq!(v4_lvl.nodes().len(), 1, "only p survives at v4");
-            let pairs = v4_lvl.pairs_of_idx(0);
+            let pairs: Vec<_> = v4_lvl.pairs_iter_of_idx(0).collect();
             assert_eq!(pairs.len(), 1);
             assert_eq!(
                 ChildDecoder::marginal().child(pairs[0].right),
@@ -104,8 +104,8 @@ fn inline_marg_refs_probe_and_rewrite_natively() {
             let out = new_tdd.output();
             assert_eq!(
                 new_tdd.levels()[out.vtree.idx()]
-                    .pairs_of_idx(out.local.idx())
-                    .len(),
+                    .pairs_iter_of_idx(out.local.idx())
+                    .count(),
                 1,
                 "root must drop the (p2, s1) pair"
             );

@@ -26,8 +26,9 @@ pub(crate) enum PruneOutcome {
     /// diagram with the false one on its vtree.
     DeadRoot,
     /// Some interior nodes were dead, and this diagram, without them,
-    /// replaces the one probed.
-    Rewritten(Tdd),
+    /// replaces the one probed. Boxed: a diagram is far larger than the
+    /// other variants.
+    Rewritten(Box<Tdd>),
 }
 
 impl SatPruneCtx {
@@ -79,7 +80,7 @@ impl SatPruneCtx {
         if pairs_dropped * 100 >= self.limits.reset_drop_pct.saturating_mul(pairs_dropped + post_size) {
             self.spend_exempt_us = self.stats.spend_us();
         }
-        PruneOutcome::Rewritten(new_tdd)
+        PruneOutcome::Rewritten(Box::new(new_tdd))
     }
 
     /// Per-node model counts of `tdd`, saturating at `u128::MAX`. The pass

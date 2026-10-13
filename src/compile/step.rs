@@ -346,7 +346,7 @@ fn run_internal_step(
     {
         let pruned = match prune.probe_tdd(eng, tdd, pairs) {
             PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
-            PruneOutcome::Rewritten(new_tdd) => Some(new_tdd),
+            PruneOutcome::Rewritten(new_tdd) => Some(*new_tdd),
             PruneOutcome::NoOp => None,
         };
         if let Some(pruned) = pruned {

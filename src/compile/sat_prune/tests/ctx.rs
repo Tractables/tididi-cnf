@@ -45,7 +45,7 @@ fn an_encode_prefix_is_probed() {
     };
     assert!(ctx.stats.nodes_pruned >= 2, "both dead bottom nodes are killed");
     let unit = clause_tdd(&vtree, &clause(&[-1]));
-    let conj = new_tdd & unit;
+    let conj = *new_tdd & unit;
     assert_eq!(conj.model_count().unwrap(), num_bigint::BigUint::from(1u32));
 }
 

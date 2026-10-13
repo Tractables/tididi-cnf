@@ -141,7 +141,7 @@ fn expand_tdd_classes(
     for (reduced_idx, left, right) in reduced_vtree.internal_bottomup() {
         let level = &tdd.levels()[reduced_idx.idx()];
         for node in level.nodes() {
-            for pair in level.pairs_iter_of(node) {
+            for pair in level.pairs_iter_of(&node) {
                 for (child, side) in [(left, pair.left), (right, pair.right)] {
                     if let Some(used) = leaf_used.get_mut(&child)
                         && side != ZERO.into()
@@ -196,7 +196,7 @@ fn expand_tdd_classes(
             let mut pairs = Vec::new();
             for node in reduced_level.nodes() {
                 pairs.clear();
-                for pair in reduced_level.pairs_iter_of(node) {
+                for pair in reduced_level.pairs_iter_of(&node) {
                     pairs.push(ChildPair::new(
                         remap(left, left_remap, pair.left),
                         remap(right, right_remap, pair.right),

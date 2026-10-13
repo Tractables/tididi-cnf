@@ -361,7 +361,7 @@ fn count_canonical_leaf_refs(tdd: &Tdd, label: &str) -> usize {
         let leaf_is_left = vtree.children(parent).0 == leaf;
         let level = &tdd.levels()[parent.idx()];
         for n in 0..level.nodes().len() {
-            for pair in level.pairs_of_idx(n) {
+            for pair in level.pairs_iter_of_idx(n) {
                 let raw = if leaf_is_left { pair.left.raw() } else { pair.right.raw() };
                 assert_ne!(raw, 2, "[{label}] a Neg-slot ref into weight-marginal leaf {leaf:?} under equal weights");
                 seen += 1;
