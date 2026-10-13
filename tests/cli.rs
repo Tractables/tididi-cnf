@@ -154,15 +154,9 @@ fn refusals_name_what_is_wrong() {
 
     // (exit code, arguments, environment, what stderr names)
     let rows: Vec<(i32, Vec<&str>, Env, Vec<&str>)> = vec![
-        // A retired spelling — `portfolio2` and `flowcutter-primal:300` take
-        // the same grammar refusal, so one row stands for all three.
-        (1, vec!["--vtree", "td-fc-pri", TINY], &[], vec!["td-fc-pri"]),
         (1, vec!["--vtree", "nonexistent", TINY], &[], vec!["unknown vtree type"]),
-        // `arcade` selected the counting cascade, which is now what a count
-        // runs without `--vtree`; it is not a vtree.
-        (1, vec!["--mode", "mc", "--vtree", "arcade", TINY], &[], vec!["arcade"]),
-        // A retired preprocessing level; `config`'s unit test has the others.
-        (2, vec!["--preprocess", "light", TINY], &[], vec!["light", "none, full"]),
+        // A preprocessing level that does not exist names the ones that do.
+        (2, vec!["--preprocess", "half", TINY], &[], vec!["half", "none, full"]),
         // What the argument parser refuses is a usage error, named on stderr.
         (2, vec![], &[], vec!["no DIMACS file", "Usage:"]),
         (2, vec!["--vtree"], &[], vec!["--vtree", "Usage:"]),
@@ -181,10 +175,6 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--stats", "-", "--stats", "-", TINY], &[], vec!["--stats is given twice"]),
         (2, vec!["--save-tdd", saved, "--save-tdd", saved, TINY], &[], vec!["--save-tdd is given twice"]),
         (2, vec!["--output-format", "sharp", TINY], &[], vec!["--output-format", "\"sharp\"", "plain", "mcc"]),
-        // The retired mode and output flags are unknown flags now.
-        (2, vec!["--mc", TINY], &[], vec!["unknown flag --mc"]),
-        (2, vec!["--mc-format", TINY], &[], vec!["unknown flag --mc-format"]),
-        (2, vec!["--max-time-ms", "1000", TINY], &[], vec!["unknown flag --max-time-ms"]),
         // A second input file is refused, not read in place of the first.
         (2, vec![TINY, "tests/data/mc_header_tiny.cnf"], &[], vec!["tests/data/mc_header_tiny.cnf", "one DIMACS file"]),
         (1, vec!["/nonexistent/tididi_test.cnf"], &[], vec!["error: could not open"]),
@@ -631,10 +621,8 @@ fn random_3cnf_text(header: &str, show: bool, weighted: bool) -> String {
 
 /// A projected count ends near `--time-limit-ms`, answered or not. The show-set
 /// enumeration, the conditioning recovery and the definability oracle each
-/// have a budget of their own, and none may run past the run's wall. With a
-/// 2 s wall, the enumeration kept the weighted instance running for 12 s and
-/// the conditioning recovery kept the unweighted one running past a minute.
-/// The 8 s bound leaves room for the vtree construction and the compile's SAT
+/// have a budget of their own, and none may run past the run's wall. The 8 s
+/// bound leaves room for the vtree construction and the compile's SAT
 /// pruning, which can end a little past the wall.
 #[test]
 fn projected_counts_end_at_the_wall() {

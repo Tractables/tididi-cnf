@@ -6,8 +6,8 @@ fn a_vocabulary_reads_back_each_spelling_and_lists_them_for_any_other() {
         assert_eq!(one_of("--preprocess", level.token(), &PreprocessLevel::ALL, PreprocessLevel::token), Ok(level));
     }
     assert_eq!(
-        one_of("--preprocess", "full-eq", &PreprocessLevel::ALL, PreprocessLevel::token),
-        Err("unknown --preprocess \"full-eq\"; valid: none, full.".to_owned()),
+        one_of("--preprocess", "half", &PreprocessLevel::ALL, PreprocessLevel::token),
+        Err("unknown --preprocess \"half\"; valid: none, full.".to_owned()),
     );
 }
 

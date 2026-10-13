@@ -1,9 +1,9 @@
-//! The marginalizing compile (`Output::Count`, the `--mc`
-//! path). Every formula of the shared case table, plus a few with separated
+//! The marginalizing compile (`Output::Count`, the model count's compile).
+//! Every formula of the shared case table, plus a few with separated
 //! components and small counts, is compiled on every vtree shape and must
 //! count right and pass the library's marginal checks; and a set of saved
-//! formulas, toys that once counted wrong and competition instances, must
-//! count right.
+//! formulas, small ones whose marginal counts sit in slots and competition
+//! instances, must count right.
 
 mod common;
 
@@ -79,11 +79,12 @@ macro_rules! fixture {
     };
 }
 
-// The compile-level cascade passed grid slots through as inline counts,
-// collapsing the count to 1.
+// Small formulas whose marginal counts sit in store slots beside inline
+// ones: each reference reads the count it names, a slot's from the store
+// and an inline one from the reference itself.
 fixture!(marg_canary_a, "marg_canary_a.cnf", "7");
 fixture!(marg_toy_nr6, "marg_toy_nr6.cnf", "19");
-// A bare slot-0 ref was read as the inline count 0.
+// A reference to slot 0 reads the slot, not the inline count 0.
 fixture!(marg_toy_nr6b, "marg_toy_nr6b.cnf", "26");
 fixture!(marg_toy_inline_nr, "marg_toy_inline_nr.cnf", "8");
 fixture!(marg_toy_nr8_overcount, "marg_toy_nr8_overcount.cnf", "10");

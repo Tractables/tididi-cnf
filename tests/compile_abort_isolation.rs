@@ -91,12 +91,10 @@ fn a_deadline_abort_leaves_the_engine_reusable() {
     );
 
     // The apply pipeline's thread-local scratch pools are grow-only by
-    // design, so a compile that ballooned leaves them at ITS high-water
-    // capacity — live bytes, charged to whoever measures the heap next. A
-    // driver that sizes a memory ceiling relative to the live heap therefore
-    // reads a different baseline for every arm (measured: 1.3 GiB → 11.8 GiB
-    // across the arms of one run), which is enough on its own to make
-    // sequential arms non-comparable.
+    // design, so a compile that ballooned leaves them at its own high-water
+    // capacity: live bytes, charged to whoever measures the heap next. A
+    // caller that sizes a memory ceiling relative to the live heap would
+    // read a different baseline after every compile.
     //
     // `Engine::clear_scratch` is the one drain for that state. This pins that
     // it actually recovers an aborted compile's retained capacity, so a

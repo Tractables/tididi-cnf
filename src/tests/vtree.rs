@@ -1,13 +1,12 @@
 use super::*;
 use crate::test_support::{clause, formula, tididi_formula};
 
-/// A spec is vitri's grammar, whose own tests cover it. `arcade`, which
-/// once selected the counting cascade, is not a vtree and is refused.
+/// A spec is vitri's grammar, whose own tests cover it: a spec it reads is
+/// accepted, and one it does not is a vtree-spec error.
 #[test]
 fn a_spec_is_vitri_s_grammar() {
-    assert!(matches!(validate_vtree_spec("arcade"), Err(Error::VtreeSpec(_))));
     assert!(validate_vtree_spec("minfill-primal").is_ok());
-    assert!(matches!(validate_vtree_spec("td-fc-pri"), Err(Error::VtreeSpec(_))));
+    assert!(matches!(validate_vtree_spec("nonexistent"), Err(Error::VtreeSpec(_))));
 }
 
 /// A formula with no variables has no vtree leaves; the build says so with an

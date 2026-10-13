@@ -145,9 +145,9 @@ fn weighted_counts_match_the_oracle() {
     }
 }
 
-/// Under unit weights the weighted count is the model count, 30. The fixture
-/// (8 variables, 10 clauses) is a fuzz find where the marginalizing compile
-/// lost model mass, shrunk by clause and literal removal and variable merging.
+/// Under unit weights the weighted count is the model count, 30. On this
+/// formula and its min-fill vtree, a marginalizing compile that drops the
+/// mass of some models anywhere comes out short.
 #[test]
 fn weighted_marginalizing_compile_keeps_all_model_mass() {
     let formula = make_formula(8, vec![
@@ -265,9 +265,8 @@ fn a_batch_mixes_leaf_and_internal_targets() {
 /// Marginalizing only the leaves (each parent stays structural, so each
 /// column is a boundary store the slot prune walks) and marginalizing
 /// everything (each leaf under a marginal parent, the prune's dead-store
-/// walk) both keep every leaf's full column. The prune once compacted a
-/// column to the slots one diagram's parent used, which broke every other
-/// diagram reading it.
+/// walk) both keep every leaf's full column. A column compacted to the slots
+/// one diagram's parent uses would break every other diagram reading it.
 #[test]
 fn leaf_columns_survive_the_slot_prune() {
     let eng = &Engine::new();
@@ -298,8 +297,8 @@ fn leaf_columns_survive_the_slot_prune() {
 /// Diagram A marginalizes an internal node and a leaf under it; diagram B
 /// takes A's store (as a conjunction of the two would) but keeps that leaf
 /// structural, so B's parent refs to it are leaf labels. They must resolve by
-/// label, not through the column: a subsumed leaf once got an empty column,
-/// and B then read out of bounds or silently dropped the leaf's mass.
+/// label, not through the column, and a subsumed leaf keeps its full column,
+/// so B neither reads out of bounds nor drops the leaf's mass.
 #[test]
 fn a_structural_leaf_reads_by_label_under_a_shared_store() {
     let eng = &Engine::new();
