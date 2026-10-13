@@ -2,7 +2,14 @@
 
 ## Context
 
-The paper "A canonical generalization of OBDD" (by Capelli, Choi, Mengel, Muñoz, Van den Broeck) introduces Tree Decision Diagrams (TDD), a knowledge compilation language that generalizes OBDDs using vtrees instead of linear variable orders. TDDs support the same tractable operations as OBDDs (apply, negation, conditioning) plus canonical minimality via twin contraction. CNF formulas of bounded treewidth compile to TDDs of FPT size via bottom-up compilation. That size is a worst-case upper bound; compiled diagrams are usually far smaller.
+The paper [*A Canonical Generalization of OBDD*][paper] (Capelli, Choi,
+Mengel, Muñoz and Van den Broeck) introduces Tree Decision Diagrams (TDDs), a
+knowledge compilation language that generalizes OBDDs by following a vtree
+instead of a linear variable order. TDDs support the same tractable
+operations as OBDDs (apply, negation, conditioning), and twin contraction
+makes the minimal TDD canonical. Bottom-up compilation turns a CNF formula of
+bounded treewidth into a TDD of FPT size. That size is a worst-case upper
+bound; compiled diagrams are usually far smaller.
 
 ## The run
 
@@ -17,10 +24,10 @@ goes:
 1. **Arguments to `Config`.** `cli::parse_args` turns argv into a `Cli` — the
    `--mode` flag, the `Limits`, the `Settings` and where the answer goes.
    `cli::run_cli` hands the mode, limits and settings to `driver::solve`;
-   `count` passes its own and default settings. `solve` lowers the address-space limit to the
-   run's memory limit and puts it back when the run returns; inside it,
-   `driver::parse_input` builds the run's configuration record with
-   `Config::new` and starts the clock.
+   `count` passes its own and default settings. `solve` lowers the
+   address-space limit to the run's memory limit and puts it back when the
+   run returns; inside it, `driver::parse_input` builds the run's
+   configuration record with `Config::new` and starts the clock.
 2. **DIMACS to formula.** `parse_dimacs` reads the instance through vitri's
    reader and hands back vitri's `CnfFormula` plus a `CnfMeta` carrying the
    `c t` mode header, the `c p show` projection set and the `c p weight` table.
@@ -39,14 +46,14 @@ goes:
    builds a vtree per component through `vtree`. PMC and PWMC run their
    own projection preprocessing. `--preprocess` sets vitri's simplify chain
    ([vitri's preprocessing guide](https://github.com/Tractables/vitri/blob/main/docs/preprocessing.md))
-   on the other routes, and PMC and PWMC refuse it: their projection chain
-   always simplifies;
-   Arjun runs on the MC cascade and inside the WMC, PMC and PWMC stages.
+   on the other routes; PMC and PWMC refuse it, since their projection chain
+   always simplifies. Arjun runs on the MC cascade and inside the WMC, PMC
+   and PWMC stages.
 5. **Answer.** Each mode's runner returns what it answered as a typed value,
    and the driver records it once through `output` — the verdict, the count
-   and the run's record — and `solve` returns them as an `Answer`. For the binary, `output::finish` prints the
-   answer and, under `--stats`, writes the record. `docs/stats.md` is the
-   field table.
+   and the run's record — and `solve` returns them as an `Answer`. For the
+   binary, `output::finish` prints the answer and, under `--stats`, writes
+   the record, whose fields [the run record][stats] lists.
 
 ## The module graph
 
@@ -59,8 +66,7 @@ everything below is called, and nothing below calls back up. Below the stages,
 | `src/run.rs` | The library's one call, `count`, with its `Input` and `Answer`. |
 | `src/cli.rs` | The command line: argument parsing, the usage text, and `run_cli`, which solves what argv asks and prints the answer. |
 | `src/driver/` | `solve`, the phase spine, the mode dispatch, and the plain compile route. |
-| `src/stage/mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
-| `src/stage/` | `Run`, what every stage reads — the engine, the configuration, the run's wall and the SAT-prune pass its compiles share — and `run_isolated`, which a leaf compile that may panic runs under; `count_streaming`, the component-at-a-time count the model count and the weighted projected count share; the WMC, PMC and PWMC runners the driver dispatches to, each returning its answer for the driver to record; the stages the two projected counts share, run in order until one answers, from a list each picks once by whether the problem has a show set; and PMC's show-variable conditioning and its count over a separator. |
+| `src/stage/` | The counting runners the driver dispatches to, and what they share. See below. |
 | `src/enumeration.rs` | Counting a show set's feasible assignments with a SAT solver: the small-show sweep, projected AllSAT, and the estimates that gate them. |
 | `src/compile/` | `compile_cnf`, what it takes and what it returns; the bottom-up pass beneath it; and the counts the stages build on it. See below. |
 | `src/problem.rs` | The counting problem every runner works on: a formula, its show set, its weights and the domain of its answer, and the weighted count that carries whether the formula has a model. |
@@ -71,7 +77,7 @@ everything below is called, and nothing below calls back up. Below the stages,
 | `src/output.rs` | Every stdout line the run emits, and the record `--stats` writes. |
 | `src/error.rs` | `Error`, the one error type the binary reports, whose variant fixes the exit status. |
 | `src/config.rs` | The mode, the limits, the command line's other settings and the one check that refuses a setting the mode would ignore, and the run's configuration record. |
-| `src/budget.rs`, `src/mem.rs` | The wall-slicing policy and the allocator hooks. |
+| `src/budget.rs`, `src/mem.rs` | The time-limit policy, each stage's share of the run's time limit, and the allocator hooks. |
 | `src/mem_wasm.rs` | `mem` on WebAssembly: the same functions, inert, with no jemalloc and no address-space limit; it refuses a memory limit. |
 | `src/guide.rs` | The guide in the crate documentation: the worked examples, `docs/examples/`, and this page. |
 
@@ -97,6 +103,22 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |
 | `sat_prune/` | SAT-based pruning of nodes no model of the formula reaches. |
 
+### The counting stages
+
+The driver calls one runner per counting mode, and each returns its answer
+for the driver to record.
+
+| file | what it holds |
+|---|---|
+| `mod.rs` | `Run`, what every stage reads: the engine, the configuration, the run's deadline and the SAT-prune pass its compiles share. `run_isolated`, which a leaf compile that may panic runs under, and `count_streaming`, the component-at-a-time count the model count and the projected weighted count share. |
+| `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
+| `wmc.rs` | The weighted count: Arjun's reduction first, then the simplified formula. |
+| `pmc.rs` | The projected count: a first compile, show-variable conditioning when it fails, and a last compile on the time left. |
+| `pwmc.rs` | The projected weighted count, the independent-component decomposition two of its stages share, and the weighted compile it ends in. |
+| `projected.rs` | What the two projected counts share: a list of stages run in order until one answers, each count picking its list once by whether the problem has a show set; the stages common to both; and their counting vtree. |
+| `conditioning.rs` | The projected count's show-variable conditioning: split on show variables until each branch compiles within its time, and sum the branches. |
+| `structured_count.rs` | The projected count over a separator: components that share boundary variables, each counted for every assignment to the boundary. |
+
 ## Paper sections to code
 
 | § | Paper section | Implements |
@@ -105,11 +127,10 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | §3 | Determinism | `tididi/src/diagram/` — invariants |
 | §4 | Apply/conjunction | `tididi/src/apply/` — conjunction and clause conjunction |
 | §4 | Negation | `tididi/src/apply/negate.rs` |
-| §4 | Minimization | `tididi/src/reduce/` |
-| §5 | Bottom-up compilation | `src/compile/` |
-| §5 | Clause to TDD | `tididi/src/apply/conjoin_clause/` |
-| §5 | Formula → vtree | Vitri's constructors (`vendor/vitri/src/decompose/`), requested by `src/vtree.rs` |
-| §5 | CNF and preprocessing | Vitri's `vitri::cnf` and `vitri::projection`, used directly; `src/convert.rs` converts only what crosses into the diagram's types |
+| §5 | Minimization | `tididi/src/reduce/` |
+| §6 | Bottom-up compilation | `src/compile/` |
+| §6 | Clause to TDD | `tididi/src/apply/conjoin_clause/` |
+| §6 | Formula → vtree | Vitri's constructors (`vendor/vitri/src/decompose/`), requested by `src/vtree.rs` |
 
 ## The library boundary
 
@@ -164,6 +185,8 @@ module (src/guide.rs), where a relative link would not resolve. -->
 [library-integration]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/library-integration.md
 [library-invariants]: https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants
 [marginal-tdd-levels]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/marginal-tdd-levels.md
+[paper]: https://arxiv.org/abs/2604.05537
 [sat-pruning]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/sat-pruning.md
+[stats]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/stats.md
 [support-enum-stage]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/support-enum-stage.md
 [weighted-marginal-levels]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/weighted-marginal-levels.md
