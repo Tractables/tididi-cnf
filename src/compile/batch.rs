@@ -2,8 +2,8 @@
 //!
 //! A node's clauses are not conjoined one by one into the accumulator: runs
 //! of them, the batches, are each built into a diagram first, and the batch
-//! is merged. `build_one_batch` decides where a batch stops (the
-//! `BATCH_SIZE` floor and its width cap, an extension past the floor that
+//! is merged. `build_one_batch` decides where a batch stops (the floor and
+//! its width cap, an extension past the floor that
 //! weighs the batch's build cost against the merge's accumulator cost,
 //! UNSAT), `merge_batch` merges one batch and says whether the accumulator
 //! went UNSAT and whether the merge stayed absorbing, and `batch_accumulate`
@@ -27,7 +27,9 @@ use super::step::{DiagramClauses, PassState, StepContext};
 /// Clauses per batch below which a batch never stops for its cost, the floor
 /// ([`build_one_batch`]): every batch folds this many clauses unless the
 /// node's clauses run out, the batch goes UNSAT or its width passes
-/// [`BATCH_WIDTH_LIMIT`]. A batch that may not extend stops here.
+/// [`BATCH_WIDTH_LIMIT`]. A batch that may not extend stops here. A fold that
+/// starts from a large accumulator uses [`BATCH_LARGE_SIZE`] instead
+/// ([`batch_floor`]).
 const BATCH_SIZE: usize = 32;
 
 /// The accumulator width up to which a batch grows with no width cap.
@@ -61,8 +63,28 @@ const BATCH_ABSORB_FACTOR: (usize, usize) = (3, 2);
 
 /// After an absorbing merge the next batch may hold up to this fraction
 /// (numerator, denominator) of the clauses of the batch just merged, counted
-/// from at least [`BATCH_SIZE`] ([`next_batch_limit`]).
+/// from at least the floor ([`next_batch_limit`]).
 const BATCH_GROWTH: (usize, usize) = (3, 2);
+
+/// Accumulator pairs above which a node's fold batches at the large floor
+/// ([`BATCH_LARGE_SIZE`] clauses, width cap [`BATCH_LARGE_WIDTH_LIMIT`])
+/// instead of [`BATCH_SIZE`] and [`BATCH_WIDTH_LIMIT`] ([`batch_floor`]).
+/// Every merge into an accumulator this large costs time in proportion to its
+/// pairs whether or not the node's clauses multiply it, and the earned
+/// extension only lengthens batches after absorbing merges, so a node that
+/// starts large and expands pays a full accumulator merge every floor's worth
+/// of clauses. On formulas whose late nodes start from accumulators of tens
+/// of millions of pairs, the large floor cut compile time by a fifth to a
+/// quarter at unchanged peak pairs.
+const BATCH_LARGE_ENTRY_PAIRS: usize = 10_000_000;
+
+/// The floor's clause count for a fold that starts above
+/// [`BATCH_LARGE_ENTRY_PAIRS`].
+const BATCH_LARGE_SIZE: usize = 128;
+
+/// The below-floor width cap for a fold that starts above
+/// [`BATCH_LARGE_ENTRY_PAIRS`].
+const BATCH_LARGE_WIDTH_LIMIT: usize = 1024;
 
 /// Conjoin a node's clauses, `clauses`, into the accumulator a batch at a
 /// time.
@@ -100,17 +122,20 @@ pub(crate) fn batch_accumulate(
         }
     });
 
-    // `limit` is the most clauses the next batch may hold: `BATCH_SIZE` until
-    // a merge at this node stays absorbing, then `next_batch_limit` of it.
-    let mut limit = BATCH_SIZE;
+    // `limit` is the most clauses the next batch may hold: the floor until a
+    // merge at this node stays absorbing, then `next_batch_limit` of it. The
+    // floor is fixed for the whole fold by the accumulator it starts from.
+    let floor = batch_floor(acc.as_ref());
+    let mut limit = floor.size;
     let mut i = 0;
     while i < clauses.len() {
         if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
         let start_clause = i;
         let acc_width = acc.as_ref().map_or(0, Tdd::max_width);
         let stop = BatchStop {
-            width_cap: batch_width_cap(acc_width, BATCH_WIDTH_LIMIT),
+            width_cap: batch_width_cap(acc_width, floor.width_limit),
             guard: batch_width_cap(acc_width, BATCH_WIDTH_GUARD),
+            floor: floor.size,
             limit,
             acc: acc.as_ref(),
             acc_pairs: OnceCell::new(),
@@ -122,7 +147,7 @@ pub(crate) fn batch_accumulate(
         // measured when enough clauses remain for the next batch to pass the
         // floor. It needs the accumulator's pairs, which the stop rule may
         // already have read.
-        let acc_pairs = (clauses.len() - i > BATCH_SIZE).then(|| stop.acc_pairs());
+        let acc_pairs = (clauses.len() - i > floor.size).then(|| stop.acc_pairs());
         // The first batch becomes the accumulator when there is none yet: a
         // diagram the pass creates.
         if acc.is_none() {
@@ -141,17 +166,41 @@ pub(crate) fn batch_accumulate(
         if merged.unsat {
             return Ok(acc);
         }
-        limit = next_batch_limit(i - start_clause, merged.absorbed);
+        limit = next_batch_limit(i - start_clause, merged.absorbed, floor.size);
     }
     Ok(acc)
 }
 
-/// The most clauses the batch after one of `merged` clauses may hold.
+/// The floor one node's fold batches at: the clauses every batch folds before
+/// it may stop for its cost, and the width cap below them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct BatchFloor {
+    size: usize,
+    width_limit: usize,
+}
+
+/// The floor for a fold that starts from `acc`: [`BATCH_SIZE`] clauses under
+/// [`BATCH_WIDTH_LIMIT`], or [`BATCH_LARGE_SIZE`] under
+/// [`BATCH_LARGE_WIDTH_LIMIT`] once the accumulator holds more than
+/// [`BATCH_LARGE_ENTRY_PAIRS`] pairs. Fixed at the fold's start: a fold that
+/// starts small and grows past the threshold keeps the small floor, so the
+/// larger one only applies at nodes that begin with an accumulator whose
+/// merges dominate. The pair count stops once the threshold is passed.
+fn batch_floor(acc: Option<&Tdd>) -> BatchFloor {
+    if acc.is_some_and(|a| !a.pair_count_at_most(BATCH_LARGE_ENTRY_PAIRS)) {
+        BatchFloor { size: BATCH_LARGE_SIZE, width_limit: BATCH_LARGE_WIDTH_LIMIT }
+    } else {
+        BatchFloor { size: BATCH_SIZE, width_limit: BATCH_WIDTH_LIMIT }
+    }
+}
+
+/// The most clauses the batch after one of `merged` clauses may hold, at a
+/// fold whose floor is `floor` clauses.
 ///
 /// An absorbing merge ([`merge_batch_into_acc`]: its unreduced product stayed
 /// within [`BATCH_ABSORB_FACTOR`] times the accumulator's pairs) lets the
 /// next batch extend past the floor to [`BATCH_GROWTH`] times the batch just
-/// merged, counted from at least [`BATCH_SIZE`]; any other merge, and the
+/// merged, counted from at least the floor; any other merge, and the
 /// merge-less first batch, leave the next batch at the floor. A node's
 /// batches thus grow geometrically while its merges stay absorbing, and the
 /// first merge that multiplies the accumulator sends the node back to
@@ -160,8 +209,8 @@ pub(crate) fn batch_accumulate(
 /// between two clauses, and one long batch merged across that turn
 /// multiplies the unreduced product far beyond what the same clauses cost in
 /// floor-sized merges.
-fn next_batch_limit(merged: usize, absorbed: bool) -> usize {
-    if absorbed { merged.max(BATCH_SIZE) * BATCH_GROWTH.0 / BATCH_GROWTH.1 } else { BATCH_SIZE }
+fn next_batch_limit(merged: usize, absorbed: bool, floor: usize) -> usize {
+    if absorbed { merged.max(floor) * BATCH_GROWTH.0 / BATCH_GROWTH.1 } else { floor }
 }
 
 /// The marginalize targets that become final within each batch of one
@@ -311,14 +360,17 @@ fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
 
 /// Where one batch may stop, fixed before it is built.
 struct BatchStop<'a> {
-    /// The width that closes any batch below `BATCH_SIZE` clauses
-    /// ([`batch_width_cap`] at [`BATCH_WIDTH_LIMIT`]).
+    /// The width that closes any batch below `floor` clauses
+    /// ([`batch_width_cap`] at the fold's [`BatchFloor`] width limit).
     width_cap: usize,
-    /// The width no batch passes once past `BATCH_SIZE` clauses
+    /// The width no batch passes once past `floor` clauses
     /// ([`batch_width_cap`] at [`BATCH_WIDTH_GUARD`]).
     guard: usize,
+    /// The fold's floor ([`batch_floor`]): the clauses a batch folds before
+    /// it may stop for its cost.
+    floor: usize,
     /// The most clauses the batch may hold ([`next_batch_limit`]); a batch
-    /// may extend past the floor only when this exceeds `BATCH_SIZE`.
+    /// may extend past the floor only when this exceeds `floor`.
     limit: usize,
     /// The accumulator the batch will be merged into.
     acc: Option<&'a Tdd>,
@@ -348,14 +400,14 @@ impl BatchStop<'_> {
 /// The batch stops on UNSAT, at `stop.limit` clauses, and otherwise where its
 /// floor and its extension say:
 ///
-/// - **Floor.** Every batch keeps folding until it holds `BATCH_SIZE` clauses
+/// - **Floor.** Every batch keeps folding until it holds `stop.floor` clauses
 ///   or its width exceeds `stop.width_cap`, so the merge with a wide
 ///   accumulator that follows stays cheap. A batch the cap stops stops even
 ///   when it may extend: a batch that turns wide before the floor is not
 ///   behaving like the absorbed batches that earned the extension, and
 ///   merging it wide into a wide accumulator was seen to multiply the merge's
 ///   product several times over. A batch that may not extend
-///   (`stop.limit == BATCH_SIZE`) stops at the floor.
+///   (`stop.limit == stop.floor`) stops at the floor.
 /// - **Extension.** Past the floor, a merge costs time in proportion to the
 ///   accumulator's pairs, nearly independent of the batch, while conjoining
 ///   one more clause costs time in proportion to the batch's pairs. So the
@@ -405,7 +457,7 @@ fn build_one_batch(
     }
 
     let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
-    let may_extend = stop.limit > BATCH_SIZE;
+    let may_extend = stop.limit > stop.floor;
     // Spine bookkeeping: the running union of the folded clauses' spines, from
     // which the stop checks read the batch's max width and pairs instead of
     // sweeping every level (`batch_max_width`, `batch_spine_pairs`). Tracked
@@ -446,7 +498,7 @@ fn build_one_batch(
         }
         // The floor: below it the width cap stops every batch, extendable or
         // not, so only a batch that reached the floor within the cap extends.
-        if batch_count < BATCH_SIZE {
+        if batch_count < stop.floor {
             if width <= stop.width_cap { continue; }
             break;
         }
@@ -465,8 +517,10 @@ fn build_one_batch(
 
 /// Maximum allowed batch-TDD width before the batch should be flushed into the
 /// accumulator: no cap (`usize::MAX`) while the accumulator is at most
-/// [`UNCAPPED_ACC_WIDTH`] wide, `limit` above that: [`BATCH_WIDTH_LIMIT`]
-/// below the floor, [`BATCH_WIDTH_GUARD`] for an extended batch.
+/// [`UNCAPPED_ACC_WIDTH`] wide, `limit` above that: the fold's floor width
+/// limit ([`BATCH_WIDTH_LIMIT`] or [`BATCH_LARGE_WIDTH_LIMIT`],
+/// [`batch_floor`]) below the floor, [`BATCH_WIDTH_GUARD`] for an extended
+/// batch.
 ///
 /// A wide batch merged into a wide accumulator is the conjunction's costliest
 /// case, so once the accumulator is wide its batches are kept narrow, though

@@ -14,10 +14,19 @@ fn batch_width_cap_is_a_step_function() {
 /// `BATCH_GROWTH` times the merged batch, counted from at least the floor.
 #[test]
 fn next_batch_limit_grows_only_after_absorbing_merges() {
-    assert_eq!(next_batch_limit(500, false), BATCH_SIZE);
-    assert_eq!(next_batch_limit(3, true), BATCH_SIZE * BATCH_GROWTH.0 / BATCH_GROWTH.1);
-    assert_eq!(next_batch_limit(100, true), 100 * BATCH_GROWTH.0 / BATCH_GROWTH.1);
-    assert!(next_batch_limit(1, true) > BATCH_SIZE);
+    for floor in [BATCH_SIZE, BATCH_LARGE_SIZE] {
+        assert_eq!(next_batch_limit(500, false, floor), floor);
+        assert_eq!(next_batch_limit(3, true, floor), floor * BATCH_GROWTH.0 / BATCH_GROWTH.1);
+        assert_eq!(next_batch_limit(1000, true, floor), 1000 * BATCH_GROWTH.0 / BATCH_GROWTH.1);
+        assert!(next_batch_limit(1, true, floor) > floor);
+    }
+}
+
+/// A fold with no accumulator yet starts at the small floor.
+#[test]
+fn batch_floor_without_accumulator_is_small() {
+    assert_eq!(batch_floor(None), BatchFloor { size: BATCH_SIZE, width_limit: BATCH_WIDTH_LIMIT });
+    const { assert!(BATCH_LARGE_SIZE > BATCH_SIZE && BATCH_LARGE_WIDTH_LIMIT > BATCH_WIDTH_LIMIT) };
 }
 
 #[test]

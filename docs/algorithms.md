@@ -50,6 +50,14 @@ accumulator with `merge_batch_into_acc`. Where a batch closes is decided in
   turns wide before the floor is unlike the absorbed batches that earned the
   extension, and merging it wide into a wide accumulator multiplies the
   product.
+- **Large floor.** A node whose fold starts from an accumulator of more than
+  `BATCH_LARGE_ENTRY_PAIRS` pairs uses `BATCH_LARGE_SIZE` and
+  `BATCH_LARGE_WIDTH_LIMIT` as its floor and below-floor cap instead
+  (`batch_floor`, fixed for the fold). Each merge into such an accumulator
+  costs in proportion to its pairs whether or not the clauses multiply it,
+  and the earned extension below only lengthens batches after absorbing
+  merges, so a large node whose merges expand would otherwise pay a full
+  accumulator merge every `BATCH_SIZE` clauses.
 - **Extension.** A merge into a wide accumulator costs time in proportion to
   the accumulator's pairs, nearly independent of the batch, while conjoining
   one more clause costs time in proportion to the batch's pairs. Past the
