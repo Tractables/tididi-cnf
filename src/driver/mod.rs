@@ -29,31 +29,6 @@ use crate::output::{
 };
 use crate::stage::{Run, run_mc_count, run_mc_streaming, run_pmc_count, run_pwmc_count, run_wmc_count};
 
-/// Resolve TiDiDi's retry stage once in the parent, using Vitri's structure
-/// profile of the input and its SBVA policy.
-fn arm_no_sbva_retry(
-    config: &mut crate::config::Config,
-    profile: vitri::score::StructureProfile,
-) {
-    // The retry is a stage of the model count's cascade, which an explicit
-    // `--vtree` skips.
-    let reachable = config.mode == Mode::Mc && config.vtree.is_none();
-    if !reachable || !profile.coloring_like {
-        return;
-    }
-
-    let main_policy = config.vitri.arjun.sbva;
-    if main_policy != vitri::preprocess::ArjunSbva::On {
-        return;
-    }
-
-    config.no_sbva_retry_armed = true;
-    eprintln!(
-        "[mc] no-sbva-retry: armed (coloring-like input: occ_cv={:.4} width_cv={:.4})",
-        profile.var_occurrence_cv, profile.clause_width_cv,
-    );
-}
-
 /// Read the DIMACS file at `path` through the one reader
 /// ([`crate::parse_dimacs`] → vitri), so a run accepts and refuses exactly
 /// what vitri does. Its error already names the offending line and what is
@@ -87,18 +62,16 @@ fn parse_input(
     ),
     Error,
 > {
-    let mut config = Config::new(limits, settings, vitri);
-
     // Validate an explicit spec here, the one point every compile path passes
     // through: some paths never construct a vtree from it and would otherwise
     // ignore a bad one.
-    if let Some(spec) = &config.vtree {
+    if let Some(spec) = &settings.vtree {
         crate::vtree::validate_vtree_spec(spec)?;
     }
 
     // The time limit is the total wall from this point.
     let program_start = Instant::now();
-    let program_deadline: Option<Instant> = config
+    let program_deadline: Option<Instant> = limits
         .time_limit_ms
         .map(|ms| program_start + std::time::Duration::from_millis(ms));
 
@@ -109,8 +82,8 @@ fn parse_input(
 
     // `--mode` and the instance header (`c t`, `c p show`) decide the mode;
     // this is the one place it is decided.
-    config.mode = Mode::resolve(mode_flag, &meta)?;
-    settings.refuse_inert(mode_flag, &meta, config.mode)?;
+    let mode = Mode::resolve(mode_flag, &meta)?;
+    settings.refuse_inert(mode_flag, &meta, mode)?;
 
     eprintln!(
         "[input] {} variables, {} clauses",
@@ -118,7 +91,7 @@ fn parse_input(
         formula.clauses().len()
     );
 
-    Ok((formula, meta, config, program_deadline))
+    Ok((formula, meta, Config::new(limits, settings, vitri, mode), program_deadline))
 }
 
 /// The ordinary non-counting route: Vitri's `compile` preprocessing, the
@@ -258,9 +231,7 @@ fn solve_on(
     let verdict = with_run_deadline(eng, program_deadline, || {
         // Measure only after the expiry check, before preprocessing changes the
         // signal. Opening the record first preserves an incomplete input record.
-        let raw_structure_profile = vitri::score::StructureProfile::measure(&formula);
-        config.source_structure_profile = Some(raw_structure_profile);
-        arm_no_sbva_retry(&mut config, raw_structure_profile);
+        config.source_structure_profile = Some(vitri::score::StructureProfile::measure(&formula));
         crate::budget::check_deadline(program_deadline)?;
         let config = &config;
         let run = &Run {

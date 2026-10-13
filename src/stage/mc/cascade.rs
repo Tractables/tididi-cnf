@@ -9,6 +9,7 @@
 use std::time::Instant;
 
 use vitri::cnf::CnfFormula;
+use crate::config::Config;
 use crate::output::{AnsweredBy, Reduction};
 use crate::stage::Run;
 
@@ -47,30 +48,43 @@ pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted
     count_attempt(run, portfolio_attempt(run, form, run.deadline)?, run.deadline)
 }
 
+/// Whether the no-SBVA retry may run behind the primary compile: the input is
+/// coloring-like, as Vitri's structure profile reads it, and Vitri's SBVA
+/// policy is on. Says so on stderr when it is.
+pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
+    let Some(profile) = config.source_structure_profile.filter(|profile| profile.coloring_like) else {
+        return false;
+    };
+    if config.vitri.arjun.sbva != vitri::preprocess::ArjunSbva::On {
+        return false;
+    }
+    eprintln!(
+        "[mc] no-sbva-retry: armed (coloring-like input: occ_cv={:.4} width_cv={:.4})",
+        profile.var_occurrence_cv, profile.clause_width_cv,
+    );
+    true
+}
+
 /// First fallback: re-reduce the same formula with SBVA off and recompile,
 /// inside this stage's own reserve.
 ///
 /// The primary compile keeps SBVA, which helps broadly; this stage recovers
-/// the class where SBVA is the reason the primary compile fails. On the
-/// walk-grid class SBVA rewrites the input clause set into a shape whose
-/// diagram grows until recovery; re-reducing the same `compile_formula` with
-/// SBVA off, asking Vitri for its hypergraph construction, and re-entering the
-/// same compile path answers it.
+/// the class where SBVA is the reason the primary compile fails: SBVA
+/// rewrites the input clause set into a shape whose diagram grows until
+/// recovery. Re-reducing the same `compile_formula` with SBVA off, asking
+/// Vitri for its hypergraph construction, and re-entering the same compile
+/// path answers it.
 ///
 /// Engagement (all three, else the stage does not run):
 ///  - the primary compile failed — this stage runs only among the fallbacks
 ///    of [`count_primary`], which run only then;
-///  - the parent resolved `config.no_sbva_retry_armed`, using Vitri's
-///    structure profile of the input and its SBVA policy plus TiDiDi's retry
-///    opt-out;
-///  - SBVA actually ran in the primary reduction, as reported by Vitri's
-///    stage telemetry. The parent resolver has already rejected an explicit
-///    retry beside an SBVA override on the primary reduction, or silently
-///    left the default retry unarmed when Vitri's policy disables SBVA.
+///  - [`arm_no_sbva_retry`] armed it: the input is coloring-like and Vitri's
+///    SBVA policy is on;
+///  - SBVA ran in the primary reduction, as Vitri's stage report says.
 ///
 /// The reduction is a retry of the same frontend session with SBVA off and the
 /// hypergraph vtree. Vitri owns the clause-growth discard and reports it as a
-/// decline, which falls through to the unreduced retry. A kept reduction
+/// decline, which leaves the formula to the next fallback. A kept reduction
 /// becomes a compile attempt through `attempt_from_vitri_build`, like the
 /// primary one.
 ///
@@ -115,16 +129,12 @@ fn no_sbva_retry(
     let retried = match session.retry(budget, &retry) {
         Ok(Some(retried)) => retried,
         Ok(None) => {
-            eprintln!(
-                "[mc] no-sbva-retry: Vitri's frontend declined — leaving the formula to \
-                 the unreduced retry"
-            );
+            eprintln!("[mc] no-sbva-retry: Vitri's frontend declined — leaving the formula to the next fallback");
             return None;
         }
         Err(error) => {
             eprintln!(
-                "[mc] no-sbva-retry: Vitri's frontend failed ({error}) — leaving the \
-                 formula to the unreduced retry"
+                "[mc] no-sbva-retry: Vitri's frontend failed ({error}) — leaving the formula to the next fallback"
             );
             return None;
         }

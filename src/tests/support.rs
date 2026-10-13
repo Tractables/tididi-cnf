@@ -101,7 +101,6 @@ pub(crate) fn minimal_config() -> Config {
         portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
         vtree_time: crate::budget::VtreeTime::default(),
         source_structure_profile: None,
-        no_sbva_retry_armed: false,
         preprocess_level: PreprocessLevel::None,
         mode: Mode::Compile,
         time_limit_ms: None,

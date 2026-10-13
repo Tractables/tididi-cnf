@@ -146,9 +146,9 @@ impl Settings {
     }
 }
 
-/// The run's settings: what the caller asked for, plus `mode`,
-/// `source_structure_profile` and `no_sbva_retry_armed`, which the driver fills
-/// from the instance, and what the run's vtree constructions share,
+/// The run's settings: what the caller asked for, the mode the instance
+/// resolved, `source_structure_profile`, which the driver measures on the
+/// instance, and what the run's vtree constructions share,
 /// `portfolio_history` and `vtree_time`.
 pub(crate) struct Config {
     /// `--vtree`, when the caller gave it. Without it the model and weighted
@@ -165,9 +165,6 @@ pub(crate) struct Config {
     /// measured once by the driver and copied into every vtree-selection
     /// request of the run.
     pub(crate) source_structure_profile: Option<vitri::score::StructureProfile>,
-    /// Whether the parent cascade should retry a coloring-like input with
-    /// vitri's SBVA policy forced off after the primary compile fails.
-    pub(crate) no_sbva_retry_armed: bool,
     /// Whether the frontend simplifies the formula before the compile.
     pub(crate) preprocess_level: PreprocessLevel,
     /// What the run answers, as `driver::parse_input` resolves it from the
@@ -189,20 +186,17 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    /// The record a run starts from: `limits`, `settings` and vitri's
-    /// settings as the caller gave them, the preprocessing defaulting to
-    /// [`PreprocessLevel::Full`]. The
-    /// mode is resolved once the instance is read, so it holds
-    /// [`Mode::Compile`] until then.
-    pub(crate) fn new(limits: &Limits, settings: &Settings, vitri: vitri::RunConfig) -> Config {
+    /// The record a run of `mode` starts from: `limits`, `settings` and
+    /// vitri's settings as the caller gave them, the preprocessing defaulting
+    /// to [`PreprocessLevel::Full`].
+    pub(crate) fn new(limits: &Limits, settings: &Settings, vitri: vitri::RunConfig, mode: Mode) -> Config {
         Config {
             vtree: settings.vtree.clone(),
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             vtree_time: crate::budget::VtreeTime::default(),
             source_structure_profile: None,
-            no_sbva_retry_armed: false,
             preprocess_level: settings.preprocess.unwrap_or(PreprocessLevel::Full),
-            mode: Mode::Compile,
+            mode,
             time_limit_ms: limits.time_limit_ms,
             sat_prune: settings.sat_prune.unwrap_or(true),
             vitri,

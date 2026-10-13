@@ -22,7 +22,7 @@ use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reducti
 use crate::stage::Run;
 
 use attempt::{attempt_from_vitri_build, count_attempt};
-use cascade::{count_cofactor, count_primary};
+use cascade::{arm_no_sbva_retry, count_cofactor, count_primary};
 use recovery::{Recovered, count_with_recovery};
 use support_enum::{reduce_for_support, support_enum_stage};
 
@@ -59,6 +59,7 @@ struct McOutcome {
 /// `None` when nothing answered; the stage that gave up has said so on stderr.
 /// It runs the whole front end on the formula it is handed.
 fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
+    let no_sbva_retry_armed = arm_no_sbva_retry(run.config);
     let result = crate::frontend::with_mc_frontend(
         compile_formula,
         run.config,
@@ -103,9 +104,9 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
                     bundle.reduced.clauses().len(),
                     bundle.count_lift.arjun_pow2,
                 );
-                // The resolved config decides whether the retry is armed; the
-                // stage report can only narrow it.
-                let no_sbva_retry = (run.config.no_sbva_retry_armed
+                // The input decides whether the retry is armed; the stage
+                // report can only narrow it.
+                let no_sbva_retry = (no_sbva_retry_armed
                     && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
                 .then_some(session);
                 let ar = crate::frontend::record::arjun_reduction(bundle)
