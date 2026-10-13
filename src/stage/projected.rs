@@ -46,20 +46,20 @@ pub(super) struct Trace {
 impl Trace {
     /// The line a projected compile of `work` prints when it answers, under
     /// the mode's `tag`: the preprocessing behind it, its vtree and compile
-    /// walls, how many `projected` variables its vtree places and how many
-    /// variables `show` holds.
+    /// walls, how many projected variables it `forgot` in the diagram and how
+    /// many variables `show` holds.
     pub(super) fn print_compile(
         &self,
         tag: &str,
         work: &CnfFormula,
         vtree_ms: u128,
         compile_ms: u128,
-        projected: usize,
+        forgot: usize,
         show: usize,
     ) {
         eprintln!(
             "{tag} compile: preprocessing {}ms ({}c→{}c), vtree {vtree_ms}ms, compile {compile_ms}ms \
-             ({projected} projected variables forgotten in the diagram), show {show}, vars {}",
+             ({forgot} projected variables forgotten in the diagram), show {show}, vars {}",
             self.preprocess_ms,
             self.input_clauses,
             work.clauses().len(),

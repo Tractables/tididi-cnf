@@ -357,7 +357,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
         }
     };
     let compile_ms = clock.compile_ms(0);
-    trace.print_compile("[pmc]", work, vtree_ms, compile_ms, projected_in_vtree.len(), problem.show_len());
+    trace.print_compile("[pmc]", work, vtree_ms, compile_ms, forget_set.len(), problem.show_len());
     Step::Answer(pmc)
 }
 
