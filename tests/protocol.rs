@@ -209,7 +209,7 @@ fn check_row(row: &str, flags: &[&str], cnf: &str) {
         // so keeps the expected files valid however the test is launched.
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .output()
-        .unwrap_or_else(|e| panic!("row {row}: could not run {BINARY}: {e}"));
+        .unwrap_or_else(|e| panic!("row {row}: could not run the binary: {e}"));
 
     let actual = transcript(
         &argv,

@@ -25,7 +25,7 @@ fn counts_each_occurring_show_var_once() {
 }
 
 /// Pigeonhole `PHP(n, n-1)`: n pigeons into n−1 holes. UNSAT, and famously
-/// hard for resolution — so the FIRST `solve()` runs for a long time, which
+/// hard for resolution — so the first `solve()` alone runs for a long time, which
 /// is exactly the shape the wall enforcement has to bound.
 fn pigeonhole(pigeons: u32) -> CnfFormula {
     let holes = pigeons - 1;
@@ -49,7 +49,7 @@ fn pigeonhole(pigeons: u32) -> CnfFormula {
     crate::test_support::formula(pigeons * holes, clauses)
 }
 
-/// A show set whose feasible projections are a SUBCUBE: `forced` vars pinned
+/// A show set whose feasible projections are a subcube: `forced` vars pinned
 /// by unit clauses, `free` vars occurring but unconstrained. Feasible
 /// projections = 2^free, and every random path must weigh exactly that.
 fn subcube_formula(forced: u32, free: u32) -> CnfFormula {
@@ -57,8 +57,8 @@ fn subcube_formula(forced: u32, free: u32) -> CnfFormula {
     for v in 0..forced {
         clauses.push(Clause::new(vec![lit(v, true)]));
     }
-    // Each free var occurs (so it is CONSTRAINED in the split sense) in a
-    // clause already satisfied by a forced var, leaving it a free choice.
+    // Each free var occurs (so it counts as constrained in the split sense)
+    // in a clause already satisfied by a forced var, leaving it a free choice.
     for v in 0..free {
         clauses.push(Clause::new(vec![lit(0, true), lit(forced + v, true)]));
         clauses.push(Clause::new(vec![lit(0, true), lit(forced + v, false)]));
@@ -71,7 +71,7 @@ fn subcube_formula(forced: u32, free: u32) -> CnfFormula {
 /// random polarities, which contradicts a forced unit almost surely, and so
 /// reports N̂=0 on a formula whose feasible set is large — on which a caller
 /// reading zero as "small" commits to an enumeration that will not finish. A
-/// random PATH cannot report 0: a forced var contributes a factor of 1, a free
+/// random path cannot report 0: a forced var contributes a factor of 1, a free
 /// one a factor of 2.
 #[test]
 fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
@@ -81,7 +81,7 @@ fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
     assert!(!est.unsat);
     assert_eq!(est.truncated, 0);
     assert_eq!(est.weights.len(), 6);
-    // 2 free vars ⇒ 4 feasible projections, on EVERY path.
+    // 2 free vars ⇒ 4 feasible projections, on every path.
     assert!(
         est.weights.iter().all(|&w| w == 4.0),
         "weights {:?}",
@@ -132,7 +132,7 @@ fn random_path_weights_bracket_a_non_product_count() {
     );
 }
 
-/// A path whose solves outrun the path wall is reported as TRUNCATED, not as
+/// A path whose solves outrun the path wall is reported as truncated, not as
 /// a small weight — `mean()` must stay `None` so a caller cannot mistake "not
 /// measured" for "small".
 #[test]
@@ -146,7 +146,7 @@ fn a_cut_path_reports_truncated_and_no_mean() {
     assert!(!est.unsat);
 }
 
-/// Under a wall callback the wall budget bounds a SINGLE solve, not just
+/// Under a wall callback the wall budget bounds even a single solve, not just
 /// the gap between solves. Without the connected terminator this call
 /// would sit inside one CaDiCaL solve for minutes, whatever budget it was
 /// given.
@@ -170,7 +170,7 @@ fn a_supervised_wall_cuts_a_single_long_solve() {
     );
 }
 
-/// The wall callback RESUMES the same enumeration: a first budget too small
+/// The wall callback resumes the same enumeration: a first budget too small
 /// to finish, extended once under a bound the true count stays under, must
 /// reach the identical exact count — the blocking-clause DB and model tally
 /// carry over rather than restarting, and a bound the count respects
@@ -218,8 +218,8 @@ fn at_wall_decline_busts_with_the_wall_reason() {
 
 /// A bounded grant is abandoned the moment the enumeration passes its bound:
 /// `two_show_formula` has 3 feasible projections, so a grant bounded at 2 must
-/// stop at 3 with the ceiling reason and the partial tally — NOT run to
-/// completion, and NOT report the model cap.
+/// stop at 3 with the ceiling reason and the partial tally, rather than run
+/// to completion or report the model cap.
 #[test]
 fn a_tally_past_the_ceiling_aborts_the_granted_window() {
     let f = two_show_formula();
@@ -434,12 +434,12 @@ fn random_cnf(vars: u32, clauses: usize, seed: u64) -> CnfFormula {
     )
 }
 
-/// DIFFERENTIAL against an INDEPENDENT oracle, over the micro-formulas and
-/// a pseudo-random CNF population rather than hand-picked shapes alone. The
-/// blocking enumerator's two failure modes are silent in a single-formula
-/// test — a projection blocked too widely disappears from the tally, one
-/// blocked too narrowly is found twice — and both move the count off
-/// `brute_projected_count`, which shares no code with the enumerator. The
+/// A differential check against an independent oracle, over the
+/// micro-formulas and a pseudo-random CNF population rather than hand-picked
+/// shapes alone. The blocking enumerator's two failure modes are silent in a
+/// single-formula test — a projection blocked too widely disappears from the
+/// tally, one blocked too narrowly is found twice — and both move the count
+/// off `brute_projected_count`, which shares no code with the enumerator. The
 /// 2^K sweep is checked against the same oracle on every case.
 #[test]
 fn projected_allsat_matches_the_oracle_on_a_random_population() {
@@ -475,7 +475,7 @@ fn projected_allsat_matches_the_oracle_on_a_random_population() {
     }
 }
 
-/// COMPLETENESS on a DENSE projection set — thousands of projections rather
+/// Completeness on a dense projection set — thousands of projections rather
 /// than the handful every other case here has, which is the regime the
 /// blocking loop actually runs in and the only one where an accumulation bug
 /// has room to show. `(x0 ∨ … ∨ x13) ∧ (¬x0 ∨ ¬x1)` over 14 constrained show

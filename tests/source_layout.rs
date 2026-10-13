@@ -2,12 +2,13 @@
 //!
 //! Six checks. The first five read the crate's Rust sources, the files under
 //! `src/` and the integration tests under `tests/`; the sixth reads every file
-//! under `examples/` and `tests/`. Rules 1 and 4 read the production files,
-//! the ones under `src/` that are not themselves test modules; rules 2 and 5
-//! read every file, since a test's comments point a reader at the same files
-//! and name the same items. The prose rules read the comment lines (`//`,
-//! `///`, `//!`) and the messages of `unreachable!`, `panic!` and `assert*!`
-//! invocations, which a reader meets in the same way as a comment.
+//! under `examples/` and `tests/`. Rule 1 reads the production files, the
+//! ones under `src/` that are not themselves test modules; rules 2, 4 and 5
+//! read every file, since a test's comments are prose like any other, point a
+//! reader at the same files and name the same items. The prose rules read the
+//! comment lines (`//`, `///`, `//!`) and the messages of `unreachable!`,
+//! `panic!` and `assert*!` invocations, which a reader meets in the same way
+//! as a comment.
 //!
 //! 1. A production file carries no `#[cfg(test)]` item other than the module
 //!    declaration for its test file and the imports it needs. A module's unit
@@ -37,10 +38,9 @@ use std::path::PathBuf;
 
 /// Upper-case words that are the ordinary spelling of the thing they name.
 const ACRONYMS: &[&str] = &[
-    "API", "BCP", "BDD", "BSD", "BVE", "CDCL", "CLI", "CNF", "CPU", "DFS", "DIMACS", "DOT", "DVE",
-    "HPET", "IJCAI", "JSON", "LCA", "LCG", "MCC", "MIB", "MMIX", "OOM", "PMC", "POD", "POSIX",
-    "PRNG", "PWMC", "RAII", "RLIMIT", "RSS", "SAT", "SBVA", "SDD", "TDD", "TSC", "UNSAT", "VSZ",
-    "WMC",
+    "API", "ASCII", "BCP", "BVE", "CDCL", "CLI", "CNF", "CPU", "DIMACS", "DVE", "IJCAI", "ISCAS",
+    "JSON", "LCA", "LCG", "MCC", "MIB", "MMIX", "OOM", "PHP", "PMC", "POD", "POSIX", "PRNG", "PWMC",
+    "RAII", "README", "RLIMIT", "SAT", "SBVA", "TDD", "UNSAT", "URL", "VSZ", "WMC", "XOR",
 ];
 
 fn crate_dir() -> PathBuf {
@@ -292,8 +292,9 @@ fn read_string(chars: &[char], i: usize, line: &mut usize) -> (String, usize) {
 }
 
 /// The prose of every panic message in `text`, as `(line number, prose)`: the
-/// string literals of a message macro's argument list, backticked spans
-/// removed the same way a comment's are.
+/// string literals directly in a message macro's argument list, backticked
+/// spans removed the same way a comment's are. A literal nested deeper, in a
+/// call or a pattern, is a value the check computes with, not its message.
 fn message_prose(text: &str, code: Code) -> Vec<(usize, String)> {
     let chars: Vec<char> = text.chars().collect();
     let mut out = Vec::new();
@@ -319,7 +320,7 @@ fn message_prose(text: &str, code: Code) -> Vec<(usize, String)> {
         } else if c == '"' {
             let at = line;
             let (lit, next) = read_string(&chars, i, &mut line);
-            if depth > 0 {
+            if depth == 1 {
                 out.push((at, code_spans(&lit, code)));
             }
             i = next;
@@ -355,9 +356,9 @@ fn file_prose(text: &str, code: Code) -> Vec<(usize, String)> {
 #[test]
 fn prose_carries_emphasis_by_structure_not_by_capitals() {
     let acronyms: HashSet<&str> = ACRONYMS.iter().copied().collect();
-    let mut new_hits: Vec<String> = Vec::new();
+    let mut hits: Vec<String> = Vec::new();
     let mut seen: HashSet<(String, String)> = HashSet::new();
-    for (rel, path) in production_sources() {
+    for (rel, path) in source_files() {
         let text = fs::read_to_string(&path).expect("a readable source file");
         for (n, prose) in file_prose(&text, Code::Strip) {
             for word in all_caps_words(&prose) {
@@ -365,12 +366,12 @@ fn prose_carries_emphasis_by_structure_not_by_capitals() {
                     continue;
                 }
                 if seen.insert((rel.clone(), word.clone())) {
-                    new_hits.push(format!("{rel}:{n}: {word}"));
+                    hits.push(format!("{rel}:{n}: {word}"));
                 }
             }
         }
     }
-    assert!(new_hits.is_empty(), "all-caps words in prose:\n{}", new_hits.join("\n"));
+    assert!(hits.is_empty(), "all-caps words in prose:\n{}", hits.join("\n"));
 }
 
 /// Every item the crate declares whose name carries an underscore.
@@ -518,7 +519,7 @@ fn a_comment_cites_only_a_file_that_exists() {
         known.iter().any(|k| k == cited || k.ends_with(&format!("/{cited}")))
             || root.join(cited).is_file()
     };
-    let mut new_hits: Vec<String> = Vec::new();
+    let mut hits: Vec<String> = Vec::new();
     for (rel, path) in source_files() {
         let text = fs::read_to_string(&path).expect("a readable source file");
         for (n, prose) in file_prose(&text, Code::Keep) {
@@ -526,11 +527,11 @@ fn a_comment_cites_only_a_file_that_exists() {
                 if resolves(&cited) {
                     continue;
                 }
-                new_hits.push(format!("{rel}:{n}: cites {cited}, which does not exist"));
+                hits.push(format!("{rel}:{n}: cites {cited}, which does not exist"));
             }
         }
     }
-    assert!(new_hits.is_empty(), "comments citing a file that does not exist:\n{}", new_hits.join("\n"));
+    assert!(hits.is_empty(), "comments citing a file that does not exist:\n{}", hits.join("\n"));
 }
 
 /// The item a `#[cfg(test)]` guards, excluding fields and conditional hook calls.
@@ -594,7 +595,7 @@ fn cfg_scan_distinguishes_hook_fields_and_calls_from_test_items() {
 
 #[test]
 fn a_production_file_holds_no_test_only_item() {
-    let mut new_hits: Vec<String> = Vec::new();
+    let mut hits: Vec<String> = Vec::new();
     for (rel, path) in production_sources() {
         let text = fs::read_to_string(&path).expect("a readable source file");
         let lines: Vec<&str> = text.lines().collect();
@@ -603,10 +604,10 @@ fn a_production_file_holds_no_test_only_item() {
                 continue;
             }
             let Some(item) = guarded_item(&lines, n) else { continue };
-            new_hits.push(format!("{rel}:{}: test-only item {item}", n + 1));
+            hits.push(format!("{rel}:{}: test-only item {item}", n + 1));
         }
     }
-    assert!(new_hits.is_empty(), "test-only items in production files:\n{}", new_hits.join("\n"));
+    assert!(hits.is_empty(), "test-only items in production files:\n{}", hits.join("\n"));
 }
 
 /// Whether one row of a Markdown table names the module `name` in its first
@@ -660,8 +661,9 @@ fn every_public_module_has_a_row_in_the_module_table() {
 }
 
 /// A guard on the message scan: it reads the message of a panic macro, follows
-/// a continuation onto the next line, and reads nothing outside such a macro —
-/// not a plain call, and not a comment that names one of the macros.
+/// a continuation onto the next line, and reads nothing else — not a plain
+/// call, not a comment that names one of the macros, and not a value nested
+/// in the macro's arguments.
 #[test]
 fn the_message_scan_reads_panic_messages_and_nothing_else() {
     let text = "\
@@ -671,11 +673,12 @@ fn f() {
     assert!(c, \"first half \\
              second half\");
     unreachable!(\"lone message\");
+    assert_eq!(s.find(\"a value\"), Some(\"another\"), \"compared\");
 }
 ";
     let found: Vec<String> =
         message_prose(text, Code::Strip).into_iter().map(|(_, prose)| prose.trim().to_string()).collect();
-    assert_eq!(found, vec!["first half second half", "lone message"]);
+    assert_eq!(found, vec!["first half second half", "lone message", "compared"]);
     assert_eq!(message_prose(text, Code::Strip)[1].0, 6, "the message is reported at its own line");
 }
 

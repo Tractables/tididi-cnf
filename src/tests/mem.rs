@@ -26,13 +26,10 @@ fn replay(requests: impl IntoIterator<Item = u64>) -> (usize, usize) {
 fn heartbeat_polls_are_throttled_to_the_documented_bound() {
     // Charged, N polls cost N / `LAZY_POLLS_PER_CHECK` real reads, from a
     // cold accumulator on.
-    let polls = (LAZY_POLLS_PER_CHECK * 10) as usize;
-    let (reads, worst_run) = replay(std::iter::repeat_n(0, polls));
-    assert_eq!(reads, 10, "expected one real read per {LAZY_POLLS_PER_CHECK} polls");
-    assert!(
-        worst_run <= LAZY_POLLS_PER_CHECK as usize,
-        "at most {LAZY_POLLS_PER_CHECK} polls may pass between real reads, saw {worst_run}"
-    );
+    let per_check = LAZY_POLLS_PER_CHECK as usize;
+    let (reads, worst_run) = replay(std::iter::repeat_n(0, per_check * 10));
+    assert_eq!(reads, 10, "expected one real read per {per_check} polls");
+    assert!(worst_run <= per_check, "at most {per_check} polls may pass between real reads, saw {worst_run}");
 }
 
 #[test]
@@ -47,7 +44,7 @@ fn sized_requests_reach_the_step_by_bytes() {
 
 #[test]
 fn sized_growth_shortens_the_poll_interval() {
-    // Polls and sized requests share ONE accumulator, so real allocation
+    // Polls and sized requests share one accumulator, so real allocation
     // growth makes the next poll due sooner — the flip still engages
     // promptly under genuine memory pressure.
     let almost = LAZY_CHECK_STEP - LAZY_POLL_CHARGE;
@@ -63,7 +60,7 @@ fn oversized_single_request_always_reads_and_keeps_the_accumulator() {
     assert_eq!(accum, 123, "a step-sized request must not reset tracked growth");
 }
 
-// A stand-in for RLIM_INFINITY; the function treats `inf` purely as an
+// A stand-in for `RLIM_INFINITY`; the function treats `inf` purely as an
 // opaque sentinel.
 const INF: u128 = u128::MAX;
 const G: u128 = 1024 * 1024 * 1024;

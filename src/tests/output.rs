@@ -43,7 +43,7 @@ fn log10_beyond_f64_range() {
 }
 
 /// The record is a wire format: a field the run has nothing to say about is
-/// ABSENT, never `null` and never `0`.
+/// absent, never `null` and never `0`.
 #[test]
 fn an_empty_record_serializes_to_an_empty_object() {
     let stats = Stats::default();

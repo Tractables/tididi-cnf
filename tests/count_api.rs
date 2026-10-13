@@ -94,7 +94,7 @@ fn count_environment_honors_sbva_policy() {
     for (policy, armed) in [("on", true), ("off", false)] {
         let output = isolated_count(&[("VITRI_ARJUN_SBVA", policy)], "count");
         assert_eq!(String::from_utf8_lossy(&output.stderr).contains("no-sbva-retry: armed"), armed,
-            "VITRI_ARJUN_SBVA={policy}");
+            "`VITRI_ARJUN_SBVA={policy}`");
     }
 }
 

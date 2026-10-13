@@ -203,7 +203,7 @@ fn resumes_past_a_busted_probe_to_the_same_exact_count() {
 #[test]
 fn declines_when_the_stage_wall_trips() {
     let (f, support) = chain_with_defined_var(20);
-    // No probe wall AND no stage wall ⇒ the estimator's commit cannot fit ⇒
+    // No probe wall and no stage wall ⇒ the estimator's commit cannot fit ⇒
     // bail without enumerating the rest.
     assert_eq!(run_support_enum(&f, &support, 0, 0), None);
 }

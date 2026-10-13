@@ -371,7 +371,7 @@ fn arjun_settings_reach_the_weighted_reduction() {
     let (reduction, count) = reduction_and_count(&[]);
     let (reduction_without_sbva, count_without_sbva) =
         reduction_and_count(&[("VITRI_ARJUN_SBVA", "off")]);
-    assert_ne!(reduction, reduction_without_sbva, "VITRI_ARJUN_SBVA=off did not reach Arjun");
+    assert_ne!(reduction, reduction_without_sbva, "`VITRI_ARJUN_SBVA=off` did not reach Arjun");
     assert_eq!(count, count_without_sbva);
 }
 
@@ -678,7 +678,7 @@ fn chained_show_with_a_contradiction(count: usize) -> String {
 /// Exactly one of the show variables `1..=17`, and a projected variable 18
 /// kept in play by `18 ∨ 1`. Seventeen constrained show variables are past
 /// the dense sweep's cap of sixteen, so the count goes to the projected
-/// ALL-SAT enumerator; seventeen feasible projections enumerate in
+/// AllSAT enumerator; seventeen feasible projections enumerate in
 /// milliseconds, so it does not run out of wall and fall through to the
 /// compile path. With `weighted`, `w(v) = 2` and `w(¬v) = 1` on the show
 /// variables.

@@ -211,7 +211,7 @@ fn assert_leaf_column(tdd: &Tdd, vtree: &Vtree, var: u32, w: &(BigRational, BigR
     let leaf = vtree.leaf_of(VarId(var + 1)).expect("the vtree carries this variable");
     let level = &tdd.levels()[leaf.idx()];
     assert!(level.is_weight_marginal(), "[{label}] leaf of x{} is not weight-marginal", var + 1);
-    assert_eq!(level.slot_count(), 3, "[{label}] leaf of x{}: the slot count must stay at LEAF_WIDTH", var + 1);
+    assert_eq!(level.slot_count(), 3, "[{label}] leaf of x{}: the slot count must stay at `LEAF_WIDTH`", var + 1);
     let column = tdd
         .weights()
         .expect("weights attached")
@@ -426,7 +426,7 @@ fn equal_weight_duplicate_runs_keep_the_value() {
 /// The number `key` holds, or `default` when it is unset.
 fn env_u32(key: &str, default: u32) -> u32 {
     match std::env::var(key) {
-        Ok(value) => value.parse().unwrap_or_else(|_| panic!("{key}={value:?} is not a whole number")),
+        Ok(value) => value.parse().unwrap_or_else(|_| panic!("`{key}={value}` is not a whole number")),
         Err(_) => default,
     }
 }
@@ -497,7 +497,7 @@ fn fuzz_weighted_marginalize_vs_oracle() {
         "spread" => |num_vars, _| spread_weights(num_vars),
         "posfrac" => posfrac_weights,
         "equalish" => equalish_weights,
-        other => panic!("TIDIDI_FUZZ_WEIGHTS={other:?} is none of spread, posfrac, equalish"),
+        other => panic!("`TIDIDI_FUZZ_WEIGHTS={other}` is none of spread, posfrac, equalish"),
     };
 
     let (mut bad, mut checked) = (0u32, 0u32);
