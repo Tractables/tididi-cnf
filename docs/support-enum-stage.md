@@ -1,4 +1,4 @@
-# Support-enum fallback stage (MC cascade)
+# The support-enumeration stage
 
 For plain (unweighted, non-projected) model counting. Module:
 `src/stage/mc/support_enum.rs`, whose module doc gives the phases and whose
@@ -18,7 +18,7 @@ Some instances are cheap to *count* and expensive to *compile*. The recovery
 cascade answers a blown-up compile by Shannon-splitting the formula and
 compiling the halves. That works when the blowup is a diagram-size problem, and
 fails when the formula's model set is small but its diagram is not: the cascade
-spends its remaining wall retrying the method that already failed.
+spends the time it has left retrying the method that already failed.
 
 By then Arjun has handed the driver a minimized **independent support** of the
 reduced formula. If that support has few feasible assignments, they can be
@@ -36,8 +36,9 @@ static: support size, support fraction, reduced formula size and enumeration
 rate all overlap between the instances this wins and the ones it loses. So the
 stage estimates N (`estimate_projected_count`), probes for `PROBE_WALL_MS`, and
 commits the rest of its window only when the estimate is at most
-`COMMIT_MAX_MODELS` (`commit_decision`, asked once before the probe and once at
-its wall, on the same estimate). A commit resumes the probe's solver.
+`COMMIT_MAX_MODELS` (`commit_decision`, asked once before the probe and once
+when the probe's time is up, on the same estimate). A commit resumes the
+probe's solver.
 
 The estimate walks random paths down the projection tree. Fixing a random
 subset of support variables to random polarities and scaling by `2^j` is also
@@ -58,24 +59,26 @@ top, as for every other MC answer.
 
 The estimate only decides whether to keep enumerating; a count is emitted only
 when the enumeration runs out of feasible projections. A mis-estimate costs
-wall, never correctness.
+time, never correctness.
 
 ## What a loss costs
 
-- The stage never touches the cascade's reserve: `plan_support_enum` carves its
-  window out of what `shannon_split_reserve_ms` leaves, and declines when that window
-  is too short.
+- The stage never touches the cascade's reserve: `plan_support_enum` carves
+  its window out of what `shannon_split_reserve_ms` leaves, and declines when
+  that window is too short.
 - A candidate the estimate rejects costs the estimator only.
-- A candidate the estimate admits and the probe cannot finish costs both, each
-  walled, and the cascade continues on the reserve plus the unspent window.
-- A wrong commit is bounded by the window and by `TALLY_CEILING`, which does not
-  depend on the estimate. The wall is enforced inside a solve by the
-  terminator the engine connects for a caller with a wall callback
-  (`AllsatCtl`).
+- A candidate the estimate admits and the probe cannot finish costs both,
+  each within its own time budget, and the cascade continues on the reserve
+  plus the unspent window.
+- A wrong commit is bounded by the window and by `TALLY_CEILING`, which does
+  not depend on the estimate. The deadline holds inside a solve too, through
+  the terminator the engine connects when a caller supervises the
+  enumeration (`AllsatCtl`).
 
-The entry decision cannot be left to the wall: the Shannon cascade behind the
-stage stops only at the program deadline, so every second a bail frees goes to
-it, and a wrong commit that runs to the wall costs the whole window.
+The entry decision cannot be left to the deadline: the Shannon cascade behind
+the stage stops only at the program deadline, so every second an early exit
+frees goes to it, and a wrong commit that runs to the end of the window
+costs the whole window.
 
 ## The count without a reduction
 
