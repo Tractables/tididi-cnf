@@ -14,16 +14,11 @@ fn integer(n: u32) -> Count {
     Count::Integer(BigUint::from(n))
 }
 
-/// Each environment case starts a process: changing the test process's
-/// environment would race other tests.
-fn count_with_environment(variable: &str, value: &str, expect_error: bool) -> std::process::Output {
-    isolated_count(&[(variable, value)], if expect_error { variable } else { "count" })
-}
-
 /// Run `count_environment_child` alone in a process of its own, with no
 /// `VITRI_*` setting but `env`, on `case`: `count` for a run that counts, a
 /// variable's name for one refused for it, or `later` for two runs either
-/// side of a new setting.
+/// side of a new setting. Each case starts a process, because changing the
+/// test process's environment would race other tests.
 fn isolated_count(env: &[(&str, &str)], case: &str) -> std::process::Output {
     let mut child = std::process::Command::new(std::env::current_exe().unwrap());
     child.args(["--exact", "count_environment_child", "--nocapture"]);
@@ -39,6 +34,9 @@ fn isolated_count(env: &[(&str, &str)], case: &str) -> std::process::Output {
     output
 }
 
+/// The child half of [`isolated_count`]: the entry point of the process it
+/// starts, which names its case in `TIDIDI_TEST_COUNT_ENVIRONMENT`. Run
+/// directly, without that variable, it returns at once and checks nothing.
 #[test]
 fn count_environment_child() {
     let Ok(expected) = std::env::var("TIDIDI_TEST_COUNT_ENVIRONMENT") else { return };
@@ -61,14 +59,17 @@ fn count_environment_child() {
     }
 }
 
+/// A preprocessing switch set to a value it does not read is refused by name.
 #[test]
 fn count_environment_rejects_invalid_preprocessing_controls() {
-    count_with_environment("VITRI_ARJUN_SBVA", "garbage", true);
+    isolated_count(&[("VITRI_ARJUN_SBVA", "garbage")], "VITRI_ARJUN_SBVA");
 }
 
+/// Vitri's own time budget, which a run sets from its time limit, is refused
+/// rather than ignored.
 #[test]
 fn count_environment_rejects_an_inert_vitri_budget() {
-    count_with_environment("VITRI_BUDGET_MS", "1", true);
+    isolated_count(&[("VITRI_BUDGET_MS", "1")], "VITRI_BUDGET_MS");
 }
 
 /// Every run reads the environment as it is when the run starts.
@@ -77,17 +78,21 @@ fn count_environment_is_read_by_every_run() {
     isolated_count(&[], "later");
 }
 
+/// Asking vitri to export Arjun's learnt clauses, which the compiler does not
+/// use, is refused.
 #[test]
 fn count_environment_rejects_unused_learned_clauses() {
-    count_with_environment("VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "1", true);
+    isolated_count(&[("VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "1")], "VITRI_ARJUN_EXPORT_LEARNED_CLAUSES");
 }
 
+/// The SBVA switch reaches the run: only with it on is the retry without
+/// SBVA armed.
 #[test]
 fn count_environment_honors_sbva_policy() {
     // This formula is coloring-like. Only SBVA On arms the retry that can
     // turn SBVA off, so the diagnostic observes the policy actually in use.
     for (policy, armed) in [("on", true), ("off", false)] {
-        let output = count_with_environment("VITRI_ARJUN_SBVA", policy, false);
+        let output = isolated_count(&[("VITRI_ARJUN_SBVA", policy)], "count");
         assert_eq!(String::from_utf8_lossy(&output.stderr).contains("no-sbva-retry: armed"), armed,
             "VITRI_ARJUN_SBVA={policy}");
     }
@@ -164,6 +169,29 @@ fn a_mode_given_overrides_the_default_and_must_agree_with_the_header() {
 
     let refused = count("tests/data/mc_header_tiny.cnf", Some(Mode::Wmc), &limits);
     assert!(matches!(&refused, Err(Error::Usage(message)) if message.contains("c t mc")), "{refused:?}");
+}
+
+/// A run whose time limit has passed answers nothing, in any mode, not even
+/// through a stage that answers without a compile: here a formula with no
+/// clauses and one with the empty clause. Expiry is per run, so an unbounded
+/// run on the same thread still answers.
+#[test]
+fn expired_runs_cannot_answer_through_shortcuts() {
+    let expired = Limits { time_limit_ms: Some(0), ..Limits::default() };
+    for mode in [Mode::Compile, Mode::Mc, Mode::Wmc, Mode::Pmc, Mode::Pwmc] {
+        for body in ["p cnf 2 0\n", "p cnf 2 1\n0\n"] {
+            let text = if matches!(mode, Mode::Pmc | Mode::Pwmc) {
+                format!("c p show 1 0\n{body}")
+            } else {
+                body.to_owned()
+            };
+            let input = || parse_dimacs(text.as_bytes()).unwrap();
+            let result = count(input(), Some(mode), &expired);
+            assert!(matches!(result, Err(Error::Incomplete(_))), "{mode}, {text:?}: {result:?}");
+            let answer = count(input(), Some(mode), &Limits::default()).unwrap();
+            assert_eq!(answer.satisfiable(), !body.contains("\n0\n"));
+        }
+    }
 }
 
 /// The verdict is the run's, not the count's, and the record says how the

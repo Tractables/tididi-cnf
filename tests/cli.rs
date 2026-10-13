@@ -644,9 +644,11 @@ fn projected_counts_end_at_the_wall() {
 }
 
 /// A run that gives up exits 1 with no answer on stdout, and its record says
-/// `incomplete`, whatever the task, and the last line of stderr says what
-/// ended the run. A 1 ms wall on a random 3-CNF of 400 variables leaves every
-/// task without a count, and every run ends soon after it.
+/// `incomplete`, holds no count and no verdict, whatever the task, and the
+/// last line of stderr says what ended the run. A 1 ms wall on a random 3-CNF
+/// of 400 variables leaves every task without a count, and every run ends
+/// soon after it; a 0 ms wall leaves even a tiny instance, which the show-set
+/// enumeration would answer at once, without one.
 #[test]
 fn a_give_up_exits_1_on_every_task() {
     let plain = TempCnf::new("give_up_plain", &random_3cnf_text("", false, false));
@@ -655,19 +657,20 @@ fn a_give_up_exits_1_on_every_task() {
     let shown_weighted = TempCnf::new("give_up_shown_weighted", &random_3cnf_text("", true, true));
     // Whole-run expiry has one diagnostic, regardless of the active stage.
     let last_line = "error: no answer: the time limit was reached";
-    for (task, flags, cnf) in [
-        ("compile", &["--mode", "compile"][..], &plain),
-        ("mc", &["--mode", "mc"], &plain),
-        ("mc", &["--mode", "mc", "--vtree", "portfolio"], &plain),
-        ("wmc", &["--mode", "wmc"], &weighted),
-        ("pmc", &["--mode", "pmc"], &shown),
-        ("pwmc", &["--mode", "pwmc"], &shown_weighted),
+    for (task, flags, wall, cnf) in [
+        ("compile", &["--mode", "compile"][..], "1", plain.path()),
+        ("mc", &["--mode", "mc"], "1", plain.path()),
+        ("mc", &["--mode", "mc", "--vtree", "portfolio"], "1", plain.path()),
+        ("wmc", &["--mode", "wmc"], "1", weighted.path()),
+        ("pmc", &["--mode", "pmc"], "1", shown.path()),
+        ("pwmc", &["--mode", "pwmc"], "1", shown_weighted.path()),
+        ("pmc", &[], "0", "tests/data/pmc_tiny_show.cnf"),
     ] {
         let started = std::time::Instant::now();
-        let (out, record) = run_with_record(&[flags, &["--time-limit-ms", "1", cnf.path()]].concat());
+        let (out, record) = run_with_record(&[flags, &["--time-limit-ms", wall, cnf]].concat());
         let elapsed = started.elapsed();
         assert_eq!(out.code, Some(1), "{flags:?}: {}", out.stderr);
-        assert!(elapsed < std::time::Duration::from_secs(20), "{flags:?}: ran {elapsed:?} on a 1 ms wall");
+        assert!(elapsed < std::time::Duration::from_secs(20), "{flags:?}: ran {elapsed:?} on a {wall} ms wall");
         assert_eq!(out.stdout, "", "{flags:?}");
         assert!(
             out.stderr.lines().last().is_some_and(|line| line.starts_with(last_line)),
@@ -676,8 +679,9 @@ fn a_give_up_exits_1_on_every_task() {
         );
         assert_eq!(record["mode"], task, "{flags:?}: {record}");
         assert_eq!(record["exit_reason"], "incomplete", "{flags:?}: {record}");
-        for count in ["model_count", "weighted_count"] {
-            assert!(record.get(count).is_none(), "{flags:?}: {record}");
+        assert!(record.get("variables").is_some(), "{flags:?}: the record describes the input: {record}");
+        for field in ["model_count", "weighted_count", "satisfiable"] {
+            assert!(record.get(field).is_none(), "{flags:?}: {record}");
         }
     }
 }
