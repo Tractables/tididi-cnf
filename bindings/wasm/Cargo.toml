@@ -20,9 +20,6 @@ publish = false
 name = "bonsai"
 path = "src/main.rs"
 
-# Cargo.lock holds cc at the version vitri's own browser build locks: the
-# older cc the crate's lockfile has passes em++ -fno-exceptions, under which
-# goatd's FlowCutter, which throws and catches, does not compile.
 [dependencies]
 # The checkout this crate sits in, so a change to the counter is built through
 # the page before it is published.
@@ -31,3 +28,7 @@ serde_json = "1"
 # Not called here: vitri's build script hands GMP's side modules to its direct
 # dependents only, and build.rs puts them on this program's link line.
 vitri = { path = "../../vendor/vitri" }
+
+# This crate's Cargo.lock holds cc at the version vitri's browser build locks:
+# the older cc in the repository's Cargo.lock passes em++ -fno-exceptions,
+# under which goatd's FlowCutter, which throws and catches, does not compile.

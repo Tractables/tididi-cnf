@@ -41,9 +41,9 @@ bindings/wasm/site.sh bindings/wasm/site "$VITRI_EMSCRIPTEN_PREFIX"
 python3 -m http.server -d bindings/wasm/site
 ```
 
-`site.sh` gathers what the page is served with, the example formulas
-`examples.js` names from `tests/data/` among it; the web build workflow builds
-its artifact the same way. Opening `index.html` from the filesystem does not
+`site.sh` gathers what the page is served with, including the example formulas
+`examples.js` names, which it copies from `tests/data/`; the web build workflow
+builds its artifact the same way. Opening `index.html` from the filesystem does not
 work: the module and the examples are fetched, so they have to come from a
 server.
 

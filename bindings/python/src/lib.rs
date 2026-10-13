@@ -27,7 +27,8 @@ mod errors {
         tididi_bonsai,
         UsageError,
         Error,
-        "The mode is unknown, contradicts the instance's header, or asks for an unweighted count of an instance with `c p weight` lines."
+        "The mode is unknown, contradicts the instance's header or asks for an unweighted count of an instance \
+         with `c p weight` lines; or a clause keyword is given with DIMACS text."
     );
     create_exception!(tididi_bonsai, EnvError, Error, "An environment setting the run reads is invalid.");
     create_exception!(tididi_bonsai, StageError, Error, "A preprocessing or compile stage failed.");
@@ -53,7 +54,7 @@ mod errors {
         tididi_bonsai,
         IncompleteError,
         Error,
-        "The run gave up without a count, at the time limit or on a refused allocation."
+        "The run ended without a count: at the time limit, on a refused allocation, or when every stage gave up."
     );
 
     /// The exception class for `error`'s class, carrying its message.

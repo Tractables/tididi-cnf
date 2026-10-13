@@ -5,7 +5,8 @@ built with [PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs).
 tididi-bonsai counts the models of a CNF exactly by compiling it into a
 Tree Decision Diagram: the model count, the weighted count and their
 projections onto a set of variables. Each call is the run the `tididi` binary
-makes on the same input and mode, without its printing.
+makes on the same input and mode, without the answer it prints on stdout; its
+progress still goes to stderr.
 
 ## Use
 
@@ -77,7 +78,7 @@ The extension links the system GMP dynamically. No wheel is published yet.
 
 `maturin develop --release` installs the extension into the active virtual
 environment for `pytest bindings/python/tests`. Give pytest
-`--tididi-cli target/release/tididi` to also compare the counts of the
-instances
+`--tididi-cli target/release/tididi` to also compare the version, and the
+counts of the instances
 [`bindings/parity.txt`](https://github.com/Tractables/tididi-bonsai/blob/main/bindings/parity.txt)
 lists with the binary's.

@@ -197,8 +197,8 @@ impl Answer {
 /// - [`Error::Stage`], [`Error::VtreeSpec`], [`Error::Artifact`]:
 ///   preprocessing, vtree construction or reading the count off the diagram
 ///   failed.
-/// - [`Error::Incomplete`]: the run gave up without a count, at the time limit
-///   or on a refused allocation.
+/// - [`Error::Incomplete`]: the run ended without a count: at the time limit,
+///   on a refused allocation, or when every stage gave up.
 ///
 /// # Example
 ///

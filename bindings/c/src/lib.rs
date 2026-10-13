@@ -49,8 +49,8 @@ pub const TIDIDI_BONSAI_ERROR_VTREE_SPEC: tididi_bonsai_code = 4;
 pub const TIDIDI_BONSAI_ERROR_INPUT: tididi_bonsai_code = 5;
 /// The count could not be read off the compiled diagram.
 pub const TIDIDI_BONSAI_ERROR_ARTIFACT: tididi_bonsai_code = 6;
-/// The run gave up without a count, at the time limit or on a refused
-/// allocation.
+/// The run ended without a count: at the time limit, on a refused allocation,
+/// or when every stage gave up.
 pub const TIDIDI_BONSAI_ERROR_INCOMPLETE: tididi_bonsai_code = 7;
 /// An argument broke this header's contract, such as a null pointer with a
 /// nonzero length.
@@ -232,7 +232,7 @@ pub struct tididi_bonsai_weight {
 ///
 /// The other arguments and the result are those of
 /// `tididi_bonsai_count_file`. A literal, shown variable or weight literal
-/// that names no variable of the formula (0, `INT32_MIN`, or one past
+/// that names no variable of the formula (0, `INT32_MIN`, or a variable above
 /// `num_vars`), a clause that names a variable twice, and a weight that is not
 /// a number return `TIDIDI_BONSAI_ERROR_INPUT`; `literals` not ending with 0
 /// returns `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT`.

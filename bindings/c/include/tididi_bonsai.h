@@ -96,8 +96,8 @@ typedef struct tididi_bonsai_weight {
 #define TIDIDI_BONSAI_ERROR_ARTIFACT 6
 
 /**
- * The run gave up without a count, at the time limit or on a refused
- * allocation.
+ * The run ended without a count: at the time limit, on a refused allocation,
+ * or when every stage gave up.
  */
 #define TIDIDI_BONSAI_ERROR_INCOMPLETE 7
 
@@ -173,7 +173,7 @@ tididi_bonsai_code tididi_bonsai_count(const uint8_t *dimacs,
  *
  * The other arguments and the result are those of
  * `tididi_bonsai_count_file`. A literal, shown variable or weight literal
- * that names no variable of the formula (0, `INT32_MIN`, or one past
+ * that names no variable of the formula (0, `INT32_MIN`, or a variable above
  * `num_vars`), a clause that names a variable twice, and a weight that is not
  * a number return `TIDIDI_BONSAI_ERROR_INPUT`; `literals` not ending with 0
  * returns `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT`.

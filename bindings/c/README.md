@@ -4,7 +4,8 @@ A C ABI over the tididi-bonsai library: a CNF goes in, as DIMACS text, as
 clauses of DIMACS integers or as a file, and its count comes back, with the
 mode the run resolved to, whether the formula has a model, and the run's record
 as JSON. Each call is the run the `tididi` binary makes on the same formula and
-mode, without its printing.
+mode, without the answer it prints on stdout; its progress still goes to
+stderr.
 
 This is a separate crate with its own `Cargo.toml`. It builds the library in
 the repository above it, and `tididi_bonsai_version()` reports the version of

@@ -1,8 +1,9 @@
 # The instances every binding counts and compares with the binary's answer: a
 # path relative to the repository root, and the mode passed to the binary as
 # `--mode` and to the binding as its mode argument. Read by the C conformance
-# test, by the Python tests' `--tididi-cli` run and by the browser module's
-# smoke test, bindings/wasm/smoke.mjs.
+# test, by the Python tests (which compare with the binary when given
+# `--tididi-cli`) and by the browser module's smoke test,
+# bindings/wasm/smoke.mjs.
 tests/data/mcc_mc_sat.cnf mc
 tests/data/mcc_mc_unsat.cnf mc
 tests/data/mcc_wmc_cancel.cnf wmc
