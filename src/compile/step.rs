@@ -123,8 +123,8 @@ pub(crate) fn compile_component(
     vtree: &Arc<Vtree>,
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
-    // Every compile, whole or per component, starts here, so this one check
-    // covers them all.
+    // Each vtree a pass runs on, whole or per component, is checked here;
+    // `compile_with` checks the root for the paths that do not reach a pass.
     check_vtree(formula, vtree)?;
 
     // An empty clause makes the component the constant false, so it compiles
@@ -136,7 +136,8 @@ pub(crate) fn compile_component(
     }
 
     // Decided before the pass starts: which clauses are conjoined at which
-    // vtree node, and (in MC mode) when each variable may be marginalized.
+    // vtree node, and (for a scheduled output) when each variable may be
+    // marginalized.
     let clauses_at = group_clauses_by_scope(formula, vtree);
     // Converted once for both the schedule and the bottom-up pass.
     let clauses = DiagramClauses::new(formula);
@@ -191,9 +192,9 @@ pub(crate) fn compile_component(
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
 
     // Leaf levels: accumulate clauses local to this leaf (never has children).
+    // Each step, leaf or internal, first tests the deadline; the deadline or
+    // an apply error aborts the pass, and the caller decides what runs next.
     for (t, _var) in vtree.leaf_bottomup() {
-        // An apply error or the deadline aborts the pass; the caller decides
-        // what runs next.
         let step = if deadline_passed(ctx.job.deadline) {
             Err(OperationError::Stopped)
         } else {
@@ -204,11 +205,9 @@ pub(crate) fn compile_component(
         }
     }
 
-    // Persistent attempt-once state for the marginal-clustering pass: one bitflag
-    // per vtree node (bit0 = Left rotation tried, bit1 = Right) carried across all
-    // steps so a given (pivot, kind) cluster is attempted at most once over the
-    // whole compile. See `rotate_marginal_cluster`.
-    let mut cluster_tried: Vec<u8> = vec![0u8; vtree.num_nodes()];
+    // The cluster rotations tried so far, kept across steps so that each is
+    // tried once in the compile (see `Engine::rotate_marginal_cluster`).
+    let mut cluster_tried: Vec<u8> = Vec::new();
     // Internal levels: conjoin child TDDs, then accumulate any clauses scoped
     // to this level.
     //
@@ -218,7 +217,11 @@ pub(crate) fn compile_component(
     // already consumed. Future iteration items are strict ancestors of t,
     // whose (left, right) entries are unchanged.
     for &t in topo {
-        let step = run_internal_step(eng, t, &ctx, &mut tdds, &mut state, &current_vtree);
+        let step = if deadline_passed(ctx.job.deadline) {
+            Err(OperationError::Stopped)
+        } else {
+            run_internal_step(eng, t, &ctx, &mut tdds, &mut state, &current_vtree)
+        };
         if let ControlFlow::Break(out) = check(step, tdds[t.idx()].as_ref()) {
             return out.map(|diagram| Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size });
         }
@@ -228,7 +231,7 @@ pub(crate) fn compile_component(
         // parent so it too collapses to counts, shrinking the in-flight diagram
         // (peak), not just the final size. Confined to subtree(t);
         // count-preserving. See `Engine::rotate_marginal_cluster`. Either can
-        // fail (P-fusion inside marginalize is try_reserve-guarded), and a
+        // fail (the marginalization can be refused memory), and a
         // failure aborts the pass like one from the step above: a cut leaves
         // the accumulator count-exact, but there is no wall left to finish
         // the step.
@@ -281,8 +284,8 @@ fn propagate_vtree_arc(
 
 /// Fold node `t`'s clauses into `children` (the conjoined child diagrams, or
 /// `None`), marginalizing in the fold, and store the result in `tdds[t]`.
-/// Returns its pair count, 0 when the node has no diagram. `Err(Stopped)` on
-/// deadline.
+/// Returns its pair count, 0 when the node has no diagram. `Err(Stopped)`
+/// when the deadline passes during the fold.
 fn fold_step(
     eng: &Engine,
     t: VtreeIdx,
@@ -305,7 +308,8 @@ fn fold_step(
 /// Process a single internal vtree node: conjoin children, fold its clauses,
 /// then prune the node's diagram when a pass fires. Returns the pair count of
 /// the node's diagram, measured once by the fold and again only if the
-/// pruning replaced it. `Err(Stopped)` on deadline.
+/// pruning replaced it. `Err(Stopped)` when the deadline passes during the
+/// fold.
 fn run_internal_step(
     eng: &Engine,
     t: VtreeIdx,
@@ -315,7 +319,6 @@ fn run_internal_step(
     current_vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
     let (left, right) = current_vtree.children(t);
-    if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
     let children_tdd = match (tdds[left.idx()].take(), tdds[right.idx()].take()) {
         (Some(mut l), Some(r)) => {
             if l.is_zero() || r.is_zero() {

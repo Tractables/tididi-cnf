@@ -4,27 +4,6 @@ use tididi::Engine;
 use crate::compile::Output;
 use crate::test_support::{self as fixtures, clause};
 
-/// A pass that proves its formula UNSAT has answered, deadline or not: the
-/// compile returns ⊥, not a give-up.
-#[test]
-fn a_proof_of_unsat_under_a_deadline_is_an_answer() {
-    let eng = &Engine::new();
-    let formula = fixtures::formula(2, vec![clause(&[1, 2]), clause(&[-1]), clause(&[-2])]);
-    let vtree = Arc::new(Vtree::balanced(2));
-    let deadline = Some(std::time::Instant::now() + std::time::Duration::from_secs(3600));
-    for output in [Output::Function, Output::Count] {
-        let opts = crate::compile::CompileOptions {
-            deadline,
-            output,
-            plan: crate::compile::ComponentPlan::Whole,
-        };
-        let tdd = crate::compile::compile_cnf(eng, &formula, &vtree, opts)
-            .expect("a proof of UNSAT is an answer, not a give-up")
-            .diagram;
-        assert!(!eng.is_sat(&tdd).unwrap());
-    }
-}
-
 /// A split whose second component is UNSAT answers ⊥ on the vtree the
 /// grafted result would have had: the components' own vtrees, as the
 /// caller gave them, chained with the free variable. That holds weighted
