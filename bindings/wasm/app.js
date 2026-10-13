@@ -21,6 +21,7 @@ const make = (name, className, text) => {
 };
 
 const cnfBox = element("cnf");
+const placeholder = cnfBox.placeholder;
 const statusLine = element("status");
 const control = { task: element("task"), limit: element("limit") };
 
@@ -29,8 +30,7 @@ let held = null;
 let inputName = null;
 const inputText = () => (held === null ? cnfBox.value : held.text);
 
-// Whether the worker's module is up, and whether a result is on show.
-let ready = false;
+// Whether a result is on show.
 let shown = false;
 
 // The declared size of a DIMACS text, from its problem line.
@@ -92,7 +92,7 @@ function setInput(text, name) {
     held = null;
     cnfBox.disabled = false;
     cnfBox.value = text;
-    cnfBox.placeholder = "c t mc\np cnf 3 2\n1 -2 0\n2 3 0";
+    cnfBox.placeholder = placeholder;
     element("clear").hidden = true;
   }
   markExample(-1);
@@ -258,23 +258,15 @@ element("link").addEventListener("click", () => {
 
 // ---------------------------------------------------------------- runs
 
-// A run asked for before the module was up; it starts once it is.
-let pending = false;
 let ticking = 0;
 
 const runner = new Runner("worker.js" + stamp, {
   loading() {
-    ready = false;
     element("run").disabled = true;
   },
   ready() {
-    ready = true;
     element("run").disabled = false;
     statusLine.textContent = "Ready.";
-    if (pending) {
-      pending = false;
-      requestRun();
-    }
   },
   notLoaded(message) {
     statusLine.textContent = `tididi-bonsai did not load: ${message}`;
@@ -312,11 +304,6 @@ function requestRun() {
     statusLine.textContent = "Paste, open or drop a DIMACS CNF first.";
     return;
   }
-  if (!ready) {
-    statusLine.textContent = "Loading tididi-bonsai; the run starts when it is ready.";
-    pending = true;
-    return;
-  }
   const built = buildJob();
   if (built.error !== undefined) {
     statusLine.textContent = built.error;
@@ -324,6 +311,7 @@ function requestRun() {
   }
   writeAddress();
   if (runner.running) settle();
+  if (!runner.ready) statusLine.textContent = "Loading tididi-bonsai; the run starts when it is ready.";
   runner.run(built.job);
 }
 
@@ -382,7 +370,6 @@ function showFailure(error, log) {
   statusLine.textContent = "No count; see the result.";
   const box = make("div", "answer failed");
   const heading = make("p");
-  heading.style.margin = "0";
   heading.append(make("strong", "", "No count: "), document.createTextNode(`${ERROR_KINDS[kind] ?? kind}.`));
   box.append(heading);
   box.append(make("pre", "", message));

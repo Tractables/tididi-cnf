@@ -22,6 +22,10 @@ export class Runner {
     this.#start();
   }
 
+  get ready() {
+    return this.#ready;
+  }
+
   get running() {
     return this.#running;
   }

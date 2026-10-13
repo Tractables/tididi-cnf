@@ -11,7 +11,6 @@
   --accent: #2774ae;
   --accent-fill: #dcebf7;
   --gold: #ffd100;
-  --good: #2f7d4f;
   --warn: #9a5b00;
   --bad: #b3261e;
   --bad-fill: #fbe9e7;
@@ -30,7 +29,6 @@
     --accent: #6cb0e8;
     --accent-fill: #1c3347;
     --gold: #f5c211;
-    --good: #6fc28f;
     --warn: #e0a24a;
     --bad: #f28b82;
     --bad-fill: #3d1f1d;
@@ -285,6 +283,8 @@ button:disabled { opacity: 0.45; cursor: default; }
   border-left-color: var(--bad);
   background: var(--bad-fill);
 }
+
+.answer.failed p { margin: 0; }
 
 .answer strong { font-weight: 600; }
 
