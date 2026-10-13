@@ -291,31 +291,20 @@ pub(crate) fn built_or_give_up<T>(built: Result<T, Error>) -> Option<T> {
     built.map_err(|error| eprintln!("[vtree] gave up: {error}")).ok()
 }
 
-/// Structural strategies read the primal/incidence graph and benefit from
-/// per-component construction; the baselines build from the variable numbering
-/// alone and do not.
-///
-/// The baselines are [`vitri::spec::baseline_spec_names`], matched by prefix
-/// the way Vitri matches them, so `random-7` is the baseline `random` here too.
-/// Vitri decides it with `VtreeBase::is_structural`, which is `pub(crate)`
-/// there; this is the same rule spelled over the spec list Vitri exports.
-fn is_structural_spec(spec: &str) -> bool {
-    let base = spec.split(':').next().unwrap_or("");
-    !vitri::spec::baseline_spec_names().any(|name| base.starts_with(name))
-}
-
 /// The components a streaming compile on `spec` takes `formula` in, as
 /// [`build_vtree_with_components`] splits it.
 ///
-/// Empty for a formula with no clauses; for a structural spec whose formula
+/// Empty for a formula with no clauses; for a spec vitri builds from the
+/// formula's structure ([`vitri::spec::is_structural_spec`]), whose formula
 /// splits into two or more independent components, one per component;
-/// otherwise the whole formula as one.
+/// otherwise the whole formula as one. `spec` is one the run has validated.
 pub(crate) fn split_components(formula: &CnfFormula, spec: &str) -> Vec<Component> {
     if formula.clauses().is_empty() {
         return vec![];
     }
 
-    if is_structural_spec(spec)
+    let structural = vitri::spec::is_structural_spec(spec).expect("the run validated its vtree spec");
+    if structural
         && let Some(groups) = formula.detect_components()
     {
         eprintln!("[vtree] {} independent components", groups.len());
