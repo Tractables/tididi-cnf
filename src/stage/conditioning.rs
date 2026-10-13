@@ -194,7 +194,7 @@ fn pmc_branch_count(
         return Some((num_bigint::BigUint::from(1u32) << cshow.len()) << inner_shift);
     }
 
-    // Peak selection, as `pmc_vtree` picks for a run with a show set:
+    // Peak selection, as `counting_vtree` picks for a run with a show set:
     // conditioning only runs on one. This branch's own deadline is the
     // tightest wall that applies — the conditioning cascade builds one vtree
     // per branch, so an unbounded build here multiplies across the whole

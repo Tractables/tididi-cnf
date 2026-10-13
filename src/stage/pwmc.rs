@@ -11,7 +11,7 @@ use vitri::cnf::CnfFormula;
 
 use super::{Run, run_isolated};
 use super::projected::{
-    CountVtree, Stage, Step, Trace, enumerate_show, pmc_vtree, projection_step, run_stages, trivial_residual,
+    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projection_step, run_stages, trivial_residual,
 };
 use crate::problem::WeightedCount;
 use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
@@ -122,7 +122,7 @@ fn pwmc_compile_evaluate(
         vtree,
         component_vtrees,
         projected: projected_in_vtree,
-    } = pmc_vtree(run, work, show)?;
+    } = counting_vtree(run, work, show)?;
     let vtree_ms = vtree_started.elapsed().as_millis();
 
     // Panic-isolated: a compile OOM becomes `None`, scored unsolved, instead of

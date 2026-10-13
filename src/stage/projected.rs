@@ -190,7 +190,7 @@ pub(super) fn trivial_residual<D: Domain>(
 /// balance otherwise, on the run's spec and policy; `None` when the
 /// construction failed. PWMC's compile uses it too; the conditioning branches
 /// build theirs with `count_vtree` on Vitri's portfolio and no run policy.
-pub(super) fn pmc_vtree(
+pub(super) fn counting_vtree(
     run: &Run<'_>,
     work: &CnfFormula,
     show: Option<&ShowSet>,

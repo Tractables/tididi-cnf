@@ -13,7 +13,7 @@ use vitri::cnf::CnfFormula;
 use super::{Run, run_isolated};
 use super::conditioning::{condition_on_show, projected_compile};
 use super::projected::{
-    CountVtree, Stage, Step, Trace, enumerate_show, pmc_vtree, projection_step, run_stages, trivial_residual,
+    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projection_step, run_stages, trivial_residual,
 };
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
@@ -279,7 +279,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 
     let vtree_started = Instant::now();
     let Some(CountVtree { vtree, component_vtrees, projected: projected_in_vtree, .. }) =
-        pmc_vtree(run, work, problem.show.as_ref())
+        counting_vtree(run, work, problem.show.as_ref())
     else {
         return Step::Decline;
     };
