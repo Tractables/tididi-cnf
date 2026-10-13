@@ -69,11 +69,11 @@ rule below is a form of it. Review a change against this list before it lands.
   by deleting more code or concepts than it adds. No compatibility shims, no
   aliases, no wrapper that only forwards a call.
 - One source of truth. One implementation per operation, one place that reads
-  each setting or environment variable, one table for each vocabulary (modes,
-  flags, vtree specs) that drives parsing, `--help` and error messages. Vary
-  behaviour with a parameter on the shared path, never with a copy that has to
-  be kept in sync. A rule written in two places (a deadline test, a divisor,
-  a default) becomes one helper.
+  each setting or environment variable, one list for each vocabulary (modes,
+  preprocessing levels, output formats) that drives parsing, `--help` and
+  error messages. Vary behaviour with a parameter on the shared path, never
+  with a copy that has to be kept in sync. A rule written in two places (a
+  deadline test, a divisor, a default) becomes one helper.
 - State is explicit. A value one function hands to another goes through a
   parameter, a return value or a struct the caller owns; a thread-local or a
   global is not a way to pass it. A function returns what it measured (a
