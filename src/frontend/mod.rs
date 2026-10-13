@@ -104,9 +104,9 @@ pub(crate) fn wmc_frontend(
     Ok(WmcFrontend { outcome, vtree, report: Report { stages, telemetry } })
 }
 
-/// The single-construction model count's simplify-only use of Vitri's shared
-/// plain-MC frontend. Arjun is explicitly not requested; the returned reduced formula
-/// and simplify lift are the compiler's complete preprocessing input.
+/// Simplify-only preprocessing for the streaming model count (an explicit
+/// `--vtree`). Arjun is not requested, so the reduced formula and the
+/// simplify lift it returns are all the preprocessing the compile gets.
 pub(crate) fn mc_streaming_preprocess(
     formula: &CnfFormula,
     parent: &Config,

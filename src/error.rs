@@ -11,7 +11,8 @@
 pub enum Error {
     /// An option is contradictory, or inert in the mode this run resolved to.
     Usage(String),
-    /// An environment setting is invalid, or names a control that was retired.
+    /// An environment setting is invalid, or is set where this run would
+    /// ignore it.
     Environment(String),
     /// A preprocessing frontend or a compile stage failed.
     Stage(String),

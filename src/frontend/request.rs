@@ -9,8 +9,7 @@
 //! wall, its simplify level, whether Arjun runs and the vtree spelling. A stage
 //! a runner asks for later ([`arjun_stage`], [`projection_stage`]) starts from
 //! vitri's defaults with the run's Arjun options and the allowance the runner
-//! computed, and the runner overrides any other field with struct-update
-//! syntax. Every vitri knob this compiler sets is set in one of the two.
+//! computed. Every vitri knob this compiler sets is set in one of the two.
 
 use crate::Error;
 use crate::config::{Config, PreprocessLevel};
@@ -109,8 +108,9 @@ pub(crate) fn projection_stage(
 }
 
 /// The vitri request for one stage: Arjun under the exact allowance `arjun`
-/// (off when `None`) and the clause-growth policy `growth`, with no wall
-/// scale. The Arjun options are the run's, on every mode.
+/// (off when `None`) and the clause-growth policy `growth`, with `budget_ms`
+/// unset, so vitri does not divide the allowance again. The Arjun options are
+/// the run's, on every mode.
 fn stage_config(
     parent: &Config,
     mode: vitri::cnf::Mode,

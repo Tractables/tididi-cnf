@@ -187,7 +187,8 @@ fn vitri_selection_ctx(ctx: &VtreeOptions) -> vitri::decompose::SelectionCtx {
     selection
 }
 
-/// Resolve Vitri's settings for every compiler frontend.
+/// The selection context for `ctx` with the `VITRI_*` selection settings
+/// applied: every construction's, standalone or in a frontend.
 pub(crate) fn resolve_vitri_selection_ctx(
     ctx: &VtreeOptions,
 ) -> Result<vitri::decompose::SelectionCtx, vitri::VitriError> {
