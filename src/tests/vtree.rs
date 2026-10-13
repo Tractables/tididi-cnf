@@ -9,6 +9,15 @@ fn a_spec_is_vitri_s_grammar() {
     assert!(matches!(validate_vtree_spec("nonexistent"), Err(Error::VtreeSpec(_))));
 }
 
+/// A spec's family is its text before the first colon, whatever its
+/// parameters name.
+#[test]
+fn a_spec_family_is_the_text_before_its_parameters() {
+    assert_eq!(spec_family("hypergraph-bisect:imbalance=0.40"), "hypergraph-bisect");
+    assert_eq!(spec_family("flowcutter-primal:binarize=hypergraph-bisect"), "flowcutter-primal");
+    assert_eq!(spec_family("linear"), "linear");
+}
+
 /// A formula with no variables has no vtree leaves; the build says so with an
 /// error instead of panicking.
 #[test]
@@ -213,7 +222,7 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
 fn the_portfolio_catalog_is_vitris() {
     let vitris: std::collections::BTreeSet<String> = vitri::decompose::PortfolioKnobs::candidate_names()
         .iter()
-        .map(|name| name.split(':').next().unwrap_or_default().to_owned())
+        .map(|name| spec_family(name).to_owned())
         .collect();
     let ours: std::collections::BTreeSet<String> =
         PORTFOLIO_CATALOG.iter().map(|&entry| entry.to_owned()).collect();
@@ -240,5 +249,5 @@ fn a_one_entry_portfolio_builds_on_that_entry_alone() {
     let formula = formula(10, clauses.iter().map(|c| clause(c)).collect());
     build_vtree(&formula, "portfolio", &options).expect("the portfolio builds");
     let winner = options.portfolio_history.last_winning_spec().expect("the portfolio recorded its winner");
-    assert_eq!(winner.split(':').next(), Some("goatd-primal"), "the winner was {winner}");
+    assert_eq!(spec_family(&winner), "goatd-primal", "the winner was {winner}");
 }

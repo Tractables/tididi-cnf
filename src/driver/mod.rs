@@ -29,7 +29,7 @@ use crate::output::{
 use crate::stage::{
     RETRY_VTREE_SPEC, Run, run_mc_count, run_mc_streaming, run_pmc_count, run_pwmc_count, run_wmc_count,
 };
-use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components};
+use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components, spec_family};
 
 /// Read the DIMACS file at `path` through the one reader
 /// ([`crate::parse_dimacs`] → vitri), so a run accepts and refuses exactly
@@ -252,14 +252,6 @@ fn bisect_retry_applies(explicit_vtree: bool, pick: Option<&str>, deadline: Opti
     !explicit_vtree
         && pick.is_none_or(|pick| spec_family(pick) != spec_family(RETRY_VTREE_SPEC))
         && deadline.is_none_or(|deadline| now < deadline)
-}
-
-/// The construction family a vtree spec names, its text before any
-/// parameters: `hypergraph-bisect` for `hypergraph-bisect:imbalance=0.40`. A
-/// parameter that names another construction
-/// (`flowcutter-primal:binarize=hypergraph-bisect`) stays a parameter.
-fn spec_family(spec: &str) -> &str {
-    spec.split_once(':').map_or(spec, |(family, _)| family)
 }
 
 /// A give-up of the plain compile route, which has nothing to fall back to:

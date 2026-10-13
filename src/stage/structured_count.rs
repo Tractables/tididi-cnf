@@ -20,7 +20,7 @@
 //! so the driver can continue its projected-compilation fallback.
 
 use tididi::Engine;
-use tididi::query::PinSemantics;
+use tididi::query::{MAX_COUNT_TABLE_VARS, PinSemantics};
 use std::sync::Arc;
 
 use num_bigint::BigUint;
@@ -45,7 +45,7 @@ use tididi::vtree::{VarId, Vtree, VtreeIdx};
 /// `vtree` must cover every variable of `formula` (all of hidden/own/boundary).
 /// Boundary variables must be distinct; `shatter_component` assigns each local
 /// variable to exactly one role. A boundary is part of a separator, so
-/// [`detect_shatter`] keeps it within [`MAX_SEPARATOR`].
+/// [`detect_shatter`] keeps it within [`MAX_COUNT_TABLE_VARS`].
 /// Returns `None` when compilation or readout is refused by the batch limits.
 fn component_boundary_function(
     eng: &Engine,
@@ -146,7 +146,8 @@ pub(super) struct ShatterPlan {
 /// formulas), and `min_components >= 3` excludes 2-way "peel" shatters,
 /// which leave a residual about as large as the formula they came from.
 pub(super) struct ShatterCfg {
-    /// Largest separator tried; detection never goes past [`MAX_SEPARATOR`].
+    /// Largest separator tried; detection never goes past
+    /// [`MAX_COUNT_TABLE_VARS`].
     pub(super) max_k: usize,
     /// Fewest components a separator must leave.
     pub(super) min_components: usize,
@@ -156,16 +157,14 @@ pub(super) struct ShatterCfg {
     pub(super) max_comp_vars: usize,
 }
 
-/// The widest separator detection tries, whatever [`ShatterCfg::max_k`]
-/// asks: each component's count is read out densely as the library's count
-/// table, one entry per assignment of its boundary, a part of the separator.
-const MAX_SEPARATOR: usize = tididi::query::MAX_COUNT_TABLE_VARS;
-
 /// Try to find a useful separator `S ⊆ show` (occurrence-greedy prefix) whose
 /// removal shatters `formula` into `>= cfg.min_components` independent
 /// components, each small enough (`<= cfg.max_comp_vars` and `<= cfg.max_comp_frac`
 /// of the formula) to be tractable. Grows the separator from one variable until
-/// it shatters usefully or gives up at `cfg.max_k` (or [`MAX_SEPARATOR`]).
+/// it shatters usefully or gives up at `cfg.max_k`, or at the library's
+/// [`MAX_COUNT_TABLE_VARS`] whatever `cfg.max_k` asks: each component's count
+/// is read out densely as the library's count table, one entry per assignment
+/// of its boundary, a part of the separator.
 ///
 /// `formula`/`show` must be the raw pre-Arjun problem — Arjun densifies the
 /// residual primal graph and would hide the shatter.
@@ -191,7 +190,7 @@ pub(super) fn detect_shatter(
         .collect();
     show_by_occ.sort_by(|a, b| occ[b.idx()].cmp(&occ[a.idx()]).then(a.0.cmp(&b.0)));
 
-    for k in 1..=max_k.min(MAX_SEPARATOR).min(show_by_occ.len()) {
+    for k in 1..=max_k.min(MAX_COUNT_TABLE_VARS).min(show_by_occ.len()) {
         let sep: Vec<VarId> = show_by_occ[..k].to_vec();
         let sep_set: HashSet<VarId> = sep.iter().copied().collect();
 

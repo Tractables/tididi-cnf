@@ -154,6 +154,14 @@ pub(crate) fn validate_vtree_spec(spec: &str) -> Result<(), Error> {
     vitri::spec::validate_vtree_spec(spec).map_err(|error| Error::VtreeSpec(error.to_string()))
 }
 
+/// The construction family a vtree spec names, its text before any
+/// parameters: `hypergraph-bisect` for `hypergraph-bisect:imbalance=0.40`. A
+/// parameter that names another construction
+/// (`flowcutter-primal:binarize=hypergraph-bisect`) stays a parameter.
+pub(crate) fn spec_family(spec: &str) -> &str {
+    spec.split_once(':').map_or(spec, |(family, _)| family)
+}
+
 /// The vitri request for one construction in the caller's window: the caller
 /// has carved the absolute construction deadline out of its run, so vitri
 /// spends all of what remains of it rather than dividing it again.
