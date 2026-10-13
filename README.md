@@ -11,7 +11,8 @@
      src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
-**Count the solutions of a CNF formula exactly, or compile it into a circuit you can query.**
+**Count the solutions of a CNF formula exactly, or compile it into a circuit
+you can query.**
 
 tididi-bonsai reads a propositional formula in DIMACS CNF and answers how many
 assignments satisfy it, optionally weighted and optionally counted over a
@@ -144,7 +145,8 @@ tididi-bonsai = { git = "https://github.com/Tractables/tididi-bonsai" }
 The same counts are available through [Python](bindings/python/README.md)
 and [C](bindings/c/README.md), from DIMACS text or from clauses held as data,
 and through [WebAssembly](bindings/wasm/README.md) from DIMACS text. The
-WebAssembly build runs [in the browser](https://tractables.github.io/tididi-bonsai/).
+WebAssembly build runs
+[in the browser](https://tractables.github.io/tididi-bonsai/).
 
 ## Documentation
 

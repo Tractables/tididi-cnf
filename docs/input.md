@@ -75,7 +75,8 @@ or `pwmc`.
 ## Weights
 
 A weight is a decimal (`0.4`), a number in scientific notation (`1.5e-1`) or
-a fraction (`3/10`). Weights are read as exact fractions, and may be zero or negative.
+a fraction (`3/10`). Weights are read as exact fractions, and may be zero or
+negative.
 
 **A literal with no weight line weighs 1, even when the other literal of its
 variable has one.** The competition's format reads a lone
