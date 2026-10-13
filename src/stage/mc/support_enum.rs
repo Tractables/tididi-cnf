@@ -334,7 +334,7 @@ fn run_support_enum(
 /// and behind the count without a reduction): plan, log, enumerate, and fold
 /// the reduction multiplier. Returns a count in the var space of the formula
 /// `reduced` was derived from — exactly what a fallback must return.
-pub(crate) fn support_enum_stage(
+pub(super) fn support_enum_stage(
     reduced: &CnfFormula,
     support: &ShowSet,
     lift_pow2: u32,

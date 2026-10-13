@@ -87,7 +87,7 @@ fn count_streaming(run: &Run<'_>, formula: &CnfFormula, forget: Option<&[VarId]>
 /// payload. Rust panics carry the message as either `&'static str`
 /// (panic with a string literal) or `String` (panic with a formatted
 /// message). For other payload types we fall back to a placeholder.
-pub(crate) fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
+fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
     if let Some(s) = payload.downcast_ref::<&'static str>() {
         (*s).to_string()
     } else if let Some(s) = payload.downcast_ref::<String>() {
@@ -97,25 +97,17 @@ pub(crate) fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> Str
     }
 }
 
-/// Run a leaf compile under `catch_unwind` panic isolation: on a panic (e.g. a
-/// jemalloc OOM routed through the alloc-error hook, which `panic = "unwind"`
-/// turns into an unwinding panic), log the payload via `panic_payload_message`
-/// after `label`, the `[<mode>] <stage>` it ran as, and return `None` so the panic becomes an ordinary
-/// give-up — the next cascade stage runs, or the caller scores the instance
-/// unsolved — instead of aborting the process.
+/// Run a leaf compile under `catch_unwind` panic isolation: on a panic (a
+/// refused allocation among them, which unwinds as `crate::mem` says), log the
+/// payload after `label`, the `[<mode>] <stage>` it ran as, and return `None`,
+/// so the panic becomes an ordinary give-up — the next cascade stage runs, or
+/// the caller scores the instance unsolved — instead of aborting the process.
 ///
 /// The shared panic-isolation seam for leaf compiles: the model count's
 /// compile attempts, the WMC compiles, PMC's first compile and the PWMC
 /// compile route through it. The model count's recovery catches its own
 /// panics, because it does more on one: it splits the formula.
-///
-/// It deliberately does not install the apply-level deadline — that is
-/// separately single-sourced as the `eng.limits().edit(|s| s.with_deadline(..))`
-/// RAII builder and installed by each caller at whatever scope it needs (inside
-/// the compile fn for a compile attempt, around the whole fold for
-/// PWMC-mono), so bundling it here would double-arm it for the attempt
-/// callers.
-pub(crate) fn run_isolated<T>(label: impl std::fmt::Display, f: impl FnOnce() -> Option<T>) -> Option<T> {
+fn run_isolated<T>(label: impl std::fmt::Display, f: impl FnOnce() -> Option<T>) -> Option<T> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(r) => r,
         Err(payload) => {

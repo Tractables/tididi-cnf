@@ -128,19 +128,19 @@ fn component_boundary_function(
 /// One component of a shatter plan, in its own compact local variable space
 /// (boundary ∪ own-show ∪ hidden, nothing else — non-participating vars left in
 /// would go free and inflate the count by 2 each).
-pub(crate) struct ShatterComponent {
+pub(super) struct ShatterComponent {
     /// Sub-formula with vars compacted to `0..k`.
-    pub formula: CnfFormula,
+    pub(super) formula: CnfFormula,
     /// Local ids of the ∃-forgotten (hidden) vars.
-    pub hidden_local: Vec<VarId>,
+    pub(super) hidden_local: Vec<VarId>,
     /// Local ids of this component's private show vars (marginalized).
-    pub own_local: Vec<VarId>,
+    pub(super) own_local: Vec<VarId>,
     /// Local ids of the separator vars present in this component, ordered to
     /// match `boundary_bit` (i.e. ascending by global separator-bit index).
-    pub boundary_local: Vec<VarId>,
+    pub(super) boundary_local: Vec<VarId>,
     /// `boundary_local[j]` is separator var `separator[boundary_bit[j]]` — the
     /// global bit position in the dense separator assignment.
-    pub boundary_bit: Vec<usize>,
+    pub(super) boundary_bit: Vec<usize>,
 }
 
 /// A successful shatter: a separator `S ⊆ show` whose removal splits the
@@ -148,10 +148,10 @@ pub(crate) struct ShatterComponent {
 /// `Σ over a∈{0,1}^|S| of Π_i w_i(a)` where `w_i` is each component's boundary
 /// count function (`component_boundary_function`). Sound because `S ⊆ show`, so
 /// conditioning on `S` partitions show-space into disjoint branches.
-pub(crate) struct ShatterPlan {
+pub(super) struct ShatterPlan {
     /// Separator vars (global ids), sorted ascending = canonical S-bit order.
-    pub separator: Vec<VarId>,
-    pub components: Vec<ShatterComponent>,
+    pub(super) separator: Vec<VarId>,
+    pub(super) components: Vec<ShatterComponent>,
 }
 
 /// Gates for `detect_shatter`. The default-on safety story lives here: structured
@@ -160,15 +160,15 @@ pub(crate) struct ShatterPlan {
 /// component survives. So `max_comp_vars` (absolute), not a fraction, is the
 /// discriminator, and `min_components >= 3` excludes 2-way "peel" shatters,
 /// which leave a residual about as large as the formula they came from.
-pub(crate) struct ShatterCfg {
+pub(super) struct ShatterCfg {
     /// Largest separator tried; detection never goes past [`MAX_SEPARATOR`].
-    pub max_k: usize,
+    pub(super) max_k: usize,
     /// Fewest components a separator must leave.
-    pub min_components: usize,
+    pub(super) min_components: usize,
     /// Largest component, as a fraction of the formula's variables.
-    pub max_comp_frac: f64,
+    pub(super) max_comp_frac: f64,
     /// Largest component, in variables.
-    pub max_comp_vars: usize,
+    pub(super) max_comp_vars: usize,
 }
 
 /// The widest separator detection tries, whatever [`ShatterCfg::max_k`]
@@ -184,7 +184,7 @@ const MAX_SEPARATOR: usize = 30;
 ///
 /// `formula`/`show` must be the raw pre-Arjun problem — Arjun densifies the
 /// residual primal graph and would hide the shatter.
-pub(crate) fn detect_shatter(
+pub(super) fn detect_shatter(
     formula: &CnfFormula,
     show: &ShowSet,
     cfg: &ShatterCfg,
@@ -313,7 +313,7 @@ fn shatter_component(
 /// aligns by global bit. Each component compiles under `run`, what the run
 /// sets for each compile. A refused component, or one with no vtree, returns
 /// `None` so the caller can continue its fallback sequence.
-pub(crate) fn structured_count_with(
+pub(super) fn structured_count_with(
     eng: &Engine,
     run: CompileRun<'_>,
     plan: &ShatterPlan,
