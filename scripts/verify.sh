@@ -24,6 +24,7 @@ step 'Release build' cargo build --release --workspace --locked
 step 'Clippy' cargo clippy --all-targets -p tididi-bonsai --locked -- -D warnings
 step 'Rustdoc' env RUSTDOCFLAGS="${RUSTDOCFLAGS:+$RUSTDOCFLAGS }-D warnings" \
   cargo doc --no-deps -p tididi-bonsai --locked
+# One test at a time, for the reason CONTRIBUTING.md § Checks gives.
 step 'Workspace tests' env RUST_BACKTRACE=full \
   cargo test --workspace --all-targets --locked -- --test-threads=1
 step 'Workspace doctests' cargo test --doc --workspace --locked

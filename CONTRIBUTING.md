@@ -22,8 +22,10 @@ bash scripts/verify.sh
   both.
 - The release build has debug assertions off, which catches an item gated on
   them that ungated code still names.
-- The thorough tier adds the long tests:
-  `cargo test --workspace -- --include-ignored`.
+- The tests run one at a time, in the script and in the thorough tier,
+  because they call vitri in-process and vitri is not known to be safe to
+  enter from two threads at once. The thorough tier adds the long tests:
+  `cargo test --workspace -- --include-ignored --test-threads=1`.
 
 CI runs this same script. It also checks that every file naming the release
 version names the same one (`.github/scripts/check-versions.py` lists them),
