@@ -699,11 +699,18 @@ fn exactly_one_of_17(header: &str, weighted: bool) -> String {
     text + &format!("p cnf 18 {}\n{}\n", clauses.len(), clauses.join("\n"))
 }
 
-/// The DIMACS text of `path` without its `c p weight` lines for negative
-/// literals, so each weighted variable names its positive literal alone.
-fn without_negative_weights(path: &str) -> String {
-    let text = std::fs::read_to_string(path).expect("the instance is readable");
-    text.lines().filter(|line| !line.starts_with("c p weight -")).map(|line| format!("{line}\n")).collect()
+/// The chain 1 → 2 → … → `n` over the show variables `1..=n`, each link
+/// through a hidden variable, weighing only the positive literals of 1 (3/10)
+/// and `n` (7/10). The projections switch on a suffix of the chain, so the
+/// count is 3/10 · 7/10 + (`n` − 1) · 7/10 + 1. More show variables than the
+/// enumeration takes send the run to the compile.
+fn weighted_chain(n: u32) -> String {
+    let show = (1..=n).map(|v| v.to_string()).collect::<Vec<_>>().join(" ");
+    let mut text = format!("c t pwmc\np cnf {} {}\nc p show {show} 0\nc p weight 1 3/10 0\nc p weight {n} 7/10 0\n", 2 * n - 1, 2 * (n - 1));
+    for v in 1..n {
+        text.push_str(&format!("-{v} {0} 0\n-{0} {1} 0\n", n + v, v + 1));
+    }
+    text
 }
 
 /// The binary on `args` and `cnf` prints `answer` as a line of stdout, and
@@ -795,29 +802,10 @@ counts! {
     /// extends through 2 and weighs 1.
     pwmc_unnamed_literal_beside_a_projected_variable: []
         "c t pwmc\np cnf 2 1\nc p show 1 0\nc p weight 1 3/10 0\n1 2 0\n" => "projected weighted count: 13/10";
-    /// A competition instance on the compile path, each weighted variable
-    /// weighed on its positive literal alone. Its count is that of the same
-    /// file with each negative literal declared 1.
-    pwmc_unnamed_literals_on_the_compile_path: ["--time-limit-ms", "60000"]
-        without_negative_weights("tests/data/cnfs/mcc/2023/track4/mc2023_track4_076.cnf")
-        => "projected weighted count: 10317031548152049964857439063744228304754257941860\
-            8900303107720554327655568087739797705004294636055801747137648034194899103181\
-            1759800077636515390385053640502793891083329730449479033015741786161218265488\
-            1595659483018563630311472303707426301206557601312861243538458286912198085577\
-            5692482610948158109111630321512064950242985158620165868768289305187245605189\
-            1446796632406429228110660009844919517974842246913538327576955809806265549427\
-            7482351029202446397337555192074102025101188735031580075200038537207978369532\
-            3613195274054873987466466278462026682134454750277187600774251695679640906180\
-            97415309216847/7105427357601001858711242675781250000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000",
-        "[pwmc] compile: preprocessing";
+    /// The compile path, each weighted variable weighed on its positive
+    /// literal alone: 3/10 · 7/10 + 1099 · 7/10 + 1.
+    pwmc_unnamed_literals_on_the_compile_path: [] weighted_chain(1100)
+        => "projected weighted count: 77051/100", "[pwmc] compile: preprocessing";
     /// Projected 2 forced both ways: the residual has no variables.
     pmc_empty_residual_unsat: ["--time-limit-ms", "30000"] "c t pmc\nc p show 1 0\np cnf 2 2\n2 0\n-2 0\n"
         => "projected model count: 0";
