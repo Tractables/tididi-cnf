@@ -3,6 +3,9 @@ use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use std::time::{Duration, Instant};
 use tididi::limits::{StopAt, StopCallback, StopDecision, StopRules};
 
+/// A deadline scope keeps the engine's stop rules, budgets and callback,
+/// stops at the deadline around the callback it wraps, and restores the
+/// engine's own settings when it ends.
 #[test]
 fn a_wall_preserves_work_stops_and_the_existing_callback() {
     let eng = tididi::Engine::new();
@@ -65,6 +68,8 @@ fn a_window_never_ends_past_its_deadline() {
     assert_eq!(not_past(later, None), later);
 }
 
+/// A time limit up to 300 s gives Arjun a sixth of it, and never less than
+/// the floor.
 #[test]
 fn arjun_budget_120s_short_window_ratio() {
     // 120s ≤ 300s window gate ⇒ wall/6 = 20_000ms, above the 5s floor.
@@ -73,12 +78,15 @@ fn arjun_budget_120s_short_window_ratio() {
     assert_eq!(arjun_budget_ms(Some(12_000), 600_000), 5_000);
 }
 
+/// A longer time limit gives Arjun a quarter of it, up to the cap.
 #[test]
 fn arjun_budget_1h_long_window_ratio_caps_at_600s() {
     // 3600s > 300s window gate ⇒ wall/4 = 900_000ms, capped to the 600s max.
     assert_eq!(arjun_budget_ms(Some(3_600_000), 600_000), 600_000);
 }
 
+/// Without a time limit Arjun gets the caller's default; with one, the
+/// share.
 #[test]
 fn arjun_budget_without_a_wall_is_the_default() {
     assert_eq!(arjun_budget_ms(None, 600_000), 600_000);
@@ -87,11 +95,14 @@ fn arjun_budget_without_a_wall_is_the_default() {
     assert_eq!(arjun_budget_ms(Some(120_000), 300_000), 20_000);
 }
 
+/// A run without a time limit gives the vtree construction no deadline.
 #[test]
 fn deadline_none_without_a_wall() {
     assert!(vtree_deadline(None).is_none());
 }
 
+/// On a long time limit the construction deadline is its capped share, from
+/// now.
 #[test]
 fn deadline_is_now_plus_budget_when_the_wall_is_long() {
     let before = Instant::now();
@@ -103,6 +114,7 @@ fn deadline_is_now_plus_budget_when_the_wall_is_long() {
     assert!(before + Duration::from_secs(900) <= d && d <= after + Duration::from_secs(900));
 }
 
+/// The construction deadline never falls past the run's own.
 #[test]
 fn deadline_never_exceeds_the_program_deadline() {
     // 60 s left: the floor (90 s) would overshoot the wall, so we clamp.

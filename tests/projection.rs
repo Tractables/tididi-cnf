@@ -4,15 +4,16 @@
 //! are DIMACS.
 
 mod common;
-use tididi::Engine;
+
 use std::sync::Arc;
 
 use num_bigint::BigUint;
-
-use tididi::test_helpers::{CnfShape, Lcg, rand_cnf};
-use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
-use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
+
+use tididi::Engine;
+use tididi::test_helpers::{CnfShape, Lcg, rand_cnf};
+use tididi::vtree::{VarId, Vtree};
+use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
 
 /// The variables with the given zero-based indices.
 fn vars(indices: impl IntoIterator<Item = u32>) -> Vec<VarId> {
@@ -24,8 +25,8 @@ fn hidden(n: u32, show: &[u32]) -> Vec<VarId> {
     vars((0..n).filter(|i| !show.contains(i)))
 }
 
-/// `Output::ProjectedCount`: the count halved once per
-/// variable the compile reports forgotten is the projected count.
+/// `Output::ProjectedCount`: the count halved once per variable the compile
+/// reports forgotten is the projected count.
 #[test]
 fn compile_project_counts() {
     // (clauses, variables, projected index, projected count)
@@ -104,17 +105,16 @@ fn compile_project_matches_brute_force() {
 
 /// A variable in no clause counts the same under every component plan, with
 /// the hidden variables forgotten and the count halved once per variable the
-/// compile reports forgotten. A projected one
-/// is a factor one: the whole compile forgets it at the root, a split grafts
-/// it in free beside the components, where it still counts ×2 in the raw
-/// count, and a formula with no clause at all compiles to the constant one,
-/// where every variable does. A shown one stays a factor two. The split plan's
-/// trees come from Vitri's portfolio build; the whole plan compiles on a
-/// balanced root.
+/// compile reports forgotten. A projected one is a factor one: the whole
+/// compile forgets it at the root, a split grafts it in free beside the
+/// components, where it still counts ×2 in the raw count, and a formula with
+/// no clause at all compiles to the constant one, where every variable does.
+/// A shown one stays a factor two. The split plan's trees come from Vitri's
+/// portfolio build; the whole plan compiles on a balanced root.
 #[test]
 fn every_plan_counts_a_free_variable_once() {
-    use tididi_bonsai::vtree::ComponentVtree;
     use tididi_bonsai::compile::ComponentPlan;
+    use tididi_bonsai::vtree::ComponentVtree;
     let eng = &Engine::new();
     let check = |formula: &CnfFormula, clauses: &[Vec<i32>], show: &[u32], components: &[ComponentVtree]| {
         let n = formula.num_vars();

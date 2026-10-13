@@ -4,21 +4,24 @@
 //! formula.
 
 mod common;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use num_bigint::BigUint;
 use num_rational::BigRational;
 use num_traits::One;
+
 use tididi::Engine;
 use tididi::diagram::{Arithmetic, LiteralWeights, RationalWeights};
 use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
-use tididi_bonsai::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
-use tididi_bonsai::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
 use tididi::vtree::{VarId, Vtree};
+use tididi_bonsai::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
+use tididi_bonsai::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
 
 use common::{brute_force_projected_count, make_formula};
 
+/// A deadline the compile does not reach changes nothing it counts.
 #[test]
 fn a_deadline_ahead_leaves_the_count_alone() {
     let eng = &Engine::new();
@@ -33,6 +36,8 @@ fn a_deadline_ahead_leaves_the_count_alone() {
     }
 }
 
+/// A deadline already passed stops the compile, of one component or of
+/// several.
 #[test]
 fn a_passed_deadline_stops_the_compile() {
     let eng = &Engine::new();

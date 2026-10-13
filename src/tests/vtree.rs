@@ -19,6 +19,9 @@ fn a_formula_without_variables_is_an_error_not_a_panic() {
     assert!(matches!(build_vtree_with_components(&empty, "portfolio", &options), Err(Error::VtreeSpec(_))));
 }
 
+/// A build bound to a batch's engine puts its root and component trees in
+/// the batch's context, so compiles on them run under the batch's limits and
+/// memory hooks, and hooks set inside the batch end with it.
 #[test]
 fn component_trees_retain_run_context_and_share_batch_limits() {
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -82,6 +85,8 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
     assert_eq!(allocations.load(Ordering::Relaxed), before);
 }
 
+/// Vitri's linear vtree arrives as the library's linear vtree over the same
+/// variables.
 #[test]
 fn a_linear_vitri_vtree_converts_its_root_shape_and_variable_ids() {
     let root = build_vtree(
@@ -94,6 +99,8 @@ fn a_linear_vitri_vtree_converts_its_root_shape_and_variable_ids() {
     assert_eq!(root.to_text(), Vtree::linear(3).to_text());
 }
 
+/// A split build keeps each component's clauses and its map to the formula's
+/// variables, and its root keeps a variable in no clause.
 #[test]
 fn vitri_build_preserves_component_clause_and_variable_mappings() {
     // (x1 ∨ x2) ∧ (¬x3 ∨ x4): two disconnected, two-variable components.
@@ -150,6 +157,8 @@ fn selection_objectives_map_to_vitri_objectives() {
     ));
 }
 
+/// The run's measured structure profile reaches vitri's selection, and a run
+/// without one passes none.
 #[test]
 fn source_structure_profile_propagates_through_the_selection_context() {
     let profile = vitri::score::StructureProfile::from_coefficients(0.2052, 0.2148);
@@ -175,6 +184,8 @@ fn source_structure_profile_propagates_through_the_selection_context() {
     );
 }
 
+/// A build under a deadline gives vitri's construction all the time left
+/// before it.
 #[test]
 fn vtree_build_config_uses_the_callers_whole_remaining_window() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);

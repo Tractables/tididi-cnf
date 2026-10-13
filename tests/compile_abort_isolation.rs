@@ -15,12 +15,13 @@ mod common;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use vitri::cnf::CnfFormula;
+
 use tididi::Engine;
 use tididi::limits::StopRules;
 use tididi::vtree::Vtree;
 use tididi_bonsai::compile::{CompileOptions, compile_cnf};
 use tididi_bonsai::vtree::VtreeOptions;
-use vitri::cnf::CnfFormula;
 
 use common::make_formula;
 

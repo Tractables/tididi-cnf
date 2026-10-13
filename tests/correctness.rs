@@ -7,16 +7,16 @@
 
 mod common;
 
-use tididi::Engine;
 use std::sync::Arc;
 
 use num_bigint::BigUint;
+
+use tididi::Engine;
+use tididi::test_helpers::check::{check_all_fast, check_determinism};
+use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, check_minimize_soundness, rand_cnf};
+use tididi::vtree::Vtree;
 use tididi_bonsai::compile::{CompileOptions, ComponentPlan, compile_cnf};
 use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
-use tididi::test_helpers::check::{check_all_fast, check_determinism};
-use tididi::test_helpers::check_minimize_soundness;
-use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
-use tididi::vtree::Vtree;
 
 use common::*;
 

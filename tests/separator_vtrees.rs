@@ -4,14 +4,16 @@
 //! invariant checks and to count what the balanced vtree counts.
 
 mod common;
-use tididi::Engine;
+
 use std::sync::Arc;
 
 use vitri::cnf::{Clause, CnfFormula, Literal};
-use tididi_bonsai::compile::{CompileOptions, compile_cnf};
+
+use tididi::Engine;
 use tididi::test_helpers::Lcg;
 use tididi::test_helpers::check::check_all_fast;
 use tididi::vtree::{VarId, Vtree};
+use tididi_bonsai::compile::{CompileOptions, compile_cnf};
 
 /// A clause over `vars` (zero-based) with random polarities.
 fn clause(vars: &[u32], rng: &mut Lcg) -> Clause {
@@ -77,15 +79,19 @@ fn synth_two_grids(rows: u32, w: u32, seed: u64) -> (CnfFormula, Vec<u32>, Vec<u
     (common::formula(rows * row_w, clauses), a_vars, c_vars, b_vars)
 }
 
+/// A balanced vtree over `vars` (zero-based).
 fn balanced(vars: &[u32]) -> Vtree {
     let ids: Vec<VarId> = vars.iter().map(|&v| VarId(v + 1)).collect();
     Vtree::balanced_over(&ids).unwrap()
 }
 
+/// The vtree with `left` and `right` as its root's children.
 fn join(left: &Vtree, right: &Vtree) -> Vtree {
     Vtree::join(left, right).unwrap()
 }
 
+/// Compile `formula` on the three separator shapes over `a`, `c` and `b`, and
+/// check each diagram and its count against the balanced vtree's.
 fn check_cut_shapes(formula: &CnfFormula, a: &[u32], c: &[u32], b: &[u32]) {
     let eng = &Engine::new();
     let baseline = Arc::new(Vtree::balanced(formula.num_vars()));
@@ -105,6 +111,7 @@ fn check_cut_shapes(formula: &CnfFormula, a: &[u32], c: &[u32], b: &[u32]) {
     }
 }
 
+/// Random 3-CNFs over separators of several widths.
 #[test]
 fn separator_shapes_on_random_cnfs() {
     // (|A|, |C|, |B|, clauses over A∪C, clauses over C∪B, seed)
@@ -128,6 +135,7 @@ fn separator_shapes_on_random_cnfs() {
     }
 }
 
+/// Pairs of grids glued along a column.
 #[test]
 fn separator_shapes_on_glued_grids() {
     for (rows, w) in [(3, 3), (3, 4), (4, 3), (4, 4)] {

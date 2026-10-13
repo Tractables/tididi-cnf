@@ -1,25 +1,26 @@
 use std::time::Duration;
 
 use num_bigint::BigUint;
+use vitri::cnf::{Clause, CnfFormula};
+
+use tididi::test_helpers::rat;
+use tididi::vtree::VarId;
 
 use super::{
     AllsatStop, AllsatCtl, Models, WallGrant, WeightedModels, allsat, constrained_show_count,
     estimate_count_by_random_paths, split_show, sweep,
 };
-use vitri::cnf::{Clause, CnfFormula};
-use tididi::vtree::VarId;
 use crate::test_support::lit;
-use tididi::test_helpers::rat;
 
 /// Show vars 0 and 2 occur (2 three times) and are constrained; show var 3
 /// does not occur and is free; var 1 is hidden.
 #[test]
 fn counts_each_occurring_show_var_once() {
     let f = crate::test_support::formula(4, vec![
-            Clause::new(vec![lit(2, true), lit(0, true)]),
-            Clause::new(vec![lit(2, false), lit(1, true)]),
-            Clause::new(vec![lit(2, true)]),
-        ]);
+        Clause::new(vec![lit(2, true), lit(0, true)]),
+        Clause::new(vec![lit(2, false), lit(1, true)]),
+        Clause::new(vec![lit(2, true)]),
+    ]);
     assert_eq!(constrained_show_count(&f, &crate::problem::ShowSet::from_dimacs_ids(&[1, 3, 4]).unwrap()), 2);
 }
 
@@ -105,9 +106,9 @@ fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
 #[test]
 fn random_path_weights_bracket_a_non_product_count() {
     let f = crate::test_support::formula(3, vec![
-            Clause::new(vec![lit(0, true)]),
-            Clause::new(vec![lit(1, true), lit(2, true)]),
-        ]);
+        Clause::new(vec![lit(0, true)]),
+        Clause::new(vec![lit(1, true), lit(2, true)]),
+    ]);
     let show = [VarId(1), VarId(2), VarId(3)];
     let est = estimate_count_by_random_paths(&f, &show, 16, Duration::from_secs(5), 11);
     assert_eq!(est.weights.len(), 16);
@@ -271,7 +272,8 @@ fn model_cap_bust_reports_the_cap_and_a_partial_tally() {
 }
 
 /// Formula (x0 ∨ x1) over two show vars; feasible projections are
-/// {TT, TF, FT} (00 excluded) → PMC = 3, PWMC = ac+ad+bc.
+/// {TT, TF, FT} (FF excluded), so PMC = 3, and with weights a and b on x0 and
+/// ¬x0, c and d on x1 and ¬x1, PWMC = ac+ad+bc.
 fn two_show_formula() -> CnfFormula {
     crate::test_support::formula(2, vec![Clause::new(vec![lit(0, true), lit(1, true)])])
 }
@@ -375,9 +377,9 @@ fn micro_cases() -> Vec<(CnfFormula, Vec<VarId>)> {
         // (x0∨x1)∧(¬x0∨¬x1): feasible {TF,FT} → 2.
         (
             crate::test_support::formula(2, vec![
-                    Clause::new(vec![lit(0, true), lit(1, true)]),
-                    Clause::new(vec![lit(0, false), lit(1, false)]),
-                ]),
+                Clause::new(vec![lit(0, true), lit(1, true)]),
+                Clause::new(vec![lit(0, false), lit(1, false)]),
+            ]),
             vec![VarId(1), VarId(2)],
         ),
         // free show var x2 absent from clauses → factor 2 (3<<1=6).
@@ -389,17 +391,17 @@ fn micro_cases() -> Vec<(CnfFormula, Vec<VarId>)> {
         // Feasible projections: TT,TF,FT (FF needs p=T and p=F) → 3.
         (
             crate::test_support::formula(3, vec![
-                    Clause::new(vec![lit(0, true), lit(2, true)]),
-                    Clause::new(vec![lit(1, true), lit(2, false)]),
-                ]),
+                Clause::new(vec![lit(0, true), lit(2, true)]),
+                Clause::new(vec![lit(1, true), lit(2, false)]),
+            ]),
             vec![VarId(1), VarId(2)],
         ),
         // projection-UNSAT: (x0)∧(¬x0) → 0 feasible.
         (
             crate::test_support::formula(1, vec![
-                    Clause::new(vec![lit(0, true)]),
-                    Clause::new(vec![lit(0, false)]),
-                ]),
+                Clause::new(vec![lit(0, true)]),
+                Clause::new(vec![lit(0, false)]),
+            ]),
             vec![VarId(1)],
         ),
         // all-free show over a SAT formula → 2^2 = 4 (empty constrained set).
@@ -410,9 +412,9 @@ fn micro_cases() -> Vec<(CnfFormula, Vec<VarId>)> {
         // 3 constrained show, mixed: (x0∨x1∨x2)∧(¬x0∨¬x1) → 5.
         (
             crate::test_support::formula(3, vec![
-                    Clause::new(vec![lit(0, true), lit(1, true), lit(2, true)]),
-                    Clause::new(vec![lit(0, false), lit(1, false)]),
-                ]),
+                Clause::new(vec![lit(0, true), lit(1, true), lit(2, true)]),
+                Clause::new(vec![lit(0, false), lit(1, false)]),
+            ]),
             vec![VarId(1), VarId(2), VarId(3)],
         ),
     ]

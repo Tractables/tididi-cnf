@@ -15,14 +15,14 @@ mod common;
 use std::sync::Arc;
 
 use num_bigint::BigUint;
+use vitri::cnf::CnfFormula;
+
 use tididi::Engine;
 use tididi::test_helpers::check::check_all_fast;
 use tididi::test_helpers::check_minimize_soundness;
-use tididi_bonsai::vtree::VtreeOptions;
-use tididi_bonsai::compile::{CompileOptions, compile_cnf};
 use tididi::vtree::Vtree;
-use tididi_bonsai::vtree::build_vtree;
-use vitri::cnf::CnfFormula;
+use tididi_bonsai::compile::{CompileOptions, compile_cnf};
+use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
 
 /// A shape of [`common::VTREE_SHAPES`], or one of two constructions from a
 /// spec: `minfill` and `flowcutter`.
@@ -46,6 +46,10 @@ fn pigeonhole(pigeons: i32, holes: i32) -> CnfFormula {
     common::make_formula(num_vars, clauses)
 }
 
+/// Compile `formula` on the vtree `shape` names and check its model count,
+/// its size where one is pinned, the same size with the clauses reversed on
+/// the balanced vtree, the library's invariants, and that minimizing again
+/// changes neither size nor count.
 fn check(name: &str, formula: &CnfFormula, shape: &str, models: u64, size: Option<usize>) {
     let eng = &Engine::new();
     let label = format!("{name} ({shape})");
