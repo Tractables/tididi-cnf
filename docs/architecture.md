@@ -173,8 +173,8 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
   weighted run gets, and how to test a weighted change.
 - [SAT-based pruning][sat-pruning]: dropping intermediate nodes that no
   model of the formula passes through.
-- [The support-enumeration stage][support-enum-stage]: the model count
-  cascade's last fallback, when it runs and why its count is sound.
+- [The support-enumeration stage][support-enum-stage]: a fallback of the
+  model count cascade: when it runs and why its count is sound.
 - [Using diagrams from the compiler][library-integration]: a bounded
   compile on one engine, and what this crate adds to the library.
 
