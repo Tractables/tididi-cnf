@@ -7,7 +7,7 @@
 //! [`preprocess_problem`] wraps it with the problem's declarations and reads
 //! the record into a [`Problem`] over the count's [`Domain`]. The one check
 //! vitri's record does not settle by construction — that the show set names
-//! reduced variables — happens here, so no runner re-judges Vitri's result or
+//! reduced variables — happens here, so no runner re-judges vitri's result or
 //! picks its own numbering convention. A compile record's map back to the
 //! original variables is read once, into an [`OriginalExpansion`], for the
 //! vtree and the diagram expansion to share.
@@ -18,7 +18,7 @@ use vitri::cnf::CnfFormula;
 
 use crate::problem::{Domain, Problem, ShowSet, problem_show};
 
-/// The plain-MC Arjun result consumed by TiDiDi's compile drivers. Every field
+/// The plain-MC Arjun result the model count's stages consume. Every field
 /// is in `formula`'s reduced variable space.
 #[derive(Debug)]
 pub(crate) struct ArjunReduction {
@@ -53,7 +53,7 @@ pub(crate) fn preprocess_problem<D: Domain>(
         formula.num_vars(),
         config.mode,
         show.cloned(),
-        // Vitri's projected weighted chain weighs a literal a `c p weight`
+        // vitri's projected weighted chain weighs a literal a `c p weight`
         // line leaves unnamed at 1, so the table is handed through as is.
         weights.cloned(),
     )?;
@@ -103,9 +103,9 @@ pub(super) fn outcome<D: Domain>(
     }))
 }
 
-/// Extract the one result shape accepted by TiDiDi's plain-MC Arjun callers.
+/// Extract the one result shape this crate's plain-MC Arjun callers accept.
 ///
-/// Vitri carries a support, possibly empty, exactly when the kept plain Arjun
+/// vitri carries a support, possibly empty, exactly when the kept plain Arjun
 /// result is the formula the bundle exports, so the support's presence is what
 /// marks a usable reduction: a stage that did not run, gave up or was
 /// discarded, and a refuted bundle, carry none.
@@ -123,14 +123,14 @@ pub(crate) fn arjun_reduction(bundle: PreprocessBundle) -> Option<ArjunReduction
     })
 }
 
-/// The total function-preserving expansion described by one Vitri
-/// `compile` record, expressed in TiDiDi's variable type.
+/// The total function-preserving expansion described by one vitri
+/// `compile` record, expressed in tididi's `VarId`.
 ///
 /// `classes[r]` lists, in original-variable order, every original variable
 /// whose value is the reduced variable `r` (`true`) or its negation (`false`).
 /// Forced and free originals are kept separately because they become the root
-/// chain above the class-expanded compiler tree.  Construct this once at the
-/// Vitri boundary and pass it to both vtree and TDD expansion; no compiler
+/// chain above the class-expanded compiler tree. Construct this once at the
+/// vitri boundary and pass it to both vtree and TDD expansion; no compiler
 /// consumer should interpret the record independently.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct OriginalExpansion {
@@ -152,10 +152,10 @@ impl OriginalExpansion {
             && self.constants.len() == self.original_num_vars as usize
     }
 
-    /// Translate Vitri's total original-variable map for a reduced formula of
+    /// Translate vitri's total original-variable map for a reduced formula of
     /// `reduced_num_vars` variables.
     ///
-    /// Vitri writes that map on every compile record, one entry per original
+    /// vitri writes that map on every compile record, one entry per original
     /// variable: on a reduction it is built from the simplifier's variable
     /// fates, so every literal names a reduced variable and each reduced
     /// variable is the value of at least its own representative, and a refuted

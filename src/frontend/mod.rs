@@ -1,11 +1,11 @@
 //! The run's calls into vitri's preprocessing, the requests they make and
 //! the records they return.
 //!
-//! The entry points here run a front end: vitri's preprocessing and vtree
+//! The entry points here run a frontend: vitri's preprocessing and vtree
 //! construction as one call, so the reduced formula and the tree built for it
 //! cross the boundary together, and each frontend hands its driver a single
 //! value; or the preprocessing alone, for the model count under an explicit
-//! `--vtree`. Vitri owns the pairing: every tree it builds has one leaf per
+//! `--vtree`. vitri owns the pairing: every tree it builds has one leaf per
 //! reduced variable, and it builds none for a refuted or fully resolved
 //! record, so nothing here re-checks it. [`request`] builds every vitri
 //! request from the run's configuration, [`record`] reads what a
@@ -24,15 +24,15 @@ use crate::config::Config;
 use crate::problem::Weighted;
 use crate::vtree::{VtreeBuild, VtreeOptions, resolve_vitri_selection_ctx, vtree_build_from_vitri};
 use record::{OriginalExpansion, Outcome, Report, outcome};
-use request::front_end_config;
+use request::frontend_config;
 
-/// One plain-model-counting frontend attempt: Vitri's preprocessing result as
-/// it returned it, and the vtree built for its reduced formula in TiDiDi's
+/// One plain-model-counting frontend attempt: vitri's preprocessing result as
+/// it returned it, and the vtree built for its reduced formula, in tididi's
 /// type.
 ///
 /// The compiler may retain the accompanying
 /// [`vitri::bundle::FrontendSession`] only through the scoped continuation
-/// below, when it needs to request Vitri's checkpointed retry.
+/// below, when it needs to request vitri's checkpointed retry.
 pub(crate) struct McFrontendAttempt {
     pub(crate) preprocessed: PreprocessBundle,
     pub(crate) vtree: FrontendVtree,
@@ -51,7 +51,7 @@ pub(crate) enum FrontendVtree {
     Refuted,
 }
 
-/// One function-preserving frontend result from Vitri: the reduced formula, the
+/// One function-preserving frontend result from vitri: the reduced formula, the
 /// expansion plan that maps it back to the original variables, and the vtree
 /// built alongside it.
 pub(crate) struct CompileFrontendAttempt {
@@ -78,7 +78,7 @@ fn run_selection(parent: &Config) -> Result<vitri::decompose::SelectionCtx, vitr
     resolve_vitri_selection_ctx(&VtreeOptions::default().with_run_policy(parent))
 }
 
-/// Run Vitri's paired WMC simplify + portfolio-vtree frontend. Arjun is
+/// Run vitri's paired WMC simplify + portfolio-vtree frontend. Arjun is
 /// deliberately absent; the cascade owns its separately budgeted Arjun stage.
 pub(crate) fn wmc_frontend(
     formula: &CnfFormula,
@@ -92,7 +92,7 @@ pub(crate) fn wmc_frontend(
         None,
         Some(weights.clone()),
     )?;
-    let config = front_end_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
+    let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
         vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
     let PreprocessBundle { reduced, record, stages, telemetry, .. } = preprocessed;
@@ -112,11 +112,11 @@ pub(crate) fn mc_streaming_preprocess(
     parent: &Config,
     deadline: Option<std::time::Instant>,
 ) -> Result<PreprocessBundle, vitri::VitriError> {
-    let config = front_end_config(parent, vitri::cnf::Mode::Mc, deadline, false);
+    let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, false);
     vitri::bundle::preprocess(formula, &vitri::cnf::CnfMeta::default(), &config)
 }
 
-/// Run Vitri's paired function-preserving preprocess + vtree frontend and
+/// Run vitri's paired function-preserving preprocess + vtree frontend and
 /// translate its total original-variable map exactly once at this boundary.
 pub(crate) fn compile_frontend(
     formula: &CnfFormula,
@@ -124,7 +124,7 @@ pub(crate) fn compile_frontend(
     deadline: Option<std::time::Instant>,
 ) -> Result<CompileFrontendAttempt, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
-    let config = front_end_config(parent, vitri::cnf::Mode::Compile, deadline, true);
+    let config = frontend_config(parent, vitri::cnf::Mode::Compile, deadline, true);
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
         vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
     let PreprocessBundle { reduced, record, telemetry, .. } = preprocessed;
@@ -137,7 +137,7 @@ pub(crate) fn compile_frontend(
     })
 }
 
-/// Convert one plain-MC front-end run, the first or a later attempt from a live
+/// Convert one plain-MC frontend run, the first or a later attempt from a live
 /// session, into the compiler's types, converting the vtree once and adding
 /// its construction to the run's `vtree_time`.
 pub(crate) fn mc_frontend_attempt(run: vitri::bundle::VitriRun, vtree_time: &VtreeTime) -> McFrontendAttempt {
@@ -158,11 +158,11 @@ fn frontend_vtree(vtree: vitri::bundle::RunVtree, vtree_time: &VtreeTime) -> Fro
     }
 }
 
-/// Run Vitri's whole plain-MC frontend while keeping its borrowing session
+/// Run vitri's whole plain-MC frontend while keeping its borrowing session
 /// scoped around the compiler continuation.
 ///
-/// The input formula crosses into Vitri once. The continuation gets the
-/// prepared Vitri session, so the cascade can ask it for the no-SBVA `retry`
+/// The input formula crosses into vitri once. The continuation gets the
+/// prepared vitri session, so the cascade can ask it for the no-SBVA `retry`
 /// without cloning or replaying the primary preprocessing work. The
 /// continuation cannot let that borrowing session escape this function.
 pub(crate) fn with_mc_frontend<R>(
@@ -172,7 +172,7 @@ pub(crate) fn with_mc_frontend<R>(
     continuation: impl FnOnce(McFrontendAttempt, &vitri::bundle::FrontendSession<'_>) -> R,
 ) -> Result<R, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
-    let config = front_end_config(parent, vitri::cnf::Mode::Mc, deadline, true);
+    let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
     let mut session = vitri::bundle::frontend(formula, &meta, &config, &run_selection(parent)?)?;
     let run = session.prepare()?;
     let attempt = mc_frontend_attempt(run, &parent.vtree_time);

@@ -1,7 +1,7 @@
 use super::*;
 use crate::test_support::{clause, formula, tididi_formula};
 
-/// A spec is Vitri's grammar, whose own tests cover it. `arcade`, which
+/// A spec is vitri's grammar, whose own tests cover it. `arcade`, which
 /// once selected the counting cascade, is not a vtree and is refused.
 #[test]
 fn a_spec_is_vitri_s_grammar() {
@@ -170,7 +170,7 @@ fn source_structure_profile_propagates_through_the_selection_context() {
     assert_eq!(
         vitri_selection_ctx(&ctx).source_profile,
         Some(profile),
-        "the exact measured source profile must reach Vitri's selection",
+        "the exact measured source profile must reach vitri's selection",
     );
 }
 

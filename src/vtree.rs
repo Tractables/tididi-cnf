@@ -3,7 +3,7 @@
 //!
 //! A vtree is a binary tree whose leaves are the formula's variables. The
 //! diagram the compiler builds follows its shape, so the vtree decides how
-//! large the diagram grows. Vitri builds every one, from a spec in its
+//! large the diagram grows. vitri builds every one, from a spec in its
 //! [vtree grammar](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md),
 //! the one the binary's `--vtree` takes; `"portfolio"`, the default, builds a
 //! catalog of candidates and keeps the best-scoring one.
@@ -150,7 +150,7 @@ pub struct ComponentVtree {
     pub component: Component,
 }
 
-/// Accept a spec of Vitri's vtree grammar, the one `--vtree` takes.
+/// Accept a spec of vitri's vtree grammar, the one `--vtree` takes.
 pub(crate) fn validate_vtree_spec(spec: &str) -> Result<(), Error> {
     vitri::spec::validate_vtree_spec(spec).map_err(|error| Error::VtreeSpec(error.to_string()))
 }
@@ -159,8 +159,8 @@ pub(crate) fn validate_vtree_spec(spec: &str) -> Result<(), Error> {
 /// has carved the absolute construction deadline out of its run, so vitri
 /// spends all of what remains of it rather than dividing it again.
 ///
-/// `spec` goes to Vitri as written; the caller supplies every policy that has
-/// a Vitri representation.
+/// `spec` goes to vitri as written; the caller supplies every policy that has
+/// a vitri representation.
 fn vitri_vtree_build_config(
     spec: &str,
     deadline: Option<std::time::Instant>,
@@ -176,7 +176,7 @@ fn vitri_vtree_build_config(
     }
 }
 
-/// Translate TiDiDi's caller-owned selection context into Vitri's explicit one.
+/// Translate the caller's [`VtreeOptions`] into vitri's selection context.
 fn vitri_selection_ctx(ctx: &VtreeOptions) -> vitri::decompose::SelectionCtx {
     let mut selection = match ctx.peak_active {
         true => vitri::decompose::SelectionCtx::peak(),
@@ -195,7 +195,7 @@ pub(crate) fn resolve_vitri_selection_ctx(
     vitri_selection_ctx(ctx).with_env_defaults()
 }
 
-/// Consume one Vitri construction result at TiDiDi's type boundary.
+/// Convert one vitri construction result into this crate's types.
 ///
 /// Both standalone construction and the whole-run frontend use this exact
 /// conversion, so component numbering and tree ownership cannot drift between
@@ -234,7 +234,7 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
 }
 
 /// Every standalone construction goes through here, so its selection context
-/// is resolved in one place. Vitri validates `spec`.
+/// is resolved in one place. vitri validates `spec`.
 fn build(
     formula: &CnfFormula,
     spec: &str,
@@ -243,7 +243,7 @@ fn build(
 ) -> Result<VtreeBuild, Error> {
     let selection = resolve_vitri_selection_ctx(options)
         .map_err(|error| Error::Environment(error.to_string()))?;
-    // A deadline that has already passed is Vitri's to answer, the same way it
+    // A deadline that has already passed is vitri's to answer, the same way it
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.

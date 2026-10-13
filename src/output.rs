@@ -356,7 +356,7 @@ pub(crate) struct PreprocessReport {
 }
 
 impl PreprocessReport {
-    /// The report of one Vitri run, its whole wall counted as preprocessing.
+    /// The report of one vitri run, its whole wall counted as preprocessing.
     pub(crate) fn of(telemetry: &vitri::bundle::PreprocessTelemetry) -> Self {
         PreprocessReport {
             preprocess_ms: telemetry.total_ms,

@@ -109,7 +109,7 @@ fn plain_mc_frontend_scopes_one_conversion_and_the_prepared_session() {
             assert_eq!(bundle.count_lift.total_pow2(), bundle.record.count_lift_pow2);
             assert!(
                 bundle.arjun_input.is_some(),
-                "the compiler requested Vitri's pre-Arjun checkpoint",
+                "the compiler requested vitri's pre-Arjun checkpoint",
             );
             assert!(bundle.telemetry.total_ms <= 5_000);
             assert!(

@@ -10,10 +10,10 @@ fn parent() -> crate::config::Config {
 }
 
 #[test]
-fn front_end_maps_the_parent_wall_and_simplify_level() {
+fn frontend_maps_the_parent_wall_and_simplify_level() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
     let parent = parent();
-    let config = front_end_config(&parent, Mode::Mc, Some(deadline), true);
+    let config = frontend_config(&parent, Mode::Mc, Some(deadline), true);
 
     assert_eq!(config.budget_ms, Some(45_000));
     assert_eq!(config.deadline, Some(deadline));
@@ -29,13 +29,13 @@ fn front_end_maps_the_parent_wall_and_simplify_level() {
     assert_eq!(config.arjun, parent.vitri.arjun);
     assert_eq!(config.arjun_budget, parent.vitri.arjun_budget);
     assert_eq!(config.stages.arjun, parent.vitri.stages.arjun);
-    config.validate().expect("the MC front end is valid");
+    config.validate().expect("the MC frontend is valid");
 }
 
 #[test]
-fn front_end_without_arjun_disables_the_stage_and_its_outputs_only() {
-    let ordinary = front_end_config(&parent(), Mode::Mc, None, true);
-    let streaming = front_end_config(&parent(), Mode::Mc, None, false);
+fn frontend_without_arjun_disables_the_stage_and_its_outputs_only() {
+    let ordinary = frontend_config(&parent(), Mode::Mc, None, true);
+    let streaming = frontend_config(&parent(), Mode::Mc, None, false);
 
     assert!(!streaming.stages.arjun);
     assert!(!streaming.retain_arjun_input);
@@ -46,32 +46,32 @@ fn front_end_without_arjun_disables_the_stage_and_its_outputs_only() {
     assert_eq!(streaming.budget_ms, ordinary.budget_ms);
     streaming.validate().expect("the simplify-only MC configuration is valid");
 
-    let weighted = front_end_config(&parent(), Mode::Wmc, None, false);
+    let weighted = frontend_config(&parent(), Mode::Wmc, None, false);
     assert_eq!(weighted.mode, Some(Mode::Wmc));
     assert!(!weighted.stages.arjun);
     assert!(!weighted.retain_arjun_input);
-    weighted.validate().expect("the weighted front end config is valid");
+    weighted.validate().expect("the weighted frontend config is valid");
 }
 
 #[test]
-fn front_end_with_simplify_off_leaves_no_inert_knob() {
+fn frontend_with_simplify_off_leaves_no_inert_knob() {
     let parent = crate::config::Config {
         preprocess_level: crate::config::PreprocessLevel::None,
         ..crate::test_support::minimal_config()
     };
-    let config = front_end_config(&parent, Mode::Mc, None, true);
+    let config = frontend_config(&parent, Mode::Mc, None, true);
     assert!(!config.stages.simplify);
     assert_eq!(config.simplify, vitri::config::SimplifyPolicy::default());
     config.validate().expect("the disabled simplify policy must not leave inert knobs");
 }
 
 #[test]
-fn front_end_for_compilation_uses_the_parents_vtree_spelling() {
+fn frontend_for_compilation_uses_the_parents_vtree_spelling() {
     let parent = crate::config::Config {
         vtree: Some("portfolio".to_owned()),
         ..parent()
     };
-    let config = front_end_config(&parent, Mode::Compile, None, true);
+    let config = frontend_config(&parent, Mode::Compile, None, true);
     assert_eq!(config.mode, Some(Mode::Compile));
     assert_eq!(config.vtree_spec, "portfolio");
     assert!(!config.retain_arjun_input);

@@ -105,8 +105,8 @@ pub(crate) fn arjun_budget_ms(time_limit_ms: Option<u64>, abs_default_ms: u64) -
 /// The only place a program deadline is turned into a vtree-construction
 /// deadline, starting now. Every call site that knows the wall calls this
 /// rather than deriving a construction deadline of its own. The share is a
-/// third of the remaining wall clamped to `[90 s, 900 s]` — TiDiDi's safety
-/// net over the complete Vitri construction call.
+/// third of the remaining wall clamped to `[90 s, 900 s]`: the compiler's
+/// safety net over the complete vitri construction call.
 ///
 /// `None` in ⇒ `None` out: a run with no wall limit gets no construction
 /// deadline. The result is additionally clamped to `program_deadline` — the

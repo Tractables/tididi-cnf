@@ -160,8 +160,8 @@ impl Domain for Weighted {
     }
 }
 
-/// Vitri's complete signed reduced weight record in the compiler's
-/// per-variable `(negative, positive)` convention. Vitri writes the table on
+/// vitri's complete signed reduced weight record in the compiler's
+/// per-variable `(negative, positive)` convention. vitri writes the table on
 /// every weighted record but a refuted one, which is read as unsatisfiable
 /// before this, and lists both literals of every reduced variable, each as an
 /// exact `numerator/denominator`, so the rows read through vitri's own weight
@@ -177,7 +177,7 @@ fn reduced_weights(
     let pairs: Vec<_> = weight_record
         .iter()
         .map(|row| {
-            // Vitri prints each row from a `BigRational`, whose denominator is
+            // vitri prints each row from a `BigRational`, whose denominator is
             // never zero, so the string always parses back.
             let weight = vitri::cnf::parse_rational_weight(&row.weight)
                 .expect("vitri writes every reduced weight as an exact rational");

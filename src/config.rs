@@ -110,7 +110,7 @@ impl Settings {
                 cause()
             )));
         }
-        // `--preprocess` sets the simplify stage of the front end the compile,
+        // `--preprocess` sets the simplify stage of the frontend the compile,
         // MC and WMC share. The projected counts preprocess through the
         // projection chain instead, which always simplifies.
         if self.preprocess.is_some() && mode.projected() {
@@ -161,12 +161,12 @@ pub(crate) struct Config {
     /// The time the run's vtree constructions take, which every stage that
     /// builds one adds to and the record reports as `vtree_ms`.
     pub(crate) vtree_time: crate::budget::VtreeTime,
-    /// Vitri's structure profile of the source formula before preprocessing. Measured
+    /// vitri's structure profile of the source formula before preprocessing. Measured
     /// once by the driver and copied into every vtree-selection request derived
     /// from this run.
     pub(crate) source_structure_profile: Option<vitri::score::StructureProfile>,
     /// Whether the parent cascade should retry a coloring-like input with
-    /// Vitri's SBVA policy forced off after the primary compile fails.
+    /// vitri's SBVA policy forced off after the primary compile fails.
     pub(crate) no_sbva_retry_armed: bool,
     /// Whether the frontend simplifies the formula before the compile.
     pub(crate) preprocess_level: PreprocessLevel,
@@ -183,7 +183,7 @@ pub(crate) struct Config {
     /// measurements. The driver hands the run's compiles a SAT-prune pass
     /// ([`crate::compile::sat_prune::SatPrune`]) only when it is set.
     pub(crate) sat_prune: bool,
-    /// Vitri's `VITRI_*` settings, read and checked from the environment as
+    /// vitri's `VITRI_*` settings, read and checked from the environment as
     /// the run starts: the base of every vitri request the run makes.
     pub(crate) vitri: vitri::RunConfig,
 }
