@@ -145,16 +145,12 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             (tdd, 0, 0, AnsweredBy::Preprocessing)
         }
     };
-    let vtree_candidate = match answered_by {
-        AnsweredBy::BisectRetry => Some(RETRY_VTREE_SPEC.to_owned()),
-        _ => pick,
-    };
     // Function compilation expands every original variable back into the TDD,
     // so its intrinsic model count is already in the input formula's space.
     // The readout runs under the same limits as the compile, and a refusal
     // ends the run as the compile's would.
     let count = eng.model_count(&tdd).map_err(|error| gave_up(GiveUp::from_operation(eng, error)))?;
-    Ok(CompileAnswer { tdd, count, peak_pairs: peak, preprocessing, compile_ms, answered_by, vtree_candidate })
+    Ok(CompileAnswer { tdd, count, peak_pairs: peak, preprocessing, compile_ms, answered_by })
 }
 
 /// Compile `reduced` on the frontend's vtree, `built`, and when that compile
@@ -171,13 +167,15 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
 /// answer, so there is no cheaper stage to fall back to.
 ///
 /// Returns the compile that answered, over `reduced`'s variables, and which
-/// one it was.
+/// one it was. Each compile names its tree in the run's `started_on` as it
+/// starts.
 fn compile_with_retry(
     run: &Run<'_>,
     reduced: &CnfFormula,
     built: VtreeBuild,
     pick: Option<&str>,
 ) -> Result<(Compiled, AnsweredBy), Error> {
+    run.config.started_on.replace(pick.map(str::to_owned));
     let give_up = match compile_on(run, reduced, built) {
         Ok(compiled) => return Ok((compiled, AnsweredBy::Compile)),
         Err(give_up) => give_up,
@@ -206,6 +204,7 @@ fn compile_with_retry(
         (released.before.mapped + released.before.retained) / MIB,
         (released.after.mapped + released.after.retained) / MIB,
     );
+    run.config.started_on.replace(Some(RETRY_VTREE_SPEC.to_owned()));
     compile_on_bisection(run, reduced).map(|compiled| (compiled, AnsweredBy::BisectRetry)).map_err(gave_up)
 }
 
@@ -359,7 +358,8 @@ fn solve_on(
             Mode::Compile => record_compile(stats, run_function_compile(run, &formula)?),
         })
     });
-    crate::output::close_record(&mut stats, &verdict, config.vtree_time.total(), sat_prune.into_stats());
+    let started_on = config.started_on.take();
+    crate::output::close_record(&mut stats, &verdict, config.vtree_time.total(), started_on, sat_prune.into_stats());
     match verdict {
         Ok(Verdict { satisfiable, count, diagram }) => {
             Ok(Answer { mode: config.mode, satisfiable, count, diagram, stats })

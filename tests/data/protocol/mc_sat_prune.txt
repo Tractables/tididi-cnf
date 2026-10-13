@@ -9,5 +9,5 @@ model count: 16963
 [mc] preprocessing: start
 [mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.2525 width_cv=0.0000)
 [mc] arjun: reduced in <t> — 73v/218c → 65v/168c, lift=2^0
-[mc] compile: start
+[mc] compile: start on goatd-incidence:candidate=2
 [mc] answered by compile in <t>

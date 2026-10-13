@@ -93,6 +93,7 @@ pub(crate) fn minimal_config() -> Config {
         vtree: None,
         portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
         vtree_time: crate::budget::VtreeTime::default(),
+        started_on: std::cell::RefCell::default(),
         source_structure_profile: None,
         preprocess_level: PreprocessLevel::None,
         mode: Mode::Compile,

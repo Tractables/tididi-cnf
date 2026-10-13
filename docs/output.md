@@ -190,7 +190,7 @@ tididi tests/data/mcc_mc_sat.cnf
 [input] 6 variables, 4 clauses
 [mc] preprocessing: start
 [mc] arjun: reduced in 4ms — 6v/4c → 6v/4c, lift=2^0
-[mc] compile: start
+[mc] compile: start on force
 [mc] answered by compile in 0ms
 model count: 22
 ```

@@ -320,7 +320,15 @@ pub(super) fn count_primary(
                     .map(|counted| (counted, AnsweredBy::UnreducedRetry))
             })
     };
-    eprintln!("[mc] compile: start");
+    // The tree is named on stderr and in the run's `started_on` before the
+    // compile starts, as the plain compile does, so a run that gives up still
+    // says which tree it was on.
+    let tree = run.config.portfolio_history.last_winning_spec();
+    match &tree {
+        Some(tree) => eprintln!("[mc] compile: start on {tree}"),
+        None => eprintln!("[mc] compile: start"),
+    }
+    run.config.started_on.replace(tree);
     count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
 }
 

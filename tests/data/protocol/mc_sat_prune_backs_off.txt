@@ -9,5 +9,5 @@ model count: 134746112245856
 [mc] preprocessing: start
 [mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1113 width_cv=0.0000)
 [mc] arjun: reduced in <t> — 63v/66c → 63v/66c, lift=2^0
-[mc] compile: start
+[mc] compile: start on flowcutter-incidence
 [mc] answered by compile in <t>

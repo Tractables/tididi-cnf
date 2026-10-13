@@ -263,15 +263,18 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 
 /// Close the run's record once its mode has returned.
 ///
-/// The last three facts land here rather than with the answer, because they
-/// are the run's and not any one stage's: how the run ended, the time its
-/// vtree constructions took (`vtree_time`), and the SAT-pruning tallies of its
-/// compiles (`sat_prune`). Recording each in one place is also what keeps the
-/// record of a run that gave up carrying them.
+/// The last facts land here rather than with the answer, because they are
+/// the run's and not any one stage's: how the run ended, the time its vtree
+/// constructions took (`vtree_time`), the tree its main compile last started
+/// on (`started_on`), which names the run's `vtree_candidate` when no answer
+/// named one, and the SAT-pruning tallies of its compiles (`sat_prune`).
+/// Recording each in one place is also what keeps the record of a run that
+/// gave up carrying them.
 pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
     vtree_time: Option<std::time::Duration>,
+    started_on: Option<String>,
     sat_prune: Option<crate::compile::sat_prune::SatPruneStats>,
 ) {
     stats.exit_reason = Some(exit_reason(outcome));
@@ -287,6 +290,9 @@ pub(crate) fn close_record(
         stats.answered_by = None;
     }
     stats.vtree_ms = vtree_time.map(|time| time.as_millis() as u64);
+    if stats.vtree_candidate.is_none() {
+        stats.vtree_candidate = started_on;
+    }
     // Each tally is recorded only when it is nonzero: presence is the "this
     // happened" signal. None is there when no pass ran to its end.
     if let Some(prune) = sat_prune {
@@ -322,10 +328,11 @@ fn recorded_integer(stats: &mut Stats, count: num_bigint::BigUint, diagram: Opti
     recorded(stats, satisfiable, Count::Integer(count), diagram)
 }
 
-/// The portfolio candidate that won, recorded for the model and weighted
-/// counts, since only by then has selection run. The plain compile records
-/// the vtree its answering compile ran on instead ([`CompileAnswer`]). The
-/// spec itself is settled before the mode dispatches and is recorded once, in
+/// The portfolio candidate that won the run's last selection, recorded with
+/// the model and weighted counts' answers, since only by then has selection
+/// run. The plain compile names the tree its answering compile ran on
+/// instead, the last one it started on ([`close_record`]). The spec itself is
+/// settled before the mode dispatches and is recorded once, in
 /// [`open_record`].
 fn record_vtree_candidate(stats: &mut Stats, config: &Config) {
     if let Some(candidate) = config.portfolio_history.last_winning_spec() {
@@ -488,17 +495,13 @@ pub(crate) struct CompileAnswer {
     pub(crate) preprocessing: PreprocessReport,
     pub(crate) compile_ms: u128,
     pub(crate) answered_by: AnsweredBy,
-    /// The vtree the answering compile ran on, by its spec: the portfolio's
-    /// winner, or the retry's construction. `None` when no portfolio ran.
-    pub(crate) vtree_candidate: Option<String>,
 }
 
 /// The verdict and the record of the plain compile: the count, the diagram it
 /// was read off, which the answer carries, and the compile that answered.
 pub(crate) fn record_compile(stats: &mut Stats, answer: CompileAnswer) -> Verdict {
-    let CompileAnswer { tdd, count, peak_pairs, preprocessing, compile_ms, answered_by, vtree_candidate } = answer;
+    let CompileAnswer { tdd, count, peak_pairs, preprocessing, compile_ms, answered_by } = answer;
     stats.answered_by = Some(answered_by.token());
-    stats.vtree_candidate = vtree_candidate;
     stats.tdd_width = Some(tdd.max_width() as u64);
     stats.tdd_pairs = Some(tdd.pair_count() as u64);
     stats.tdd_nodes = Some(tdd.node_count() as u64);
