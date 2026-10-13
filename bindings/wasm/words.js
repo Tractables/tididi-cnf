@@ -17,7 +17,8 @@ export const MODE_NAMES = {
   pwmc: "projected weighted model counting, exact",
 };
 
-// The stage that answered a model count, the record's `answered_by`.
+// The stage that answered a model count or a compile, the record's
+// `answered_by`.
 export const ANSWERED_BY = {
   compile: "the compile",
   preprocessing: "preprocessing, with nothing left to compile",
@@ -26,6 +27,7 @@ export const ANSWERED_BY = {
   "no-sbva-retry": "a compile reduced again without SBVA",
   "unreduced-retry": "a compile of the formula Arjun was given",
   "shannon-split": "splitting the formula on variables and counting the pieces",
+  "bisect-retry": "a second compile, on a hypergraph bisection, after the first ran out of memory",
 };
 
 // An error's kind, the record's `exit_reason`, and the worker's own.
