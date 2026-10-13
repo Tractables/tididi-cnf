@@ -7,9 +7,9 @@ Two kinds of page are checked, from the repository root:
 
 - The worked examples, `docs/examples/<name>.md`. Each has a program
   `examples/<name>.rs` and the other way round. The program runs with
-  `cargo run --release --locked -p tididi-bonsai --example <name>` (the
-  library has examples of the same names), and every `Output:` block of the
-  page must occur in its stdout, as whole lines and in page order.
+  `cargo run --release --locked -p tididi-bonsai --example <name>`, and every
+  `Output:` block of the page must occur in its stdout, as whole lines and in
+  page order.
 - The command-line guide, `README.md` and `docs/*.md`. A `sh` block followed by
   an `Output:` or a `Stderr:` block runs in a scratch directory that sees the
   repository's `tests/`, with `target/release` first on the `PATH`, so a

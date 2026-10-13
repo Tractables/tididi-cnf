@@ -27,5 +27,6 @@ step 'Rustdoc' env RUSTDOCFLAGS="${RUSTDOCFLAGS:+$RUSTDOCFLAGS }-D warnings" \
 step 'Workspace tests' env RUST_BACKTRACE=full \
   cargo test --workspace --all-targets --locked -- --test-threads=1
 step 'Workspace doctests' cargo test --doc --workspace --locked
+step 'Doc checker self-test' python3 scripts/check_docs.py --self-test
 step 'Documented output' python3 scripts/check_docs.py
 printf '\n=== Verification passed ===\n'

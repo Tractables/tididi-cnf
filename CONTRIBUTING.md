@@ -13,10 +13,10 @@ bash scripts/verify.sh
 - The script builds the workspace in the debug and release profiles
   `--locked`, against the committed `Cargo.lock`, runs Clippy and rustdoc
   with warnings denied, runs the workspace tests and doctests, and runs
-  `scripts/check_docs.py`: every worked example's program and every command
-  the README and the user guide show, against the output they print. Each
-  step has a 30-minute limit, and the script stops at the first failure with
-  its exit status.
+  `scripts/check_docs.py` after its self-test: every worked example's
+  program, and every command the README and the user guide follow with its
+  output, against that output. Each step has a 30-minute limit, and the
+  script stops at the first failure with its exit status.
 - `--workspace` is not optional. The workspace is this package plus the
   library under `tididi/`, and only `--workspace` is sure to build and test
   both.
