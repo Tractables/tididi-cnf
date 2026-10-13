@@ -39,7 +39,7 @@ struct ConditioningLimits {
     /// Deepest split; at this depth the leaf is compiled as it is.
     depth_cap: usize,
     /// Wall for each leaf compile.
-    branch_ms: Option<u64>,
+    branch_ms: u64,
     /// Arjun window for each leaf's re-reduction (0 skips it).
     arjun_ms: u64,
     /// The run's wall. No leaf compiles past it, and once it has passed the
@@ -70,9 +70,8 @@ fn condition_and_count(
     let leaf = |formula: &CnfFormula| {
         // `pmc_branch_count` installs this deadline in the engine's apply
         // limits: the leaf's own wall, cut at the run's.
-        let deadline = cfg.branch_ms.map_or(cfg.deadline, |ms| {
-            Some(crate::budget::not_past(Instant::now() + std::time::Duration::from_millis(ms), cfg.deadline))
-        });
+        let branch_wall = Instant::now() + std::time::Duration::from_millis(cfg.branch_ms);
+        let deadline = Some(crate::budget::not_past(branch_wall, cfg.deadline));
         pmc_branch_count(run, formula, show, deadline, cfg.arjun_ms)
     };
     // Below `min_depth`, split unconditionally, without attempting a compile.
@@ -250,7 +249,7 @@ pub(super) fn condition_on_show(
     let cfg = ConditioningLimits {
         min_depth: 4.min(depth_cap),
         depth_cap,
-        branch_ms: Some(30_000),
+        branch_ms: 30_000,
         arjun_ms: 10_000,
         deadline: run.deadline,
     };

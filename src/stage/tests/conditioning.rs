@@ -46,7 +46,8 @@ fn integer_pmc_conditioning_matches_brute_and_direct_leaf() {
     let cfg = ConditioningLimits {
         min_depth: cutset,
         depth_cap: cutset,
-        branch_ms: None,
+        // An hour: a wall the leaves never reach.
+        branch_ms: 3_600_000,
         arjun_ms: 0,
         deadline: None,
     };
