@@ -1,8 +1,10 @@
 //! Bottom-up compile of one component: [`compile_component`], the traversal
 //! every compile runs, on the whole formula or once per component, and the
 //! per-vtree-node leaf and internal step functions it drives. It walks the vtree bottom-up, hands each
-//! scope group's clauses to [`super::batch`] to fold, applies the marginalize
-//! schedule through [`super::marginalize`], and stops on the deadline.
+//! scope group's clauses to [`super::batch`] to fold (or, at a node whose
+//! smaller child spans a few variables, to the cofactor step in
+//! [`super::cofactor`]), applies the marginalize schedule through
+//! [`super::marginalize`], and stops on the deadline.
 
 use std::collections::HashSet;
 use std::ops::ControlFlow;
@@ -17,6 +19,7 @@ use crate::budget::deadline_passed;
 use crate::convert::diagram_literal;
 use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
+use super::cofactor::cofactor_step;
 use super::component::{CompileJob, check_vtree};
 use super::marginalize::{build_marginalize_targets, run_marginalize_at};
 use super::minimize::MinimizeGate;
@@ -77,19 +80,24 @@ pub(crate) struct DiagramClauses {
 impl DiagramClauses {
     pub(crate) fn new(formula: &CnfFormula) -> Self {
         let total = formula.clauses().iter().map(|c| c.literals.len()).sum();
-        let mut literals = Vec::with_capacity(total);
-        let mut bounds = Vec::with_capacity(formula.clauses().len() + 1);
-        bounds.push(0);
+        let mut clauses = Self::with_capacity(formula.clauses().len(), total);
         for clause in formula.clauses() {
-            literals.extend(
-                clause
-                    .literals
-                    .iter()
-                    .map(|&lit| diagram_literal(lit)),
-            );
-            bounds.push(literals.len() as u32);
+            clauses.push(clause.literals.iter().map(|&lit| diagram_literal(lit)));
         }
-        DiagramClauses { literals, bounds }
+        clauses
+    }
+
+    /// No clauses yet, with room for `clauses` of `literals` literals in all.
+    pub(crate) fn with_capacity(clauses: usize, literals: usize) -> Self {
+        let mut bounds = Vec::with_capacity(clauses + 1);
+        bounds.push(0);
+        DiagramClauses { literals: Vec::with_capacity(literals), bounds }
+    }
+
+    /// Append a clause, which takes the next index.
+    pub(crate) fn push(&mut self, literals: impl IntoIterator<Item = Literal>) {
+        self.literals.extend(literals);
+        self.bounds.push(self.literals.len() as u32);
     }
 
     /// Clause `i`'s literals, indexed as they are in the formula.
@@ -300,12 +308,46 @@ fn fold_step(
     Ok(tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
 }
 
-/// Process a single internal vtree node: conjoin children, fold its clauses,
-/// then prune the node's diagram when a pass fires. Returns the pair count of
-/// the node's diagram, measured once by the fold and again only if the
-/// pruning replaced it. `Err(Stopped)` when the deadline passes during the
-/// fold.
+/// Process a single internal vtree node: the cofactor step when the node
+/// qualifies for it ([`cofactor_step`]), otherwise conjoin the children and
+/// fold the node's clauses ([`splice_and_fold`]); then prune the node's
+/// diagram when a pass fires. Returns the pair count of the node's diagram,
+/// measured once by the step and again only if the pruning replaced it.
+/// `Err(Stopped)` when the deadline passes during the step.
 fn run_internal_step(
+    eng: &Engine,
+    t: VtreeIdx,
+    ctx: &StepContext<'_>,
+    tdds: &mut [Option<Tdd>],
+    state: &mut PassState,
+    current_vtree: &Arc<Vtree>,
+) -> Result<usize, OperationError> {
+    let mut pairs = match cofactor_step(eng, t, ctx, tdds, state, current_vtree)? {
+        Some(pairs) => pairs,
+        None => splice_and_fold(eng, t, ctx, tdds, state, current_vtree)?,
+    };
+    // Prune the node's diagram when the pass's trigger fires.
+    if let Some(prune) = state.sat_prune.as_mut()
+        && let Some(tdd) = tdds[t.idx()].as_ref()
+        && prune.should_fire(pairs)
+    {
+        let pruned = match prune.probe_tdd(eng, tdd, pairs) {
+            PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
+            PruneOutcome::Rewritten(new_tdd) => Some(*new_tdd),
+            PruneOutcome::NoOp => None,
+        };
+        if let Some(pruned) = pruned {
+            pairs = pruned.pair_count();
+            tdds[t.idx()] = Some(pruned);
+        }
+    }
+    Ok(pairs)
+}
+
+/// The normal internal step at `t`: conjoin the children's diagrams by an
+/// O(1) splice, fold the node's clauses into the result ([`fold_step`]) and
+/// store it in `tdds[t]`. Returns its pair count.
+pub(super) fn splice_and_fold(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
@@ -344,23 +386,7 @@ fn run_internal_step(
         (Some(t_single), None) | (None, Some(t_single)) => Some(t_single),
         (None, None) => None,
     };
-    let mut pairs = fold_step(eng, t, ctx, tdds, state, current_vtree, children_tdd)?;
-    // Prune the node's diagram when the pass's trigger fires.
-    if let Some(prune) = state.sat_prune.as_mut()
-        && let Some(tdd) = tdds[t.idx()].as_ref()
-        && prune.should_fire(pairs)
-    {
-        let pruned = match prune.probe_tdd(eng, tdd, pairs) {
-            PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
-            PruneOutcome::Rewritten(new_tdd) => Some(*new_tdd),
-            PruneOutcome::NoOp => None,
-        };
-        if let Some(pruned) = pruned {
-            pairs = pruned.pair_count();
-            tdds[t.idx()] = Some(pruned);
-        }
-    }
-    Ok(pairs)
+    fold_step(eng, t, ctx, tdds, state, current_vtree, children_tdd)
 }
 
 #[cfg(test)]

@@ -174,8 +174,11 @@ pub(crate) fn batch_accumulate(
 /// The floor one node's fold batches at: the clauses every batch folds before
 /// it may stop for its cost, and the width cap below them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct BatchFloor {
-    size: usize,
+pub(super) struct BatchFloor {
+    /// The clauses every batch folds before it may stop for its cost. The
+    /// cofactor step's guard (`compile::cofactor`) counts a node's merges at
+    /// one per this many of its clauses.
+    pub(super) size: usize,
     width_limit: usize,
 }
 
@@ -186,7 +189,7 @@ struct BatchFloor {
 /// starts small and grows past the threshold keeps the small floor, so the
 /// larger one only applies at nodes that begin with an accumulator whose
 /// merges dominate. The pair count stops once the threshold is passed.
-fn batch_floor(acc: Option<&Tdd>) -> BatchFloor {
+pub(super) fn batch_floor(acc: Option<&Tdd>) -> BatchFloor {
     if acc.is_some_and(|a| !a.pair_count_at_most(BATCH_LARGE_ENTRY_PAIRS)) {
         BatchFloor { size: BATCH_LARGE_SIZE, width_limit: BATCH_LARGE_WIDTH_LIMIT }
     } else {

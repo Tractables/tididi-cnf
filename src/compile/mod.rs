@@ -21,6 +21,7 @@
 //! out of memory on smaller pieces of the formula.
 
 mod batch;
+mod cofactor;
 mod component;
 mod marginalize;
 mod minimize;

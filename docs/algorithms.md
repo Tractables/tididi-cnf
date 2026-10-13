@@ -16,7 +16,8 @@ That keeps intermediate TDDs much smaller.
 2. Group clauses by scope
 3. Bottom-up traversal of the vtree:
    - At each internal node t, conjoin child TDDs (from left/right subtrees)
-   - Then batch-accumulate clauses scoped to t (see below)
+   - Then batch-accumulate clauses scoped to t (see below), or fold them
+     once per assignment of a few-variable child (the cofactor step)
 4. Return the TDD at the root
 ```
 
@@ -87,6 +88,46 @@ successive conjunction works on a smaller input.
 **Early exit**: if the batch conjunction becomes UNSAT, the remaining clauses
 in the batch are skipped; if the accumulator conjunction becomes UNSAT, the
 compile returns early.
+
+### Cofactor step
+
+At an internal node whose smaller child spans at most `COFACTOR_MAX_VARS`
+variables `S`, and which has at least `COFACTOR_MIN_CLAUSES` clauses, the
+batched fold above is replaced by a fold per assignment of `S`
+(`cofactor_step`, `src/compile/cofactor.rs`). Every clause scoped at the node
+has literals on both sides, so each merge of the normal fold carries the small
+side's structure across the whole of the other child's diagram `R`. Instead,
+for each full assignment `a` of `S` that the small child's diagram `L` allows,
+the step folds the node's clauses that `a` leaves unsatisfied, with their `S`
+literals removed, into a copy of `R` with the same batched fold, shortest
+clause first. It drops the branches that come back ⊥ and joins the rest as the
+disjunction of `cube(a) ∧ R_a`.
+
+- **When.** Only if neither child's diagram has a marginal level
+  (`Tdd::has_marginal_level`). A small child with no diagram yet is the
+  constant true, and every assignment is a branch.
+- **Why it is exact.** With no marginal level, both children are the exact
+  Boolean functions of their variables, and `L` depends on `S` alone. A full
+  assignment `a` makes `L` a constant and leaves of the node's clauses exactly
+  the unsatisfied ones less their `S` literals, so the disjunction over the
+  allowed `a` is `L ∧ R ∧ C_t` itself. Weighted compiles take the step too:
+  weight values live only at marginal levels, so the branches carry none, and
+  the weights enter when the node's scheduled levels are marginalized
+  afterwards.
+- **Marginalization.** The branch folds marginalize nothing. Once the
+  branches are joined, the step marginalizes the levels the normal fold would
+  have summed out inside its merges (`build_marginalize_targets`). Then
+  `run_marginalize_at` forgets and marginalizes the node's schedule, as after
+  any step, and the SAT pruning trigger sees the result.
+- **Cost guard.** Each branch costs at least one merge into a copy of `R` plus
+  a disjunction in the join. The normal fold merges about once per floor's
+  worth of clauses (`batch_floor` at `R`). So the step is taken only when
+  `ceil(clauses / floor)` exceeds the number of branches, a test made before
+  any fold.
+
+The shortest-first order matters: on the formulas over few variables the step
+was developed on, folding the branches' clauses in their original order cost a
+multiple of the work.
 
 ### Independent component compilation
 
