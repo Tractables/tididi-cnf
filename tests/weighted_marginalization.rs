@@ -20,10 +20,10 @@ use std::sync::Arc;
 use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
-use rand::{rngs::SmallRng, RngExt, SeedableRng};
 
 use tididi::Engine;
 use tididi::diagram::{Arithmetic, Tdd, WeightStore, WeightValue};
+use tididi::test_helpers::Lcg;
 use tididi_bonsai::vtree::VtreeOptions;
 use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
@@ -454,20 +454,24 @@ fn spread_weights(num_vars: u32) -> Weights {
         .collect()
 }
 
+/// One of 0.1, 0.2, …, 0.9, drawn uniformly.
+fn tenths(rng: &mut Lcg) -> BigRational {
+    rat(rng.below(9) as i64 + 1, 10)
+}
+
 /// Weights shaped like real fractional instances, mostly equal pairs, with
 /// every canonicalization edge: zero on one side, complements, asymmetric
 /// pairs.
 fn equalish_weights(num_vars: u32, seed: u64) -> Weights {
-    let mut rng = SmallRng::seed_from_u64(seed ^ 0xE9A1);
+    let mut rng = Lcg::new(seed ^ 0xE9A1);
     (0..num_vars)
         .map(|_| {
-            let a = (rng.random::<u32>() % 9 + 1) as i64;
-            let w = rat(a, 10);
-            match rng.random::<u32>() % 20 {
+            let w = tenths(&mut rng);
+            match rng.below(20) {
                 0 => (BigRational::zero(), w),
                 1 => (w, BigRational::zero()),
-                2 => (rat(10 - a, 10), w),
-                3 => (rat((rng.random::<u32>() % 9 + 1) as i64, 10), w),
+                2 => (BigRational::one() - &w, w),
+                3 => (tenths(&mut rng), w),
                 _ => (w.clone(), w),
             }
         })
@@ -476,10 +480,8 @@ fn equalish_weights(num_vars: u32, seed: u64) -> Weights {
 
 /// Plain positive fractions.
 fn posfrac_weights(num_vars: u32, seed: u64) -> Weights {
-    let mut rng = SmallRng::seed_from_u64(seed ^ 0x5EED);
-    (0..num_vars)
-        .map(|_| (rat((rng.random::<u32>() % 9 + 1) as i64, 10), rat((rng.random::<u32>() % 9 + 1) as i64, 10)))
-        .collect()
+    let mut rng = Lcg::new(seed ^ 0x5EED);
+    (0..num_vars).map(|_| (tenths(&mut rng), tenths(&mut rng))).collect()
 }
 
 fn dump(formula: &CnfFormula, w: &[(BigRational, BigRational)]) -> String {
@@ -506,9 +508,9 @@ fn fuzz_weighted_marginalize_vs_oracle() {
 
     let (mut bad, mut checked) = (0u32, 0u32);
     for seed in lo..hi {
-        let mut rng = SmallRng::seed_from_u64(seed as u64 ^ 0xA11CE);
-        let nv = nv_lo + rng.random::<u32>() % (nv_hi - nv_lo + 1);
-        let density = d_lo + rng.random::<u32>() % (d_hi - d_lo + 1);
+        let mut rng = Lcg::new(seed as u64 ^ 0xA11CE);
+        let nv = nv_lo + rng.below(u64::from(nv_hi - nv_lo + 1)) as u32;
+        let density = d_lo + rng.below(u64::from(d_hi - d_lo + 1)) as u32;
         let nc = ((nv * density) as f64 / 100.0).round().max(1.0) as usize;
         let formula = random_3cnf(nv, nc, seed as u64);
         let w = match mode.as_str() {

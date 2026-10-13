@@ -7,34 +7,32 @@ mod common;
 use tididi::Engine;
 use std::sync::Arc;
 
-use rand::seq::SliceRandom;
-use rand::{rngs::SmallRng, RngExt, SeedableRng};
-
 use vitri::cnf::{Clause, CnfFormula, Literal};
 use tididi_bonsai::compile::{CompileOptions, compile_cnf};
+use tididi::test_helpers::Lcg;
 use tididi::test_helpers::check::check_all_fast;
 use tididi::vtree::{VarId, Vtree};
 
 /// A clause over `vars` (zero-based) with random polarities.
-fn clause(vars: &[u32], rng: &mut SmallRng) -> Clause {
-    Clause::new(
-        vars.iter()
-            .map(|&v| Literal::new(vitri::cnf::VarId::new(v + 1).unwrap(), rng.random::<bool>()))
-            .collect(),
-    )
+fn clause(vars: &[u32], rng: &mut Lcg) -> Clause {
+    Clause::new(vars.iter().map(|&v| Literal::new(vitri::cnf::VarId::new(v + 1).unwrap(), rng.coin())).collect())
 }
 
-/// A clause over three distinct variables drawn from `pool`.
-fn clause_from(pool: &[u32], rng: &mut SmallRng) -> Clause {
+/// A clause over three distinct variables drawn from `pool`: the first three
+/// places of a Fisher–Yates shuffle.
+fn clause_from(pool: &[u32], rng: &mut Lcg) -> Clause {
     let mut buf = pool.to_vec();
-    buf.shuffle(rng);
+    for i in 0..3 {
+        let j = i + rng.below((buf.len() - i) as u64) as usize;
+        buf.swap(i, j);
+    }
     clause(&buf[..3], rng)
 }
 
 /// Random 3-CNF over `A` = 0..na, `C` = the next nc, `B` = the last nb: `ka`
 /// clauses over A∪C and `kb` over C∪B, so `C` separates `A` from `B`.
 fn synth_cut(na: u32, nc: u32, nb: u32, ka: usize, kb: usize, seed: u64) -> CnfFormula {
-    let mut rng = SmallRng::seed_from_u64(seed);
+    let mut rng = Lcg::new(seed);
     let n = na + nc + nb;
     let a_pool: Vec<u32> = (0..na + nc).collect();
     let b_pool: Vec<u32> = (na..n).collect();
@@ -47,7 +45,7 @@ fn synth_cut(na: u32, nc: u32, nb: u32, ka: usize, kb: usize, seed: u64) -> CnfF
 /// grid row carries three random 3-clauses, and vertically adjacent cells
 /// (in either grid and in the shared column) a random 2-clause.
 fn synth_two_grids(rows: u32, w: u32, seed: u64) -> (CnfFormula, Vec<u32>, Vec<u32>, Vec<u32>) {
-    let mut rng = SmallRng::seed_from_u64(seed);
+    let mut rng = Lcg::new(seed);
     let row_w = 2 * w - 1;
     let var_at = |r: u32, c: u32| r * row_w + c;
 
