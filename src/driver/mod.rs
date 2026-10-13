@@ -2,11 +2,10 @@
 //!
 //! `solve` is the run. The library's [`crate::count`] calls it with the
 //! caller's mode and limits, and the command line, `cli::run_cli`, with what
-//! argv set. The phases
-//! here are the run's spine — its per-run state, reading the CNF,
-//! preprocessing hooks, the vanilla compile and its artifacts — and the mode
-//! dispatch that picks between them and the stages in `crate::stage`. The
-//! stage bodies are not here.
+//! argv set. The phases here are the run's spine — its per-run state, reading
+//! the CNF and the plain compile route — and the mode dispatch that picks
+//! between that route and the stages in `crate::stage`. The stage bodies are
+//! not here.
 
 use std::io::BufReader;
 use std::path::Path;
@@ -164,10 +163,11 @@ fn gave_up(give_up: GiveUp) -> Error {
 /// the binary both come through here.
 ///
 /// The run is one shared execution context: nested limit guards and all
-/// component compiles use the same meters and recycled buffers. Its memory
-/// limit lowers the process's address-space limit before the instance is
-/// read, so every route runs under it, and puts the limit back when the run
-/// returns.
+/// component compiles use the same meters and recycled buffers. The
+/// allocator's reclamation mode (`crate::mem`) is process-wide and stays eager
+/// once a run switches it. The run's memory limit lowers the process's
+/// address-space limit before the instance is read, so every route runs under
+/// it, and puts the limit back when the run returns.
 pub(crate) fn solve(
     input: Input,
     mode_flag: Option<Mode>,
