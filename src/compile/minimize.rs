@@ -1,28 +1,22 @@
 //! The compiler's minimize: every reduction it asks `Engine::reduce` for, and
-//! the gate ([`CompileState`]) that picks among them after each merge from the
+//! the gate ([`MinimizeGate`]) that picks among them after each merge from the
 //! result's size and its growth since the last prune, with the
 //! contract-effectiveness throttle.
+//!
+//! Every reduction the compiler runs is built here, so a cofactor's compile
+//! skips the content-twin scan in each of them.
 
-// ── Solver-side minimize entry ───────────────────────────────────────────────
-//
-// Every minimize the compiler runs goes through here, so the one piece of
-// policy the library cannot know — that a Shannon-split recovery cofactor's
-// compile skips the content-twin pass — is filled in exactly once.
-// A direct `Engine::reduce` call without the compiler plan would
-// fork that policy.
-
-use tididi::reduce::{ContentTwinSchedule, ContentTwinPolicy, ReductionPlan};
-use tididi::Engine;
-use tididi::limits::LimitConfig;
-use tididi::OperationError;
 use tididi::diagram::Tdd;
+use tididi::limits::LimitConfig;
+use tididi::reduce::{ContentTwinPolicy, ContentTwinSchedule, ReductionPlan};
+use tididi::{Engine, OperationError};
 
 use super::config::{MIN_SIZE_MULT, PRUNE_GROWTH_TRIGGER};
 
-/// Full reduction with the recovery policy and optional persistent scan schedule.
+/// The full reduction, scanning content twins on `probe`'s schedule, or on
+/// every call without one; a cofactor's compile skips the scan
+/// (`skip_content_twins`, see [`CompileRun::cofactor`](super::CompileRun::cofactor)).
 pub(crate) fn full_reduction(skip_content_twins: bool, probe: Option<&mut ContentTwinSchedule>) -> ReductionPlan<'_> {
-    // Recovery recompiles cofactors under memory pressure; scanning a diagram
-    // that is about to be split or dropped adds no useful work.
     let twins = if skip_content_twins {
         ContentTwinPolicy::Skip
     } else {
@@ -48,7 +42,7 @@ pub(crate) fn minimize_full(eng: &Engine, tdd: &mut Tdd, skip_content_twins: boo
 }
 
 /// Fallible prune (+ marginal-slot compaction) without contraction.
-pub(crate) fn minimize_prune_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError> {
+fn minimize_prune_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError> {
     eng.reduce(tdd, ReductionPlan::Prune)
 }
 
@@ -57,18 +51,18 @@ pub(crate) fn minimize_contract_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), 
     eng.reduce(tdd, ReductionPlan::Contract)
 }
 
-// ── Adaptive minimize constants ──────────────────────────────────────────────
+// The contract throttle: when the median fraction of nodes the last few
+// contractions removed is below a floor, the next few contractions the gate
+// would run below the size threshold are skipped.
 
-// Contract-effectiveness throttle: twin contraction is a large share of
-// compile time yet usually removes a few percent of nodes. When the median
-// removal fraction of the last few contractions is tiny, the next few
-// contract-only merges skip it. Full minimize (with prune) always runs.
-/// Size of the ring buffer used to smooth removal-rate noise.
+/// How many recent contractions the throttle's median is taken over; even,
+/// so the median is the mean of the middle two.
 const CONTRACT_HISTORY_SIZE: usize = 4;
-/// Median removal-fraction threshold. Below this, contract is throttled.
-/// 0.005 = 0.5% of nodes removed per call.
-const CONTRACT_THRESHOLD_PCT: f64 = 0.005;
-/// Number of contract-only merges to skip after the throttle triggers.
+const _: () = assert!(CONTRACT_HISTORY_SIZE.is_multiple_of(2));
+/// The median fraction of nodes removed below which contraction is
+/// throttled.
+const CONTRACT_MIN_REMOVAL_FRACTION: f64 = 0.005;
+/// How many contractions a throttle skips.
 const CONTRACT_SKIP_COUNT: usize = 4;
 
 /// What the gate decided this call. Each variant maps onto a minimize variant.
@@ -88,15 +82,8 @@ enum MinimizeAction {
 }
 
 /// The adaptive-minimize gate a bottom-up pass carries from merge to merge.
-///
-/// Decides when to run full minimize
-/// (prune + twin contraction) vs. lightweight variants. Uses
-/// `size_threshold` and `last_prune_nodes` to skip expensive passes when
-/// the TDD isn't growing much between merges. A fresh state (all zero) starts
-/// with `size_threshold == 0`, so the size trigger fires on the first
-/// minimize; it then self-anchors from the post-minimize size.
 #[derive(Default)]
-pub(crate) struct CompileState {
+pub(crate) struct MinimizeGate {
     /// When `node_count` exceeds this, the expensive tier is eligible. Reset
     /// after each full minimize to `post_size * MIN_SIZE_MULT`.
     size_threshold: usize,
@@ -109,31 +96,26 @@ pub(crate) struct CompileState {
     /// `Tdd::retired_marginal_slots()` snapshot paired with `last_prune_nodes`.
     last_prune_retired: usize,
 
-    /// Contract-effectiveness throttle state.
-    /// Ring buffer of the last `CONTRACT_HISTORY_SIZE` contract removal
-    /// fractions (removed / pre_nodes). When the median drops below
-    /// `CONTRACT_THRESHOLD_PCT`, we skip `minimize_contract_only` on the next
-    /// `CONTRACT_SKIP_COUNT` merges (since contract is spending instructions
-    /// for near-zero gain). A prune event resets the skip counter so the
-    /// next merge always runs contract: fresh prunes can expose new twins.
+    /// The fractions of nodes the last `CONTRACT_HISTORY_SIZE` contractions
+    /// removed, a ring written at `contract_history_cursor`.
     contract_history: [f64; CONTRACT_HISTORY_SIZE],
-    contract_history_len: usize,
+    /// Whether every slot of `contract_history` holds a sample taken since
+    /// the throttle was last rearmed.
+    contract_history_full: bool,
     contract_history_cursor: usize,
+    /// How many more contractions the throttle skips.
     contract_skip_remaining: usize,
 
-    /// Content-twin scan schedule, handed to the full-minimize branch in
-    /// `adaptive_minimize`. Lives on the state because `result` is a fresh `Tdd`
-    /// every clause, so per-`Tdd` state would silently reset to "always scan"
-    /// (= eager) each merge.
-    c2_probe: ContentTwinSchedule,
+    /// The content-twin scan schedule of the full reduction. It lives on the
+    /// gate because each merge's result is a fresh diagram.
+    content_twin_schedule: ContentTwinSchedule,
     /// Whether the full minimize skips the content-twin scan, as a recovery
     /// cofactor's compile does.
     pub(crate) skip_content_twins: bool,
 }
 
-impl CompileState {
-    /// The gate decision, pure: prune when the diagram has grown since the last
-    /// prune, contract when it is over the size threshold.
+impl MinimizeGate {
+    /// The gate's decision; [`MinimizeAction`] says when each is taken.
     ///
     /// `pre_nodes` is `node_count()` before this minimize; `cur_retired` is
     /// `Tdd::retired_marginal_slots()` at the same instant (the slot-collection offset).
@@ -179,42 +161,40 @@ impl CompileState {
         self.contract_history[self.contract_history_cursor] = fraction;
         self.contract_history_cursor =
             (self.contract_history_cursor + 1) % CONTRACT_HISTORY_SIZE;
-        if self.contract_history_len < CONTRACT_HISTORY_SIZE {
-            self.contract_history_len += 1;
+        if self.contract_history_cursor == 0 {
+            self.contract_history_full = true;
         }
     }
 
-    /// Forget recent contract-effectiveness samples and let the next merge
-    /// run a contract pass. Called right after a prune, since prune may have
-    /// uncovered fresh twins that contract would now find.
+    /// Forget the recent removal fractions and let the next merge contract.
+    /// Called after a full reduction, whose prune may have uncovered twins.
     fn rearm_contract_throttle(&mut self) {
         self.contract_skip_remaining = 0;
-        self.contract_history_len = 0;
+        self.contract_history_full = false;
         self.contract_history_cursor = 0;
     }
 
-    /// Median of the ring buffer (only over populated slots).
-    /// Returns `None` before the buffer is full — the throttle is off until
-    /// we have enough samples to be confident contract is unproductive.
+    /// The median of the recent removal fractions, or `None` until the ring
+    /// is full: the throttle stays off until then.
     fn contract_removal_median(&self) -> Option<f64> {
-        if self.contract_history_len < CONTRACT_HISTORY_SIZE {
+        if !self.contract_history_full {
             return None;
         }
         let mut xs = self.contract_history;
-        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        let n = xs.len();
-        Some(if n % 2 == 1 { xs[n / 2] } else { 0.5 * (xs[n / 2 - 1] + xs[n / 2]) })
+        xs.sort_by(f64::total_cmp);
+        let mid = CONTRACT_HISTORY_SIZE / 2;
+        Some(0.5 * (xs[mid - 1] + xs[mid]))
     }
 
-    /// Decide whether to skip this contract-only call, consuming one slot
-    /// of the skip budget if we do. Called only on the contract-only branch
-    /// of `adaptive_minimize` (sub-threshold, no prune).
+    /// Whether to skip this contraction, consuming one slot of the skip
+    /// budget if so. Called only for
+    /// [`MinimizeAction::ContractUnlessThrottled`].
     fn try_skip_contract(&mut self) -> bool {
         if self.contract_skip_remaining > 0 {
             self.contract_skip_remaining -= 1;
             return true;
         }
-        if let Some(median) = self.contract_removal_median() && median < CONTRACT_THRESHOLD_PCT {
+        if let Some(median) = self.contract_removal_median() && median < CONTRACT_MIN_REMOVAL_FRACTION {
             // Consume one slot immediately; the rest applies to future merges.
             self.contract_skip_remaining = CONTRACT_SKIP_COUNT - 1;
             return true;
@@ -222,39 +202,17 @@ impl CompileState {
         false
     }
 
-    /// Choose and apply the appropriate minimize variant based on TDD growth.
-    ///
-    /// Balances canonicality (expensive) vs. speed (cheap):
-    ///
-    /// ```text
-    ///                     ┌── prune needed → full minimize (prune + contract)
-    ///   Above threshold ──┤
-    ///                     └── recently pruned → contract only
-    ///                     [then reset threshold to post_size × multiplier]
-    ///
-    ///                     ┌── prune needed → prune only (skip contract)
-    ///   Below threshold ──┤
-    ///                     └── recently pruned → contract, unless throttled
-    /// ```
-    ///
-    /// Key insight: twin contraction is the most expensive phase. Below
-    /// the threshold, prune alone keeps the TDD clean enough for
-    /// subsequent merges without paying the contraction cost.
+    /// Run the reduction the gate decides on for `result`, and re-anchor the
+    /// gate on what it leaves.
     pub(crate) fn adaptive_minimize(
         &mut self, eng: &Engine, result: &mut Tdd,
     ) -> Result<(), OperationError> {
-        // Snapshot of the current retired total. Used for the threshold-offset
-        // gating in `decide`: each comparison adds the slots retired since the
-        // stored baseline's snapshot to `node_count()` so that slot-pruning
-        // does not deflate the gate metric and delay triggers.
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
 
-        // The prune-growth + size-threshold formulas live in `decide`; the
-        // contract throttle layers on the arm bodies below.
         match self.decide(cur_nodes, cur_retired) {
             MinimizeAction::Full => {
-                eng.reduce(result, full_reduction(self.skip_content_twins, Some(&mut self.c2_probe)))?;
+                eng.reduce(result, full_reduction(self.skip_content_twins, Some(&mut self.content_twin_schedule)))?;
                 self.record_full(
                     result.node_count(),
                     result.retired_marginal_slots(),
@@ -262,9 +220,6 @@ impl CompileState {
                 self.rearm_contract_throttle();
             }
             MinimizeAction::ContractOnly => {
-                // Above threshold + no prune: contract is how we keep canonical
-                // form, so we always run it (and record its effectiveness), then
-                // re-anchor the threshold (prune baseline is untouched).
                 self.run_contract_and_record(eng, result, cur_nodes)?;
                 self.record_threshold(
                     result.node_count(),
@@ -274,24 +229,20 @@ impl CompileState {
             MinimizeAction::PruneOnly => {
                 minimize_prune_only(eng, result)?;
                 self.record_prune(result.node_count(), result.retired_marginal_slots());
-                // Don't rearm contract throttle here: prune removes dead nodes only,
-                // not twins, so the effectiveness history is still valid.
-                // Rearming on every sub-threshold prune would cause contract to run
-                // unconditionally after each prune event (throttle needs `CONTRACT_HISTORY_SIZE`
-                // samples before it can suppress), defeating throttle at small triggers.
+                // The throttle is not rearmed: a prune alone removes dead
+                // nodes, not twins, so the removal fractions still hold.
             }
             MinimizeAction::ContractUnlessThrottled => {
                 if !self.try_skip_contract() {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
                 }
-                // else: skipped contract entirely — cheap no-op this merge.
             }
         }
         Ok(())
     }
 
-    /// Run contract-only minimize (twin contraction) and push the removal fraction
-    /// onto the history ring. Used on every merge where we decide to contract.
+    /// Run twin contraction alone and record the fraction of nodes it
+    /// removed.
     fn run_contract_and_record(
         &mut self, eng: &Engine, result: &mut Tdd,
         pre_nodes: usize,

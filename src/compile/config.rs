@@ -5,10 +5,8 @@
 /// Clauses per batch.
 pub(crate) const BATCH_SIZE: usize = 32;
 
-/// Size-triggered minimize multiplier. After full minimize, the threshold is
-/// set to `multiplier * post_size`. Subsequent merges that stay below threshold
-/// get only prune (skip twin contraction). A lower value makes a full minimize
-/// fire sooner.
+/// After a full minimize, the size threshold is this multiple of the
+/// diagram's node count.
 pub(crate) const MIN_SIZE_MULT: f64 = 1.1;
 
 /// Width cap for a single batch TDD once the accumulator is wider than

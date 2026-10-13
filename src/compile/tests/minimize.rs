@@ -11,13 +11,13 @@ fn recovery_skips_content_twins_even_with_an_adaptive_probe() {
 
 /// Gate state anchored at a post-minimize size of 1000 nodes (threshold
 /// 1100 at the production 1.1× multiplier), already pruned at 1000.
-fn anchored() -> CompileState {
-    CompileState {
+fn anchored() -> MinimizeGate {
+    MinimizeGate {
         size_threshold: 1100,
         size_threshold_retired: 0,
         last_prune_nodes: 1000,
         last_prune_retired: 0,
-        ..CompileState::default()
+        ..MinimizeGate::default()
     }
 }
 
@@ -30,7 +30,7 @@ fn expensive_tier_is_due_over_the_threshold() {
     assert_eq!(g.decide(1100, 0), MinimizeAction::PruneOnly);
     assert_eq!(g.decide(1091, 10), MinimizeAction::Full);
     // Over a lower threshold without growth since the last prune.
-    assert_eq!(CompileState { size_threshold: 900, ..anchored() }.decide(1000, 0), MinimizeAction::ContractOnly);
+    assert_eq!(MinimizeGate { size_threshold: 900, ..anchored() }.decide(1000, 0), MinimizeAction::ContractOnly);
 }
 
 /// Prune re-fires on growth since the last prune, at any threshold.

@@ -15,7 +15,7 @@ use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use super::{Compiled, GiveUp};
 use crate::budget::deadline_passed;
 use super::config::MARGINAL_CLUSTER_BOUND_FACTOR;
-use super::minimize::CompileState;
+use super::minimize::MinimizeGate;
 use super::component::{CompileJob, check_vtree};
 use super::scope::group_clauses_by_scope;
 use super::schedule::marginalize_schedule;
@@ -49,7 +49,7 @@ pub(crate) struct StepContext<'a> {
 #[derive(Default)]
 pub(crate) struct PassState {
     /// The adaptive-minimize gate.
-    pub(crate) minimize: CompileState,
+    pub(crate) minimize: MinimizeGate,
     /// The projected variables ∃-forgotten so far, in the pass's numbering.
     /// Each is forgotten once: at the step its leaf is scheduled at, or at the
     /// root.

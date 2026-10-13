@@ -15,7 +15,7 @@ use tididi::Engine;
 use tididi::{Literal, OperationError};
 use tididi::diagram::Tdd;
 use tididi::vtree::{Vtree, VtreeIdx};
-use super::minimize::{CompileState, minimize_contract_only};
+use super::minimize::{MinimizeGate, minimize_contract_only};
 use super::config::{BATCH_SIZE, BATCH_WIDTH_LIMIT, UNCAPPED_ACC_WIDTH};
 use super::marginalize::summable;
 use super::schedule::step_completions;
@@ -30,7 +30,7 @@ use crate::budget::deadline_passed;
 /// Within a batch, clauses are conjoined one by one with
 /// [`Engine::and_clause`], each followed by twin contraction alone. Between
 /// batches, the batch is merged into the accumulator and
-/// [`CompileState::adaptive_minimize`] picks the reduction to run.
+/// [`MinimizeGate::adaptive_minimize`] picks the reduction to run.
 ///
 /// Checks `ctx.job.deadline` before each batch and returns
 /// `OperationError::Stopped` once it has passed; returns early once the
@@ -127,7 +127,7 @@ fn merge_batch(
     local: Option<Tdd>,
     first_clause: &[Literal],
     acc: &mut Option<Tdd>,
-    state: &mut CompileState,
+    state: &mut MinimizeGate,
     merge_targets: Option<&[VtreeIdx]>,
 ) -> Result<bool, OperationError> {
     let acc_in = acc.take();
@@ -286,13 +286,13 @@ fn batch_width_cap(acc_width: usize) -> usize {
 // ── `merge_batch_into_acc` ────────────────────────────────────────────────────
 
 /// Merge a batch TDD into the accumulator, marginalizing `marginalize_targets`
-/// inside the conjunction, then let [`CompileState::adaptive_minimize`] pick
+/// inside the conjunction, then let [`MinimizeGate::adaptive_minimize`] pick
 /// the minimize to run. An apply error aborts the pass.
 fn merge_batch_into_acc(
     eng: &Engine,
     acc: Option<Tdd>,
     batch: Tdd,
-    state: &mut CompileState,
+    state: &mut MinimizeGate,
     marginalize_targets: Option<&[VtreeIdx]>,
 ) -> Result<Tdd, OperationError> {
     let Some(a) = acc else {
@@ -320,14 +320,14 @@ fn merge_batch_into_acc(
 // ── `merge_clause_into_acc` ───────────────────────────────────────────────────
 
 /// Merge a one-clause batch: conjoin `clause` into `acc` with
-/// [`Engine::and_clause`], let [`CompileState::adaptive_minimize`] reduce,
+/// [`Engine::and_clause`], let [`MinimizeGate::adaptive_minimize`] reduce,
 /// then marginalize `marginalize_targets` (a batch merge marginalizes inside
 /// its conjunction, before reducing).
 fn merge_clause_into_acc(
     eng: &Engine,
     acc: Tdd,
     clause: &[Literal],
-    state: &mut CompileState,
+    state: &mut MinimizeGate,
     marginalize_targets: Option<&[VtreeIdx]>,
 ) -> Result<Tdd, OperationError> {
     let mut result = eng.and_clause(acc, clause)?;
