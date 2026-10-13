@@ -7,13 +7,18 @@
 //! free variables are then grafted on above the root. This reconstructs the
 //! function itself, so no count lift is owed after expansion.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use tididi::diagram::*;
-use tididi::{Engine, OperationError};
+use tididi::diagram::{
+    ChildPair, ChildRef, EncodedChildRef, Literal, NodeIdx, Tdd, TddBuilder, TddLevel, TddNodeId, LEAF_WIDTH,
+    NEG_LEAF_IDX, ONE_LEAF_IDX, POS_LEAF_IDX, ZERO,
+};
 use tididi::restructure::GraftError;
-use super::record::OriginalExpansion;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
+use tididi::{Engine, OperationError};
+
+use super::record::OriginalExpansion;
 
 /// Expand one reduced TDD into the original variables: rebuild it over the
 /// vtree it ends on with every leaf replaced by its class, which the compile
@@ -120,16 +125,16 @@ fn expand_tdd_classes(
     // Only materialize leaf mimics that are referenced from above. Besides
     // keeping the no-unreachable-nodes invariant, this handles a reduced TDD
     // whose output is itself a leaf without padding its new class root.
-    let mut leaf_used = std::collections::HashMap::<VtreeIdx, [bool; 3]>::new();
+    let mut leaf_used = HashMap::<VtreeIdx, [bool; LEAF_WIDTH]>::new();
     for (reduced_idx, reduced_var) in reduced_vtree.leaf_bottomup() {
         let class = &expansion.classes[reduced_var.idx()];
         if class.len() > 1 || !class[0].1 {
-            leaf_used.insert(reduced_idx, [false; 3]);
+            leaf_used.insert(reduced_idx, [false; LEAF_WIDTH]);
         }
     }
     if let Some(used) = leaf_used.get_mut(&tdd.output().vtree) {
         let local = tdd.output().local.idx();
-        if local < 3 {
+        if local < LEAF_WIDTH {
             used[local] = true;
         }
     }
@@ -148,14 +153,14 @@ fn expand_tdd_classes(
         }
     }
 
-    let mut leaf_remap = std::collections::HashMap::<VtreeIdx, [Option<NodeIdx>; 3]>::new();
+    let mut leaf_remap = HashMap::<VtreeIdx, [Option<NodeIdx>; LEAF_WIDTH]>::new();
     for (reduced_idx, reduced_var) in reduced_vtree.leaf_bottomup() {
         if let Some(&used) = leaf_used.get(&reduced_idx) {
             // The reduced leaf becomes its signed original-variable class, the
             // leaves under its expanded index. Only the positions referenced
             // from above, which `used` marks, are built; the rest remap to
             // `None` and appear in no parent pair ref.
-            let same_polarity: std::collections::HashMap<VarId, bool> =
+            let same_polarity: HashMap<VarId, bool> =
                 expansion.classes[reduced_var.idx()].iter().copied().collect();
             let remap = build_subtree_internal_levels(
                 eng,
@@ -180,7 +185,7 @@ fn expand_tdd_classes(
         } else {
             // A reference into a class leaf goes to the mimic built for it;
             // zero and references into other levels are kept.
-            let remap = |child: VtreeIdx, map: Option<&[Option<NodeIdx>; 3]>, side: EncodedChildRef| {
+            let remap = |child: VtreeIdx, map: Option<&[Option<NodeIdx>; LEAF_WIDTH]>, side: EncodedChildRef| {
                 match map {
                     Some(map) if side != ZERO.into() => map[structural_leaf_index(tdd.level(child), side)]
                         .expect("referenced class mimic was not built")
@@ -251,8 +256,8 @@ fn build_vtree_idx_map(reduced_vtree: &Vtree, expanded_vtree: &Vtree) -> Vec<Vtr
     map
 }
 
-/// Recursively build internal levels for an equivalence subtree, building only
-/// the mimics indicated by `needed`.
+/// Build the internal levels of a class subtree, building only the mimics
+/// `needed` marks.
 ///
 /// `needed` and the returned remap are both indexed by the leaf encoding's
 /// implicit `{One=0, Pos=1, Neg=2}` positions. The remap holds the new local
@@ -272,10 +277,10 @@ fn build_subtree_internal_levels(
     eng: &Engine,
     vtree: &Vtree,
     node: VtreeIdx,
-    same_polarity: &std::collections::HashMap<VarId, bool>,
-    needed: [bool; 3],
+    same_polarity: &HashMap<VarId, bool>,
+    needed: [bool; LEAF_WIDTH],
     out: &mut TddBuilder,
-) -> Result<[Option<NodeIdx>; 3], OperationError> {
+) -> Result<[Option<NodeIdx>; LEAF_WIDTH], OperationError> {
     // Iterative post-order with a Begin/Combine work stack and a parallel
     // results stack. A recursive form overflows the default 8 MiB call stack on
     // linear-shaped vtrees with ≥10⁵ vars (one frame per spine level), and a
@@ -284,8 +289,8 @@ fn build_subtree_internal_levels(
     // memory, so depth is unbounded and there is no per-call O(vtree)
     // allocation.
     enum Frame {
-        Begin(VtreeIdx, [bool; 3]),
-        Combine(VtreeIdx, [bool; 3]),
+        Begin(VtreeIdx, [bool; LEAF_WIDTH]),
+        Combine(VtreeIdx, [bool; LEAF_WIDTH]),
     }
     // The remap and `needed` slots: the leaf encoding's implicit indices.
     const ONE: usize = 0;
@@ -293,7 +298,7 @@ fn build_subtree_internal_levels(
     const NEG: usize = 2;
 
     let mut work: Vec<Frame> = vec![Frame::Begin(node, needed)];
-    let mut results: Vec<[Option<NodeIdx>; 3]> = Vec::new();
+    let mut results: Vec<[Option<NodeIdx>; LEAF_WIDTH]> = Vec::new();
 
     while let Some(frame) = work.pop() {
         match frame {
@@ -310,8 +315,6 @@ fn build_subtree_internal_levels(
                     results.push([Some(ONE_LEAF_IDX), Some(pos), Some(neg)]);
                     continue;
                 }
-                // Pos and One both require child Pos; Neg and One both require
-                // child Neg. One is never needed at a child (subsumed by Pos+Neg).
                 let child_needed = [false, needed[POS] || needed[ONE], needed[NEG] || needed[ONE]];
                 let (left, right) = vtree.children(idx);
                 // Push Combine first so it runs after both children. Then push
@@ -325,7 +328,7 @@ fn build_subtree_internal_levels(
                 let r_remap = results.pop().expect("missing right-child remap");
                 let l_remap = results.pop().expect("missing left-child remap");
 
-                let mut self_remap = [None; 3];
+                let mut self_remap = [None; LEAF_WIDTH];
 
                 if needed[POS] {
                     let pair = ChildPair::new(l_remap[POS].expect("Pos requires child Pos"), r_remap[POS].expect("Pos requires child Pos"));
