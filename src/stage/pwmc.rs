@@ -493,7 +493,7 @@ fn symmetric_subsumption(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Tra
     // falls through to the monolithic compile.
     let t_stream = Instant::now();
     let streamed = {
-        let components = crate::vtree::split_components(work, &run.config.vtree_spec);
+        let components = crate::vtree::split_components(work, run.config.vtree_spec());
         super::count_streaming(run, work, &components, Some(&forget))
     };
     if let Some((pmc_present, _peak)) = streamed {

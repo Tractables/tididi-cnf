@@ -7,9 +7,9 @@
 //! from the limits, the settings and vitri's environment settings by
 //! `Config::new`; [`crate::vtree::VtreeOptions`] is the per-request half of it
 //! that travels with one vtree construction. Nothing here reads argv, the
-//! environment or a file. `cli` fills the command line's, `frontend::request`
-//! reads vitri's settings, and `driver`, `compile`, `vtree`, `frontend` and
-//! `output` read them.
+//! environment or a file: `cli` fills `Limits` and `Settings` from the command
+//! line, `frontend::request` reads vitri's environment settings, and the
+//! stages read the resulting `Config`.
 
 /// The `--preprocess` level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -151,13 +151,12 @@ impl Settings {
 /// from the instance, and what the run's vtree constructions share,
 /// `portfolio_history` and `vtree_time`.
 pub(crate) struct Config {
-    /// The vtree the run compiles on: `--vtree`, or `portfolio` without it.
-    pub(crate) vtree_spec: String,
-    /// Whether `--vtree` was on the command line. Without it the model and
-    /// weighted counts run their cascades; with it the model count compiles on
-    /// `vtree_spec` directly and the weighted count refuses the flag.
-    pub(crate) vtree_explicit: bool,
-    /// One caller-owned portfolio history for this retry cascade.
+    /// `--vtree`, when the caller gave it. Without it the model and weighted
+    /// counts run their cascades; with it the model count compiles on it
+    /// directly and the weighted count refuses it.
+    pub(crate) vtree: Option<String>,
+    /// The portfolio's record of the vtrees it has built, shared by every
+    /// vtree request of the run.
     pub(crate) portfolio_history: vitri::decompose::PortfolioBuildHistory,
     /// The time the run's vtree constructions take, which every stage that
     /// builds one adds to and the record reports as `vtree_ms`.
@@ -169,6 +168,7 @@ pub(crate) struct Config {
     /// Whether the parent cascade should retry a coloring-like input with
     /// Vitri's SBVA policy forced off after the primary compile fails.
     pub(crate) no_sbva_retry_armed: bool,
+    /// Whether the frontend simplifies the formula before the compile.
     pub(crate) preprocess_level: PreprocessLevel,
     /// What the run answers, as `driver::parse_input` resolves it from the
     /// mode the caller named and the instance header through
@@ -190,14 +190,13 @@ pub(crate) struct Config {
 
 impl Config {
     /// The record a run starts from: `limits`, `settings` and vitri's
-    /// settings as the caller gave them, the vtree spec defaulting to
-    /// `portfolio` and the preprocessing to [`PreprocessLevel::Full`]. The
+    /// settings as the caller gave them, the preprocessing defaulting to
+    /// [`PreprocessLevel::Full`]. The
     /// mode is resolved once the instance is read, so it holds
     /// [`Mode::Compile`] until then.
     pub(crate) fn new(limits: &Limits, settings: &Settings, vitri: vitri::RunConfig) -> Config {
         Config {
-            vtree_explicit: settings.vtree.is_some(),
-            vtree_spec: settings.vtree.clone().unwrap_or_else(|| "portfolio".to_owned()),
+            vtree: settings.vtree.clone(),
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             vtree_time: crate::budget::VtreeTime::default(),
             source_structure_profile: None,
@@ -208,6 +207,11 @@ impl Config {
             sat_prune: settings.sat_prune.unwrap_or(true),
             vitri,
         }
+    }
+
+    /// The vtree the run compiles on: `--vtree`, or `portfolio` without it.
+    pub(crate) fn vtree_spec(&self) -> &str {
+        self.vtree.as_deref().unwrap_or("portfolio")
     }
 }
 

@@ -238,7 +238,7 @@ pub(crate) fn open_record(config: &Config, formula: &vitri::cnf::CnfFormula) -> 
         mode: Some(config.mode.token()),
         variables: Some(formula.num_vars()),
         clauses: Some(formula.clauses().len() as u64),
-        vtree_spec: Some(config.vtree_spec.clone()),
+        vtree_spec: Some(config.vtree_spec().to_owned()),
         sat_prune_switch: (!config.sat_prune).then_some("off"),
         ..Stats::default()
     }

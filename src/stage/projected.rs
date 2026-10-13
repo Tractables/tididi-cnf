@@ -199,7 +199,7 @@ pub(super) fn pmc_vtree(
     count_vtree(
         run,
         work,
-        &run.config.vtree_spec,
+        run.config.vtree_spec(),
         &ctx.with_deadline(crate::budget::vtree_deadline(run.deadline))
             .with_run_policy(run.config),
         show,

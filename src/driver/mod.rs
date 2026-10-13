@@ -37,7 +37,7 @@ fn arm_no_sbva_retry(
 ) {
     // The retry is a stage of the model count's cascade, which an explicit
     // `--vtree` skips.
-    let reachable = config.mode == Mode::Mc && !config.vtree_explicit;
+    let reachable = config.mode == Mode::Mc && config.vtree.is_none();
     if !reachable || !profile.coloring_like {
         return;
     }
@@ -92,8 +92,8 @@ fn parse_input(
     // Validate an explicit spec here, the one point every compile path passes
     // through: some paths never construct a vtree from it and would otherwise
     // ignore a bad one.
-    if config.vtree_explicit {
-        crate::vtree::validate_vtree_spec(&config.vtree_spec)?;
+    if let Some(spec) = &config.vtree {
+        crate::vtree::validate_vtree_spec(spec)?;
     }
 
     // The time limit is the total wall from this point.
@@ -137,7 +137,7 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             let built = built.bind(eng);
             let compile_vtree = built.root;
             let component_vtrees = built.components;
-            eprintln!("[vtree] {}", config.vtree_spec);
+            eprintln!("[vtree] {}", config.vtree_spec());
             eprintln!("[compile] start");
             let clock = crate::budget::CompileClock::start(&config.vtree_time);
             let plan = ComponentPlan::from_components(component_vtrees.as_deref());
@@ -277,7 +277,7 @@ fn solve_on(
             }
             Mode::Wmc => record_wmc(stats, config, run_wmc_count(run, &formula, meta.declared_weights())?),
             // An explicit `--vtree` compiles on that vtree, without the cascade.
-            Mode::Mc if config.vtree_explicit => record_mc(stats, config, run_mc_streaming(run, &formula)?),
+            Mode::Mc if config.vtree.is_some() => record_mc(stats, config, run_mc_streaming(run, &formula)?),
             Mode::Mc => record_mc(stats, config, run_mc_count(run, &formula)?),
             Mode::Compile => record_compile(stats, config, run_function_compile(run, &formula)?),
         })

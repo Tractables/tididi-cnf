@@ -68,7 +68,7 @@ fn front_end_with_simplify_off_leaves_no_inert_knob() {
 #[test]
 fn front_end_for_compilation_uses_the_parents_vtree_spelling() {
     let parent = crate::config::Config {
-        vtree_spec: "portfolio".to_owned(),
+        vtree: Some("portfolio".to_owned()),
         ..parent()
     };
     let config = front_end_config(&parent, Mode::Compile, None, true);

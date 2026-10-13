@@ -97,8 +97,7 @@ pub(crate) fn rat_ratio(numerator: i64, denominator: i64) -> num_rational::BigRa
 /// forces a compile error here (single place to update).
 pub(crate) fn minimal_config() -> Config {
     Config {
-        vtree_spec: String::new(),
-        vtree_explicit: false,
+        vtree: None,
         portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
         vtree_time: crate::budget::VtreeTime::default(),
         source_structure_profile: None,

@@ -71,7 +71,7 @@ pub(crate) fn front_end_config(
     config.mode = Some(mode);
     config.stages.simplify = parent.preprocess_level == PreprocessLevel::Full;
     if mode == vitri::cnf::Mode::Compile {
-        config.vtree_spec = parent.vtree_spec.clone();
+        config.vtree_spec = parent.vtree_spec().to_owned();
     } else {
         config.vtree_spec = "portfolio".to_owned();
     }
