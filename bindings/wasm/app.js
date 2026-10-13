@@ -191,17 +191,21 @@ document.addEventListener("drop", (event) => {
 
 // ------------------------------------------------------------- settings
 
+// The time limit `text` sets, in milliseconds: 0 for none when it is empty,
+// or null when it is not a whole number the module takes, which is 1 or more
+// and fits in 32 bits.
+function timeLimit(text) {
+  if (text === "") return 0;
+  const ms = Number(text);
+  return Number.isInteger(ms) && ms >= 1 && ms <= 0xffffffff ? ms : null;
+}
+
 // The job for the worker: the mode token, or null for the one the formula
 // declares, and the time limit, 0 for none. Returns {job} or {error}.
 function buildJob() {
-  const limit = control.limit.value.trim();
-  let timeLimitMs = 0;
-  if (limit !== "" || control.limit.validity.badInput) {
-    timeLimitMs = Number(limit);
-    // The module takes the limit as a 32-bit unsigned number.
-    if (!Number.isInteger(timeLimitMs) || timeLimitMs < 1 || timeLimitMs > 0xffffffff) {
-      return { error: "The time limit is a whole number of milliseconds, 1 or more. Leave it empty for none." };
-    }
+  const timeLimitMs = control.limit.validity.badInput ? null : timeLimit(control.limit.value.trim());
+  if (timeLimitMs === null) {
+    return { error: "The time limit is a whole number of milliseconds, 1 or more. Leave it empty for none." };
   }
   return { job: { dimacs: inputText(), mode: control.task.value === "" ? null : control.task.value, timeLimitMs } };
 }
@@ -231,8 +235,9 @@ function readAddress() {
   const params = new URLSearchParams(location.search);
   const task = params.get("task");
   if (task !== null && [...control.task.options].some((item) => item.value === task)) control.task.value = task;
+  // A limit the settings would refuse is left out.
   const limit = params.get("limit");
-  if (limit !== null && /^\d{1,9}$/.test(limit)) control.limit.value = limit;
+  if (limit !== null && timeLimit(limit)) control.limit.value = limit;
   const example = EXAMPLES.findIndex(([key]) => key === params.get("example"));
   if (example >= 0) loadExample(example);
 }
