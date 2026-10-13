@@ -88,3 +88,13 @@ fn clauses_naming_no_variable_or_one_twice_are_refused() {
     assert_refused(formula_from_clauses(3, [[1]], None, &[(-4, rational(1, 2))]), "weight literal -4");
     assert_refused(formula_from_clauses(3, [[1]], None, &[(0, rational(1, 2))]), "weight literal 0");
 }
+
+/// Text that is not DIMACS, and an id above the declared count, are input
+/// errors in vitri's words.
+#[test]
+fn text_that_is_not_dimacs_is_refused() {
+    for text in ["p notcnf 2 1\n1 2 0\n", "1 2 0\n"] {
+        assert!(matches!(parse_dimacs(text.as_bytes()), Err(Error::Input(_))), "{text:?}");
+    }
+    assert_refused(parse_dimacs(&b"c t pmc\np cnf 3 1\nc p show 1 9 0\n1 2 0\n"[..]), "9");
+}
