@@ -221,6 +221,20 @@ pub fn all_vtree_shapes(num_vars: u32) -> Vec<(&'static str, Arc<Vtree>)> {
     VTREE_SHAPES.iter().map(|&name| (name, vtree_shape(name, num_vars))).collect()
 }
 
+/// `run()` under a stop on `eng` that cuts whatever it runs there once the
+/// engine's work clock has advanced `work` units: a step count, so the cut
+/// lands at the same point on every machine.
+pub fn cut_after<T>(eng: &tididi::Engine, work: u64, run: impl FnOnce() -> T) -> T {
+    use tididi::limits::{StopCallback, StopDecision};
+    let at = eng.limits().work_units() + work;
+    let _cut = eng.limits().edit(|config| {
+        config.with_stop_callback(Some(StopCallback::new(move |meters, _| {
+            if meters.work_units >= at { StopDecision::Stop } else { StopDecision::Continue }
+        })))
+    });
+    run()
+}
+
 /// N-queens: one queen per row and column, none sharing a diagonal;
 /// variable `n·r + c + 1` puts a queen on square `(r, c)`.
 pub fn queens_cnf(n: i32) -> (u32, Vec<Vec<i32>>) {

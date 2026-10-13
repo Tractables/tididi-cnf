@@ -1,13 +1,17 @@
 //! `compile_cnf` options at their edges, a deadline and a component split,
-//! supplied by the caller or built with the vtree; the empty clause; and the
-//! errors for a vtree or split that does not fit the formula.
+//! supplied by the caller or built with the vtree; a compile cut partway; the
+//! empty clause; and the errors for a vtree or split that does not fit the
+//! formula.
 
 mod common;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use num_bigint::BigUint;
+use num_rational::BigRational;
+use num_traits::One;
 use tididi::Engine;
+use tididi::diagram::{Arithmetic, LiteralWeights, RationalWeights};
 use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
 use tididi_bonsai::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
 use tididi_bonsai::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
@@ -46,24 +50,33 @@ fn a_passed_deadline_stops_the_compile() {
     }
 }
 
-/// A scheduled compile cut by its deadline gives up rather than panicking, for
-/// each output a caller runs under a deadline: the count, the projected count,
-/// and the projected function the PWMC fallback compiles. Eight queens takes far longer to compile than the few
-/// milliseconds the deadline leaves, so the cut lands somewhere inside the
-/// compile, between steps or inside an apply; wherever it lands, the compile
-/// gives up.
+/// A compile cut partway gives up rather than panicking, for every output.
+/// Each cut stops the compile halfway through the work a whole compile of
+/// eight queens takes for that output, inside an apply or between two.
 #[test]
-fn a_deadline_cut_gives_up_in_every_marginalizing_mode() {
+fn a_cut_compile_gives_up_for_every_output() {
     let eng = &Engine::new();
     let (num_vars, clauses) = common::queens_cnf(8);
     let formula = make_formula(num_vars, clauses);
     let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
     // The last row's squares are hidden and the rest are shown.
     let hidden: Vec<VarId> = (57..=64).map(VarId).collect();
-    for output in [Output::Count, Output::ProjectedCount(&hidden), Output::ProjectedFunction(&hidden)] {
-        let deadline = Some(Instant::now() + Duration::from_millis(2));
-        let opts = CompileOptions { output, deadline, ..CompileOptions::default() };
-        assert!(compile_cnf(eng, &formula, &vtree, opts).is_err(), "a deadline cut must give up");
+    let ones = vec![BigRational::one(); num_vars as usize];
+    let weights = RationalWeights::from_polarities(LiteralWeights { negative: ones.clone(), positive: ones })
+        .expect("both polarity columns cover every variable");
+    for (name, output) in [
+        ("Function", Output::Function),
+        ("Count", Output::Count),
+        ("WeightedCount", Output::WeightedCount { weights, arithmetic: Arithmetic::ExactRational }),
+        ("ProjectedCount", Output::ProjectedCount(&hidden)),
+        ("ProjectedFunction", Output::ProjectedFunction(&hidden)),
+    ] {
+        let options = || CompileOptions { output: output.clone(), ..CompileOptions::default() };
+        let start = eng.limits().work_units();
+        compile_cnf(eng, &formula, &vtree, options()).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let half = (eng.limits().work_units() - start) / 2;
+        let cut = common::cut_after(eng, half, || compile_cnf(eng, &formula, &vtree, options()));
+        assert!(matches!(cut, Err(GiveUp::Stopped)), "{name}: a cut halfway through the work must give up");
     }
 }
 
