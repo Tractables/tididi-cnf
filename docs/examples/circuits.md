@@ -12,18 +12,16 @@ Run the complete program with `cargo run --example circuits`.
 
 A circuit becomes a CNF formula by giving every gate output a variable and
 writing clauses that force it to equal the gate's function of its inputs.
-This is the Tseitin encoding. The formula is built from
-[`vitri`](crate::vitri)'s clause types rather than parsed from text. An AND
-gate takes three clauses; the XOR gate in the complete program takes four.
+This is the Tseitin encoding. The clauses are kept as DIMACS integers, `-v`
+for variable `v` negated, rather than written out as text. An AND gate takes
+three clauses; the XOR gate in the complete program takes four.
 
 ```rust,ignore,{class=tested-example}
 /// A gate output equal to `a ∧ b`.
 fn and(&mut self, a: u32, b: u32) -> u32 {
     let out = self.var();
     let (o, a, b) = (out as i32, a as i32, b as i32);
-    self.clause(&[-o, a]);
-    self.clause(&[-o, b]);
-    self.clause(&[o, -a, -b]);
+    self.clauses.extend([vec![-o, a], vec![-o, b], vec![o, -a, -b]]);
     out
 }
 ```
@@ -49,14 +47,15 @@ let p3 = circuit.and(a1b1, carry);
 ## Count inputs, then products
 
 Each input pair fixes every gate, so the formula's model count is the number
-of input pairs. [`count`](crate::count) takes the formula with an empty
-header and the task [`Mode::Mc`](crate::Mode::Mc):
+of input pairs. [`formula_from_clauses`](crate::formula_from_clauses) builds
+the formula from the clauses, and [`count`](crate::count) counts it as the
+task [`Mode::Mc`](crate::Mode::Mc):
 
 ```rust,ignore,{class=tested-example}
 let num_vars = circuit.num_vars;
-let formula = CnfFormula::new(num_vars, circuit.clauses)?;
 let limits = Limits::default();
-let answer = tididi_bonsai::count((formula.clone(), CnfMeta::default()), Some(Mode::Mc), &limits)?;
+let inputs = formula_from_clauses(num_vars, &circuit.clauses, None, &[])?;
+let answer = tididi_bonsai::count(inputs, Some(Mode::Mc), &limits)?;
 println!("Input pairs: {}", answer.count());
 ```
 
@@ -66,14 +65,13 @@ Output:
 Input pairs: 16
 ```
 
-The header's show set, the `c p show` line of a DIMACS file, names the
-product's bits. Projecting onto them counts each product once, however many
-input pairs give it:
+A show set, the `c p show` line of a DIMACS file, names the product's bits.
+Projecting onto them counts each product once, however many input pairs give
+it:
 
 ```rust,ignore,{class=tested-example}
-let product = ShowSet::from_dimacs_ids(&[p0, p1, p2, p3])?;
-let header = CnfMeta::from_parts(num_vars, None, Some(product), None)?;
-let answer = tididi_bonsai::count((formula, header), Some(Mode::Pmc), &limits)?;
+let products = formula_from_clauses(num_vars, &circuit.clauses, Some(&[p0, p1, p2, p3]), &[])?;
+let answer = tididi_bonsai::count(products, Some(Mode::Pmc), &limits)?;
 println!("Distinct products: {}", answer.count());
 ```
 
@@ -86,4 +84,4 @@ Distinct products: 7
 The products of numbers from 0 to 3 are 0, 1, 2, 3, 4, 6 and 9.
 
 The [complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/circuits.rs)
-has the XOR gate and the clause helper.
+has the XOR gate.

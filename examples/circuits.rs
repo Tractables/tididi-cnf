@@ -2,13 +2,11 @@
 //! model count over the circuit's clauses.
 //! Run with `cargo run --example circuits`.
 
-use tididi_bonsai::vitri::cnf::{Clause, CnfFormula, CnfMeta, Literal, ShowSet, VarId};
-use tididi_bonsai::{Limits, Mode};
-
-/// A circuit's clauses and its last variable.
+/// A circuit's clauses, as DIMACS literals (`-v` is variable `v` negated),
+/// and its last variable.
 #[derive(Default)]
 struct Circuit {
-    clauses: Vec<Clause>,
+    clauses: Vec<Vec<i32>>,
     num_vars: u32,
 }
 
@@ -19,19 +17,11 @@ impl Circuit {
         self.num_vars
     }
 
-    /// A clause over DIMACS literals: `-v` is variable `v` negated.
-    fn clause(&mut self, literals: &[i32]) {
-        let literal = |l: i32| Literal::new(VarId::from_dimacs(l), l > 0);
-        self.clauses.push(Clause::new(literals.iter().map(|&l| literal(l)).collect()));
-    }
-
     /// A gate output equal to `a ∧ b`.
     fn and(&mut self, a: u32, b: u32) -> u32 {
         let out = self.var();
         let (o, a, b) = (out as i32, a as i32, b as i32);
-        self.clause(&[-o, a]);
-        self.clause(&[-o, b]);
-        self.clause(&[o, -a, -b]);
+        self.clauses.extend([vec![-o, a], vec![-o, b], vec![o, -a, -b]]);
         out
     }
 
@@ -39,15 +29,14 @@ impl Circuit {
     fn xor(&mut self, a: u32, b: u32) -> u32 {
         let out = self.var();
         let (o, a, b) = (out as i32, a as i32, b as i32);
-        self.clause(&[-o, a, b]);
-        self.clause(&[-o, -a, -b]);
-        self.clause(&[o, -a, b]);
-        self.clause(&[o, a, -b]);
+        self.clauses.extend([vec![-o, a, b], vec![-o, -a, -b], vec![o, -a, b], vec![o, a, -b]]);
         out
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), tididi_bonsai::Error> {
+    use tididi_bonsai::{formula_from_clauses, Limits, Mode};
+
     let mut circuit = Circuit::default();
     let [a0, a1, b0, b1] = [(); 4].map(|_| circuit.var());
     let p0 = circuit.and(a0, b0);
@@ -60,14 +49,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let p3 = circuit.and(a1b1, carry);
 
     let num_vars = circuit.num_vars;
-    let formula = CnfFormula::new(num_vars, circuit.clauses)?;
     let limits = Limits::default();
-    let answer = tididi_bonsai::count((formula.clone(), CnfMeta::default()), Some(Mode::Mc), &limits)?;
+    let inputs = formula_from_clauses(num_vars, &circuit.clauses, None, &[])?;
+    let answer = tididi_bonsai::count(inputs, Some(Mode::Mc), &limits)?;
     println!("Input pairs: {}", answer.count());
 
-    let product = ShowSet::from_dimacs_ids(&[p0, p1, p2, p3])?;
-    let header = CnfMeta::from_parts(num_vars, None, Some(product), None)?;
-    let answer = tididi_bonsai::count((formula, header), Some(Mode::Pmc), &limits)?;
+    let products = formula_from_clauses(num_vars, &circuit.clauses, Some(&[p0, p1, p2, p3]), &[])?;
+    let answer = tididi_bonsai::count(products, Some(Mode::Pmc), &limits)?;
     println!("Distinct products: {}", answer.count());
     Ok(())
 }

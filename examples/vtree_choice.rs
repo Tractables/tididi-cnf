@@ -1,11 +1,11 @@
 //! Compile one formula on several vtrees and compare the circuits.
 //! Run with `cargo run --example vtree_choice`.
 
-use tididi_bonsai::compile::{compile_cnf, CompileOptions};
-use tididi_bonsai::parse_dimacs;
-use tididi_bonsai::vtree::{build_vtree, VtreeOptions};
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use tididi_bonsai::compile::{compile_cnf, CompileOptions};
+    use tididi_bonsai::parse_dimacs;
+    use tididi_bonsai::vtree::{build_vtree, VtreeOptions};
+
     // Two 12-bit registers x and y that hold the same nonzero value:
     // variable i is bit i of x and variable i + 12 the same bit of y.
     let bits = 12;
