@@ -1,6 +1,6 @@
-c Fuzzer-found NR overcount repro (#63 / #67 class).
-c emit-OFF oracle = 10, emit-ON+reexpand = 10, emit-ON+no-reexpand = 12 (overcount +2).
-c Found by fuzz_nr_model_count_invariance at n=8 m=12 thr=0 (set_marg_inline_max(0), all-slots regime).
+c Found by fuzzing a marginalizing compile that holds every count in a slot,
+c none inline: writing the marginal counts during the compile without
+c expanding them back counted 12 here. The model count is 10.
 p cnf 8 12
 -1 -4 -5 0
 -2 4 5 0
