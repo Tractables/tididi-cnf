@@ -85,7 +85,9 @@ tididi_bonsai_count_clauses(3, literals, 9, show, 2, weights, 3, "pwmc", 60000, 
 `tididi_bonsai_answer_count_f64` gives it as the nearest `double`.
 `include/tididi_bonsai.h` documents every function, including who owns each
 buffer and how calls from several threads behave. `examples/count.c` counts a
-file and prints the answer, and `examples/clauses.c` counts the formula above.
+file and prints the answer, `examples/count.cpp` does the same from C++ with
+the answer held by a `std::unique_ptr`, and `examples/clauses.c` counts the
+formula above.
 
 What a C program should know about a run:
 

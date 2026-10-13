@@ -13,7 +13,9 @@ SHELL := bash
 CARGO ?= cargo
 CBINDGEN ?= cbindgen
 CC ?= cc
+CXX ?= c++
 CFLAGS ?= -O2 -g
+CXXFLAGS ?= -O2 -g
 
 ROOT := ../..
 RELEASE := target/release
@@ -32,10 +34,11 @@ LINK_static := $(STATIC) $(STATIC_LIBS)
 
 WARNINGS := -Wall -Wextra -Werror
 KINDS := shared static
-EXAMPLES := count clauses
+EXAMPLES := count count-cpp clauses
 PROGRAMS := $(foreach kind,$(KINDS),$(foreach example,$(EXAMPLES),$(OUT)/$(example)-$(kind)) $(OUT)/conformance-$(kind))
 
-# What examples/count.c promises for this instance in its header comment.
+# What examples/count.c and examples/count.cpp promise for this instance in
+# their header comments.
 EXAMPLE_CNF := $(ROOT)/tests/data/queens5.cnf
 EXAMPLE_OUTPUT := mode: compile\nsatisfiable: yes\ncount: 10
 # What examples/clauses.c promises in its header comment.
@@ -61,6 +64,9 @@ $(SHARED) $(STATIC) $(TIDIDI): libs
 $(OUT)/count-%: examples/count.c include/tididi_bonsai.h $(SHARED) $(STATIC)
 	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) -Iinclude $< $(LINK_$*) -o $@
 
+$(OUT)/count-cpp-%: examples/count.cpp include/tididi_bonsai.h $(SHARED) $(STATIC)
+	$(CXX) -std=c++17 $(WARNINGS) $(CXXFLAGS) -Iinclude $< $(LINK_$*) -o $@
+
 $(OUT)/clauses-%: examples/clauses.c include/tididi_bonsai.h $(SHARED) $(STATIC)
 	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) -Iinclude $< $(LINK_$*) -o $@
 
@@ -71,8 +77,10 @@ $(OUT)/conformance-%: tests/conformance.c include/tididi_bonsai.h $(SHARED) $(ST
 # the examples' stdout and the test driver's failures are on stdout.
 check: $(PROGRAMS)
 	for kind in $(KINDS); do \
-	  diff <(printf '$(EXAMPLE_OUTPUT)\n') \
-	    <($(OUT)/count-$$kind $(EXAMPLE_CNF) 2> $(OUT)/count-$$kind.stderr); \
+	  for count in count count-cpp; do \
+	    diff <(printf '$(EXAMPLE_OUTPUT)\n') \
+	      <($(OUT)/$$count-$$kind $(EXAMPLE_CNF) 2> $(OUT)/$$count-$$kind.stderr); \
+	  done; \
 	  diff <(printf '$(CLAUSES_OUTPUT)\n') <($(OUT)/clauses-$$kind 2> $(OUT)/clauses-$$kind.stderr); \
 	  $(OUT)/conformance-$$kind $(TIDIDI) $(abspath $(ROOT)) 2> $(OUT)/conformance-$$kind.stderr; \
 	done
