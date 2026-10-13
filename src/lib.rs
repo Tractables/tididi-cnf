@@ -196,6 +196,11 @@ mod stage;
 #[path = "tests/support.rs"]
 pub(crate) mod test_support;
 
+/// One mebibyte, the unit memory limits are given in and the memory reports
+/// print in. Here rather than in `mem`, whose WebAssembly stand-in the reports
+/// build against too.
+const MIB: u64 = 1024 * 1024;
+
 /// The diagram library this crate compiles into: vtrees, diagrams, the engine
 /// and its queries.
 pub use tididi;

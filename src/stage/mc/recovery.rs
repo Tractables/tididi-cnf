@@ -76,6 +76,7 @@ use crate::budget::{clamped_to_deadline_ms, deadline_passed, not_past, resolve_s
 use crate::compile::CompileRun;
 use crate::formula::{most_frequent_var, with_unit};
 use crate::frontend::request::arjun_stage;
+use crate::MIB;
 use crate::mem::{mapped_bytes, purge_all_arenas, rlimit_as_bytes};
 use crate::output::AnsweredBy;
 use crate::stage::{Run, panic_payload_message};
@@ -418,8 +419,9 @@ fn check_arjun_accounting(
 ///
 /// Logs the recovery event to stderr, then
 /// [`release_failed_compile`](crate::compile::release_failed_compile) gives
-/// back the panicked parent's apply scratch and dirty pages, switching
-/// jemalloc to eager reclamation, before child compiles begin allocating.
+/// back the panicked parent's apply scratch and dirty pages before child
+/// compiles begin allocating; the decay setting stays with the pressure check
+/// in `crate::mem`.
 ///
 /// It logs the [`HeapStats`](crate::mem::HeapStats) (`allocated` / `mapped` / `retained`) before and
 /// after the purge, with the mallctl return code:
@@ -427,7 +429,6 @@ fn check_arjun_accounting(
 /// `allocated ≪ mapped + retained` means address space jemalloc holds, which
 /// the purge gives back (under `retain:false` purged extents are unmapped).
 fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula, depth: u32, what: &str) {
-    const MIB: u64 = 1024 * 1024;
     let mapped = mapped_bytes();
     let limit = rlimit_as_bytes();
     eprintln!(
@@ -444,7 +445,9 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
     // numbers) and shows the clean slate the children inherit (the after-
     // numbers); the `mapped + retained` sum alone is purge-invariant (see
     // mem.rs doc).
-    let crate::compile::Released { before, after, purged } = crate::compile::release_failed_compile(eng);
+    let released = crate::compile::release_failed_compile(eng);
+    let (held_before, held_after) = released.held_mib();
+    let crate::compile::Released { before, after, purged } = released;
     // The mallctl return code: "Ok" or the bare errno int.
     let rc = match purged {
         Ok(()) => "Ok".to_string(),
@@ -459,8 +462,8 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
         after.mapped / MIB,
         before.retained / MIB,
         after.retained / MIB,
-        (before.mapped + before.retained) / MIB,
-        (after.mapped + after.retained) / MIB,
+        held_before,
+        held_after,
     );
 }
 

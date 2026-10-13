@@ -186,8 +186,7 @@ fn compile_with_retry(
     // The failed compile's diagrams and vtrees are dropped; what it leaves on
     // the engine and in the allocator is given back the way the model count's
     // fallbacks do before they compile on the same engine.
-    let released = crate::compile::release_failed_compile(run.eng);
-    const MIB: u64 = 1024 * 1024;
+    let (held_before, held_after) = crate::compile::release_failed_compile(run.eng).held_mib();
     eprintln!(
         "[compile] bisect-retry: the compile on {} ran out of memory with {}; \
          compiling once more on {RETRY_VTREE_SPEC} (mapped+retained {} → {} MiB after the purge)",
@@ -196,8 +195,8 @@ fn compile_with_retry(
             || "no time limit".to_owned(),
             |deadline| format!("{}s left", deadline.saturating_duration_since(Instant::now()).as_secs()),
         ),
-        (released.before.mapped + released.before.retained) / MIB,
-        (released.after.mapped + released.after.retained) / MIB,
+        held_before,
+        held_after,
     );
     run.started_on.replace(Some(RETRY_VTREE_SPEC.to_owned()));
     compile_on_bisection(run, reduced).map(|compiled| (compiled, AnsweredBy::BisectRetry)).map_err(gave_up)

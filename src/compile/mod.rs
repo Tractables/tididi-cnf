@@ -209,6 +209,15 @@ pub(crate) struct Released {
     pub(crate) purged: Result<(), libc::c_int>,
 }
 
+impl Released {
+    /// The address space the allocator held, `mapped + retained`, before and
+    /// after the purge, in whole MiB: the pair every purge report prints.
+    pub(crate) fn held_mib(&self) -> (u64, u64) {
+        let held = |heap: &crate::mem::HeapStats| (heap.mapped + heap.retained) / crate::MIB;
+        (held(&self.before), held(&self.after))
+    }
+}
+
 /// Give back what a failed compile left behind, before the next compile
 /// starts on the same engine.
 ///

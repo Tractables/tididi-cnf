@@ -23,6 +23,8 @@ use tikv_jemalloc_ctl::stats::{allocated_mib, mapped_mib, retained_mib};
 
 use std::cell::Cell;
 
+use crate::MIB;
+
 /// jemalloc's `MALLCTL_ARENAS_ALL` sentinel, as `<jemalloc/jemalloc_macros.h>`
 /// defines it: used as the arena index of an `arena.<i>.purge` mallctl write,
 /// it applies the purge to every initialized arena.
@@ -101,7 +103,7 @@ thread_local! {
 }
 
 /// Tracked-growth bytes between real pressure reads (per thread).
-const LAZY_CHECK_STEP: u64 = 64 * 1024 * 1024;
+const LAZY_CHECK_STEP: u64 = 64 * MIB;
 
 /// Upper bound on consecutive request-0 heartbeat polls that may pass without
 /// a real pressure read, when no sized allocation request intervenes.
@@ -184,17 +186,17 @@ pub(crate) fn preflight_alloc_decay_check(request_bytes: u64) {
     if mapped.saturating_add(request_bytes) >= threshold {
         eprintln!(
             "[mem] mapped+retained {} MiB (+{} MiB pending) ≥ {}% of rlimit_as {} MiB — switching jemalloc to eager decay",
-            mapped / (1024 * 1024),
-            request_bytes / (1024 * 1024),
+            mapped / MIB,
+            request_bytes / MIB,
             (LAZY_FLIP_FRAC * 100.0) as u64,
-            limit / (1024 * 1024),
+            limit / MIB,
         );
         let reclaimed = reclaim_eagerly();
         eprintln!(
             "[mem] decay flip: {:?} mapped+retained {} → {} MiB",
             reclaimed,
-            mapped / (1024 * 1024),
-            mapped_bytes() / (1024 * 1024),
+            mapped / MIB,
+            mapped_bytes() / MIB,
         );
     }
 }
@@ -429,7 +431,7 @@ pub(crate) fn limit_address_space(mb: u64) -> Result<AddressSpaceLimit, crate::E
         return Ok(AddressSpaceLimit { previous: None });
     }
     let previous = getrlimit_as();
-    if !set_rlimit_as_bytes(mb.saturating_mul(1024 * 1024)) {
+    if !set_rlimit_as_bytes(mb.saturating_mul(MIB)) {
         eprintln!(
             "warning: memory limit of {} MiB: could not lower RLIMIT_AS (setrlimit \
              failed); memory-adaptive machinery may stay inert",
