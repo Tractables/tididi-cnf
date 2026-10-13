@@ -22,10 +22,11 @@ p cnf 6 4
 4 6 0
 ```
 
-- **`p cnf <variables> <clauses>`** is required, before the first clause.
-  Variables are numbered from 1 to `<variables>`, and a file that names a
-  higher one, in a clause, a show line or a weight line, is refused. The
-  clause count is not checked: extra clauses are read.
+- **`p cnf <variables> <clauses>`** is required in a file that has clauses,
+  and may come anywhere in it. Variables are numbered from 1 to
+  `<variables>`, and a file that names a higher one, in a clause, a show line
+  or a weight line, is refused. The clause count is not checked: extra
+  clauses are read.
 - **A clause** is a list of nonzero integers ended by `0`; `-3` is the
   negation of variable 3. A clause may span lines, and the last clause may
   omit its `0`. A literal that repeats is read once, and a clause that
@@ -35,6 +36,8 @@ p cnf 6 4
   unsatisfiable, and every mode answers 0.
 - **Lines starting with `c`** are comments, except the header lines below.
   Blank lines are skipped, and a line starting with `%` ends the file.
+- **A line starting with `w`, or whose first token has a decimal point,** is
+  skipped as another format's weight line.
 - **Every declared variable counts,** whether or not a clause mentions it
   ([`tasks.md`](tasks.md#the-five-modes)).
 

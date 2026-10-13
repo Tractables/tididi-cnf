@@ -120,9 +120,10 @@ prints no `tdd written to` line.
 `--save-tdd <file>` writes the compiled diagram to `<file>` in the tididi
 library's text format, and its vtree to `<file>.vtree` in the vtree text
 format. Only the compile mode builds a circuit whose count is the one
-reported, so the counting modes refuse the flag. The `.tdd` file names the
-vtree's nodes but does not describe the tree, so reading it back takes both
-files: parse the vtree, then read the circuit over it.
+reported, so the counting modes refuse the flag. The library reads a `.tdd`
+file over the vtree it was compiled on, `load_tdd(path, &vtree)`, and checks
+the file against that vtree, so reading the circuit back takes both files:
+parse the vtree, then read the circuit over it.
 
 ```rust
 use std::sync::Arc;
@@ -138,11 +139,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 This prints `22` for the circuit that
 [getting started](getting-started.md#compile-for-later-queries) saves; the
 test `save_tdd_reloads_through_the_library` in `tests/cli.rs` makes the same
-calls. The comment lines at
-the top of a `.tdd` file describe its records, and the library's `io` module
-documents the format. The circuit carries no weights: weigh it again in the
-library. The same module draws a circuit and its vtree for Graphviz
-(`tdd_to_dot`, `vtree_to_dot`); the binary has no flag for it.
+calls. The comment lines at the top of a `.tdd` file describe its records,
+and the library's `io` module documents the format. The circuit carries no
+weights: weigh it again in the library. The same module draws a circuit and
+its vtree for Graphviz (`tdd_to_dot`, `vtree_to_dot`); the binary has no flag
+for it.
 
 ## Exit status
 
@@ -159,8 +160,8 @@ library. The same module draws a circuit and its vtree for Graphviz
 
 Every failure ends with one message on stderr, after `error: `, that says
 what went wrong. A run refused before its mode starts, such as a command
-line the parser cannot read, writes no record. A `--stats` file that cannot be written fails a run
-that has already printed its answer, with status 1:
+line the parser cannot read, writes no record. A `--stats` file that cannot
+be written fails a run that has already printed its answer, with status 1:
 
 ```sh
 tididi --stats /nonexistent/dir/x.json tests/data/mcc_mc_sat.cnf

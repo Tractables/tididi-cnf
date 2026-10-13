@@ -167,7 +167,7 @@ which arithmetic.
 
 Without a `c t` line, `tididi` compiles the formula into a Tree Decision
 Diagram and prints its model count; `--save-tdd` writes the diagram to a
-file. Strip the comment lines from the first file to get the six rules alone,
+file. Strip the comment lines from the first file to get the four rules alone,
 and compile them:
 
 ```sh
