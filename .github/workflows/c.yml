@@ -1,9 +1,9 @@
 name: C bindings
 
-# Nightly, on demand, and on a pull request that changes these bindings or
-# what they compile: each run builds vitri's vendored C++ stack twice, for the
-# bindings and for the binary the tests compare against, which is more runner
-# time than every commit warrants.
+# Nightly, on demand, and on a pull request that changes these bindings, what
+# they compile or the instances their tests read: each run builds vitri's
+# vendored C++ stack twice, for the bindings and for the binary the tests
+# compare against, which is more runner time than every commit warrants.
 #
 # Linux x86_64 only, the platform the crate supports.
 on:
@@ -15,10 +15,11 @@ on:
       - "bindings/parity.txt"
       - ".github/workflows/c.yml"
       - "src/**"
+      - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
       - "tididi"
-      - "vendor/**"
+      - "vendor/vitri"
   workflow_dispatch:
 
 env:
@@ -34,7 +35,7 @@ jobs:
       run:
         working-directory: bindings/c
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - uses: ./.github/actions/install-prereqs
@@ -58,9 +59,9 @@ jobs:
       - name: Check the static link line
         run: make link-libs-check
 
-      # The example and the conformance tests, each linked once against the
+      # The examples and the conformance tests, each linked once against the
       # shared library and once against the static one.
-      - name: Build and run the example and tests
+      - name: Build and run the examples and tests
         run: make check
 
       - name: Test the bindings crate

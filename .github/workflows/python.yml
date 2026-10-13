@@ -3,8 +3,9 @@ name: Python
 # Builds the Python extension in bindings/python, installs the wheel in a
 # fresh virtual environment, and runs its tests there, comparing its counts
 # with the tididi binary's. Nightly, on demand, and on a pull request that
-# changes the bindings or what they compile; not on every commit, since the
-# job builds vitri's vendored C++ stack twice. Nothing is published.
+# changes the bindings, what they compile or the instances the tests read;
+# not on every commit, since the job builds vitri's vendored C++ stack twice.
+# Nothing is published.
 on:
   schedule:
     - cron: "0 10 * * *"
@@ -14,10 +15,11 @@ on:
       - "bindings/parity.txt"
       - ".github/workflows/python.yml"
       - "src/**"
+      - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
       - "tididi"
-      - "vendor/**"
+      - "vendor/vitri"
   workflow_dispatch:
 
 env:
@@ -30,7 +32,7 @@ jobs:
   wheel-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - uses: ./.github/actions/install-prereqs

@@ -1,29 +1,31 @@
 name: Web build
 
 # Builds the crate for wasm32-unknown-emscripten through bindings/wasm, runs the
-# module on the page's examples with node against the native binary, and
-# uploads the `tididi-bonsai-wasm` artifact: the directory bindings/wasm/site.sh
-# assembles, plus the GMP source tarball the side modules were built from.
+# module with node on the page's examples and the instances bindings/parity.txt
+# lists, against the native binary, and uploads the `tididi-bonsai-wasm`
+# artifact: the directory bindings/wasm/site.sh assembles, plus the GMP source
+# tarball the side modules were built from.
 # Nothing here publishes a page; the docs workflow calls this one and does.
 #
 # Not per push: the build compiles GMP, MPFR and vitri's vendored C++ stack
-# from source. Pull requests run it when they change the binding or what it
-# compiles against. The Emscripten side follows vitri's own web build
-# (vendor/vitri/.github/workflows/wasm.yml) and runs vitri's scripts for it.
+# from source. Pull requests run it when they change the binding, what it
+# compiles against or the instances it runs on. The Emscripten side follows
+# vitri's own web build (vendor/vitri/.github/workflows/wasm.yml) and runs
+# vitri's scripts for it.
 on:
   workflow_call:
   workflow_dispatch:
   pull_request:
     paths:
-      - bindings/wasm/**
-      - bindings/parity.txt
-      - .github/workflows/wasm.yml
-      - src/**
-      - tests/data/*.cnf
-      - Cargo.toml
-      - Cargo.lock
-      - tididi
-      - vendor/vitri
+      - "bindings/wasm/**"
+      - "bindings/parity.txt"
+      - ".github/workflows/wasm.yml"
+      - "src/**"
+      - "tests/data/*.cnf"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "tididi"
+      - "vendor/vitri"
 
 env:
   CARGO_TERM_COLOR: always
