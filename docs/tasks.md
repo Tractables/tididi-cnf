@@ -80,7 +80,8 @@ The run exits with status 2 and prints nothing on stdout.
 ## Flags each mode accepts
 
 A flag the mode would ignore is refused, with status 2 and a message that
-names the flag and what made the run that mode.
+names the flag and what made the run that mode. So is a flag given twice,
+whose second value would otherwise replace the first.
 
 | flag | `compile` | `mc` | `wmc` | `pmc` | `pwmc` |
 |---|---|---|---|---|---|

@@ -170,7 +170,16 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--time-limit-ms", "2s", TINY], &[], vec!["--time-limit-ms", "\"2s\""]),
         (2, vec!["--mem-limit-mb", "lots", TINY], &[], vec!["--mem-limit-mb", "\"lots\""]),
         (2, vec!["--mode", "count", TINY], &[], vec!["--mode", "\"count\"", "compile, mc, wmc, pmc, pwmc"]),
-        (2, vec!["--mode", "mc", "--mode", "wmc", TINY], &[], vec!["--mode wmc after --mode mc"]),
+        // A flag is read once, whether or not its values agree.
+        (2, vec!["--mode", "mc", "--mode", "wmc", TINY], &[], vec!["--mode is given twice"]),
+        (2, vec!["--mode", "mc", "--mode", "mc", TINY], &[], vec!["--mode is given twice"]),
+        (2, vec!["--vtree", "portfolio", "--vtree", "balanced", TINY], &[], vec!["--vtree is given twice"]),
+        (2, vec!["--preprocess", "none", "--preprocess", "full", TINY], &[], vec!["--preprocess is given twice"]),
+        (2, vec!["--output-format", "mcc", "--output-format", "plain", TINY], &[], vec!["--output-format is given twice"]),
+        (2, vec!["--time-limit-ms", "1", "--time-limit-ms", "60000", TINY], &[], vec!["--time-limit-ms is given twice"]),
+        (2, vec!["--mem-limit-mb", "0", "--mem-limit-mb", "0", TINY], &[], vec!["--mem-limit-mb is given twice"]),
+        (2, vec!["--stats", "-", "--stats", "-", TINY], &[], vec!["--stats is given twice"]),
+        (2, vec!["--save-tdd", saved, "--save-tdd", saved, TINY], &[], vec!["--save-tdd is given twice"]),
         (2, vec!["--output-format", "sharp", TINY], &[], vec!["--output-format", "\"sharp\"", "plain", "mcc"]),
         // The retired mode and output flags are unknown flags now.
         (2, vec!["--mc", TINY], &[], vec!["unknown flag --mc"]),

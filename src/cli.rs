@@ -168,6 +168,8 @@ fn parse_args() -> Result<Request, Error> {
     let mut mem_limit_mb = DEFAULT_MEM_LIMIT_MB;
     // `--preprocess`; the run's default, full, applies without it.
     let mut preprocess: Option<PreprocessLevel> = None;
+    // The flags read so far.
+    let mut given: Vec<String> = Vec::new();
 
     while let Some(arg) = args.next() {
         // Anything that is not a flag is the input file, taken as the system
@@ -182,6 +184,12 @@ fn parse_args() -> Result<Request, Error> {
             continue;
         }
         let flag = arg.to_string_lossy();
+        // Each flag is read once: a second value would replace the first
+        // without a word, as a setting the run ignores.
+        if given.iter().any(|seen| *seen == flag) {
+            return Err(usage_error(format!("{flag} is given twice; a run takes one value for each flag.")));
+        }
+        given.push(flag.clone().into_owned());
         // The argument after the flag: as given for a path, and otherwise
         // read as text.
         let mut value = || args.next().ok_or_else(|| usage_error(format!("{flag} needs a value.")));
@@ -194,20 +202,10 @@ fn parse_args() -> Result<Request, Error> {
             "--stats" => stats_path = Some(value()?.into()),
             "--mode" => {
                 let val = text(value()?)?;
-                let mode = Mode::parse(&val).ok_or_else(|| {
+                mode_flag = Some(Mode::parse(&val).ok_or_else(|| {
                     let modes = Mode::ALL.map(Mode::token).join(", ");
                     usage_error(format!("unknown --mode {val:?}; valid: {modes}."))
-                })?;
-                // One run answers one question: a second, different mode is
-                // not read in place of the first.
-                if let Some(first) = mode_flag.filter(|first| *first != mode) {
-                    return Err(usage_error(format!(
-                        "--mode {} after --mode {}; a run has one mode.",
-                        mode.token(),
-                        first.token()
-                    )));
-                }
-                mode_flag = Some(mode);
+                })?);
             }
             "--output-format" => {
                 let val = text(value()?)?;
