@@ -493,21 +493,33 @@ static void test_repeated_calls(void) {
   }
 }
 
-static void *count_on_a_thread(void *unused) {
-  tididi_bonsai_answer *answer = NULL;
-  tididi_bonsai_code code = count_text(TWO_MODELS, "mc", &answer);
-  (void)unused;
-  expect_count("concurrent", code, answer, "mc", 1, "2");
-  tididi_bonsai_answer_free(answer);
+/* One call made on a thread of its own, and what it returned. */
+struct call {
+  pthread_t thread;
+  tididi_bonsai_code code;
+  tididi_bonsai_answer *answer;
+};
+
+static void *count_on_a_thread(void *arg) {
+  struct call *call = arg;
+  call->code = count_text(TWO_MODELS, "mc", &call->answer);
   return NULL;
 }
 
+/* Each thread's call gets its answer. The answers are checked here, after
+ * each thread is joined, since the checks share one failure count. */
 static void test_concurrent_calls(void) {
-  pthread_t threads[4];
+  struct call calls[4];
   for (int i = 0; i < 4; i++) {
-    CHECK(pthread_create(&threads[i], NULL, count_on_a_thread, NULL) == 0, "cannot start thread %d", i);
+    calls[i].answer = NULL;
+    CHECK(pthread_create(&calls[i].thread, NULL, count_on_a_thread, &calls[i]) == 0,
+          "cannot start thread %d", i);
   }
-  for (int i = 0; i < 4; i++) pthread_join(threads[i], NULL);
+  for (int i = 0; i < 4; i++) {
+    pthread_join(calls[i].thread, NULL);
+    expect_count("concurrent", calls[i].code, calls[i].answer, "mc", 1, "2");
+    tididi_bonsai_answer_free(calls[i].answer);
+  }
 }
 
 int main(int argc, char **argv) {
