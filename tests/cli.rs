@@ -758,10 +758,11 @@ counts! {
     all_backbone: [] "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf" => "model count: 1", "every variable is a backbone";
     all_backbone_mc: ["--mode", "mc", "--vtree", "portfolio"] "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf"
         => "model count: 1", "every variable is a backbone";
-    /// SAT pruning's AllSAT prelude gates its blocking clauses on their own
-    /// activation literal: blockers left active during the probes make a
-    /// probe falsely unsatisfiable, and the count comes out low. A pass fires
-    /// on this instance under a FlowCutter primal vtree.
+    /// A SAT-pruning pass fires on this instance under a FlowCutter primal
+    /// vtree: it enumerates models under blocking clauses, retires them
+    /// before it probes the nodes no model reached, and finds hundreds of
+    /// those unsatisfiable. A probe that wrongly came out unsatisfiable would
+    /// prune a live node, and the count would come out low.
     sat_prune_blockers_stay_off_during_probes: ["--mode", "mc", "--vtree", "flowcutter-primal"]
         "tests/data/cnfs/satlib/uf100/uf100-01000.cnf" => "model count: 16963";
 
