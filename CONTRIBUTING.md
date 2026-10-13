@@ -46,11 +46,13 @@ the `Output:` or `Stderr:` block that follows them. Build with
 
 ## The protocol test
 
-`tests/protocol.rs` runs the binary on one row per task and per compile entry
-and pins its exit status, stdout and stderr, the statistics record included,
-against the transcripts in `tests/data/protocol/`. A change that moves a count,
-the path a run takes or a tally fails it. After an intended change, regenerate
-the transcripts and read the diff before committing them with the change:
+`tests/protocol.rs` runs the binary on a fixed set of instances that covers
+every counting task and both routes of the model count, with and without
+`--vtree`, and pins each run's exit status, stdout and stderr, the statistics
+record included, against the transcripts in `tests/data/protocol/`. A change
+that moves a count, the path a run takes or a tally fails it. After an
+intended change, regenerate the transcripts and read the diff before
+committing them with the change:
 
 ```sh
 UPDATE_PROTOCOL=1 cargo test --test protocol -- --include-ignored
