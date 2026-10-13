@@ -94,7 +94,7 @@ fn no_deadline_reserves_the_fixed_tail() {
     assert_eq!(unreduced_retry_window(Some(now), None, now), Some(UNREDUCED_RETRY_RESERVE));
 }
 
-// `no_sbva_retry_reserve` sizes the no-SBVA retry's window. Four regimes:
+// `no_sbva_retry_window` sizes the no-SBVA retry's window. Four regimes:
 // declared-wall quarter, capped-at-remaining, sub-minimum (None),
 // no-declared-wall (`UNREDUCED_RETRY_RESERVE`) — one more step of the same
 // window order as `unreduced_retry_window` above.
@@ -105,7 +105,7 @@ fn declared_wall_returns_a_quarter_of_the_declared_total() {
     // sized off the DECLARED total, not the (here, identical) remaining wall.
     let pd = now + Duration::from_secs(1000);
     assert_eq!(
-        no_sbva_retry_reserve(Some(1_000_000), Some(pd), now),
+        no_sbva_retry_window(Some(1_000_000), Some(pd), now),
         Some(Duration::from_secs(250)),
     );
 }
@@ -117,7 +117,7 @@ fn declared_wall_is_capped_at_whatever_actually_remains() {
     // left -> capped at the remaining wall, not the declared-total quarter.
     let pd = now + Duration::from_secs(40);
     assert_eq!(
-        no_sbva_retry_reserve(Some(1_000_000), Some(pd), now),
+        no_sbva_retry_window(Some(1_000_000), Some(pd), now),
         Some(Duration::from_secs(40)),
     );
 }
@@ -128,11 +128,11 @@ fn window_under_the_minimum_returns_none() {
     // 100s declared wall -> quarter = 25s, under `NO_SBVA_RETRY_MIN_WINDOW` (30s)
     // -> skip the stage entirely.
     let pd = now + Duration::from_secs(100);
-    assert_eq!(no_sbva_retry_reserve(Some(100_000), Some(pd), now), None);
+    assert_eq!(no_sbva_retry_window(Some(100_000), Some(pd), now), None);
     // Exactly at the 30s boundary: 120s declared wall -> quarter = 30s -> allowed.
     let pd2 = now + Duration::from_secs(120);
     assert_eq!(
-        no_sbva_retry_reserve(Some(120_000), Some(pd2), now),
+        no_sbva_retry_window(Some(120_000), Some(pd2), now),
         Some(NO_SBVA_RETRY_MIN_WINDOW),
     );
 }
@@ -143,5 +143,5 @@ fn no_declared_wall_returns_the_fixed_tail_reserve() {
     // No declared wall (the deadline is derived from it, so the two are
     // absent together) -> the fixed `UNREDUCED_RETRY_RESERVE`, same as the no-wall-
     // limit regime of `unreduced_retry_window` above.
-    assert_eq!(no_sbva_retry_reserve(None, None, now), Some(UNREDUCED_RETRY_RESERVE));
+    assert_eq!(no_sbva_retry_window(None, None, now), Some(UNREDUCED_RETRY_RESERVE));
 }

@@ -27,7 +27,7 @@ use vitri::cnf::CnfFormula;
 use crate::enumeration::{EnumLimits, PathEstimate, show_enum_fastpath};
 use crate::problem::ShowSet;
 
-use super::windows::support_enum_arjun_retry_ms;
+use super::windows::{shannon_split_reserve_ms, support_enum_arjun_retry_ms};
 
 /// Largest independent support the stage will enumerate over: the shared
 /// fastpath's band ceiling, past which it declines anyway.
@@ -40,18 +40,6 @@ const MAX_SUPPORT: usize = crate::enumeration::MAX_ENUM_SHOW;
 /// Shannon-splitting a formula that already blew up. Either cap (models or wall)
 /// simply yields `None` and falls through — never a wrong answer.
 const MODEL_CAP: u64 = 2_000_000;
-
-/// Absolute floor on the wall reserved for the recovery cascade behind the
-/// stage. The stage never takes more than `remaining - max(this, remaining/4)`.
-const MIN_RESERVE_MS: u64 = 300_000;
-
-/// The reserve rule: wall this stage always leaves the recovery cascade behind
-/// it. Shared with the support hunt of the count without a reduction
-/// (`stage::mc::windows::support_enum_arjun_retry_ms`), which must carve against the
-/// same reserve or the two would drift apart and a retry could starve the stage.
-pub(crate) fn shannon_split_reserve_ms(remaining_ms: u64) -> u64 {
-    MIN_RESERVE_MS.max(remaining_ms / 4)
-}
 
 /// Below this much enumeration wall the stage declines: a projected-AllSAT
 /// enumeration over a several-hundred-variable support runs into six-figure model

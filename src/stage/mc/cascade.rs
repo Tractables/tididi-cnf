@@ -6,16 +6,16 @@
 //! is one step of that order and says what it decides. Every step that
 //! answers folds its own `2^k` multiplier before returning, so the count
 //! leaving this module is always in `compile_formula` space.
+
 use std::time::Instant;
 
 use vitri::cnf::CnfFormula;
 use crate::config::Config;
 use crate::output::AnsweredBy;
-use crate::stage::Run;
+use crate::stage::{PORTFOLIO_VTREE_SPEC, Run};
 
 use super::windows::{
-    UNREDUCED_RETRY_RESERVE, NO_SBVA_RETRY_VTREE_SPEC, unreduced_retry_window, no_sbva_retry_reserve,
-    no_sbva_retry_window,
+    NO_SBVA_RETRY_VTREE_SPEC, UNREDUCED_RETRY_RESERVE, no_sbva_retry_want, no_sbva_retry_window, unreduced_retry_window,
 };
 use super::attempt::{
     attempt_from_vitri_build, count_attempt, portfolio_attempt,
@@ -98,7 +98,7 @@ fn no_sbva_retry(
 ) -> Option<Counted> {
     let program_deadline = run.deadline;
     let now = Instant::now();
-    let reserve = no_sbva_retry_reserve(run.config.time_limit_ms, program_deadline, now)?;
+    let reserve = no_sbva_retry_window(run.config.time_limit_ms, program_deadline, now)?;
     // The stage's own wall, never past the program deadline. Bounds the
     // re-reduce, the vtree construction and the compile alike, so a stage
     // advertised as "up to Ns" cannot overrun into the tail the unreduced
@@ -189,21 +189,21 @@ fn no_sbva_retry(
 /// before Shannon split. The two narrower fallbacks run ahead of it. Bounded
 /// to the `unreduced_retry_window` window so an attempt that does not answer
 /// falls through to Shannon split, which answers other classes.
+///
 /// It compiles `compile_formula` itself, so there is no lift to fold. Fires
-/// whether or not
-/// `primary_deadline` armed: at short windows the absolute reserve is
-/// inert, and the unreduced retry still has to run ahead of Shannon split
-/// rather than after it.
+/// whether or not `primary_deadline` armed: at short windows the absolute
+/// reserve is inert, and the unreduced retry still has to run ahead of
+/// Shannon split rather than after it.
 fn unreduced_retry(
     run: &Run<'_>,
     form: &CnfFormula,
     primary_deadline: Option<Instant>,
 ) -> Option<Counted> {
     let program_deadline = run.deadline;
-    let now = std::time::Instant::now();
+    let now = Instant::now();
     let reserve = unreduced_retry_window(primary_deadline, program_deadline, now)?;
     let retry_deadline = Some(crate::budget::not_past(now + reserve, program_deadline));
-    if let Some(adl) = primary_deadline {
+    if let Some(primary) = primary_deadline {
         // The window, and the two numbers it is drawn from: the tail the
         // primary deadline reserved at the top of the run, and the wall the
         // run actually has left here. They differ by however early the
@@ -211,16 +211,18 @@ fn unreduced_retry(
         // getting the wall it needs, so a reader chasing a lost instance can
         // see the split without reconstructing it from timestamps.
         eprintln!(
-            "[mc] unreduced-retry: compiling the unreduced formula on portfolio for up \
+            "[mc] unreduced-retry: compiling the unreduced formula on {} for up \
              to {}s before Shannon split (reserved {}s, {}s left)",
+            PORTFOLIO_VTREE_SPEC,
             reserve.as_secs(),
-            program_deadline.map_or(0, |pd| pd.saturating_duration_since(adl).as_secs()),
-            program_deadline.map_or(0, |pd| pd.saturating_duration_since(now).as_secs()),
+            program_deadline.map_or(0, |program| program.saturating_duration_since(primary).as_secs()),
+            program_deadline.map_or(0, |program| program.saturating_duration_since(now).as_secs()),
         );
     } else {
         eprintln!(
-            "[mc] unreduced-retry: compiling the unreduced formula on portfolio for up \
+            "[mc] unreduced-retry: compiling the unreduced formula on {} for up \
              to {}s before Shannon split",
+            PORTFOLIO_VTREE_SPEC,
             reserve.as_secs()
         );
     }
@@ -238,7 +240,8 @@ fn unreduced_retry(
 /// so.
 ///
 /// Vitri's own clause-growth policy already discarded the reductions it did not
-/// want (they arrive at `count_without_reduction`), so TiDiDi runs no second gate.
+/// want (they arrive at `count_without_reduction`), so this crate runs no second
+/// gate.
 ///
 /// Every step that answers folds its own lift (the correction invariant, in
 /// the `mc` module doc): a compile attempt through its `lift_pow2`, the
@@ -265,9 +268,9 @@ pub(super) fn count_primary(
     // cut with the tail still unspent. Being cut is an ordinary primary
     // failure and enters the fallbacks like any other. The no-SBVA retry and
     // the unreduced retry are sized against that tail
-    // (`no_sbva_retry_reserve`, `unreduced_retry_window`); the unreduced
+    // (`no_sbva_retry_window`, `unreduced_retry_window`); the unreduced
     // retry then compiles the unreduced formula on exactly that tail
-    // (`unreduced_retry_window`'s `pd - adl` case). This answers the class
+    // (`unreduced_retry_window`'s `program - primary` case). This answers the class
     // where the unreduced formula compiles and the reduction does not,
     // without compiling both every time. The tail is `UNREDUCED_RETRY_RESERVE`
     // (enough for the unreduced retry that class needs while leaving Shannon
@@ -280,10 +283,10 @@ pub(super) fn count_primary(
     let primary_deadline = {
         let mut tail = UNREDUCED_RETRY_RESERVE;
         if no_sbva_session.is_some() && let Some(total_ms) = run.config.time_limit_ms {
-            tail += no_sbva_retry_window(total_ms);
+            tail += no_sbva_retry_want(total_ms);
         }
         program_deadline.and_then(|d| {
-            let remaining = d.saturating_duration_since(std::time::Instant::now());
+            let remaining = d.saturating_duration_since(Instant::now());
             (remaining > tail * 2).then(|| d - tail)
         })
     };

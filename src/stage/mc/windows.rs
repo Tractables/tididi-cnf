@@ -2,11 +2,22 @@
 //!
 //! Every window here is pure arithmetic over the declared time limit, the
 //! program deadline and the clock, so the whole window order is unit-testable
-//! without a run: the unreduced retry's reserve, the predicate-gated no-SBVA
-//! retry and the support-enumeration re-reduce. Keeping them together keeps
-//! two stages from carving the same wall twice.
+//! without a run: the wall Shannon split is owed, the unreduced retry's
+//! reserve, the predicate-gated no-SBVA retry and the support-enumeration
+//! re-reduce. Keeping them together keeps two stages from carving the same
+//! wall twice.
 
-use super::support_enum::shannon_split_reserve_ms;
+/// Absolute floor on the wall reserved for the recovery cascade behind a
+/// fallback.
+const MIN_RESERVE_MS: u64 = 300_000;
+
+/// The reserve rule: the wall a fallback always leaves Shannon split behind
+/// it, out of `remaining_ms`: a quarter, and never less than
+/// [`MIN_RESERVE_MS`]. The support-enumeration stage, the support hunt ahead
+/// of it and the unreduced retry all carve against it.
+pub(super) fn shannon_split_reserve_ms(remaining_ms: u64) -> u64 {
+    MIN_RESERVE_MS.max(remaining_ms / 4)
+}
 
 /// Wall floor below which the count without a reduction will not spend any of
 /// the recovery window looking for a support. Above it the retry is
@@ -40,11 +51,9 @@ pub(super) fn support_enum_arjun_retry_ms(remaining_ms: Option<u64>) -> Option<u
 }
 
 /// Wall reserved at the end of the run for the unreduced retry's from-scratch
-/// compile of the unreduced formula. One source for both places that reserve
-/// it: the primary deadline in `count_primary` (which caps the primary compile
-/// at `program_deadline − UNREDUCED_RETRY_RESERVE`) and
-/// [`unreduced_retry_window`]'s no-wall-limit case. Two literals here would be
-/// two numbers to keep in sync.
+/// compile of the unreduced formula: the primary deadline in `count_primary`
+/// caps the primary compile at `program_deadline − UNREDUCED_RETRY_RESERVE`,
+/// and [`unreduced_retry_window`] takes it when the run has no wall.
 pub(super) const UNREDUCED_RETRY_RESERVE: std::time::Duration = std::time::Duration::from_millis(250_000);
 
 /// Reserve window for the unreduced retry — the third fallback — which runs
@@ -68,13 +77,13 @@ pub(super) fn unreduced_retry_window(
 ) -> Option<std::time::Duration> {
     use std::time::Duration;
     match (primary_deadline, program_deadline) {
-        // Armed (long window). `pd - adl` is what the primary deadline reserved
-        // for this stage, and it is what the stage actually has only when the
-        // primary compile runs all the way to `adl`. It usually does not: the
-        // primary compile is cut well short of `adl` by its memory and pair
-        // limits, and tail arithmetic keyed to the reserved figure would hand
-        // the wall the primary compile left over to Shannon split behind it
-        // instead.
+        // Armed (long window). `program - primary` is what the primary
+        // deadline reserved for this stage, and it is what the stage actually
+        // has only when the primary compile runs all the way to `primary`. It
+        // usually does not: the primary compile is cut well short of it by its
+        // memory and pair limits, and tail arithmetic keyed to the reserved
+        // figure would hand the wall the primary compile left over to Shannon
+        // split behind it instead.
         //
         // The window also sizes the retry's vtree construction (a third of
         // it, `budget::vtree_deadline`), so a window cut to the reserved
@@ -82,27 +91,22 @@ pub(super) fn unreduced_retry_window(
         //
         // So the reserved tail is a floor on this stage's window, not a cap on
         // it: take what is left, less what Shannon split behind this stage is
-        // owed, and never less than the tail the primary deadline reserved.
-        // `shannon_split_reserve_ms` is the one definition of that debt in the tree —
-        // the support-enum stage ahead of this one carves against it too, and a
-        // second rule here would be a second answer to the same question.
-        //
-        // Not clamped to what remains: the caller already clamps the window it
-        // builds from this at `program_deadline`, and clamping here as well would
-        // be the same rule written twice.
-        (Some(adl), Some(pd)) => {
-            let left = pd.saturating_duration_since(now);
+        // owed ([`shannon_split_reserve_ms`]), and never less than the tail the
+        // primary deadline reserved. The caller clamps the window at
+        // `program_deadline`.
+        (Some(primary), Some(program)) => {
+            let left = program.saturating_duration_since(now);
             let owed_to_cascade =
                 Duration::from_millis(shannon_split_reserve_ms(left.as_millis() as u64));
             Some(
                 left.saturating_sub(owed_to_cascade)
-                    .max(pd.saturating_duration_since(adl)),
+                    .max(program.saturating_duration_since(primary)),
             )
         }
         // Short window: a quarter of what remains, skipped when that is under
         // 2 s (under 8 s left).
-        (None, Some(pd)) => {
-            let left = pd.saturating_duration_since(now);
+        (None, Some(program)) => {
+            let left = program.saturating_duration_since(now);
             if left / 4 < Duration::from_secs(2) {
                 return None;
             }
@@ -117,10 +121,11 @@ pub(super) fn unreduced_retry_window(
 /// predicate-gated no-SBVA retry (the first fallback).
 ///
 /// A quarter covers the re-reduce and the recompile, and leaves the unreduced
-/// retry and Shannon split the rest. Deliberately a fraction of the declared wall, not of what happens to remain:
-/// the window a stage is worth is a property of the run's budget, and keying it
-/// to "remaining" would make an earlier-OOMing instance get a *larger* retry
-/// than a later-OOMing one.
+/// retry and Shannon split the rest. A fraction of the declared wall, not of
+/// what happens to remain: the window a stage is worth is a property of the
+/// run's budget, and keying it to "remaining" would give an instance whose
+/// primary compile fails earlier a larger retry than one whose compile fails
+/// later.
 const NO_SBVA_RETRY_RESERVE_FRAC: f64 = 0.25;
 
 /// Vitri construction requested for the coloring-like no-SBVA retry.
@@ -131,32 +136,31 @@ const NO_SBVA_RETRY_RESERVE_FRAC: f64 = 0.25;
 /// removing SBVA in the first place.
 pub(super) const NO_SBVA_RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
 
-/// [`NO_SBVA_RETRY_RESERVE_FRAC`] of the declared wall — the one derivation of the
-/// stage's "want", shared by [`no_sbva_retry_reserve`] (which caps it at what
-/// remains) and the primary deadline in `count_primary` (which carves it out
-/// of the primary compile's window when the retry is armed, so a primary
-/// compile that runs to its deadline still leaves the stage its reserve).
-pub(super) fn no_sbva_retry_window(total_ms: u64) -> std::time::Duration {
+/// What the no-SBVA retry wants: [`NO_SBVA_RETRY_RESERVE_FRAC`] of the
+/// declared wall. [`no_sbva_retry_window`] caps it at what remains, and the
+/// primary deadline in `count_primary` carves it out of the primary compile's
+/// window when the retry is armed, so a primary compile that runs to its
+/// deadline still leaves the stage its share.
+pub(super) fn no_sbva_retry_want(total_ms: u64) -> std::time::Duration {
     std::time::Duration::from_millis((total_ms as f64 * NO_SBVA_RETRY_RESERVE_FRAC) as u64)
 }
 
-/// Window for the predicate-gated no-SBVA retry: [`no_sbva_retry_window`], never more
-/// than what is actually left, `None` when that is under
-/// [`NO_SBVA_RETRY_MIN_WINDOW`] (skip the stage). Pure, so it is unit-tested
-/// like [`unreduced_retry_window`], whose shape it deliberately mirrors — this is
-/// one more step of the same window order, not a second budget mechanism.
+/// Window for the predicate-gated no-SBVA retry: [`no_sbva_retry_want`], never
+/// more than what is actually left, `None` when that is under
+/// [`NO_SBVA_RETRY_MIN_WINDOW`] (skip the stage). The same shape as
+/// [`unreduced_retry_window`]: one more step of the same window order.
 ///
 /// With no declared wall at all the stage gets [`UNREDUCED_RETRY_RESERVE`], the same
 /// fixed window the unreduced retry takes in that regime: an unbounded run
 /// still must not let one stage eat the whole cascade.
-pub(super) fn no_sbva_retry_reserve(
+pub(super) fn no_sbva_retry_window(
     time_limit_ms: Option<u64>,
     program_deadline: Option<std::time::Instant>,
     now: std::time::Instant,
 ) -> Option<std::time::Duration> {
     match (time_limit_ms, program_deadline) {
-        (Some(total_ms), Some(pd)) => {
-            let window = no_sbva_retry_window(total_ms).min(pd.saturating_duration_since(now));
+        (Some(total_ms), Some(program)) => {
+            let window = no_sbva_retry_want(total_ms).min(program.saturating_duration_since(now));
             (window >= NO_SBVA_RETRY_MIN_WINDOW).then_some(window)
         }
         // No declared wall (the deadline is derived from it, so the two are
