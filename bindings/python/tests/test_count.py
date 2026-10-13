@@ -226,8 +226,9 @@ def test_calls_from_several_threads_each_get_their_answer():
 
 
 def test_the_example_prints_what_it_promises():
+    instance = REPOSITORY / "tests" / "data" / "pwmc_arjun_defined_weight.cnf"
     printed = subprocess.run(
-        [sys.executable, str(EXAMPLES / "count.py"), str(REPOSITORY / "tests" / "data" / "pwmc_arjun_defined_weight.cnf")],
+        [sys.executable, str(EXAMPLES / "count.py"), str(instance)],
         capture_output=True,
         text=True,
         check=True,

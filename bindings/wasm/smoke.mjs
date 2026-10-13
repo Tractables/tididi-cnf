@@ -2,16 +2,15 @@
 // and on the instances bindings/parity.txt lists, under the mode it names, and
 // checks each answer against the native binary's on the same file: the mode,
 // the count and the counts in the record, and that the value is the count's
-// as a number. Then checks a time limit, and that
-// a malformed input, a task the header contradicts and an unknown task are
-// errors of the kind the record would name.
+// as a number. Then checks a time limit, and that a malformed input, a task
+// the header contradicts and an unknown task are errors of the kind the record
+// would name.
 //
 //   node smoke.mjs <bonsai.js> <repository> <tididi>
 //
 // <repository> is the checkout the module was built from, whose tests/data/
 // holds the files examples.js names, and <tididi> the native binary built
-// from it.
-// libgmp.so and libgmpxx.so have to be beside bonsai.js; abi.js and
+// from it. libgmp.so and libgmpxx.so have to be beside bonsai.js; abi.js and
 // examples.js beside this file.
 
 import childProcess from "node:child_process";
@@ -44,7 +43,10 @@ function check(condition, what) {
 // The native binary's answer on a file: the count its answer line prints and
 // the record `--stats -` writes on the line after it.
 function nativeAnswer(file, args) {
-  const stdout = childProcess.execFileSync(nativePath, [...args, "--stats", "-", file], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  const stdout = childProcess.execFileSync(nativePath, [...args, "--stats", "-", file], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   const [answerLine, recordLine] = stdout.trim().split("\n");
   return { count: answerLine.slice(answerLine.indexOf(": ") + 2), stats: JSON.parse(recordLine) };
 }
@@ -66,9 +68,15 @@ function checkParity(bonsai, name, file, mode, timeLimitMs = 0) {
   // The value is the count's nearest double: the count read as a number.
   const [numerator, denominator = "1"] = module.count.split("/");
   const reading = Number(numerator) / Number(denominator);
-  check(Math.abs(module.value - reading) <= 1e-12 * Math.abs(reading), `${label}: the value ${module.value} is not the count ${module.count}`);
+  check(
+    Math.abs(module.value - reading) <= 1e-12 * Math.abs(reading),
+    `${label}: the value ${module.value} is not the count ${module.count}`,
+  );
   for (const key of ["model_count", "weighted_count"]) {
-    check(module.stats[key] === native.stats[key], `${label}: the record's ${key} is ${module.stats[key]}, the binary's ${native.stats[key]}`);
+    check(
+      module.stats[key] === native.stats[key],
+      `${label}: the record's ${key} is ${module.stats[key]}, the binary's ${native.stats[key]}`,
+    );
   }
 }
 
@@ -95,7 +103,13 @@ for (const line of parity.split("\n")) {
 checkParity(bonsai, "queens6.cnf, a minute to run", file("queens6.cnf"), "mc", 60000);
 
 checkRefused(bonsai, "malformed", "p cnf 2 1\n1 x 0\n", null, "input");
-checkRefused(bonsai, "wmc_header_tiny_sat.cnf under task mc", fs.readFileSync(file("wmc_header_tiny_sat.cnf"), "utf8"), "mc", "usage");
+checkRefused(
+  bonsai,
+  "wmc_header_tiny_sat.cnf under task mc",
+  fs.readFileSync(file("wmc_header_tiny_sat.cnf"), "utf8"),
+  "mc",
+  "usage",
+);
 checkRefused(bonsai, "unknown task", fs.readFileSync(file("simple.cnf"), "utf8"), "count", "usage");
 
 if (failures > 0) {
