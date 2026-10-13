@@ -6,28 +6,32 @@
 //! vtree leaf: its column, the diagrams that share it, and the equal-weight
 //! ref canonicalization.
 //!
-//! The fuzz test is ignored and reads its ranges from the environment:
+//! The fuzz test is ignored and reads its ranges from the environment, and
+//! refuses a value it cannot read:
 //!
-//!   TIDIDI_FUZZ_SEED_LO / _HI   seed range (default 0..400)
-//!   TIDIDI_FUZZ_NVARS_LO / _HI  variables per instance (default 6..18)
-//!   TIDIDI_FUZZ_DENS_LO / _HI   clause/var density ×100 (default 150..400)
-//!   TIDIDI_FUZZ_WEIGHTS         "spread" (default) | "posfrac" | "equalish"
-//!   TIDIDI_FUZZ_STOP            stop after N mismatches (default 1)
+//! - `TIDIDI_FUZZ_SEED_LO`, `TIDIDI_FUZZ_SEED_HI`: the seed range (default
+//!   0..400);
+//! - `TIDIDI_FUZZ_NVARS_LO`, `TIDIDI_FUZZ_NVARS_HI`: variables per instance
+//!   (default 6..=18);
+//! - `TIDIDI_FUZZ_DENS_LO`, `TIDIDI_FUZZ_DENS_HI`: clauses per variable
+//!   ×100 (default 150..=400);
+//! - `TIDIDI_FUZZ_WEIGHTS`: `spread` (the default), `posfrac` or `equalish`;
+//! - `TIDIDI_FUZZ_STOP`: stop after this many mismatches (default 1).
 
 mod common;
+
 use std::sync::Arc;
 
 use num_rational::BigRational;
 use num_traits::{One, Zero};
+use vitri::cnf::CnfFormula;
 
 use tididi::Engine;
 use tididi::diagram::{Arithmetic, Tdd, WeightStore};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
-use tididi_bonsai::vtree::VtreeOptions;
-use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
-use tididi_bonsai::vtree::build_vtree;
-use vitri::cnf::CnfFormula;
+use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
+use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
 
 use common::{make_formula, random_3cnf};
 
@@ -95,41 +99,41 @@ fn weighted_value(tdd: &Tdd) -> BigRational {
 #[test]
 fn weighted_counts_match_the_oracle() {
     let eng = &Engine::new();
-    let w = |pairs: &[(i64, i64, i64, i64)]| -> Weights { pairs.iter().map(|&(a, b, c, d)| (rat(a, b), rat(c, d))).collect() };
+    let weights = |pairs: &[(i64, i64, i64, i64)]| -> Weights { pairs.iter().map(|&(a, b, c, d)| (rat(a, b), rat(c, d))).collect() };
     for (n, clauses, w) in [
-        (3, vec![vec![1, 2], vec![-2, 3], vec![1, -3]], w(&[(1, 1, 1, 1); 3])),
-        (5, vec![vec![1, 2], vec![-2, 3], vec![4, -5]], w(&[(1, 1, 1, 1); 5])),
+        (3, vec![vec![1, 2], vec![-2, 3], vec![1, -3]], weights(&[(1, 1, 1, 1); 3])),
+        (5, vec![vec![1, 2], vec![-2, 3], vec![4, -5]], weights(&[(1, 1, 1, 1); 5])),
         // 2/3·3/5 + 2/3·2/5 + 1/3·3/5 = 13/15.
-        (2, vec![vec![1, 2]], w(&[(1, 3, 2, 3), (2, 5, 3, 5)])),
-        (4, vec![vec![1, 2], vec![-2, 3], vec![1, -4]], w(&[(1, 3, 2, 3), (2, 5, 3, 5), (1, 1, 4, 1), (3, 7, 4, 7)])),
+        (2, vec![vec![1, 2]], weights(&[(1, 3, 2, 3), (2, 5, 3, 5)])),
+        (4, vec![vec![1, 2], vec![-2, 3], vec![1, -4]], weights(&[(1, 3, 2, 3), (2, 5, 3, 5), (1, 1, 4, 1), (3, 7, 4, 7)])),
         // Satisfiable formulas that weigh 0: a weight of zero on both sides of
         // x1, and a free variable whose signed weights cancel.
-        (2, vec![vec![1, 2]], w(&[(0, 1, 0, 1), (1, 1, 1, 1)])),
-        (1, vec![], w(&[(-1, 1, 1, 1)])),
+        (2, vec![vec![1, 2]], weights(&[(0, 1, 0, 1), (1, 1, 1, 1)])),
+        (1, vec![], weights(&[(-1, 1, 1, 1)])),
         // x3 is in no clause and contributes w⁺ + w⁻.
-        (3, vec![vec![1, 2]], w(&[(1, 2, 1, 3), (2, 5, 3, 7), (1, 1, 4, 9)])),
-        (4, vec![vec![1, 2], vec![-2, 3]], w(&[(1, 2, 1, 3), (2, 5, 3, 7), (5, 11, 2, 9), (1, 1, 4, 9)])),
+        (3, vec![vec![1, 2]], weights(&[(1, 2, 1, 3), (2, 5, 3, 7), (1, 1, 4, 9)])),
+        (4, vec![vec![1, 2], vec![-2, 3]], weights(&[(1, 2, 1, 3), (2, 5, 3, 7), (5, 11, 2, 9), (1, 1, 4, 9)])),
         (
             6,
             vec![vec![1, 2, -3], vec![-2, 4], vec![3, 5, -6], vec![-1, -4, 5], vec![6, 2]],
-            w(&[(1, 2, 1, 3), (2, 5, 3, 7), (5, 11, 2, 9), (7, 4, 1, 6), (3, 8, 5, 13), (9, 10, 4, 9)]),
+            weights(&[(1, 2, 1, 3), (2, 5, 3, 7), (5, 11, 2, 9), (7, 4, 1, 6), (3, 8, 5, 13), (9, 10, 4, 9)]),
         ),
         // Three separated components, all satisfiable.
         (
             8,
             vec![vec![1, 2], vec![-1, -2], vec![3, 4], vec![4, 5], vec![6, 7], vec![-7, 8]],
-            w(&[(9, 10, 1, 10), (8, 10, 2, 10), (7, 10, 3, 10), (6, 10, 4, 10), (5, 10, 5, 10), (4, 10, 6, 10), (3, 10, 7, 10), (2, 10, 8, 10)]),
+            weights(&[(9, 10, 1, 10), (8, 10, 2, 10), (7, 10, 3, 10), (6, 10, 4, 10), (5, 10, 5, 10), (4, 10, 6, 10), (3, 10, 7, 10), (2, 10, 8, 10)]),
         ),
         // Three separated components, the middle one unsatisfiable: the whole
         // formula weighs 0.
         (
             4,
             vec![vec![1, 2], vec![-1, -2], vec![3], vec![-3], vec![4]],
-            w(&[(9, 10, 1, 10), (8, 10, 2, 10), (7, 10, 3, 10), (6, 10, 4, 10)]),
+            weights(&[(9, 10, 1, 10), (8, 10, 2, 10), (7, 10, 3, 10), (6, 10, 4, 10)]),
         ),
         // Forced by a unit clause, the one variable leaves a leaf output,
         // which has no stored weight slot to read.
-        (1, vec![vec![1]], w(&[(1, 3, 2, 3)])),
+        (1, vec![vec![1]], weights(&[(1, 3, 2, 3)])),
     ] {
         let formula = make_formula(n, clauses.clone());
         let vtree = Arc::new(Vtree::balanced(n));
@@ -282,13 +286,8 @@ fn leaf_columns_survive_the_slot_prune() {
             for var in 0..4u32 {
                 assert_leaf_column(&tdd, &vtree, var, &w[var as usize], &format!("{label}/{phase}"));
             }
-            // The checker is built only with debug assertions, and the fuzzer
-            // below runs this file in release.
-            #[cfg(debug_assertions)]
-            {
-                let subsumed = tididi::test_helpers::check::marginal::subsumed_marginal_data_violations(&tdd);
-                assert!(subsumed.is_empty(), "[{label}/{phase}] data left under a marginal parent at {subsumed:?}");
-            }
+            let subsumed = tididi::test_helpers::check::marginal::subsumed_marginal_data_violations(&tdd);
+            assert!(subsumed.is_empty(), "[{label}/{phase}] data left under a marginal parent at {subsumed:?}");
             assert_eq!(weighted_value(&tdd), expected, "[{label}/{phase}]");
         }
     }
@@ -364,9 +363,6 @@ fn count_canonical_leaf_refs(tdd: &Tdd, label: &str) -> usize {
         for n in 0..level.nodes().len() {
             for pair in level.pairs_of_idx(n) {
                 let raw = if leaf_is_left { pair.left.raw() } else { pair.right.raw() };
-                if raw & (1 << 31) != 0 {
-                    continue; // the ZERO sentinel carries no slot
-                }
                 assert_ne!(raw, 2, "[{label}] a Neg-slot ref into weight-marginal leaf {leaf:?} under equal weights");
                 seen += 1;
             }
@@ -427,8 +423,12 @@ fn equal_weight_duplicate_runs_keep_the_value() {
 
 // ── Fuzz ─────────────────────────────────────────────────────────────────────
 
+/// The number `key` holds, or `default` when it is unset.
 fn env_u32(key: &str, default: u32) -> u32 {
-    std::env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    match std::env::var(key) {
+        Ok(value) => value.parse().unwrap_or_else(|_| panic!("{key}={value:?} is not a whole number")),
+        Err(_) => default,
+    }
 }
 
 /// Deterministic weights with zeros and negatives.
@@ -493,6 +493,12 @@ fn fuzz_weighted_marginalize_vs_oracle() {
     let (d_lo, d_hi) = (env_u32("TIDIDI_FUZZ_DENS_LO", 150), env_u32("TIDIDI_FUZZ_DENS_HI", 400));
     let stop = env_u32("TIDIDI_FUZZ_STOP", 1);
     let mode = std::env::var("TIDIDI_FUZZ_WEIGHTS").unwrap_or_else(|_| "spread".to_string());
+    let weights_for: fn(u32, u64) -> Weights = match mode.as_str() {
+        "spread" => |num_vars, _| spread_weights(num_vars),
+        "posfrac" => posfrac_weights,
+        "equalish" => equalish_weights,
+        other => panic!("TIDIDI_FUZZ_WEIGHTS={other:?} is none of spread, posfrac, equalish"),
+    };
 
     let (mut bad, mut checked) = (0u32, 0u32);
     for seed in lo..hi {
@@ -501,11 +507,7 @@ fn fuzz_weighted_marginalize_vs_oracle() {
         let density = d_lo + rng.below(u64::from(d_hi - d_lo + 1)) as u32;
         let nc = ((nv * density) as f64 / 100.0).round().max(1.0) as usize;
         let formula = random_3cnf(nv, nc, seed as u64);
-        let w = match mode.as_str() {
-            "posfrac" => posfrac_weights(nv, seed as u64),
-            "equalish" => equalish_weights(nv, seed as u64),
-            _ => spread_weights(nv),
-        };
+        let w = weights_for(nv, seed as u64);
         let vtree = build_vtree(&formula, "minfill-primal", &VtreeOptions::default()).unwrap();
         let want = oracle(&formula, &vtree, &w);
         let got = marginalizing(&formula, &vtree, &w);
