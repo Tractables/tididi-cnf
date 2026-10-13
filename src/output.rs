@@ -51,7 +51,7 @@ pub(crate) enum AnsweredBy {
 
 impl AnsweredBy {
     /// The token recorded in `answered_by`. Treat these as a wire format:
-    /// stored sweeps are read back by them.
+    /// programs that read the record match on them.
     pub(crate) fn token(self) -> &'static str {
         match self {
             AnsweredBy::Compile => "compile",
@@ -98,8 +98,8 @@ impl Reduction {
 /// everything else is a number, a boolean or a token. Serialize it with
 /// `serde_json` to get the object the binary writes.
 ///
-/// The user guide's reference for the result record tabulates the fields and
-/// which modes carry each.
+/// The [record reference](https://github.com/Tractables/tididi-bonsai/blob/main/docs/stats.md)
+/// tabulates the fields and which modes carry each.
 #[derive(Clone, Debug, Default, Serialize)]
 #[non_exhaustive]
 pub struct Stats {
@@ -171,26 +171,27 @@ pub struct Stats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reduction: Option<&'static str>,
 
-    /// Wall in preprocessing, in milliseconds. On the model count's cascade it
-    /// is the simplify chain alone, since Arjun has its own key.
+    /// Wall-clock time in preprocessing, in milliseconds. On the model
+    /// count's cascade it is the simplify chain alone, since Arjun has its
+    /// own key.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preprocess_ms: Option<u64>,
-    /// Wall in Arjun, in milliseconds.
+    /// Wall-clock time in Arjun, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arjun_ms: Option<u64>,
-    /// Wall spent building vtrees, over the whole run, in milliseconds.
+    /// Wall-clock time building vtrees, over the whole run, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_ms: Option<u64>,
-    /// Wall spent compiling, in milliseconds, less every phase with its own
-    /// key: preprocessing, Arjun and vtree construction.
+    /// Wall-clock time compiling, in milliseconds, less every phase with its
+    /// own key: preprocessing, Arjun and vtree construction.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compile_ms: Option<u64>,
-    /// Wall in the model count's cascade on a kept reduction: the first
-    /// compile, then any fallbacks and Shannon split, vtree construction
-    /// inside it included.
+    /// Wall-clock time in the model count's cascade on a kept reduction, in
+    /// milliseconds: the first compile, then any fallbacks and Shannon split,
+    /// vtree construction inside it included.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cascade_ms: Option<u64>,
-    /// Wall in backbone detection, in milliseconds.
+    /// Wall-clock time in backbone detection, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backbone_ms: Option<u64>,
     /// Backbone literals found.
@@ -204,11 +205,11 @@ pub struct Stats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_vars: Option<u64>,
 
-    /// The record's `sat_prune`: `off` when `TIDIDI_SAT_PRUNE=off` switched
-    /// the sat-prune pass off for the run, a diagnostic for paired on/off
-    /// measurements. Absent when the pass is on, the default.
-    #[serde(rename = "sat_prune", skip_serializing_if = "Option::is_none")]
-    pub sat_prune_switch: Option<&'static str>,
+    /// `off` when `TIDIDI_SAT_PRUNE=off` switched the sat-prune pass off for
+    /// the run, a diagnostic for paired on/off measurements. Absent when the
+    /// pass is on, the default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sat_prune: Option<&'static str>,
     /// Why the sat-prune pass stood down, when it did.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sat_prune_disabled_by: Option<&'static str>,
@@ -216,7 +217,7 @@ pub struct Stats {
     /// it is nonzero. Times end `_us` and are microseconds, the unit the pass
     /// accumulates them in. The JSON object carries them as top-level keys.
     #[serde(flatten)]
-    pub sat_prune: BTreeMap<&'static str, u64>,
+    pub sat_prune_tallies: BTreeMap<&'static str, u64>,
 }
 
 /// What a mode answered: whether the formula has a model, its count, and in
@@ -239,7 +240,7 @@ pub(crate) fn open_record(config: &Config, formula: &vitri::cnf::CnfFormula) -> 
         variables: Some(formula.num_vars()),
         clauses: Some(formula.clauses().len() as u64),
         vtree_spec: Some(config.vtree_spec().to_owned()),
-        sat_prune_switch: (!config.sat_prune).then_some("off"),
+        sat_prune: (!config.sat_prune).then_some("off"),
         ..Stats::default()
     }
 }
@@ -255,10 +256,10 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 /// Close the run's record once its mode has returned.
 ///
 /// The last three facts land here rather than with the answer, because they
-/// are the run's and not any one stage's: the time every vtree construction
-/// took, `vtree_time`, the sat-prune tallies of every compile in the run,
-/// `sat_prune`, and how the run ended. Reading each in one place is also what
-/// keeps a give-up row carrying them.
+/// are the run's and not any one stage's: how the run ended, the time its
+/// vtree constructions took (`vtree_time`), and the sat-prune tallies of its
+/// compiles (`sat_prune`). Recording each in one place is also what keeps the
+/// record of a run that gave up carrying them.
 pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
@@ -281,7 +282,7 @@ pub(crate) fn close_record(
     // Each tally is recorded only when it is nonzero: presence is the "this
     // happened" signal. None is there when no pass ran to its end.
     if let Some(prune) = sat_prune {
-        stats.sat_prune = prune.tallies().filter(|(_, v)| *v > 0).collect();
+        stats.sat_prune_tallies = prune.tallies().filter(|(_, v)| *v > 0).collect();
         stats.sat_prune_disabled_by = prune.disabled_by.map(crate::compile::sat_prune::PruneStop::key);
     }
 }

@@ -85,7 +85,7 @@ fn the_count_is_a_decimal_string_and_the_rest_are_numbers() {
         compile_ms: Some(12),
         ..Stats::default()
     };
-    stats.sat_prune.insert("sat_prune_sat_calls", 31);
+    stats.sat_prune_tallies.insert("sat_prune_sat_calls", 31);
     let json = serde_json::to_string(&stats).unwrap();
     assert!(json.contains(r#""model_count":"1180591620717411303424""#), "{json}");
     assert!(json.contains(r#""compile_ms":12"#), "{json}");
