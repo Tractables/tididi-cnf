@@ -40,7 +40,7 @@ mod windows;
 /// the session-backed frontend.
 struct McOutcome {
     count: num_bigint::BigUint,
-    peak: usize,
+    peak_pairs: usize,
     /// Wall spent in the compile cascade. `None` where the stage that answered
     /// never entered it.
     cascade_ms: Option<u128>,
@@ -68,8 +68,9 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
             let mut bundle = attempt.preprocessed;
             let simplify_pow2 = bundle.count_lift.simplify_pow2;
             let preprocessing = bundle.telemetry;
-            // Both vtree-less outcomes, and a refuted formula, end here: vitri
-            // builds a tree only for a record that is not UNSAT.
+            let reduction = reduction(bundle.stages.arjun.as_ref());
+            // Both vtree-less outcomes end here: a refuted formula counts 0, a
+            // fully resolved one the lift alone.
             let primary_vtree = match attempt.vtree {
                 crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
                 _ => {
@@ -80,15 +81,15 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
                     };
                     return Some(McOutcome {
                         count,
-                        peak: 0,
+                        peak_pairs: 0,
                         cascade_ms: None,
                         answered_by: AnsweredBy::Preprocessing,
-                        reduction: reduction(bundle.stages.arjun.as_ref()),
+                        reduction,
                         preprocessing,
                     });
                 }
             };
-            let outcome = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
+            let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
                 // Everything inside the cascade stays in the formula space
                 // Arjun was given; Vitri's simplify lift is applied once, below.
                 let arjun_input = bundle
@@ -111,14 +112,21 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
                 .then_some(session);
                 let ar = crate::frontend::record::arjun_reduction(bundle)
                     .expect("a kept plain-MC Arjun result carries its support");
-                count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry)?
+                count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry)
             } else {
-                count_without_reduction(run, bundle.reduced, bundle.stages.arjun, primary_vtree)?
+                count_without_reduction(run, bundle.reduced, bundle.stages.arjun, primary_vtree)
+            };
+            let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) = recovered else {
+                eprintln!("[mc] no answer: Shannon split gave up");
+                return None;
             };
             Some(McOutcome {
-                count: outcome.count << simplify_pow2,
+                count: count << simplify_pow2,
+                peak_pairs,
+                cascade_ms: Some(cascade_ms),
+                answered_by,
+                reduction,
                 preprocessing,
-                ..outcome
             })
         },
     );
@@ -130,14 +138,14 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
 
 /// No kept reduction: say why, then compile the simplified formula on the
 /// vtree Vitri built for it, with the support-enum stage (on a fresh, bounded
-/// Arjun pass) as its one fallback and Shannon split behind it.
+/// Arjun pass) as its one fallback and Shannon split behind it. `None` when
+/// nothing answered.
 fn count_without_reduction(
     run: &Run<'_>,
     fallback_formula: CnfFormula,
     outcome: Option<vitri::bundle::StageOutcome>,
     vtree: crate::vtree::VtreeBuild,
-) -> Option<McOutcome> {
-    let kept = reduction(outcome.as_ref());
+) -> Option<Recovered> {
     // The single sink for every non-`Ran` disposition Vitri reports. The typed reason
     // is kept: a deterministic quality rejection and a budget give-up are
     // different findings.
@@ -167,13 +175,13 @@ fn count_without_reduction(
         }
         None => eprintln!("[mc] arjun: Vitri's frontend reported no Arjun stage"),
     }
-    eprintln!("[mc] compile: no kept reduction — compiling the simplified formula on {}", crate::stage::PORTFOLIO_VTREE_SPEC);
+    eprintln!("[mc] compile: no kept reduction — compiling the simplified formula on {}", run.config.vtree_spec());
 
     // A failure here enters the recovery like the primary compile's: this path
-    // is taken exactly when Arjun gives up, on the hard instances that most
-    // need it. Its one fallback is the support-enum stage, which needs a
-    // support this count does not hold, so it buys one with a second, tightly
-    // bounded exact-budget Arjun pass (`reduce_for_support`).
+    // is taken whenever Arjun kept no reduction, often on the hard instances
+    // that most need a fallback. Its one fallback is the support-enum stage,
+    // which needs a support this count does not hold, so it buys one with a
+    // second, tightly bounded exact-budget Arjun pass (`reduce_for_support`).
     let first = || count_attempt(run, attempt_from_vitri_build(fallback_formula.clone(), vtree, 0), run.deadline);
     let fallbacks = || {
         let ar = reduce_for_support(run.config, &fallback_formula, run.deadline)?;
@@ -186,20 +194,7 @@ fn count_without_reduction(
         )?;
         Some(((count, 0), AnsweredBy::SupportEnumeration))
     };
-    let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) =
-        count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)
-    else {
-        eprintln!("[mc] no answer: Shannon split gave up");
-        return None;
-    };
-    Some(McOutcome {
-        count,
-        peak: peak_pairs,
-        cascade_ms: Some(cascade_ms),
-        answered_by,
-        reduction: kept,
-        preprocessing: Default::default(),
-    })
+    count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)
 }
 
 /// What became of Arjun's reduction, from the stage outcome Vitri reported:
@@ -230,7 +225,7 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
     let compile_ms = clock.compile_ms(telemetry.total_ms);
     Ok(McAnswer {
         count: out.count,
-        peak_pairs: out.peak,
+        peak_pairs: out.peak_pairs,
         preprocessing: PreprocessReport { preprocess_ms, ..PreprocessReport::of(&telemetry) },
         compile_ms,
         attribution: Attribution {

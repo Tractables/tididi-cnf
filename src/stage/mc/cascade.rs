@@ -10,10 +10,9 @@ use std::time::Instant;
 
 use vitri::cnf::CnfFormula;
 use crate::config::Config;
-use crate::output::{AnsweredBy, Reduction};
+use crate::output::AnsweredBy;
 use crate::stage::Run;
 
-use super::McOutcome;
 use super::windows::{
     UNREDUCED_RETRY_RESERVE, NO_SBVA_RETRY_VTREE_SPEC, unreduced_retry_window, no_sbva_retry_reserve,
     no_sbva_retry_window,
@@ -235,7 +234,8 @@ fn unreduced_retry(
 
 /// The kept reduction: compile it on the vtree Vitri built for it, under
 /// [`count_with_recovery`], with the fallbacks behind it and Shannon split
-/// behind them. `None` when nothing answered.
+/// behind them. `None` when nothing answered; the stage that gave up has said
+/// so.
 ///
 /// Vitri's own clause-growth policy already discarded the reductions it did not
 /// want (they arrive at `count_without_reduction`), so TiDiDi runs no second gate.
@@ -259,7 +259,7 @@ pub(super) fn count_primary(
     // only from Vitri's structure profile of the input and its stage report.
     // Vitri rechecks eligibility when the retry is requested.
     no_sbva_session: Option<&vitri::bundle::FrontendSession<'_>>,
-) -> Option<McOutcome> {
+) -> Option<Recovered> {
     // The primary (Arjun-reduced) compile's own wall: `program_deadline −
     // tail`, so a compile that would otherwise grind to the program end is
     // cut with the tail still unspent. Being cut is an ordinary primary
@@ -322,23 +322,7 @@ pub(super) fn count_primary(
             })
     };
     eprintln!("[mc] compile: start");
-    let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) =
-        count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
-    else {
-        // The caller decides what a cascade that answered nothing means: for
-        // the driver the end of the run, for a caller counting one piece of
-        // a partition a refusal.
-        eprintln!("[mc] no answer: Shannon split gave up");
-        return None;
-    };
-    Some(McOutcome {
-        count,
-        peak: peak_pairs,
-        cascade_ms: Some(cascade_ms),
-        answered_by,
-        reduction: Some(Reduction::Used),
-        preprocessing: Default::default(),
-    })
+    count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
 }
 
 #[cfg(test)]
