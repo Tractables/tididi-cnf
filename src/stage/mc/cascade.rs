@@ -110,7 +110,7 @@ fn no_sbva_retry(
         NO_SBVA_RETRY_VTREE_SPEC,
         reserve.as_secs(),
     );
-    // Reduce budget: `windows::arjun_budget_ms`, capped at half this stage's
+    // Reduce budget: `budget::arjun_budget_ms`, capped at half this stage's
     // window so the reduce cannot consume the compile's share — on the class
     // this stage is for, the reduce is the smaller half of the route.
     let reduce_budget_ms = crate::budget::arjun_budget_ms(run.config.time_limit_ms, 600_000)

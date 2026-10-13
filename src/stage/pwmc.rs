@@ -214,13 +214,11 @@ fn pwmc_solve_component(
     // component, so no grafting / product blow-up). Projecting the weight-1
     // (non-show) vars at the CNF level via BVE first can explode the clause set
     // (resolution blowup) and turn an easy component into a compile that never
-    // finishes (seen in the corpus: the unprojected component compiles cheaply
-    // through the during-forget diagram projection, while its BVE-projected
-    // residual balloons). So only adopt the BVE residual when it actually
-    // simplifies (fewer clauses); otherwise pass the unprojected component and let
-    // `pwmc_compile_evaluate`'s during-forget ∃-project the non-show vars at
-    // the diagram — the proven monolithic path. An empty residual clause ⇒
-    // UNSAT ⇒ 0.
+    // finishes, where the unprojected component compiles cheaply by forgetting
+    // in the diagram. So only adopt the BVE residual when it has no more
+    // clauses; otherwise pass the unprojected component and let
+    // `pwmc_compile_evaluate` ∃-forget the non-show vars in the diagram. An
+    // empty residual clause ⇒ UNSAT ⇒ 0.
     let t_bve = Instant::now();
     let reduced = vitri::projection::eliminate_hidden(sub, local_show)
         .expect("the show set names variables of the component it came from");
@@ -418,10 +416,10 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
 /// Stage: the one projection-preserving Vitri call.
 ///
 /// It owns Arjun minimization, projected strengthening, BVE, show renumbering,
-/// equivalence weight folds and the exact rational lift. Its keep gate: retain
-/// a sound result when the show set shrank, the lift is nontrivial, or the
-/// variable count fell by more than 10%. There is intentionally no second
-/// caller-side gate here, and an error keeps the raw problem.
+/// equivalence weight folds and the exact rational lift, and vitri's
+/// projection keep gate decides whether its Arjun result is kept. There is
+/// intentionally no second caller-side gate here, and an error keeps the raw
+/// problem.
 ///
 /// `declared_weights` are the instance's own `c p weight` lines, as parsed.
 /// Vitri's projected entry is told which variables the file weighs, not the
@@ -474,11 +472,11 @@ fn decompose_reduced(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighte
 /// PWMC degenerates to projected model counting, or any uniform "5 5"-style
 /// weighting — each model contributes the same constant ∏_{show} w_pos
 /// regardless of assignment, so PWMC = (∏_{show} w_pos) × PMC. Stream the
-/// integer projected count, the streaming count plain `--mc` uses with the
-/// hidden variables forgotten, and scale, instead of the monolithic Boolean compile +
-/// rational fold, which must materialize the whole diagram that streaming
-/// never builds. On a decline (deadline/OOM) the monolithic
-/// stage follows. Projected vars are weight-1 (symmetric by default), so the
+/// integer projected count, by the streaming count the model count uses under
+/// an explicit `--vtree`, with the hidden variables forgotten, and scale,
+/// instead of the monolithic Boolean compile + rational fold, which must
+/// materialize the whole diagram that streaming never builds. On a decline
+/// (deadline/OOM) the monolithic stage follows. Projected vars are weight-1 (symmetric by default), so the
 /// test reduces to "all show weights symmetric".
 fn symmetric_subsumption(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -> Step<Weighted> {
     use num_bigint::BigInt;
@@ -545,10 +543,10 @@ fn compile_evaluate(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -
     }
 }
 
-/// Projected weighted model counting (PWMC). Combines
-/// ∃-projection (`run_pmc_count`) with a rational semiring fold
-/// (`query::evaluate`): count the weighted assignments to the show set that
-/// extend to a model, weighting only show-var literals.
+/// Projected weighted model counting (PWMC). Combines the projected count's
+/// ∃-projection with a fold of the rational weights (`Engine::evaluate`):
+/// count the weighted assignments to the show set that extend to a model,
+/// weighting only show-var literals.
 ///
 ///   PWMC = evaluate(∃forgotten. f, w) / 2^forgotten
 ///

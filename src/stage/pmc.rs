@@ -198,24 +198,25 @@ fn strengthen_and_eliminate(run: &Run<'_>, problem: &Problem<Unweighted>) -> Ste
 }
 
 /// Run the SAT-backed definability oracle over the residual projected vars, then
-/// split the certified-defined vars into marginalize-vs-∃-forget by the same DVE
+/// split the certified-defined vars into marginalize-vs-∃-forget by the
 /// resolvent bound (`pos*neg > pos+neg` ⇒ declined / high-fanout) and return the
 /// ∃-forget set: free vars, budget-exhausted "unknown" vars, then the defined
-/// vars forgotten rather than marginalized.
+/// vars forgotten rather than marginalized. The bound is the first test of
+/// vitri's rule for which variables its elimination tries; vitri keeps that rule
+/// private, so it is written out here, without the rule's other two tests.
 ///
-/// Definability-oracle budget is sound: an unknown result keeps the var, only a proven UNSAT
-/// removes one — more budget trades coverage for time, never correctness. Shipped
-/// budget is the `HiddenDefinabilityConfig` default (2000 conflicts / 3s), the
-/// 3 s cut at `deadline`, the run's wall. Once that has passed the oracle does
-/// not run, and every projected var is ∃-forgotten, as an unknown one is.
+/// The oracle's budget is sound: an unknown result keeps the var, only a proven
+/// UNSAT removes one — more budget trades coverage for time, never correctness.
+/// The budget is the `HiddenDefinabilityConfig` default, its wall cut at
+/// `deadline`, the run's wall. Once that has passed the oracle does not run,
+/// and every projected var is ∃-forgotten, as an unknown one is.
 ///
 /// The certified-defined vars are split into marginalize (factor 1) vs ∃-forget.
-/// Both operations are sound for a show-defined var (Prop 1 of Lagniez, Lonca and
-/// Marquis, IJCAI 2016: ∃ ≡ Σ); the split is
-/// purely about the diagram peak. Marginalize only the high-fanout ("declined")
-/// defined vars, whose ∃-forget OR-peak is the one worth dodging, and ∃-forget the
-/// bounded low-fanout ones early — a low-fanout-defined instance is cheaper for
-/// forgetting early.
+/// Both operations are sound for a show-defined var (Prop 1 of Lagniez, Lonca
+/// and Marquis, IJCAI 2016: ∃ ≡ Σ); the split is purely about the diagram peak.
+/// Marginalize only the high-fanout ("declined") defined vars, whose ∃-forget
+/// OR-peak is the one worth dodging, and ∃-forget the bounded low-fanout ones
+/// early — a low-fanout-defined instance is cheaper for forgetting early.
 fn classify_and_split_defined(
     work: &CnfFormula,
     show: &ShowSet,
@@ -308,16 +309,12 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     // Reactive recovery: a short single-shot compile, then show-var cutset
     // conditioning, then the same compile again on the run's wall.
     //
-    // The single-shot deadline is min(0.2 × wall, 2 s) from compile start, and
-    // the 2 s cap is what matters. The deadline only cuts the fallible
-    // main-batch conjoins; an auxiliary apply runs on a transient engine that
-    // nothing has armed, so a deadline landing there cannot cut it. A hard
-    // instance is still in large main-batch conjoins at 2 s and is cut into
-    // recovery; an easy one is through the main batch by then and finishes in
-    // the auxiliary apply, where the deadline lands harmlessly. A longer cap
-    // lets a doomed compile reach the auxiliary apply, after which nothing cuts
-    // it and it grinds to the wall. With no wall set there is no deadline and
-    // only a panic leads to recovery.
+    // The single-shot deadline is min(0.2 × wall, 2 s) from compile start. The
+    // compile arms it on the engine, which cuts any apply at it, and checks it
+    // between steps, so a compile not done by then gives up and conditioning
+    // runs. The 2 s cap is an empirical setting: nothing in the compile
+    // derives it. With no wall set there is no deadline, and only a panic or a
+    // refused apply leads to recovery.
     let first_try_deadline = run.config.time_limit_ms.map(|ms| {
         let frac_ms = (ms as f64 * 0.2) as u64;
         crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)

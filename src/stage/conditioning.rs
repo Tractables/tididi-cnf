@@ -198,22 +198,18 @@ fn pmc_branch_count(
     // tightest wall that applies — the conditioning cascade builds one vtree
     // per branch, so an unbounded build here multiplies across the whole
     // branch set.
-    let CountVtree { vtree, component_vtrees, projected, .. } = count_vtree(
+    let CountVtree { vtree, component_vtrees, projected } = count_vtree(
         run,
         cformula,
         super::PORTFOLIO_VTREE_SPEC,
         &VtreeOptions::by_peak_width().with_deadline(crate::budget::vtree_deadline(deadline)),
         Some(&cshow),
     )?;
-    // Install the per-branch deadline into the engine's apply limits so a
-    // single giant conjoin can be cut mid-apply — far finer than the
-    // step-boundary `expired()` check, which a 10 GB conjoin can evade for
-    // minutes. It is installed here, not only by `compile_cnf` (which installs
-    // the same deadline around the compile alone), because the model count
-    // after the compile polls it too. The fallible main batch conjoin
-    // propagates the resulting `Err(Deadline)` → `None` → deepen; infallible
-    // auxiliary applies are shielded from it.
-    let _adl = crate::budget::deadline_scope(run.eng, deadline);
+    // The per-branch deadline, armed on the engine around the compile and the
+    // count read off it: the compile arms it around itself alone, and the
+    // readout after it is cut at it too. A cut branch gives up (`None`), and
+    // the caller splits it deeper.
+    let _deadline = crate::budget::deadline_scope(run.eng, deadline);
     let count = projected_compile(
         run,
         cformula,
@@ -228,9 +224,8 @@ fn pmc_branch_count(
 /// Reactive projected-conditioning recovery: `condition_and_count` from depth 0,
 /// splitting up to 12 show vars deep (4 before any compile is tried), each
 /// branch on a 30 s wall with a 10 s re-Arjun, none past the run's wall.
-/// Invoked only after the
-/// single-shot projected compile OOMs or grinds past its deadline, so a compile
-/// that finishes is never conditioned. Returns the projected count over
+/// Invoked only after the single-shot projected compile gives up or panics, so
+/// a compile that finishes is never conditioned. Returns the projected count over
 /// `show` in `work`'s numbering, or `None` if a branch still fails at the
 /// deepest split.
 ///
