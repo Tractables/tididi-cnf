@@ -198,7 +198,7 @@ def test_every_error_class_derives_from_error():
     assert issubclass(tididi_bonsai.Error, Exception)
 
 
-def test_wrong_argument_types_raise_type_error():
+def test_wrong_argument_types_and_negative_limits_are_refused():
     with pytest.raises(TypeError, match="str or bytes"):
         tididi_bonsai.count(42)
     with pytest.raises(TypeError):
