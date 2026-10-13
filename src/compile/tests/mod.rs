@@ -33,7 +33,7 @@ fn portfolio(sub: &CnfFormula) -> Arc<Vtree> {
     crate::vtree::build_vtree(sub, "portfolio", &crate::vtree::VtreeOptions::default()).unwrap()
 }
 
-/// The streaming loop must install the wallclock guard ITSELF, for every
+/// The streaming loop must install the wallclock guard itself, for every
 /// caller, so a caller that reaches it directly passes through no wrapper
 /// and still gets one: by the time the loop asks for a component's vtree,
 /// the caller's deadline is the apply-level cut armed in the engine's
@@ -107,7 +107,11 @@ fn whole_plan_keeps_the_supplied_root_on_a_decomposable_formula() {
     let eng = &Engine::new();
     let (formula, supplied, _) = decomposable_formula_and_split();
 
-    let tdd = compile_cnf(eng, &formula, &supplied, CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() }).unwrap().diagram;
+    let opts = CompileOptions {
+        plan: ComponentPlan::Whole,
+        ..CompileOptions::default()
+    };
+    let tdd = compile_cnf(eng, &formula, &supplied, opts).unwrap().diagram;
 
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
     assert!(
@@ -122,7 +126,12 @@ fn whole_mc_plan_keeps_the_supplied_order_and_exact_count() {
     let (formula, supplied, _) = decomposable_formula_and_split();
     let supplied_order: Vec<_> = supplied.leaf_bottomup().map(|(_, var)| var).collect();
 
-    let tdd = compile_cnf(eng, &formula, &supplied, CompileOptions { output: Output::Count, plan: ComponentPlan::Whole, ..CompileOptions::default() }).unwrap().diagram;
+    let opts = CompileOptions {
+        output: Output::Count,
+        plan: ComponentPlan::Whole,
+        ..CompileOptions::default()
+    };
+    let tdd = compile_cnf(eng, &formula, &supplied, opts).unwrap().diagram;
 
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
     assert_eq!(
@@ -141,7 +150,12 @@ fn split_plan_preserves_projected_count_across_components() {
     let (formula, root, components) = decomposable_formula_and_split();
     let projected = [VarId(2), VarId(4)];
 
-    let compiled = compile_cnf(eng, &formula, &root, CompileOptions { output: Output::ProjectedCount(&projected), plan: ComponentPlan::Split(&components), ..CompileOptions::default() }).expect("split projected compile");
+    let opts = CompileOptions {
+        output: Output::ProjectedCount(&projected),
+        plan: ComponentPlan::Split(&components),
+        ..CompileOptions::default()
+    };
+    let compiled = compile_cnf(eng, &formula, &root, opts).expect("split projected compile");
     let count = compiled.diagram.model_count().unwrap() >> compiled.forgotten;
 
     assert_eq!(count, BigUint::from(4u32));
@@ -153,9 +167,17 @@ fn split_plan_preserves_weighted_projected_count_across_components() {
     let (formula, root, components) = decomposable_formula_and_split();
     let projected = [VarId(2), VarId(4)];
 
-    let tdd = compile_cnf(eng, &formula, &root, CompileOptions { output: Output::ProjectedFunction(&projected), plan: ComponentPlan::Split(&components), ..CompileOptions::default() }).expect("split weighted-projected compile").diagram;
+    let opts = CompileOptions {
+        output: Output::ProjectedFunction(&projected),
+        plan: ComponentPlan::Split(&components),
+        ..CompileOptions::default()
+    };
+    let tdd = compile_cnf(eng, &formula, &root, opts).expect("split weighted-projected compile").diagram;
     let integer = |value: i64| BigRational::from_integer(BigInt::from(value));
-    let weights = RationalWeights::from_polarities(tididi::diagram::LiteralWeights { positive: vec![integer(2), integer(1), integer(3), integer(1)], negative: vec![integer(5), integer(1), integer(7), integer(1)] })
+    let weights = RationalWeights::from_polarities(tididi::diagram::LiteralWeights {
+        positive: vec![integer(2), integer(1), integer(3), integer(1)],
+        negative: vec![integer(5), integer(1), integer(7), integer(1)],
+    })
     .expect("both polarity vectors have one entry per variable");
     let value = tdd.evaluate(&weights).unwrap() / integer(4);
 
@@ -303,8 +325,8 @@ fn streaming_projected_counts_match_brute_force() {
 /// The streaming count divides each component by its own number of
 /// forgotten variables, not by the running total over the components so far.
 /// Three disjoint components with one projected variable each drive that
-/// total to 1, 2, 3; dividing by it shifted a component to 0 and reported
-/// the formula unsatisfiable. The components come from `split_components` on
+/// total to 1, 2, 3, enough to shift a component's count to 0 and report the
+/// formula unsatisfiable. The components come from `split_components` on
 /// a structural vtree kind, the only kind for which it splits components.
 #[test]
 fn streaming_projected_divisor_is_per_component() {
