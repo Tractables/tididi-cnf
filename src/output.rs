@@ -307,6 +307,13 @@ fn recorded(stats: &mut Stats, satisfiable: bool, count: Count, diagram: Option<
     Verdict { satisfiable, count, diagram }
 }
 
+/// [`recorded`] for an integer count: a model count is zero exactly when the
+/// formula has no model, so the count is the verdict.
+fn recorded_integer(stats: &mut Stats, count: num_bigint::BigUint, diagram: Option<tididi::Tdd>) -> Verdict {
+    let satisfiable = count != num_bigint::BigUint::ZERO;
+    recorded(stats, satisfiable, Count::Integer(count), diagram)
+}
+
 /// The portfolio candidate that won, recorded for the integer and weighted
 /// counts and the compile, since only by then has selection run. The spec
 /// itself is settled before the mode dispatches and is recorded once, in
@@ -317,9 +324,8 @@ fn record_vtree_candidate(stats: &mut Stats, config: &Config) {
     }
 }
 
-/// Record an integer count with what every integer mode reports alongside it;
-/// a model count is zero exactly when the formula has no model, so the count
-/// is the verdict.
+/// Record a model count with what the model count and the compile report
+/// alongside it.
 fn record_integer(
     stats: &mut Stats,
     config: &Config,
@@ -335,8 +341,7 @@ fn record_integer(
     }
     preprocessing.write(stats);
     stats.compile_ms = Some(compile_ms as u64);
-    let satisfiable = count != num_bigint::BigUint::ZERO;
-    recorded(stats, satisfiable, Count::Integer(count), diagram)
+    recorded_integer(stats, count, diagram)
 }
 
 /// What preprocessing did, in the four numbers the result record keeps. The
@@ -447,8 +452,7 @@ impl<V> Projected<V> {
 /// The verdict and the record of a projected integer (PMC) count.
 pub(crate) fn record_pmc(stats: &mut Stats, answer: Projected<num_bigint::BigUint>) -> Verdict {
     let count = answer.record(stats);
-    let satisfiable = count != num_bigint::BigUint::ZERO;
-    recorded(stats, satisfiable, Count::Integer(count), None)
+    recorded_integer(stats, count, None)
 }
 
 /// The verdict and the record of a projected weighted (PWMC) count, an exact
