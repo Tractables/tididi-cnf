@@ -85,7 +85,7 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
     assert_eq!(allocations.load(Ordering::Relaxed), before);
 }
 
-/// Vitri's linear vtree arrives as the library's linear vtree over the same
+/// vitri's linear vtree arrives as the library's linear vtree over the same
 /// variables.
 #[test]
 fn a_linear_vitri_vtree_converts_its_root_shape_and_variable_ids() {

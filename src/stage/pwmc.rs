@@ -19,7 +19,7 @@ use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
 use crate::output::Projected;
 use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};
 
-/// The one Vitri configuration for top-level PWMC preprocessing.
+/// The one vitri configuration for top-level PWMC preprocessing.
 ///
 /// The Arjun budget is a flat 300 s policy — PWMC deliberately does not mirror
 /// PMC's size-adaptive fraction (`pmc_arjun_budget_ms`), the converge-vs-yield
@@ -29,7 +29,7 @@ use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};
 /// The caller already owns the whole-program deadline and the flat Arjun
 /// policy, so an available Arjun window is passed as `Exact` with no
 /// `budget_ms` scale to derive it a second time. Once the deadline is spent,
-/// Arjun is switched off and its budget returns to `Derived`; Vitri's projected
+/// Arjun is switched off and its budget returns to `Derived`; vitri's projected
 /// strengthening and BVE still run.
 fn pwmc_preprocess_config(
     parent: &crate::config::Config,
@@ -364,7 +364,7 @@ struct DecomposePolicy {
     sort_cheap_first: bool,
 }
 
-/// Before Vitri, where components are only enumerated: at most 80 show vars
+/// Before vitri, where components are only enumerated: at most 80 show vars
 /// each, in discovery order.
 const INPUT_DECOMPOSE: DecomposePolicy = DecomposePolicy { show_cap: Some(80), sort_cheap_first: false };
 
@@ -390,13 +390,13 @@ fn problem_weight_tables(
     weights
 }
 
-/// Stage: independent-component decomposition on the raw formula, before Vitri.
+/// Stage: independent-component decomposition on the raw formula, before vitri.
 ///
 /// For a formula whose monolithic compile runs out of time or memory while
 /// every component is small enough to enumerate. Each component is only
 /// enumerated, never compiled, and a component with more than 80 show vars
 /// declines the stage: that one is left to preprocessing and the compile,
-/// with the whole budget. Any miss falls through to Vitri preprocessing with
+/// with the whole budget. Any miss falls through to vitri preprocessing with
 /// the budget intact.
 fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted> {
     let decomposed = pwmc_decompose(
@@ -411,7 +411,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
     decomposed.map_or(Step::Decline, Step::Answer)
 }
 
-/// Stage: the one projection-preserving Vitri call.
+/// Stage: the one projection-preserving vitri call.
 ///
 /// It owns Arjun minimization, projected strengthening, BVE, show renumbering,
 /// equivalence weight folds and the exact rational lift, and vitri's
@@ -420,7 +420,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
 /// problem.
 ///
 /// `declared_weights` are the instance's own `c p weight` lines, as parsed.
-/// Vitri's projected entry is told which variables the file weighs, not the
+/// vitri's projected entry is told which variables the file weighs, not the
 /// resolved table, so the declaration itself has to reach this call.
 fn preprocess(
     run: &Run<'_>,
@@ -556,7 +556,7 @@ fn compile_evaluate(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -
 /// ∃; since projected vars are weight-1, eliminating them at the CNF level loses
 /// no weight bookkeeping (the factor we would have divided out simply never
 /// appears). The component-local BVE preserves ids, so the show set and the
-/// weight tables stay keyed to the component formula; the top-level Vitri bridge
+/// weight tables stay keyed to the component formula; the top-level vitri bridge
 /// separately returns both keyed to its final reduced formula.
 ///
 /// Without a show set every variable is shown, and the count is a plain

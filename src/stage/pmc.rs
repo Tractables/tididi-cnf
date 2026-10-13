@@ -109,7 +109,7 @@ fn structured_shatter(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unwe
         .with_run_policy(run.config);
     let total = structured_count_with(run.eng, run.compile, &plan, |f| {
         // The structured counter's callback consumes one root, not a component
-        // plan. Request that exact Whole construction at Vitri's boundary
+        // plan. Request that exact Whole construction at vitri's boundary
         // instead of building Split and discarding it.
         crate::vtree::built_or_give_up(
             run.config.vtree_time.time(|| crate::vtree::build_vtree(f, super::PORTFOLIO_VTREE_SPEC, &vtree_ctx)),
@@ -178,7 +178,7 @@ fn enumerate(run: &Run<'_>, problem: &Problem<Unweighted>, small_show: bool) -> 
 /// Stage: the projection-preserving tail — strengthening and BVE with Arjun
 /// disabled.
 ///
-/// Enumeration declined. Resume the same Vitri projection pipeline from the
+/// Enumeration declined. Resume the same vitri projection pipeline from the
 /// first bundle, with Arjun off, so the tail owns strengthening and BVE without
 /// rerunning or re-attributing the Arjun lift.
 fn strengthen_and_eliminate(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unweighted> {
@@ -351,7 +351,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 /// distinct assignments to the show set that extend to a model of the formula.
 ///
 /// The stages preserve a checkpoint between projection-minimizing
-/// Arjun and Vitri's strengthening/BVE tail so the exact small-show enumerator
+/// Arjun and vitri's strengthening/BVE tail so the exact small-show enumerator
 /// can answer before more preprocessing. It then compiles the reduced formula
 /// while existentially forgetting hidden variables. After a real ∃, each
 /// forgotten var is genuinely free, so:
@@ -360,7 +360,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 ///
 /// ([`Compiled::projected_count`](crate::compile::Compiled::projected_count)).
 /// Every variable is a vtree leaf, so a show var appearing in no clause stays
-/// free in the diagram and doubles the count there. Vitri returns the
+/// free in the diagram and doubles the count there. vitri returns the
 /// reduced show IDs and the exact power-of-two lift from eliminated variables;
 /// the seam composes that lift once, at the answer.
 ///

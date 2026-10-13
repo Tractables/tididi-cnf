@@ -24,7 +24,7 @@ use super::recovery::{Counted, Recovered, count_with_recovery};
 use super::support_enum::support_enum_stage;
 
 /// A Shannon cofactor's compile, in both cascades: a [`portfolio_attempt`], every
-/// component's vtree built up front by Vitri, announced on stderr. The run's
+/// component's vtree built up front by vitri, announced on stderr. The run's
 /// wall bounds the vtree builds and the compile alike. A vtree that cannot be
 /// built gives up with `None` before the compile, as a compile that gives up
 /// does.
@@ -44,7 +44,7 @@ pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted
 }
 
 /// Whether the no-SBVA retry may run behind the primary compile: the input is
-/// coloring-like, as Vitri's structure profile reads it, and Vitri's SBVA
+/// coloring-like, as vitri's structure profile reads it, and vitri's SBVA
 /// policy is on. Says so on stderr when it is.
 pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
     let Some(profile) = config.source_structure_profile.filter(|profile| profile.coloring_like) else {
@@ -67,18 +67,18 @@ pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
 /// the class where SBVA is the reason the primary compile fails: SBVA
 /// rewrites the input clause set into a shape whose diagram grows until
 /// recovery. Re-reducing the same `compile_formula` with SBVA off, asking
-/// Vitri for its hypergraph construction, and re-entering the same compile
+/// vitri for its hypergraph construction, and re-entering the same compile
 /// path answers it.
 ///
 /// Engagement (all three, else the stage does not run):
 ///  - the primary compile failed — this stage runs only among the fallbacks
 ///    of [`count_primary`], which run only then;
-///  - [`arm_no_sbva_retry`] armed it: the input is coloring-like and Vitri's
+///  - [`arm_no_sbva_retry`] armed it: the input is coloring-like and vitri's
 ///    SBVA policy is on;
-///  - SBVA ran in the primary reduction, as Vitri's stage report says.
+///  - SBVA ran in the primary reduction, as vitri's stage report says.
 ///
 /// The reduction is a retry of the same frontend session with SBVA off and the
-/// hypergraph vtree. Vitri owns the clause-growth discard and reports it as a
+/// hypergraph vtree. vitri owns the clause-growth discard and reports it as a
 /// decline, which leaves the formula to the next fallback. A kept reduction
 /// becomes a compile attempt through `attempt_from_vitri_build`, like the
 /// primary one.
@@ -124,12 +124,12 @@ fn no_sbva_retry(
     let retried = match session.retry(budget, &retry) {
         Ok(Some(retried)) => retried,
         Ok(None) => {
-            eprintln!("[mc] no-sbva-retry: Vitri's frontend declined — leaving the formula to the next fallback");
+            eprintln!("[mc] no-sbva-retry: vitri's frontend declined — leaving the formula to the next fallback");
             return None;
         }
         Err(error) => {
             eprintln!(
-                "[mc] no-sbva-retry: Vitri's frontend failed ({error}) — leaving the formula to the next fallback"
+                "[mc] no-sbva-retry: vitri's frontend failed ({error}) — leaving the formula to the next fallback"
             );
             return None;
         }
@@ -230,12 +230,12 @@ fn unreduced_retry(
     Some(counted)
 }
 
-/// The kept reduction: compile it on the vtree Vitri built for it, under
+/// The kept reduction: compile it on the vtree vitri built for it, under
 /// [`count_with_recovery`], with the fallbacks behind it and Shannon split
 /// behind them. `None` when nothing answered; the stage that gave up has said
 /// so.
 ///
-/// Vitri's own clause-growth policy already discarded the reductions it did not
+/// vitri's own clause-growth policy already discarded the reductions it did not
 /// want (they arrive at `count_without_reduction`), so this crate runs no second
 /// gate.
 ///
@@ -252,11 +252,11 @@ pub(super) fn count_primary(
     // decide.
     ar: crate::frontend::record::ArjunReduction,
     vtree: crate::vtree::VtreeBuild,
-    // The same Vitri session that produced the reduction when the no-SBVA
+    // The same vitri session that produced the reduction when the no-SBVA
     // retry is a candidate, `None` when it is not; checkpointed retries stay
     // anchored to it instead of replaying preprocessing. Candidacy is derived
-    // only from Vitri's structure profile of the input and its stage report.
-    // Vitri rechecks eligibility when the retry is requested.
+    // only from vitri's structure profile of the input and its stage report.
+    // vitri rechecks eligibility when the retry is requested.
     no_sbva_session: Option<&vitri::bundle::FrontendSession<'_>>,
 ) -> Option<Recovered> {
     // The primary (Arjun-reduced) compile's own wall: `program_deadline −
@@ -286,7 +286,7 @@ pub(super) fn count_primary(
             (remaining > tail * 2).then(|| d - tail)
         })
     };
-    // The primary compile: the Arjun reduction on the vtree Vitri built for
+    // The primary compile: the Arjun reduction on the vtree vitri built for
     // it, stopping at the reserved-tail deadline when one is set.
     let primary = attempt_from_vitri_build(ar.formula.clone(), vtree, ar.lift_pow2);
     let first = || {

@@ -1,5 +1,5 @@
 //! What the two projected counts, PMC and PWMC, share: the seam they are
-//! written on, a list of stages run in order until one answers; the Vitri
+//! written on, a list of stages run in order until one answers; the vitri
 //! projection step, the trivial residual and the show-set enumeration, stages
 //! of both; the line their compiles print; and the show-aware counting vtree
 //! both compile on.
@@ -134,7 +134,7 @@ pub(super) fn enumerate_show<T: Tally + Clone>(
     Some(value)
 }
 
-/// One Vitri preprocessing stage on `problem`, as a pipeline step: UNSAT is
+/// One vitri preprocessing stage on `problem`, as a pipeline step: UNSAT is
 /// the answer zero, a reduction is a rewrite, and an error prints
 /// `{tag}: {error} — keeping {kept}` and declines. `tag` is `[<mode>] <stage>`.
 pub(super) fn projection_step<D: Domain>(
@@ -189,7 +189,7 @@ pub(super) fn trivial_residual<D: Domain>(
 /// ∃-forget-frontier selection when there is a show set, ordinary clause-load
 /// balance otherwise, on the run's spec and policy; `None` when the
 /// construction failed. PWMC's compile uses it too; the conditioning branches
-/// build theirs with `count_vtree` on Vitri's portfolio and no run policy.
+/// build theirs with `count_vtree` on vitri's portfolio and no run policy.
 pub(super) fn counting_vtree(
     run: &Run<'_>,
     work: &CnfFormula,

@@ -1,7 +1,7 @@
 //! The compile attempts the model count runs, and how each is built.
 //!
 //! One attempt is one formula plus the per-component vtrees it will be
-//! compiled on. The primary compile takes the tree Vitri already built beside
+//! compiled on. The primary compile takes the tree vitri already built beside
 //! the reduction it is made of; the unreduced retry and a Shannon cofactor have
 //! no such pairing and build their own trees through [`portfolio_attempt`],
 //! bounded by the time limit the attempt will be compiled against, then hand
@@ -57,13 +57,13 @@ pub(super) fn count_attempt(
     .map(|(count, peak)| (count << lift_pow2, peak))
 }
 
-/// Consume a Vitri frontend attempt's already-built vtree into one compile
+/// Consume a vitri frontend attempt's already-built vtree into one compile
 /// attempt.
 ///
 /// This is the only unpacking path for paired whole-run frontend results. The
-/// primary and checkpointed retry attempts must use the tree Vitri built over
+/// primary and checkpointed retry attempts must use the tree vitri built over
 /// their own reduced formula; rebuilding here would separate the two halves of
-/// Vitri's result and repeat construction work.
+/// vitri's result and repeat construction work.
 pub(super) fn attempt_from_vitri_build(
     formula: CnfFormula,
     built: VtreeBuild,
@@ -75,8 +75,8 @@ pub(super) fn attempt_from_vitri_build(
     CompileAttempt { formula, components, lift_pow2 }
 }
 
-/// An attempt for `formula` on Vitri's portfolio, every component's
-/// vtree built up front by Vitri, with no Arjun lift: the unreduced retry's and
+/// An attempt for `formula` on vitri's portfolio, every component's
+/// vtree built up front by vitri, with no Arjun lift: the unreduced retry's and
 /// a Shannon cofactor's. `None` when the construction fails, as
 /// [`built_or_give_up`] reads it.
 ///

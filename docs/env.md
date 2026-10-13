@@ -7,7 +7,7 @@ when the run starts: a value that does not parse, or a setting the run cannot
 honour, stops the run with exit status 2 before any work, with a message that
 names the variable.
 
-The library's `count` entry uses the same validation and Vitri settings as
+The library's `count` entry uses the same validation and vitri settings as
 the binary, including the refusals below. Every `count` reads them afresh
 when it starts, so a setting changed between two calls takes effect, or is
 refused, in the second. Preprocessing controls hold for the whole run;

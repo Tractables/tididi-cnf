@@ -131,7 +131,7 @@ impl Settings {
                 cause()
             )));
         }
-        // The weighted count compiles with a weight store, which the SAT-prune
+        // The weighted count compiles with a weight store, which the SAT-pruning
         // pass cannot read, so its compiles never prune. The projected
         // weighted count compiles without one and prunes.
         if self.sat_prune.is_some() && mode == Mode::Wmc {
@@ -175,9 +175,9 @@ pub(crate) struct Config {
     /// (Arjun, the Shannon split, SAT pruning) are shares of it; without it the
     /// absolute defaults apply.
     pub(crate) time_limit_ms: Option<u64>,
-    /// Whether the run's compiles may run the SAT-prune pass: on unless
+    /// Whether the run's compiles may run the SAT-pruning pass: on unless
     /// `TIDIDI_SAT_PRUNE=off`, a diagnostic off-switch for paired on/off
-    /// measurements. The driver hands the run's compiles a SAT-prune pass
+    /// measurements. The driver hands the run's compiles a SAT-pruning pass
     /// ([`crate::compile::sat_prune::SatPrune`]) only when it is set.
     pub(crate) sat_prune: bool,
     /// vitri's `VITRI_*` settings, read and checked from the environment as

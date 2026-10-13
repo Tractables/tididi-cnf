@@ -354,7 +354,7 @@ fn the_mode_comes_from_the_flag_or_the_header() {
     }
 }
 
-/// Vitri's Arjun settings reach the weighted count's Arjun reduction: with
+/// vitri's Arjun settings reach the weighted count's Arjun reduction: with
 /// SBVA off, Arjun reduces this circuit to a different formula with the same
 /// count.
 #[test]
@@ -464,7 +464,7 @@ fn counts_run_the_cascade_without_vtree() {
     assert!(record.get("arjun_ms").is_some(), "{record}");
 }
 
-/// `--mode mc --vtree portfolio` streams through Vitri's simplify-only
+/// `--mode mc --vtree portfolio` streams through vitri's simplify-only
 /// preprocessing, without the cascade and without Arjun, and an instance that
 /// preprocessing refutes returns before any vtree is built, answered by
 /// preprocessing.

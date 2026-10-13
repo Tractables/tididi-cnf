@@ -92,7 +92,7 @@ fn parse_input(
     Ok((formula, meta, Config::new(limits, settings, vitri, mode), program_deadline))
 }
 
-/// The ordinary non-counting route: Vitri's `compile` preprocessing, the
+/// The ordinary non-counting route: vitri's `compile` preprocessing, the
 /// paired vtree construction, reduced compilation, then exact function
 /// expansion through the returned total original-variable map. Preprocessing,
 /// vtree and compile all stop at the run's wall.
@@ -211,7 +211,7 @@ fn solve_on(
     // mode and the resolved vtree construction and every mode fills the same
     // one.
     let mut stats = crate::output::open_record(&config, &formula);
-    // The run's SAT-prune pass, handed to every compile when the run keeps it
+    // The run's SAT-pruning pass, handed to every compile when the run keeps it
     // on; the tallies it gathers close the record.
     let sat_prune = SatPrune::new(config.time_limit_ms);
 

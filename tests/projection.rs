@@ -109,7 +109,7 @@ fn compile_project_matches_brute_force() {
 /// compile forgets it at the root, a split grafts it in free beside the
 /// components, where it still counts ×2 in the raw count, and a formula with
 /// no clause at all compiles to the constant one, where every variable does.
-/// A shown one stays a factor two. The split plan's trees come from Vitri's
+/// A shown one stays a factor two. The split plan's trees come from vitri's
 /// portfolio build; the whole plan compiles on a balanced root.
 #[test]
 fn every_plan_counts_a_free_variable_once() {

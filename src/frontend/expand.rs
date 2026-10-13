@@ -1,6 +1,6 @@
 //! Reconstruct a compiled Boolean function in its original variable space.
 //!
-//! Vitri's compile record partitions originals into signed alias classes,
+//! vitri's compile record partitions originals into signed alias classes,
 //! constants and free variables. A reduced leaf is replaced by the conjunction
 //! for each value of its whole signed class, over a vtree whose leaf is
 //! replaced by the adjacent subtree of the class's originals; constants and
@@ -89,7 +89,7 @@ fn expand_class_vtree(reduced: &Vtree, expansion: &OriginalExpansion) -> Arc<Vtr
 /// Materialize the conjunction described by a compile record with no reduced
 /// variables. Every original is then either constant or free.
 ///
-/// Vitri reports a run fully resolved exactly when the reduced formula has no
+/// vitri reports a run fully resolved exactly when the reduced formula has no
 /// variables, so there is no class, and it refuses a formula with none before
 /// it preprocesses, so the balanced vtree over the originals has a leaf.
 pub(crate) fn fully_resolved_tdd(eng: &Engine, expansion: &OriginalExpansion) -> Result<Tdd, OperationError> {

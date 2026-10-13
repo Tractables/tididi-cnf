@@ -133,7 +133,7 @@ pub(super) fn projected_compile(
 /// (conditioned) formula. Returns the branch's projected model count, lifted
 /// by the re-reduction's lift, or `None` if the compile trips `deadline`.
 ///
-/// The vtree is built from Vitri's portfolio, not the run's `--vtree` spec:
+/// The vtree is built from vitri's portfolio, not the run's `--vtree` spec:
 /// conditioning does many per-branch builds, so it needs a cheap-to-build vtree,
 /// and the run's spec may be an expensive one.
 ///
@@ -156,7 +156,7 @@ fn pmc_branch_count(
     let input = Problem::<Unweighted> { formula: formula.clone(), show: Some(show.clone()), weights: (), lift: 0 };
 
     // Re-run projected Arjun inside a conditioned branch. This is deliberately
-    // an Arjun-only Vitri bundle: the branch's own compile performs projection,
+    // an Arjun-only vitri bundle: the branch's own compile performs projection,
     // and `KeepSound` accepts any correctly mapped checkpoint, including one
     // with no projection gain.
     // The local reduced numbering never leaves this compile attempt.
@@ -186,7 +186,7 @@ fn pmc_branch_count(
     // Trivially-SAT branch: conditioning + re-Arjun can collapse a branch to an
     // empty clause-set (every assignment satisfies). `compile_cnf` returns the
     // constant one for a clause-less formula without forgetting anything, and
-    // Vitri builds no vtree over a formula with no variables, so count it
+    // vitri builds no vtree over a formula with no variables, so count it
     // directly: ∃-forget the hidden vars, every show var is free →
     // 2^|show| << inner_shift.
     if cformula.clauses().is_empty() {

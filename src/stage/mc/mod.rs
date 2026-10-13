@@ -1,7 +1,7 @@
 //! The model count, on its two routes: the cascade from Arjun's reduction to
 //! a count, and the streaming compile under an explicit `--vtree`.
 //!
-//! `count_mc` is the cascade — Vitri's MC frontend, the full-resolve
+//! `count_mc` is the cascade — vitri's MC frontend, the full-resolve
 //! short-circuit, then the primary compile and what follows it — and
 //! `run_mc_count` is the driver entry that hands back what it produced;
 //! `run_mc_streaming` is the other route's entry. The pieces they compose are
@@ -36,7 +36,7 @@ mod windows;
 /// What [`count_mc`] produced — a count and the diagnostics that describe how
 /// it was reached.
 ///
-/// The count is in the space of the formula passed to [`count_mc`]. Vitri's
+/// The count is in the space of the formula passed to [`count_mc`]. vitri's
 /// simplify and Arjun lifts are both folded exactly once before this value leaves
 /// the session-backed frontend.
 struct McOutcome {
@@ -55,7 +55,7 @@ struct McOutcome {
 
 /// The model count, from the reduction to a count: the Arjun reduction, the
 /// full-resolve short-circuit, then either the primary compile with its
-/// fallbacks and Shannon-split recovery ([`count_primary`]) or, when Vitri
+/// fallbacks and Shannon-split recovery ([`count_primary`]) or, when vitri
 /// kept no reduction, the count without it ([`count_without_reduction`]).
 /// `None` when nothing answered; the stage that gave up has said so on stderr.
 /// It runs the whole front end on the formula it is handed.
@@ -92,7 +92,7 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
             };
             let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
                 // Everything inside the cascade stays in the formula space
-                // Arjun was given; Vitri's simplify lift is applied once, below.
+                // Arjun was given; vitri's simplify lift is applied once, below.
                 let arjun_input = bundle
                     .arjun_input
                     .take()
@@ -132,13 +132,13 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
         },
     );
     result.unwrap_or_else(|error| {
-        eprintln!("[mc] preprocessing: Vitri's frontend failed: {error}");
+        eprintln!("[mc] preprocessing: vitri's frontend failed: {error}");
         None
     })
 }
 
 /// No kept reduction: say why, then compile the simplified formula on the
-/// vtree Vitri built for it, with the support-enum stage (on a fresh, bounded
+/// vtree vitri built for it, with the support-enum stage (on a fresh, bounded
 /// Arjun pass) as its one fallback and Shannon split behind it. `None` when
 /// nothing answered.
 fn count_without_reduction(
@@ -147,7 +147,7 @@ fn count_without_reduction(
     outcome: Option<vitri::bundle::StageOutcome>,
     vtree: crate::vtree::VtreeBuild,
 ) -> Option<Recovered> {
-    // The single sink for every non-`Ran` disposition Vitri reports. The typed reason
+    // The single sink for every non-`Ran` disposition vitri reports. The typed reason
     // is kept: a deterministic quality rejection and a budget give-up are
     // different findings.
     match outcome {
@@ -174,7 +174,7 @@ fn count_without_reduction(
         Some(other) => {
             eprintln!("[mc] arjun: unavailable ({other:?})")
         }
-        None => eprintln!("[mc] arjun: Vitri's frontend reported no Arjun stage"),
+        None => eprintln!("[mc] arjun: vitri's frontend reported no Arjun stage"),
     }
     eprintln!("[mc] compile: no kept reduction — compiling the simplified formula on {}", run.config.vtree_spec());
 
@@ -198,7 +198,7 @@ fn count_without_reduction(
     count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)
 }
 
-/// What became of Arjun's reduction, from the stage outcome Vitri reported:
+/// What became of Arjun's reduction, from the stage outcome vitri reported:
 /// kept, or run and not kept. `None` when Arjun did not run — it was skipped, or
 /// the frontend reported no Arjun stage.
 fn reduction(outcome: Option<&vitri::bundle::StageOutcome>) -> Option<Reduction> {
@@ -238,7 +238,7 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
     })
 }
 
-/// Integer MC on an explicit `--vtree`: one Vitri simplify-only bundle, then
+/// Integer MC on an explicit `--vtree`: one vitri simplify-only bundle, then
 /// the streaming per-component compile of the reduced formula, recovered by
 /// Shannon split when it fails. There is no fallback: this is already the
 /// single-construction route.
@@ -267,7 +267,7 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
         telemetry.total_ms,
     );
     if telemetry.backbone_found == formula.num_vars() as usize && formula.num_vars() > 0 {
-        // Vitri keeps one forced variable live so downstream compilers do
+        // vitri keeps one forced variable live so downstream compilers do
         // not need a zero-variable special case; the backbone count says the
         // whole formula was forced.
         eprintln!("[mc] preprocessing: every variable is a backbone");

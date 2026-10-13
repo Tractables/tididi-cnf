@@ -102,7 +102,7 @@ pub(crate) fn minimal_config() -> Config {
     }
 }
 
-/// A run on `eng` under `config`, with no wall and no SAT-prune pass, as a
+/// A run on `eng` under `config`, with no wall and no SAT-pruning pass, as a
 /// stage sees it.
 pub(crate) fn run<'a>(eng: &'a tididi::Engine, config: &'a Config) -> crate::stage::Run<'a> {
     crate::stage::Run { eng, config, deadline: None, compile: Default::default() }

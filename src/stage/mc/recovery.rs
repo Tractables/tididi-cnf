@@ -314,7 +314,7 @@ fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize
         sub.clauses().len(),
     );
     // `budget_ms` is already the recovery allowance, cut to the run's
-    // wall: Vitri takes it as given, and stops there.
+    // wall: vitri takes it as given, and stops there.
     let budget = std::time::Duration::from_millis(budget_ms);
     let reduce_config = arjun_stage(
         run.config,
@@ -477,7 +477,7 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
 ///
 /// Mechanism:
 /// 1. Clone the original clauses and append `unit` as a unit clause.
-/// 2. Ask Vitri's unit-propagation operation for the fixpoint —
+/// 2. Ask vitri's unit-propagation operation for the fixpoint —
 ///    satisfied clauses drop, falsified literals shorten, derived units
 ///    cascade.
 /// 3. If the closure produced an empty clause, the formula is UNSAT

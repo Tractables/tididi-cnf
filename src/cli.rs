@@ -85,7 +85,7 @@ pub(crate) struct Cli {
     /// How stdout spells the answer (`--output-format`).
     pub(crate) output_format: OutputFormat,
     /// `--stats <path>`: write the run's stats record — mode, counts, sizes,
-    /// per-stage timings, the preprocessing and sat-prune tallies, how the run
+    /// per-stage timings, the preprocessing and SAT-pruning tallies, how the run
     /// ended — as one JSON object at `<path>`, or to stdout after the answer
     /// when the path is `-`. Valid in every mode.
     /// `docs/stats.md` is the field table.
@@ -137,7 +137,7 @@ Options:
                        c s type, c s log10-estimate, c s exact), with `s UNKNOWN`
                        when the run gives up (mcc).
   --stats <path>       Write the run's stats record (mode, counts, sizes, per-stage
-                       timings, preprocessing and sat-prune tallies, exit reason)
+                       timings, preprocessing and SAT-pruning tallies, exit reason)
                        as one JSON object at <path>. `-` writes it to stdout after
                        the answer.
   --time-limit-ms <ms> Time limit for the whole run, in milliseconds. Every stage

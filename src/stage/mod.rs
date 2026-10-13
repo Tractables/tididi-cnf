@@ -41,7 +41,7 @@ pub(crate) use pwmc::run_pwmc_count;
 pub(crate) use wmc::run_wmc_count;
 
 /// The vtree spec a stage builds its own trees on, wherever it does not take
-/// the run's: Vitri's portfolio. The model count's unreduced retry and Shannon
+/// the run's: vitri's portfolio. The model count's unreduced retry and Shannon
 /// cofactors, PMC's shatter components and conditioning branches, and the
 /// weighted count's reduced attempt build on it.
 const PORTFOLIO_VTREE_SPEC: &str = "portfolio";
@@ -70,7 +70,7 @@ pub(crate) struct Run<'a> {
 /// otherwise. Every component shares one construction deadline, derived from
 /// the run's wall now; deriving it per component would leave the total
 /// unbounded. Components build one at a time, so an early one may spend it
-/// all and later ones fall back to Vitri's last-resort build.
+/// all and later ones fall back to vitri's last-resort build.
 fn count_streaming(run: &Run<'_>, formula: &CnfFormula, forget: Option<&[VarId]>) -> Option<(BigUint, usize)> {
     let components = split_components(formula, run.config.vtree_spec());
     let options = VtreeOptions::default()

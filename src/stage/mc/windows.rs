@@ -128,9 +128,9 @@ pub(super) fn unreduced_retry_window(
 /// later.
 const NO_SBVA_RETRY_RESERVE_FRAC: f64 = 0.25;
 
-/// Vitri construction requested for the coloring-like no-SBVA retry.
+/// vitri construction requested for the coloring-like no-SBVA retry.
 ///
-/// This is caller policy, not a vtree path of this crate's: Vitri parses the
+/// This is caller policy, not a vtree path of this crate's: vitri parses the
 /// spec and owns the construction. The retry is entered only for coloring-like inputs,
 /// where the hypergraph construction keeps the clause structure that motivated
 /// removing SBVA in the first place.

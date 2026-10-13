@@ -19,7 +19,7 @@ WebAssembly through Emscripten.
 - **Rust.** `rust-toolchain.toml` pins the release that development and CI
   use, and rustup installs it on the first build in the repository. The oldest
   supported release is the `rust-version` in `Cargo.toml`.
-- **A C++20 compiler**, GCC 12 or newer. Vitri compiles CaDiCaL and the Arjun
+- **A C++20 compiler**, GCC 12 or newer. vitri compiles CaDiCaL and the Arjun
   stack from the sources it vendors;
   [vitri's building guide](https://github.com/Tractables/vitri/blob/main/docs/building.md)
   says how it finds the compiler and how to choose another.

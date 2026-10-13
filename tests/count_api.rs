@@ -65,7 +65,7 @@ fn count_environment_rejects_invalid_preprocessing_controls() {
     isolated_count(&[("VITRI_ARJUN_SBVA", "garbage")], "VITRI_ARJUN_SBVA");
 }
 
-/// Vitri's own time budget, which a run sets from its time limit, is refused
+/// vitri's own time budget, which a run sets from its time limit, is refused
 /// rather than ignored.
 #[test]
 fn count_environment_rejects_an_inert_vitri_budget() {

@@ -412,7 +412,7 @@ pub(super) fn reduce_for_support(
         form.clauses().len(),
     );
     let t = Instant::now();
-    // Vitri's Arjun-only operation on the exact allowance chosen above.
+    // vitri's Arjun-only operation on the exact allowance chosen above.
     // Simplification is deliberately disabled: this retry asks only for the
     // independent support that the first attempt could not carry across its
     // process boundary.

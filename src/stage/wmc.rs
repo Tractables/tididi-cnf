@@ -1,6 +1,6 @@
 //! The weighted model count.
 //!
-//! The weighted count starts from the parsed formula. Vitri owns the
+//! The weighted count starts from the parsed formula. vitri owns the
 //! simplified formula's weighted simplify/DVE record, exact lift, reduced
 //! weights and portfolio vtree; this crate owns only the order — Arjun's
 //! reduction first, then the simplified formula — and the compiles.
@@ -73,7 +73,7 @@ fn compile_weighted(
 /// The weighted model count.
 ///
 /// Both preprocessing attempts start from the parsed formula. The simplified
-/// formula is one Vitri WMC frontend bundle, so its formula, complete weights,
+/// formula is one vitri WMC frontend bundle, so its formula, complete weights,
 /// exact lift and portfolio vtree cannot drift apart at the compiler boundary.
 /// `declared_weights` is the instance's `c p weight` table; a literal it
 /// leaves out weighs one.
@@ -131,7 +131,7 @@ pub(crate) fn run_wmc_count(
     // or lossy reduction declines at once and leaves the simplified formula
     // the whole budget, and a useful one compiles first, bounded.
 
-    // The simplified formula: the Vitri WMC frontend's exact reduced formula,
+    // The simplified formula: the vitri WMC frontend's exact reduced formula,
     // weights, vtree and scalar lift, compiled whole.
     let count_simplified = |deadline: Option<Instant>| -> Option<WeightedCount<WeightValue>> {
         compile_weighted(
@@ -169,9 +169,9 @@ pub(crate) fn run_wmc_count(
     Ok(value)
 }
 
-/// The reduced attempt: Arjun runs through Vitri on the original formula and
+/// The reduced attempt: Arjun runs through vitri on the original formula and
 /// original weights. It never touches the DVE-reduced simplified formula, whose
-/// clause count is `simplified_clauses`; Vitri owns the weighted-usability and
+/// clause count is `simplified_clauses`; vitri owns the weighted-usability and
 /// caller-baseline gates, so only a reduction its Arjun stage kept is compiled
 /// here, and its exact rational lift alone maps the reduced WMC back to the
 /// original formula.

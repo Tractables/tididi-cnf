@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 #[test]
 fn no_sbva_retry_vtree_is_a_vitri_spec() {
     vitri::spec::validate_vtree_spec(NO_SBVA_RETRY_VTREE_SPEC)
-        .expect("the retry construction must stay inside Vitri's spec grammar");
+        .expect("the retry construction must stay inside vitri's spec grammar");
 }
 
 #[test]

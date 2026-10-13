@@ -4,7 +4,7 @@
 //! count with its attribution, a weighted count, a projected count with the
 //! fields its stages measured, the compiled diagram — and the driver records
 //! it once, here: the verdict and the count, and the run's record, [`Stats`]:
-//! sizes, timings, which stage answered, the preprocessing and sat-prune
+//! sizes, timings, which stage answered, the preprocessing and SAT-pruning
 //! tallies, how the run ended. `driver::solve` hands both back as an
 //! [`Answer`], which is what [`crate::count`] returns. `eprintln!` diagnostics
 //! stay with the stage that emits them.
@@ -205,15 +205,15 @@ pub struct Stats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_vars: Option<u64>,
 
-    /// `off` when `TIDIDI_SAT_PRUNE=off` switched the sat-prune pass off for
+    /// `off` when `TIDIDI_SAT_PRUNE=off` switched the SAT-pruning pass off for
     /// the run, a diagnostic for paired on/off measurements. Absent when the
     /// pass is on, the default.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sat_prune: Option<&'static str>,
-    /// Why the sat-prune pass stood down, when it did.
+    /// Why the SAT-pruning pass stood down, when it did.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sat_prune_disabled_by: Option<&'static str>,
-    /// The sat-prune tallies, keyed `sat_prune_<tally>`, each present only when
+    /// The SAT-pruning tallies, keyed `sat_prune_<tally>`, each present only when
     /// it is nonzero. Times end `_us` and are microseconds, the unit the pass
     /// accumulates them in. The JSON object carries them as top-level keys.
     #[serde(flatten)]
@@ -257,7 +257,7 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 ///
 /// The last three facts land here rather than with the answer, because they
 /// are the run's and not any one stage's: how the run ended, the time its
-/// vtree constructions took (`vtree_time`), and the sat-prune tallies of its
+/// vtree constructions took (`vtree_time`), and the SAT-pruning tallies of its
 /// compiles (`sat_prune`). Recording each in one place is also what keeps the
 /// record of a run that gave up carrying them.
 pub(crate) fn close_record(
