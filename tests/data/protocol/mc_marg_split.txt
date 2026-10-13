@@ -1,0 +1,13 @@
+$ tididi --mode mc --time-limit-ms 60000 --stats - tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf
+exit 0
+--- stdout
+model count: 134746112245856
+{"mode":"mc","exit_reason":"solved","variables":63,"clauses":66,"vtree_spec":"portfolio","vtree_candidate":"flowcutter-incidence","satisfiable":true,"model_count":"134746112245856","peak_pairs":3360868,"answered_by":"compile","reduction":"used","preprocess_ms":"<t>","arjun_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":21,"sat_prune_disabled_by":"low-kill-rate","sat_prune_allsat_global_attempted":1,"sat_prune_allsat_global_unknown":1,"sat_prune_allsat_us":"<t>","sat_prune_count_order_us":"<t>","sat_prune_encode_us":"<t>","sat_prune_nodes_inspected":13026,"sat_prune_nodes_skipped_witness":72,"sat_prune_passes_triggered":1,"sat_prune_probe_us":"<t>","sat_prune_probes_attempted":30,"sat_prune_sat_calls":31,"sat_prune_solver_setup_us":"<t>","sat_prune_witness_val_queries":109756}
+--- stderr
+[input] reading tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf
+[input] 63 variables, 66 clauses
+[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1113 width_cv=0.0000)
+[mc] preprocessing: start
+[mc] arjun: reduced in <t> — 63v/66c → 63v/66c, lift=2^0
+[mc] compile: start
+[mc] answered by compile in <t>

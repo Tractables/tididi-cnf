@@ -1,0 +1,10 @@
+c Every assignment to 1 and 2 falsifies a clause: no model, shown 1.
+p cnf 3 4
+c t pwmc
+c p show 1 0
+c p weight 1 0.4 0
+c p weight -1 0.6 0
+1 2 0
+-1 2 0
+1 -2 0
+-1 -2 0

@@ -1,0 +1,9 @@
+c 1 or 2, with 1 weighed -1/2 and 1/4 and 2 weighed 1/2 both ways:
+c -1/4 - 1/4 + 1/8 = -3/8.
+p cnf 2 1
+c t wmc
+c p weight 1 -0.5 0
+c p weight -1 0.25 0
+c p weight 2 0.5 0
+c p weight -2 0.5 0
+1 2 0

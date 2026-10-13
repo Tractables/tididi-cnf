@@ -1,0 +1,39 @@
+# Cargo run from this directory builds for the browser and nothing else.
+[build]
+target = "wasm32-unknown-emscripten"
+
+# vitri's build.rs compiles the vendored Arjun stack with em++ itself. C++ from
+# other crates is compiled through `cc`, which reads these: goatd's FlowCutter
+# throws and catches, so it has to be compiled for the WebAssembly exceptions
+# rustc links with, and it goes into a main module. Cargo leaves a variable the
+# environment already sets alone.
+[env]
+CXX_wasm32_unknown_emscripten = "em++"
+AR_wasm32_unknown_emscripten = "emar"
+CXXFLAGS_wasm32_unknown_emscripten = "-fwasm-exceptions -fPIC"
+
+# Link settings for emcc, as vitri's own browser build sets them
+# (vendor/vitri/bindings/wasm/.cargo/config.toml says why each is there).
+[target.wasm32-unknown-emscripten]
+rustflags = [
+  # vitri links GMP as the side modules libgmp.so and libgmpxx.so, which only a
+  # main module can load. MAIN_MODULE=2 keeps the parts of libc and libc++ that
+  # this program and those side modules use, rather than all of them.
+  "-Clink-arg=-sMAIN_MODULE=2",
+  # A factory function instead of a script that starts itself, so the page
+  # decides when to instantiate and `main` is never run.
+  "-Clink-arg=-sMODULARIZE=1",
+  "-Clink-arg=-sEXPORT_NAME=createBonsai",
+  "-Clink-arg=-sINVOKE_RUN=0",
+  # The heap grows as a run needs it, up to the whole 32-bit address space
+  # rather than Emscripten's default ceiling of 2 GB.
+  "-Clink-arg=-sALLOW_MEMORY_GROWTH=1",
+  "-Clink-arg=-sMAXIMUM_MEMORY=4GB",
+  # The compile and the vtree construction recurse, and a side module runs on
+  # the main module's stack; this is the 8 MB a native main thread has.
+  "-Clink-arg=-sSTACK_SIZE=8388608",
+  "-Clink-arg=-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_bonsai_count_json,_bonsai_string_free",
+  # What abi.js uses: HEAPU8 to copy a buffer into the memory `malloc` handed
+  # it, UTF8ToString to read a returned string.
+  "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=UTF8ToString,HEAPU8",
+]

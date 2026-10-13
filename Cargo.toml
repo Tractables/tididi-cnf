@@ -1,0 +1,111 @@
+[package]
+name = "tididi-bonsai"
+version = "0.1.0"
+edition = "2024"
+# The floor let-chains (`if let … && let …`) set for edition 2024, which this
+# crate, the tididi library and vitri use.
+rust-version = "1.88"
+description = "Tree Decision Diagram (TDD) compiler for CNF: compiles a DIMACS formula into a canonical TDD and counts its models — plain, weighted, projected, or projected and weighted."
+license = "Apache-2.0"
+repository = "https://github.com/Tractables/tididi-bonsai"
+documentation = "https://tractables.github.io/tididi-bonsai/tididi_bonsai/"
+readme = "README.md"
+# crates.io caps keywords at 5 entries of 20 characters, hence
+# "knowledge-compiler" over the 21-character "knowledge-compilation".
+keywords = ["model-counting", "knowledge-compiler", "decision-diagram", "sat", "cnf"]
+categories = ["science", "algorithms", "command-line-utilities"]
+# Allowlist, not a denylist: `cargo package` ships exactly these, so benchmark
+# data, scratch directories, scripts and notes can never leak into a package.
+# The patterns follow gitignore rules, so a bare file name would match at any
+# depth (every `README.md` in the tree); the leading `/` anchors it at the root.
+include = [
+    "/src/**/*.rs",
+    "/Cargo.toml",
+    "/README.md",
+    # The logo the README shows.
+    "/docs/logo.svg",
+    "/CHANGELOG.md",
+    "/LICENSE",
+    "/NOTICE",
+    # The worked examples' programs.
+    "/examples/*.rs",
+    # The pages `src/guide.rs` puts into the crate documentation.
+    "/docs/examples/*.md",
+    "/docs/example-navigation.js",
+    "/docs/architecture.md",
+    # The instances the doctests read.
+    "/tests/data/simple.cnf",
+    "/tests/data/queens5.cnf",
+]
+
+[workspace]
+# tididi: pure TDD core (types, apply, minimize, counting, vtree structure).
+members = ["tididi"]
+# Bare `cargo test` and `cargo check` follow default-members, so without this
+# list they would cover the root package alone and skip the library's tests.
+default-members = [".", "tididi"]
+# The circuit validator under tools/, a standalone package, and vitri, a path
+# dependency rather than a member, so `cargo test --workspace` leaves its tests
+# to its own repository.
+exclude = ["tools/*", "vendor/vitri"]
+
+# The package is `tididi-bonsai` and its library `tididi_bonsai`; the binary is
+# `tididi`.
+[[bin]]
+name = "tididi"
+path = "src/main.rs"
+
+[dependencies]
+tididi = { version = "0.1.0", path = "tididi" }
+vitri = { version = "0.2.0", path = "vendor/vitri" }
+num-bigint = "0.4"
+num-rational = "0.4"
+num-traits = "0.2"
+rand = "0.10"
+rustc-hash = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+itoa = "1"
+libc = "0.2"
+smallvec = { version = "1", features = ["union"] }
+
+# Vitri owns and builds the C++ CaDiCaL and Arjun stack; FlowCutter comes from the goatd crate.
+
+# jemalloc is the allocator everywhere but WebAssembly, which has neither
+# jemalloc nor an address-space limit for its statistics to watch: there the
+# target's own allocator serves, and `src/mem_wasm.rs` stands in for
+# `src/mem.rs`.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+tikv-jemallocator = { version = "0.6", features = ["stats"] }
+tikv-jemalloc-ctl = { version = "0.6", features = ["use_std", "stats"] }
+# Direct dep for raw `mallctlbymib` — needed for void controls like
+# `arena.<i>.purge`, which tikv-jemalloc-ctl's typed wrappers can't
+# invoke correctly (see mem.rs::purge_all_arenas).
+tikv-jemalloc-sys = "0.6"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+# panic = "unwind" (the implicit default) is required: Rust's default
+# alloc-error handler panics at the allocation's call site, and
+# `src/compile/recovery.rs` catches that unwind and Shannon-splits the CNF
+# instead of letting the process die. `panic = "abort"` silently disables that
+# recovery. See the module doc of `src/mem.rs`.
+
+# An optimized build that keeps every `debug_assert!` and overflow check live,
+# for a bug that only shows on an instance too large for a debug build:
+#   cargo build --profile release-checked
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
+
+[profile.test]
+opt-level = 1
+
+[dev-dependencies]
+paste = "1"
+# The library's oracles and generators (`tididi::test_helpers`) for this
+# crate's tests, including a `cargo test -p tididi-bonsai` that does not build
+# the library's own tests beside it.
+tididi = { version = "0.1.0", path = "tididi", features = ["testing"] }

@@ -1,0 +1,14 @@
+c t pmc
+c A small projected count: 7 variables, show set 1-4, variable 1 in no
+c clause. 22 models, 10 distinct on the show set (checked by enumerating
+c all 128 assignments).
+c p show 1 2 3 4 0
+p cnf 7 8
+-7 3 4 0
+6 2 0
+3 -6 4 0
+-2 3 -7 0
+-7 -5 0
+-3 -6 7 0
+-3 4 0
+6 5 -4 0

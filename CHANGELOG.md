@@ -1,0 +1,15 @@
+# Changelog
+
+## Unreleased
+
+- First public release: a command-line compiler and a Rust library that compile a DIMACS CNF into a Tree Decision Diagram (TDD) with the [tididi](https://github.com/Tractables/tididi) library, after CNF preprocessing and vtree construction by [vitri](https://github.com/Tractables/vitri).
+- Count models (MC), projected models (PMC) and projected weighted models (PWMC) exactly, and weighted models (WMC) in bounded-precision log arithmetic.
+- Compile a CNF into a TDD and write the circuit to a file.
+- Read literal weights and projection sets from the header lines of the model counting competition's instance format, so an instance can name its own task.
+- Print an answer in the model counting competition's output format on request, besides the plain one-line answer.
+- Prune an intermediate diagram of nodes that no model of the formula passes through, with SAT calls against the formula.
+- Run within a wall-clock limit and a memory limit. A model count whose compile runs out of memory splits the formula on a variable and carries on rather than aborting.
+- Exit with a non-zero status whenever a run ends without an answer: a give-up in any task, or a refused input or setting.
+- Refuse a setting the run would ignore, naming the setting and what it needs, instead of dropping it silently.
+- Build and run on Linux. The compile is single-threaded; parallelism comes from running instances side by side.
+- Build for WebAssembly through Emscripten, where a memory limit is refused, and count in the browser: a page under `bindings/wasm` runs the library in a worker on a pasted or opened CNF.

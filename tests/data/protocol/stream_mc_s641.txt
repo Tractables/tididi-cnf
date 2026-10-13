@@ -1,0 +1,12 @@
+$ tididi --mode mc --vtree portfolio --time-limit-ms 60000 --stats - tests/data/cnfs/iscas89/s641.scan.cnf
+exit 0
+--- stdout
+model count: 18014398509481984
+{"mode":"mc","exit_reason":"solved","variables":433,"clauses":918,"vtree_spec":"portfolio","vtree_candidate":"flowcutter-primal","satisfiable":true,"model_count":"18014398509481984","peak_pairs":139,"answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":47,"sat_prune_solver_setup_us":"<t>"}
+--- stderr
+[input] reading tests/data/cnfs/iscas89/s641.scan.cnf
+[input] 433 variables, 918 clauses
+[mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 34v/72c, lift=2^38, <t>
+[vtree] portfolio, streaming over 1 components
+[mc] compile: start
+[mc] answered by compile in <t>

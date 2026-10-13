@@ -1,0 +1,5 @@
+c No clause, and 1 weighed -1 and 1: its two models cancel to 0.
+p cnf 1 0
+c t wmc
+c p weight 1 -1 0
+c p weight -1 1 0

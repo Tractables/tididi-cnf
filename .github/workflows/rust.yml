@@ -1,0 +1,65 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        submodules: recursive
+
+    # The manifest, lockfile, citation and changelog name one version; the
+    # release workflow makes the same check against the tag.
+    - name: Check versions
+      run: python3 .github/scripts/check-versions.py
+
+    - uses: ./.github/actions/install-prereqs
+
+    - name: Cache Cargo builds
+      uses: Swatinem/rust-cache@v2
+
+    # The contributors' check sequence. It builds `--locked`, against the
+    # committed Cargo.lock, so CI tests the dependency versions the repository
+    # names, with the toolchain rust-toolchain.toml pins.
+    - name: Verify
+      run: bash scripts/verify.sh
+
+  # The `rust-version` in Cargo.toml is a promise to anyone building with an
+  # older toolchain, and the job above builds with the pinned, newer one. This
+  # job compiles the workspace with the declared minimum, so raising the real
+  # minimum fails here instead of in a downstream build.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        submodules: recursive
+
+    - uses: ./.github/actions/install-prereqs
+
+    # Read from the manifest rather than repeated here, so a copy that fell
+    # behind `rust-version` cannot leave this job checking the old floor.
+    - name: Read the declared minimum from Cargo.toml
+      run: |
+        msrv=$(sed -n 's/^rust-version *= *"\(.*\)"/\1/p' Cargo.toml)
+        test -n "$msrv" || { echo "no rust-version in Cargo.toml"; exit 1; }
+        echo "MSRV=$msrv" >> "$GITHUB_ENV"
+
+    - name: Install the declared minimum toolchain
+      run: rustup toolchain install "$MSRV" --profile minimal --no-self-update
+
+    # `check`, not `build`: this job is about whether the compiler accepts the
+    # code, and codegen is covered above. `--all-targets` carries it to the
+    # binary, the tests and the examples.
+    - name: Check
+      run: cargo "+$MSRV" check --locked --workspace --all-targets

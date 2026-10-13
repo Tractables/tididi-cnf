@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+type: software
+title: "tididi-bonsai: a Tree Decision Diagram compiler for CNF"
+abstract: "A compiler from DIMACS CNF to Tree Decision Diagrams, canonical vtree-shaped decision diagrams, for model counting: plain, weighted, projected, and projected weighted."
+license: Apache-2.0
+repository-code: "https://github.com/Tractables/tididi-bonsai"
+url: "https://tractables.github.io/tididi-bonsai/tididi_bonsai/"
+version: 0.1.0
+authors:
+  - family-names: "Capelli"
+    given-names: "Florent"
+  - family-names: "Choi"
+    given-names: "YooJung"
+  - family-names: "Mengel"
+    given-names: "Stefan"
+  - family-names: "Muñoz"
+    given-names: "Martín"
+  - family-names: "Van den Broeck"
+    given-names: "Guy"
+    affiliation: "Computer Science Department, University of California, Los Angeles"
+keywords:
+  - model counting
+  - knowledge compilation
+  - decision diagram
+  - weighted model counting
+  - projected model counting
+preferred-citation:
+  type: article
+  title: "A Canonical Generalization of OBDD"
+  year: 2026
+  journal: "arXiv"
+  number: "2604.05537"
+  doi: "10.48550/arXiv.2604.05537"
+  url: "https://arxiv.org/abs/2604.05537"
+  authors:
+    - family-names: "Capelli"
+      given-names: "Florent"
+    - family-names: "Choi"
+      given-names: "YooJung"
+    - family-names: "Mengel"
+      given-names: "Stefan"
+    - family-names: "Muñoz"
+      given-names: "Martín"
+    - family-names: "Van den Broeck"
+      given-names: "Guy"
+      affiliation: "Computer Science Department, University of California, Los Angeles"

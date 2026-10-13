@@ -1,0 +1,116 @@
+name: Web build
+
+# Builds the crate for wasm32-unknown-emscripten through bindings/wasm, runs the
+# module on the page's examples with node against the native binary, and
+# uploads the `tididi-bonsai-wasm` artifact: the directory bindings/wasm/site.sh
+# assembles, plus the GMP source tarball the side modules were built from.
+# Nothing here publishes a page; the docs workflow calls this one and does.
+#
+# Not per push: the build compiles GMP, MPFR and vitri's vendored C++ stack
+# from source. Pull requests run it when they change the binding or what it
+# compiles against. The Emscripten side follows vitri's own web build
+# (vendor/vitri/.github/workflows/wasm.yml) and runs vitri's scripts for it.
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - bindings/wasm/**
+      - bindings/parity.txt
+      - .github/workflows/wasm.yml
+      - src/**
+      - tests/data/*.cnf
+      - Cargo.toml
+      - Cargo.lock
+      - tididi
+      - vendor/vitri
+
+env:
+  CARGO_TERM_COLOR: always
+  # The version vitri's web build pins: the SDK carries the clang and the
+  # libc++ the vendored C++ is compiled with, so a build that worked keeps
+  # working.
+  EMSDK_VERSION: 4.0.12
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Reads the page alone, so it reports before the long build starts.
+      - name: Check the page's markup against its stylesheet
+        run: node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
+
+      # The packages the native build needs, and m4, which GMP's configure
+      # runs for the side modules.
+      - uses: ./.github/actions/install-prereqs
+      - name: Install m4
+        run: sudo apt-get install -y --no-install-recommends m4
+
+      # The module's answers are compared with this binary's. Built before the
+      # SDK and the Emscripten prefix are set up, since a native build of vitri
+      # refuses VITRI_EMSCRIPTEN_PREFIX.
+      - name: Build the native binary
+        run: cargo build --release --locked --bin tididi
+
+      # The SDK's own repository is cloned at the tag of the pinned version, so
+      # the installer is the one that shipped with it. `activate` writes the
+      # config the compiler reads; naming it in EM_CONFIG is what carries the
+      # SDK into the later steps, alongside the directories holding em++, emar,
+      # emcmake and the SDK's node.
+      - name: Install the Emscripten SDK
+        run: |
+          set -eux
+          git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
+          "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
+          echo "$RUNNER_TEMP/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
+          dirname "$(ls "$RUNNER_TEMP"/emsdk/node/*/bin/node | head -n 1)" >> "$GITHUB_PATH"
+          echo "EM_CONFIG=$RUNNER_TEMP/emsdk/.emscripten" >> "$GITHUB_ENV"
+
+      - name: Add the target
+        run: rustup target add wasm32-unknown-emscripten
+
+      # The GMP source tarball the script builds from is served beside the
+      # module, as the page's notices promise.
+      - name: Build GMP and MPFR for Emscripten
+        run: |
+          set -eux
+          work=$RUNNER_TEMP/gmp
+          prefix=$RUNNER_TEMP/emscripten-prefix
+          vendor/vitri/bindings/wasm/emscripten-prefix.sh "$work" "$prefix"
+          mkdir -p bindings/wasm/site
+          cp "$(vendor/vitri/.github/scripts/gmp.sh fetch "$work")" bindings/wasm/site/
+          echo "VITRI_EMSCRIPTEN_PREFIX=$prefix" >> "$GITHUB_ENV"
+
+      - name: Build
+        working-directory: bindings/wasm
+        run: cargo build --release --locked
+
+      # The page links the GMP source tarball by name; the link must be to the
+      # file served beside it, which the GMP step put there.
+      - name: Gather the files the page is served with
+        run: |
+          bindings/wasm/site.sh bindings/wasm/site "$VITRI_EMSCRIPTEN_PREFIX"
+          source=$(sed -n 's|.*href="\(gmp-[^"]*\.tar\.xz\)".*|\1|p' bindings/wasm/index.html)
+          test -s "bindings/wasm/site/$source" || { echo "index.html links $source, which is not served" >&2; exit 1; }
+
+      # Proves the module runs and answers as the binary does, from the files
+      # that are uploaded.
+      - name: Run the module on the examples and the parity instances
+        run: node bindings/wasm/smoke.mjs bindings/wasm/site/bonsai.js . target/release/tididi
+
+      - name: Lint
+        if: ${{ !cancelled() }}
+        working-directory: bindings/wasm
+        run: cargo clippy --release --all-targets --locked -- -D warnings
+
+      - name: Upload the module
+        uses: actions/upload-artifact@v4
+        with:
+          name: tididi-bonsai-wasm
+          path: bindings/wasm/site/
+          if-no-files-found: error

@@ -1,0 +1,10 @@
+$ tididi --mode pmc --time-limit-ms 60000 --stats - tests/data/cnfs/mcc/2026/track3/mc2026_track3_187.cnf
+exit 0
+--- stdout
+projected model count: 2788232208432269748684480513
+{"mode":"pmc","exit_reason":"solved","variables":342,"clauses":812,"vtree_spec":"portfolio","satisfiable":true,"model_count":"2788232208432269748684480513","vtree_ms":"<t>","compile_ms":"<t>","show_vars":96,"sat_prune_solver_setup_us":"<t>"}
+--- stderr
+[input] reading tests/data/cnfs/mcc/2026/track3/mc2026_track3_187.cnf
+[input] 342 variables, 812 clauses
+[pmc] shatter: no useful shatter (detect <t>)
+[pmc] compile: preprocessing <t> (812c→102c), vtree <t>, compile <t> (8 projected variables forgotten in the diagram), show 96, vars 342

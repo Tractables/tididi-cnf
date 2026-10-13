@@ -1,0 +1,32 @@
+[package]
+name = "tididi-bonsai-c"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/Tractables/tididi-bonsai"
+description = "C bindings for tididi-bonsai: model counting by compiling a CNF into a Tree Decision Diagram."
+# Nothing here goes to crates.io; the artifacts are the shared and static
+# libraries a C or C++ program links against.
+publish = false
+
+# An empty workspace table keeps this crate out of the workspace above it, so
+# it is built on its own.
+[workspace]
+
+[lib]
+name = "tididi_bonsai_c"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# The checkout this crate sits in, so a change to the library is built and
+# tested through the bindings. `tididi_bonsai_version()` reports this
+# package's version, which follows the library's.
+tididi-bonsai = { path = "../.." }
+# The answer's stats record is serialized with it, as the binary does.
+serde_json = "1"
+# The library's allocator, jemalloc, uses the initial-exec TLS model by
+# default, which a shared library loaded with dlopen (by a language's foreign
+# function interface, say) can fail to get room for. This feature switches
+# jemalloc to the model a dlopen'ed library may use.
+tikv-jemalloc-sys = { version = "0.6", features = ["disable_initial_exec_tls"] }

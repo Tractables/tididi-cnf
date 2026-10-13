@@ -1,0 +1,6 @@
+c Three clauses over six variables, the last with a repeated literal: 48 of
+c the 64 assignments satisfy them.
+p cnf 6 3
+1 -2 3 4 0
+2 -3 -5 6 0
+-4 5 -6 -6 0

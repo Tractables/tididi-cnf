@@ -1,0 +1,10 @@
+$ tididi --mode pwmc --time-limit-ms 60000 --stats - tests/data/pwmc_arjun_defined_weight.cnf
+exit 0
+--- stdout
+projected weighted count: 91/125
+{"mode":"pwmc","exit_reason":"solved","variables":3,"clauses":3,"vtree_spec":"portfolio","satisfiable":true,"weighted_count":"91/125","compile_ms":"<t>","show_vars":3}
+--- stderr
+[input] reading tests/data/pwmc_arjun_defined_weight.cnf
+[input] 3 variables, 3 clauses
+[pwmc] arithmetic: exact rational
+[pwmc] enumerate-show: small-show enumeration (3 show vars, <t>)

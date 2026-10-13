@@ -1,0 +1,11 @@
+$ tididi --mode pmc --time-limit-ms 60000 --stats - tests/data/pmc_tiny_show.cnf
+exit 0
+--- stdout
+projected model count: 10
+{"mode":"pmc","exit_reason":"solved","variables":7,"clauses":8,"vtree_spec":"portfolio","satisfiable":true,"model_count":"10","compile_ms":"<t>","show_vars":4}
+--- stderr
+[input] reading tests/data/pmc_tiny_show.cnf
+[input] 7 variables, 8 clauses
+[pmc] enumerate-show: 3 constrained show variables ≤ 32 — Arjun skipped, enumeration first
+[pmc] shatter: no useful shatter (detect <t>)
+[pmc] enumerate-show: small-show enumeration (4 show vars, <t>)

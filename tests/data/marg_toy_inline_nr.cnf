@@ -1,0 +1,13 @@
+c #63 smallest inline-regime no-reexpand reproducer (4 vars / 5 clauses).
+c Found+minimized by marg_frontier_tests::shrink_search_inline_nr_divergence.
+c Correct model count = 8 (emit-OFF and emit-ON+reexpand agree).
+c At inline-max threshold 4 (small counts inline, large stay slots), emit-ON +
+c no-reexpand OOB-panics in query.rs readout: a marg ref resolves to slot index
+c 4 into a length-2 marginal store. This is the SMALLEST inline-decode bug — the
+c all-slots toys (marg_toy_nr6*) stay green because they never inline.
+p cnf 4 5
+-4 1 3 0
+-4 3 2 0
+1 4 3 0
+3 -4 -1 0
+-1 4 3 0

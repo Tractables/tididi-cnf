@@ -1,0 +1,10 @@
+$ tididi --mode wmc --time-limit-ms 60000 --stats - tests/data/wmc_unsat.cnf
+exit 0
+--- stdout
+weighted count: 0
+{"mode":"wmc","exit_reason":"solved","variables":2,"clauses":2,"vtree_spec":"portfolio","satisfiable":false,"weighted_count":"0","weighted_count_sign":0}
+--- stderr
+[input] reading tests/data/wmc_unsat.cnf
+[input] 2 variables, 2 clauses
+[wmc] arithmetic: log (bounded)
+[wmc] preprocessing: simplify=Some(Ran) arjun=None; <t>; UNSAT

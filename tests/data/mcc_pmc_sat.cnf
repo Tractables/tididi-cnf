@@ -1,0 +1,9 @@
+c The data format's Example 4 (MC format v1.2 §4): three of the four
+c assignments to 1 and 2 extend to a model.
+p cnf 6 4
+c t pmc
+c p show 1 2 0
+-1 -2 0
+2 3 -4 0
+4 5 0
+4 6 0

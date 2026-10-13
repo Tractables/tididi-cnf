@@ -1,0 +1,9 @@
+$ tididi --mode mc --time-limit-ms 60000 --stats - tests/data/cnfs/iscas89/s641.scan.cnf
+exit 0
+--- stdout
+model count: 18014398509481984
+{"mode":"mc","exit_reason":"solved","variables":433,"clauses":918,"vtree_spec":"portfolio","satisfiable":true,"model_count":"18014398509481984","answered_by":"preprocessing","reduction":"used","preprocess_ms":"<t>","arjun_ms":"<t>","compile_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":47}
+--- stderr
+[input] reading tests/data/cnfs/iscas89/s641.scan.cnf
+[input] 433 variables, 918 clauses
+[mc] preprocessing: start

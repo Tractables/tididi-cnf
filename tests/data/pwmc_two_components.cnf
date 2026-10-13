@@ -1,0 +1,16 @@
+c t pwmc
+c Two variable-disjoint components of four variables, three of each shown.
+c Preprocessing leaves both, so the count is split into the two and each is
+c compiled alone. No weights, so every literal weighs 1: 64 models, 49
+c distinct on the show set, 7 per component (checked by enumerating all 256
+c assignments).
+p cnf 8 8
+c p show 1 2 3 5 6 7 0
+1 2 3 0
+-1 -2 4 0
+2 -3 -4 0
+1 -4 0
+5 6 7 0
+-5 -6 8 0
+6 -7 -8 0
+5 -8 0

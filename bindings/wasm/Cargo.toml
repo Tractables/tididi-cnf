@@ -1,0 +1,33 @@
+[package]
+name = "tididi-bonsai-wasm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/Tractables/tididi-bonsai"
+description = "tididi-bonsai built for the browser with Emscripten: a DIMACS CNF goes in, its count and the run's record come out."
+publish = false
+
+# An empty workspace table keeps this crate out of the tididi-bonsai workspace
+# above it, so it is built on its own.
+[workspace]
+
+# Emscripten links a program, not a library: a cdylib for this target is a
+# side module, which the page cannot load on its own. The binary's `main` does
+# nothing and never runs; the page calls the exported functions. The output
+# files are named after this binary, so the page loads bonsai.js.
+[[bin]]
+name = "bonsai"
+path = "src/main.rs"
+
+# Cargo.lock holds cc at the version vitri's own browser build locks: the
+# older cc the crate's lockfile has passes em++ -fno-exceptions, under which
+# goatd's FlowCutter, which throws and catches, does not compile.
+[dependencies]
+# The checkout this crate sits in, so a change to the counter is built through
+# the page before it is published.
+tididi-bonsai = { path = "../.." }
+serde_json = "1"
+# Not called here: vitri's build script hands GMP's side modules to its direct
+# dependents only, and build.rs puts them on this program's link line.
+vitri = { path = "../../vendor/vitri" }

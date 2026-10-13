@@ -1,0 +1,8 @@
+c UNSAT via unit contradiction (x1 and -x1) with vars 2,3 surviving.
+c Production-preprocess derives an empty clause (UNSAT) while num_vars>0,
+c which used to panic the segment-search clause_scope assert. Count must be 0.
+p cnf 3 4
+1 0
+-1 0
+2 3 0
+2 -3 0

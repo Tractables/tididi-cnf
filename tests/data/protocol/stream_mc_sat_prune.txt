@@ -1,0 +1,12 @@
+$ tididi --mode mc --vtree portfolio --time-limit-ms 3600000 --stats - tests/data/cnfs/satlib/uf100/uf100-01000.cnf
+exit 0
+--- stdout
+model count: 16963
+{"mode":"mc","exit_reason":"solved","variables":100,"clauses":430,"vtree_spec":"portfolio","vtree_candidate":"flowcutter-primal","satisfiable":true,"model_count":"16963","peak_pairs":9996,"answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":14,"backbone_probes":27,"sat_prune_allsat_global_attempted":4,"sat_prune_allsat_global_sat":4,"sat_prune_allsat_us":"<t>","sat_prune_allsat_witnesses_harvested":127,"sat_prune_count_order_us":"<t>","sat_prune_dead_child_reorders":13,"sat_prune_encode_us":"<t>","sat_prune_nodes_inspected":26356,"sat_prune_nodes_pruned":2796,"sat_prune_nodes_skipped_witness":414,"sat_prune_pairs_filtered":8620,"sat_prune_passes_rewritten":1,"sat_prune_passes_triggered":1,"sat_prune_probe_us":"<t>","sat_prune_probes_attempted":276,"sat_prune_probes_unsat":232,"sat_prune_rewrite_us":"<t>","sat_prune_sat_calls":280,"sat_prune_solver_setup_us":"<t>","sat_prune_witness_val_queries":109282}
+--- stderr
+[input] reading tests/data/cnfs/satlib/uf100/uf100-01000.cnf
+[input] 100 variables, 430 clauses
+[mc] preprocessing: simplify=Some(Ran), arjun=Some(Skipped(NotRequested)), 73v/217c, lift=2^0, <t>
+[vtree] portfolio, streaming over 1 components
+[mc] compile: start
+[mc] answered by compile in <t>

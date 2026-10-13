@@ -1,0 +1,35 @@
+c Pigeonhole principle: 4 pigeons, 3 holes (UNSAT)
+c Variable p_i_j (pigeon i in hole j) = 3*i + j + 1 (1-indexed)
+c Pigeons: 0..3, Holes: 0..2
+c At-least-one: each pigeon must be in some hole
+c At-most-one: no two pigeons in the same hole
+p cnf 12 22
+c Pigeon 0 must be in some hole
+1 2 3 0
+c Pigeon 1 must be in some hole
+4 5 6 0
+c Pigeon 2 must be in some hole
+7 8 9 0
+c Pigeon 3 must be in some hole
+10 11 12 0
+c Hole 0: at most one pigeon
+-1 -4 0
+-1 -7 0
+-1 -10 0
+-4 -7 0
+-4 -10 0
+-7 -10 0
+c Hole 1: at most one pigeon
+-2 -5 0
+-2 -8 0
+-2 -11 0
+-5 -8 0
+-5 -11 0
+-8 -11 0
+c Hole 2: at most one pigeon
+-3 -6 0
+-3 -9 0
+-3 -12 0
+-6 -9 0
+-6 -12 0
+-9 -12 0

@@ -1,0 +1,109 @@
+name: Docs
+
+# Builds the crate's rustdoc, with the worked examples and the architecture
+# reference under `guide`, and the browser page, and on request publishes both
+# to GitHub Pages: the page at the site root, the rustdoc beside it.
+#
+# The documentation build needs none of the C++ toolchain the Rust workflow
+# installs: vitri's `build.rs` returns early when `DOCS_RS` is set, and rustdoc
+# type-checks the crate without linking it. The page comes from the Web build
+# workflow, run here as a job of this one. The nightly run only builds, as the
+# crate's broken-link gate; the site is published by a manual run with
+# `publish` ticked, so what Pages serves changes when someone decides it
+# should. `deploy` is the only part that needs the repository's Pages setting
+# (Settings → Pages → Source: GitHub Actions).
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the built site to GitHub Pages
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  module:
+    uses: ./.github/workflows/wasm.yml
+
+  build:
+    needs: module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # The documentation is the artifact, so warnings are denied: a broken
+      # intra-doc link fails the job rather than shipping.
+      - name: Build documentation
+        env:
+          DOCS_RS: 1
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --no-deps --locked -p tididi-bonsai
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tididi-bonsai-wasm
+          path: module
+
+      # The page is the site root. The module build uploads the whole page, so
+      # a page that grows a file needs no change here. A name the rustdoc
+      # already uses fails the job rather than overwriting it. The two
+      # references in `index.html` and the imports between the page's scripts
+      # take this commit as their stamp (see bindings/wasm/README.md).
+      - name: Assemble the site
+        run: |
+          set -eu
+          site=target/site
+          cp -r target/doc "$site"
+          for file in module/*; do
+            name=$(basename "$file")
+            if [ -e "$site/$name" ]; then
+              echo "$name is already part of the documentation" >&2
+              exit 1
+            fi
+            cp -rL "$file" "$site/"
+          done
+          sed -i \
+            -e "s|href=\"styles.css\"|href=\"styles.css?v=$GITHUB_SHA\"|" \
+            -e "s|src=\"app.js\"|src=\"app.js?v=$GITHUB_SHA\"|" \
+            "$site/index.html"
+          test "$(grep -c "?v=$GITHUB_SHA\"" "$site/index.html")" -eq 2
+          sed -i -e "s|from \"\./\([a-z-]*\.js\)\"|from \"./\1?v=$GITHUB_SHA\"|" "$site"/*.js
+          if grep -l 'from "\./[a-z-]*\.js"' "$site"/*.js; then
+            echo "an import above is not stamped" >&2
+            exit 1
+          fi
+          grep -q "from \"\./runner.js?v=$GITHUB_SHA\"" "$site/app.js"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: target/site
+
+  deploy:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v6
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

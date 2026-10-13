@@ -1,0 +1,328 @@
+:root {
+  /* Both palettes are defined below, so the browser should not invert the
+     page when the reader asks for dark. The blue and the gold are the
+     logo's. */
+  color-scheme: light dark;
+  --bg: #f3f5f8;
+  --card: #ffffff;
+  --line: #dce2ea;
+  --ink: #1b2430;
+  --muted: #5d6877;
+  --accent: #2774ae;
+  --accent-fill: #dcebf7;
+  --gold: #ffd100;
+  --good: #2f7d4f;
+  --warn: #9a5b00;
+  --bad: #b3261e;
+  --bad-fill: #fbe9e7;
+  --code: #f6f8fa;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181d;
+    --card: #1b2027;
+    --line: #2d343d;
+    --ink: #e4e8ec;
+    --muted: #9aa3ad;
+    --accent: #6cb0e8;
+    --accent-fill: #1c3347;
+    --gold: #f5c211;
+    --good: #6fc28f;
+    --warn: #e0a24a;
+    --bad: #f28b82;
+    --bad-fill: #3d1f1d;
+    --code: #151a20;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* The `display: none` the browser gives the `hidden` attribute is a
+   user-agent rule, which any rule here setting `display` overrides. Restated
+   as an author rule so the attribute holds. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 var(--sans);
+}
+
+main {
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
+}
+
+@media (max-width: 40rem) {
+  main { padding: 1rem 1rem 3rem; }
+}
+
+header { margin-bottom: 1.5rem; max-width: 60rem; }
+
+h1 { margin: 0 0 0.6rem; line-height: 0; }
+
+/* The logo is the title: a bonsai grown from a vtree beside the word. */
+.logo { display: block; width: auto; height: 4.5rem; max-width: 100%; }
+
+h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.lede { margin: 0; color: var(--muted); }
+
+a { color: var(--accent); }
+
+code {
+  font: 0.9em/1 var(--mono);
+  background: var(--code);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Input beside the controls once there is room for both. */
+.io { display: grid; gap: 1.1rem; }
+
+@media (min-width: 56rem) {
+  .io { grid-template-columns: minmax(0, 1fr) 15rem; }
+}
+
+label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.lead { font-size: 14px; font-weight: 500; }
+#examples { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+#examples button {
+  width: auto;
+  padding: 0.3rem 0.75rem;
+  border-color: transparent;
+  border-radius: 999px;
+  background: var(--accent-fill);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+#examples button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--card);
+  color: var(--accent);
+}
+
+#examples button[aria-pressed="true"], #examples button[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--card);
+}
+
+textarea, select, input {
+  width: 100%;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.4rem 0.55rem;
+  font: 14px/1.4 var(--sans);
+}
+
+/* The box grows to the height of the settings beside it. */
+.cnf-input { display: flex; flex-direction: column; min-height: 20rem; }
+
+textarea {
+  flex: 1;
+  min-height: 12rem;
+  resize: vertical;
+  font: 13px/1.45 var(--mono);
+  background: var(--code);
+}
+
+textarea:disabled { color: var(--muted); }
+
+textarea:focus, select:focus, input:focus, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.input-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.input-head label { margin-bottom: 0; }
+
+/* A file held over the page will become the input. */
+body.dropping textarea {
+  outline: 2px dashed var(--accent);
+  outline-offset: 1px;
+}
+
+.controls { display: grid; gap: 0.7rem; align-content: start; margin: 0; }
+.field { margin: 0; }
+
+button {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--card);
+  font: 500 15px/1.4 var(--sans);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: var(--card); color: var(--accent); }
+
+/* Cancel takes Count's place while a run is on, and the pointer says the
+   page is busy everywhere but on it. */
+#cancel { background: var(--card); color: var(--accent); }
+#cancel:hover { background: var(--accent); color: var(--card); }
+body.busy, body.busy :not(#cancel) { cursor: progress; }
+button:disabled { opacity: 0.45; cursor: default; }
+
+#status, .note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#status { overflow-wrap: anywhere; }
+
+.result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.result-head button, #open, #clear {
+  width: auto;
+  padding: 0.1rem 0.55rem;
+  font-size: 12px;
+}
+
+#stale { color: var(--warn); }
+
+/* ------------------------------------------------------------- summary */
+
+/* The answer, with the gold of the logo's leaves beside it. */
+.answer {
+  margin: 0 0 0.9rem;
+  padding: 0.55rem 0.75rem;
+  border-left: 4px solid var(--gold);
+  background: var(--code);
+  border-radius: 0 5px 5px 0;
+  max-width: 60rem;
+}
+
+.answer .label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.answer b {
+  font: 600 1.6rem/1.3 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+/* A weighted count's decimal value, beside the exact count. */
+.answer .decimal {
+  margin-left: 0.75rem;
+  font: 400 1.1rem/1.3 var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.answer.unsatisfiable { border-left-color: var(--warn); }
+
+.answer.failed {
+  border-left-color: var(--bad);
+  background: var(--bad-fill);
+}
+
+.answer strong { font-weight: 600; }
+
+.answer pre {
+  margin: 0.4rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 13px/1.45 var(--mono);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0 0 1rem;
+  font-size: 14px;
+}
+
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+
+details { margin-top: 0.6rem; }
+
+summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+pre.block {
+  max-height: 24rem;
+  overflow: auto;
+  margin: 0.4rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--code);
+  font: 12.5px/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

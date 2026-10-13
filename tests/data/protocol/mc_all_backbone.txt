@@ -1,0 +1,10 @@
+$ tididi --mode mc --time-limit-ms 60000 --stats - tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf
+exit 0
+--- stdout
+model count: 1
+{"mode":"mc","exit_reason":"solved","variables":762,"clauses":2469,"vtree_spec":"portfolio","satisfiable":true,"model_count":"1","answered_by":"preprocessing","reduction":"used","preprocess_ms":"<t>","arjun_ms":"<t>","compile_ms":"<t>","backbone_ms":"<t>","backbone_found":762,"backbone_probes":5}
+--- stderr
+[input] reading tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf
+[input] 762 variables, 2469 clauses
+[mc] no-sbva-retry: armed (coloring-like input: occ_cv=0.1479 width_cv=0.1653)
+[mc] preprocessing: start

@@ -1,0 +1,7 @@
+c The data format's Example 1 (MC format v1.2 §4): 22 models.
+p cnf 6 4
+c t mc
+-1 -2 0
+2 3 -4 0
+4 5 0
+4 6 0

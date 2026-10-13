@@ -1,0 +1,7 @@
+c Every assignment to 1 and 2 falsifies a clause: no model.
+p cnf 2 4
+c t mc
+1 2 0
+-1 2 0
+1 -2 0
+-1 -2 0

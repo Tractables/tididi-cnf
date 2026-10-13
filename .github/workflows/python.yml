@@ -1,0 +1,69 @@
+name: Python
+
+# Builds the Python extension in bindings/python, installs the wheel in a
+# fresh virtual environment, and runs its tests there, comparing its counts
+# with the tididi binary's. Nightly, on demand, and on a pull request that
+# changes the bindings or what they compile; not on every commit, since the
+# job builds vitri's vendored C++ stack twice. Nothing is published.
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  pull_request:
+    paths:
+      - "bindings/python/**"
+      - "bindings/parity.txt"
+      - ".github/workflows/python.yml"
+      - "src/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "tididi"
+      - "vendor/**"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  MATURIN_VERSION: 1.15.0
+
+jobs:
+  # x86-64 Linux only. The wheel links the runner's GMP and carries a plain
+  # linux tag: it is for these tests, not for distribution.
+  wheel-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/install-prereqs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Cache Cargo builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            bindings/python -> target
+
+      - name: Install maturin
+        run: python -m pip install --disable-pip-version-check maturin==$MATURIN_VERSION
+
+      - name: Lint
+        working-directory: bindings/python
+        run: PYO3_PYTHON=$(command -v python) cargo clippy --release --locked -- -D warnings
+
+      - name: Build the wheel
+        working-directory: bindings/python
+        run: maturin build --release --locked --out dist --compatibility linux --auditwheel skip
+
+      - name: Build the command line for the parity tests
+        run: cargo build --release --locked --bin tididi
+
+      - name: Test the wheel in a fresh environment
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          . "$RUNNER_TEMP/venv/bin/activate"
+          python -m pip install --disable-pip-version-check pytest
+          python -m pip install --disable-pip-version-check --no-index bindings/python/dist/*.whl
+          cd "$RUNNER_TEMP"
+          python -m pytest "$GITHUB_WORKSPACE/bindings/python/tests" -q -rs -p no:cacheprovider \
+            --tididi-cli "$GITHUB_WORKSPACE/target/release/tididi"

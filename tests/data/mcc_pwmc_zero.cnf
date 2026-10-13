@@ -1,0 +1,8 @@
+c 1 or 2, shown 1, with both literals of 1 weighed 0: satisfiable, and every
+c projection weighs 0.
+p cnf 2 1
+c t pwmc
+c p show 1 0
+c p weight 1 0 0
+c p weight -1 0 0
+1 2 0

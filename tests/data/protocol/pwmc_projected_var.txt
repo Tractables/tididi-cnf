@@ -1,0 +1,10 @@
+$ tididi --mode pwmc --time-limit-ms 60000 --stats - tests/data/pwmc_projected_var_weight.cnf
+exit 0
+--- stdout
+projected weighted count: 1/1
+{"mode":"pwmc","exit_reason":"solved","variables":2,"clauses":2,"vtree_spec":"portfolio","satisfiable":true,"weighted_count":"1/1","compile_ms":"<t>","show_vars":0}
+--- stderr
+[input] reading tests/data/pwmc_projected_var_weight.cnf
+[input] 2 variables, 2 clauses
+[pwmc] arithmetic: exact rational
+[pwmc] trivial: no variables left (preprocessing <t>, 2c→0c), show 0, vars 2

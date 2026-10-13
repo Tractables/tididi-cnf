@@ -1,0 +1,13 @@
+c Example 4's projection with 1 weighed 0.4 and 0.6 and 2 weighed 0.3 and
+c 0.7: 0.6·0.7 + 0.6·0.3 + 0.4·0.7 = 22/25.
+p cnf 6 4
+c t pwmc
+c p show 1 2 0
+c p weight 1 0.4 0
+c p weight -1 0.6 0
+c p weight 2 0.3 0
+c p weight -2 0.7 0
+-1 -2 0
+2 3 -4 0
+4 5 0
+4 6 0

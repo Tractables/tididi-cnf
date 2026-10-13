@@ -1,0 +1,13 @@
+$ tididi --mode wmc --time-limit-ms 60000 --stats - tests/data/wmc_header_tiny_sat.cnf
+exit 0
+--- stdout
+weighted count: 3.2999999999999985e0
+{"mode":"wmc","exit_reason":"solved","variables":3,"clauses":1,"vtree_spec":"portfolio","vtree_candidate":"flowcutter-primal","satisfiable":true,"weighted_count":"3.2999999999999985e0","weighted_count_log10":0.5185139398778873,"weighted_count_sign":1,"vtree_ms":"<t>"}
+--- stderr
+[input] reading tests/data/wmc_header_tiny_sat.cnf
+[input] 3 variables, 1 clauses
+[wmc] arithmetic: log (bounded)
+[wmc] preprocessing: simplify=Some(Ran) arjun=Some(Skipped(NotRequested)); <t>; 3v/1c reduced
+[wmc] arjun: no usable reduction — skipped
+[wmc] arjun: no answer; compiling the simplified formula on the reserved time
+[wmc] compile: counted in <t>

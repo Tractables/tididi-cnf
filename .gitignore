@@ -1,0 +1,11 @@
+# Cargo's build output, and the circuit validator's, which
+# `python3 scripts/bench/nnf_validator.py --build` writes.
+/target
+/tools/nnf_validator/target
+
+# Python's bytecode cache, which importing the validator's driver writes.
+__pycache__/
+
+# Editor state.
+.idea/
+.vscode/
