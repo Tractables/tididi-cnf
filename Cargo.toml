@@ -44,10 +44,9 @@ members = ["tididi"]
 # Bare `cargo test` and `cargo check` follow default-members, so without this
 # list they would cover the root package alone and skip the library's tests.
 default-members = [".", "tididi"]
-# The circuit validator under tools/, a standalone package, and vitri, a path
-# dependency rather than a member, so `cargo test --workspace` leaves its tests
-# to its own repository.
-exclude = ["tools/*", "vendor/vitri"]
+# vitri is a path dependency rather than a member, so `cargo test --workspace`
+# leaves its tests to its own repository.
+exclude = ["vendor/vitri"]
 
 # The package is `tididi-bonsai` and its library `tididi_bonsai`; the binary is
 # `tididi`.

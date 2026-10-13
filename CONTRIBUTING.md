@@ -12,8 +12,7 @@ bash scripts/verify.sh
 
 - The script builds the workspace in the debug and release profiles
   `--locked`, against the committed `Cargo.lock`, runs Clippy and rustdoc
-  with warnings denied, builds the standalone circuit validator before the
-  tests, runs the workspace tests and doctests, and runs
+  with warnings denied, runs the workspace tests and doctests, and runs
   `scripts/check_docs.py`: every worked example's program and every command
   the README and the user guide show, against the output they print. Each
   step has a 30-minute limit, and the script stops at the first failure with
