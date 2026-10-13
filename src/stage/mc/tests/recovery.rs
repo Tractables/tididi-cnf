@@ -155,25 +155,25 @@ fn mc_recovery_honors_past_deadline_without_compiling() {
 /// The fallbacks re-check the wall immediately before they start, rather
 /// than relying on the check made before the first compile: a panicking
 /// compile that burned the remaining budget (the OOM case this exists for)
-/// must not admit a second full compile. The wall is set just past "now" so
-/// the entry check passes and the first compile runs; it sleeps past the
-/// wall before panicking, so the wall has passed by the time the fallbacks'
-/// gate is reached.
+/// must not admit a second full compile. The wall is a second ahead, so the
+/// entry check passes and the first compile runs; it waits for the wall to
+/// pass before panicking.
 #[test]
 fn mc_recovery_skips_the_fallbacks_once_the_wall_passes_mid_attempt() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = fixtures::formula(3, vec![clause(&[1, 2])]);
-    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(30);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(deadline), ..fixtures::run(eng, &config) };
     let compile_calls = std::cell::Cell::new(0u32);
     let first = || -> Option<Counted> {
         compile_calls.set(compile_calls.get() + 1);
-        // Simulate an attempt (e.g. OOM) that eats the remaining budget
-        // before dying, so the deadline is past by the time it panics.
-        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-        std::thread::sleep(remaining + std::time::Duration::from_millis(5));
-        panic!("compile forced to fail — simulates budget-exhausting OOM");
+        // An attempt (an OOM, say) that eats the rest of the wall before
+        // dying.
+        while !deadline_passed(Some(deadline)) {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        panic!("compile forced to fail after the wall passed");
     };
     let fallbacks_called = std::cell::Cell::new(false);
     let fallbacks = || {
