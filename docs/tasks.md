@@ -18,8 +18,7 @@ clause.
 | `pwmc` | the sum, over those assignments to the show variables, of the product of their literals' weights | exact rational | `projected weighted count: 22/25` |
 | `compile` | a Tree Decision Diagram of the formula over all *n* variables, and its model count | exact integer | `model count: 22` |
 
-What each count ranges over is where a competent reader can still get a
-surprise:
+Some details of what each count ranges over are easy to miss:
 
 - **Every declared variable counts.** A variable that `p cnf` declares but no
   clause mentions doubles the model count: `p cnf 4 2` over the clauses
@@ -95,7 +94,8 @@ every mode.
 - **`--save-tdd`** only makes sense for a compile: a counting run compiles a
   preprocessed formula whose diagram does not carry the reported count.
 - **`--preprocess none`** turns off vitri's simplification of the formula
-  before the compile; `full`, the default, runs it. The projected counts
+  before the compile; `full`, the default, runs it. The counting cascade of
+  `mc` and `wmc` runs Arjun's reduction either way. The projected counts
   always simplify, so they refuse the flag.
 - **`--vtree`** names the vtree to compile on.
 
