@@ -1,0 +1,10 @@
+$ tididi --mode compile --time-limit-ms 60000 --stats - tests/data/tiny.cnf
+exit 0
+--- stdout
+model count: 48
+{"mode":"compile","exit_reason":"solved","variables":6,"clauses":3,"vtree_spec":"portfolio","vtree_candidate":"force","satisfiable":true,"model_count":"48","tdd_nodes":14,"tdd_pairs":28,"tdd_width":4,"peak_pairs":28,"preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":1,"sat_prune_solver_setup_us":"<t>"}
+--- stderr
+[input] reading tests/data/tiny.cnf
+[input] 6 variables, 3 clauses
+[vtree] portfolio
+[compile] start

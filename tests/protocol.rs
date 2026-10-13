@@ -2,10 +2,10 @@
 //!
 //! Each row runs the binary once and compares its exit status, stdout and
 //! stderr — the `--stats` record included — against a checked-in file under
-//! `tests/data/protocol/`. Between them the rows cover every counting mode
-//! (`--mode mc`, `wmc`, `pmc` and `pwmc`) and both integer-MC entries:
-//! `--mode mc` without `--vtree` runs the cascade, and with `--vtree` the
-//! streaming entry, `run_mc_streaming` in `src/stage/mc/mod.rs`.
+//! `tests/data/protocol/`. Between them the rows cover every mode
+//! (`--mode compile`, `mc`, `wmc`, `pmc` and `pwmc`) and both integer-MC
+//! entries: `--mode mc` without `--vtree` runs the cascade, and with
+//! `--vtree` the streaming entry, `run_mc_streaming` in `src/stage/mc/mod.rs`.
 //!
 //! This is a transcript pin, not a correctness check. It says a refactor left
 //! the counts, the stage that answered and the candidate, the probe and node
@@ -288,7 +288,8 @@ macro_rules! protocol_rows {
 }
 
 protocol_rows! {
-    // --- the cascades, and the projected stages, one row per mode ---------
+    // --- the compile, the cascades and the projected stages, one row per mode
+    compile_tiny:         ["--mode", "compile"], "tests/data/tiny.cnf";
     mc_all_backbone:      ["--mode", "mc"], "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf";
     mc_s641:              ["--mode", "mc"], "tests/data/cnfs/iscas89/s641.scan.cnf";
     // SAT pruning bounds each probe pass by a share of the time limit, 200 ms
