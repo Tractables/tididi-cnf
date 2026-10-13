@@ -192,6 +192,32 @@ impl From<GiveUp> for Error {
     }
 }
 
+/// The heap around one [`release_failed_compile`], and how its reclamation
+/// went: `Err` carries the first mallctl failure.
+pub(crate) struct Released {
+    pub(crate) before: crate::mem::HeapStats,
+    pub(crate) after: crate::mem::HeapStats,
+    pub(crate) reclaimed: Result<(), libc::c_int>,
+}
+
+/// Give back what a failed compile left behind, before the next compile
+/// starts on the same engine.
+///
+/// The failed compile's diagrams are already dropped. What outlives them is
+/// the engine's retained apply scratch (`Engine::clear_scratch`: the sparse
+/// workspace and level pools the failure left pinned at full capacity), freed
+/// first so the purge can advise its pages away, and the allocator's dirty
+/// pages, which eager reclamation ([`crate::mem::reclaim_eagerly`]) returns.
+/// Every compile that follows a failed one on the same engine runs this first:
+/// the model count's fallbacks and Shannon split, and the plain compile's
+/// retry on a second vtree.
+pub(crate) fn release_failed_compile(eng: &Engine) -> Released {
+    let before = crate::mem::HeapStats::read();
+    eng.clear_scratch();
+    let reclaimed = crate::mem::reclaim_eagerly();
+    Released { before, after: crate::mem::HeapStats::read(), reclaimed }
+}
+
 /// What a compile produces.
 #[derive(Clone, Default)]
 pub enum Output<'a> {

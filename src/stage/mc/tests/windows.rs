@@ -2,12 +2,6 @@ use super::*;
 use std::time::{Duration, Instant};
 
 #[test]
-fn no_sbva_retry_vtree_is_a_vitri_spec() {
-    vitri::spec::validate_vtree_spec(NO_SBVA_RETRY_VTREE_SPEC)
-        .expect("the retry construction must stay inside vitri's spec grammar");
-}
-
-#[test]
 fn no_retry_without_a_deadline_or_below_the_floor() {
     assert_eq!(support_enum_arjun_retry_ms(None), None);
     assert_eq!(support_enum_arjun_retry_ms(Some(1_799_999)), None);

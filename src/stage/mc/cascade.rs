@@ -12,10 +12,10 @@ use std::time::Instant;
 use vitri::cnf::CnfFormula;
 use crate::config::Config;
 use crate::output::AnsweredBy;
-use crate::stage::{PORTFOLIO_VTREE_SPEC, Run};
+use crate::stage::{PORTFOLIO_VTREE_SPEC, RETRY_VTREE_SPEC, Run};
 
 use super::windows::{
-    NO_SBVA_RETRY_VTREE_SPEC, UNREDUCED_RETRY_RESERVE, no_sbva_retry_want, no_sbva_retry_window, unreduced_retry_window,
+    UNREDUCED_RETRY_RESERVE, no_sbva_retry_want, no_sbva_retry_window, unreduced_retry_window,
 };
 use super::attempt::{
     attempt_from_vitri_build, count_attempt, portfolio_attempt,
@@ -103,7 +103,7 @@ fn no_sbva_retry(
     eprintln!(
         "[mc] no-sbva-retry: re-reducing without SBVA and recompiling on {} \
          for up to {}s before support enumeration, the unreduced retry and Shannon split",
-        NO_SBVA_RETRY_VTREE_SPEC,
+        RETRY_VTREE_SPEC,
         reserve.as_secs(),
     );
     // Reduce budget: `budget::arjun_budget_ms`, capped at half this stage's
@@ -119,7 +119,7 @@ fn no_sbva_retry(
     .ok()?;
     let retry = vitri::bundle::FrontendRetryConfig {
         arjun_sbva: Some(vitri::preprocess::ArjunSbva::Off),
-        vtree_spec: Some(NO_SBVA_RETRY_VTREE_SPEC.to_owned()),
+        vtree_spec: Some(RETRY_VTREE_SPEC.to_owned()),
     };
     let retried = match session.retry(budget, &retry) {
         Ok(Some(retried)) => retried,

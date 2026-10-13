@@ -112,14 +112,23 @@ second and another not finish. Without `--vtree`, the run chooses:
   several vtrees for the formula and keeps the one that scores best. Under
   `compile`, a formula that splits into independent parts and has at least
   1000 variables and 4.5 clauses per variable gets vitri's force-directed
-  `force` tree on every part instead.
+  `force` tree on every part instead. The portfolio scores trees without
+  compiling on them, and on some formulas the diagram outgrows the memory
+  limit on its pick while another tree compiles in a small fraction of it.
+  When a `compile` runs out of memory with time left, it compiles once more
+  on vitri's hypergraph bisection, `hypergraph-bisect:imbalance=0.40`, unless
+  the portfolio's pick already was a `hypergraph-bisect` tree; the record's
+  `answered_by` is then `bisect-retry`. The retry builds its tree in the time
+  left, and one that cannot finish the tree gives up. Nothing follows the
+  retry.
 - `mc` and `wmc` run the counting cascade: vitri's Arjun preprocessing reduces
   the formula, the portfolio picks a vtree for what is left, and if that
   compile gives up, further stages follow. The record's `answered_by`
   ([`stats.md`](stats.md)) says which stage produced a model count.
 
-With `--vtree <spec>`, the run compiles on that construction instead. Under
-`mc` that also skips the cascade: the formula is simplified but not reduced by
+With `--vtree <spec>`, the run compiles on that construction instead, and a
+`compile` that gives up on it has no retry. Under `mc` that also skips the
+cascade: the formula is simplified but not reduced by
 Arjun, and each of its independent parts compiles on a vtree of that
 construction. `wmc` has the cascade only and refuses the flag.
 `tididi --help` lists every spec and its parameters, and

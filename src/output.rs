@@ -28,12 +28,13 @@ use crate::problem::WeightedCount;
 use crate::run::{Answer, Count, Failure};
 use crate::Error;
 
-/// Which stage of a model count produced the answer: the record's
-/// `answered_by`, and the word the stage's stderr lines carry.
+/// Which stage of a model count or a plain compile produced the answer: the
+/// record's `answered_by`, and the word the stage's stderr lines carry.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum AnsweredBy {
     /// The compile answered: on the cascade, the first compile, of the Arjun
-    /// reduction when one was kept; on the streaming route, its one compile.
+    /// reduction when one was kept; on the streaming route, its one compile;
+    /// in the plain compile, the compile on the frontend's vtree.
     Compile,
     /// Preprocessing settled the count, so nothing was compiled: the formula
     /// was refuted, or no variable was left and the count is the lift.
@@ -47,6 +48,9 @@ pub(crate) enum AnsweredBy {
     UnreducedRetry,
     /// Shannon split assembled the count from cofactors.
     ShannonSplit,
+    /// The plain compile's second compile, on the hypergraph bisection, after
+    /// the compile on the portfolio's vtree ran out of memory.
+    BisectRetry,
 }
 
 impl AnsweredBy {
@@ -60,6 +64,7 @@ impl AnsweredBy {
             AnsweredBy::NoSbvaRetry => "no-sbva-retry",
             AnsweredBy::UnreducedRetry => "unreduced-retry",
             AnsweredBy::ShannonSplit => "shannon-split",
+            AnsweredBy::BisectRetry => "bisect-retry",
         }
     }
 }
@@ -122,7 +127,9 @@ pub struct Stats {
     /// `portfolio`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_spec: Option<String>,
-    /// The portfolio candidate that won selection, when a portfolio ran.
+    /// The portfolio candidate that won selection, when a portfolio ran. In
+    /// the plain compile it is the vtree the answering compile ran on: the
+    /// portfolio's winner, or the retry's hypergraph bisection.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_candidate: Option<String>,
 
@@ -160,9 +167,10 @@ pub struct Stats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peak_pairs: Option<u64>,
 
-    /// Which stage of a model count produced the answer: `compile`,
+    /// Which stage produced the answer: of a model count, `compile`,
     /// `preprocessing`, `support-enumeration`, `no-sbva-retry`,
-    /// `unreduced-retry` or `shannon-split`.
+    /// `unreduced-retry` or `shannon-split`; of a plain compile, `compile`,
+    /// `preprocessing` or `bisect-retry`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub answered_by: Option<&'static str>,
     /// What became of Arjun's reduction on a model count: `used`, or
@@ -314,9 +322,10 @@ fn recorded_integer(stats: &mut Stats, count: num_bigint::BigUint, diagram: Opti
     recorded(stats, satisfiable, Count::Integer(count), diagram)
 }
 
-/// The portfolio candidate that won, recorded for the integer and weighted
-/// counts and the compile, since only by then has selection run. The spec
-/// itself is settled before the mode dispatches and is recorded once, in
+/// The portfolio candidate that won, recorded for the model and weighted
+/// counts, since only by then has selection run. The plain compile records
+/// the vtree its answering compile ran on instead ([`CompileAnswer`]). The
+/// spec itself is settled before the mode dispatches and is recorded once, in
 /// [`open_record`].
 fn record_vtree_candidate(stats: &mut Stats, config: &Config) {
     if let Some(candidate) = config.portfolio_history.last_winning_spec() {
@@ -328,14 +337,12 @@ fn record_vtree_candidate(stats: &mut Stats, config: &Config) {
 /// alongside it.
 fn record_integer(
     stats: &mut Stats,
-    config: &Config,
     count: num_bigint::BigUint,
     peak_pairs: usize,
     preprocessing: PreprocessReport,
     compile_ms: u128,
     diagram: Option<tididi::Tdd>,
 ) -> Verdict {
-    record_vtree_candidate(stats, config);
     if peak_pairs > 0 {
         stats.peak_pairs = Some(peak_pairs as u64);
     }
@@ -405,7 +412,8 @@ pub(crate) fn record_mc(stats: &mut Stats, config: &Config, answer: McAnswer) ->
     stats.reduction = attribution.reduction.map(Reduction::token);
     stats.arjun_ms = attribution.arjun_ms.map(|ms| ms as u64);
     stats.cascade_ms = attribution.cascade_ms.map(|ms| ms as u64);
-    record_integer(stats, config, count, peak_pairs, preprocessing, compile_ms, None)
+    record_vtree_candidate(stats, config);
+    record_integer(stats, count, peak_pairs, preprocessing, compile_ms, None)
 }
 
 /// The verdict and the record of a weighted count.
@@ -475,19 +483,26 @@ pub(crate) struct CompileAnswer {
     pub(crate) tdd: tididi::Tdd,
     /// The diagram's model count, over every original variable.
     pub(crate) count: num_bigint::BigUint,
+    /// The largest diagram the answering compile held, in pairs.
     pub(crate) peak_pairs: usize,
     pub(crate) preprocessing: PreprocessReport,
     pub(crate) compile_ms: u128,
+    pub(crate) answered_by: AnsweredBy,
+    /// The vtree the answering compile ran on, by its spec: the portfolio's
+    /// winner, or the retry's construction. `None` when no portfolio ran.
+    pub(crate) vtree_candidate: Option<String>,
 }
 
-/// The verdict and the record of the plain compile: the count, and the
-/// diagram it was read off, which the answer carries.
-pub(crate) fn record_compile(stats: &mut Stats, config: &Config, answer: CompileAnswer) -> Verdict {
-    let CompileAnswer { tdd, count, peak_pairs, preprocessing, compile_ms } = answer;
+/// The verdict and the record of the plain compile: the count, the diagram it
+/// was read off, which the answer carries, and the compile that answered.
+pub(crate) fn record_compile(stats: &mut Stats, answer: CompileAnswer) -> Verdict {
+    let CompileAnswer { tdd, count, peak_pairs, preprocessing, compile_ms, answered_by, vtree_candidate } = answer;
+    stats.answered_by = Some(answered_by.token());
+    stats.vtree_candidate = vtree_candidate;
     stats.tdd_width = Some(tdd.max_width() as u64);
     stats.tdd_pairs = Some(tdd.pair_count() as u64);
     stats.tdd_nodes = Some(tdd.node_count() as u64);
-    record_integer(stats, config, count, peak_pairs, preprocessing, compile_ms, Some(tdd))
+    record_integer(stats, count, peak_pairs, preprocessing, compile_ms, Some(tdd))
 }
 
 // ── The command line ─────────────────────────────────────────────────────────

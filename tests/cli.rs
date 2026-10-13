@@ -424,6 +424,11 @@ fn stdout_is_the_answer_and_the_record_the_run() {
     for field in ["vtree_spec", "tdd_nodes", "tdd_pairs", "tdd_width", "compile_ms"] {
         assert!(record.get(field).is_some(), "no `{field}`: {record}");
     }
+    // The compile on the portfolio's pick answered, and stderr names the pick
+    // the record does.
+    assert_eq!(record["answered_by"], "compile", "{record}");
+    let pick = record["vtree_candidate"].as_str().unwrap_or_else(|| panic!("no `vtree_candidate`: {record}"));
+    assert!(out.stderr.contains(&format!("[vtree] portfolio: {pick}\n")), "{}", out.stderr);
 }
 
 /// `--save-tdd` writes the diagram, also when every variable is forced.

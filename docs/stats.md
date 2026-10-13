@@ -43,7 +43,7 @@ The last column says in which modes a key can appear.
 | `variables` | integer | Variables the `p cnf` line declares. | all |
 | `clauses` | integer | Clauses read from the file, less those every assignment satisfies ([`input.md`](input.md#dimacs)). | all |
 | `vtree_spec` | string | The vtree construction asked for: the `--vtree` spec, or `portfolio` without the flag. | all |
-| `vtree_candidate` | string | The construction that won the portfolio's selection. | `compile`, `mc`, `wmc`, when a portfolio ran |
+| `vtree_candidate` | string | The construction that won the portfolio's selection. Under `compile` it is the tree the answering compile ran on: the portfolio's winner, or `hypergraph-bisect:imbalance=0.40` when the retry on it answered. | `compile`, `mc`, `wmc`, when a portfolio ran |
 | `satisfiable` | boolean | Whether the formula has a model. A weighted count can be 0 on a satisfiable formula. | all, once known |
 | `model_count` | string | The count, in decimal. | `compile`, `mc`, `pmc` |
 | `weighted_count` | string | The count as the answer line prints it: `<n>/<d>` for `pwmc`, `<mantissa>e<exponent>` for `wmc`. | `wmc`, `pwmc` |
@@ -52,13 +52,13 @@ The last column says in which modes a key can appear.
 | `tdd_nodes` | integer | Nodes in the compiled diagram. | `compile` |
 | `tdd_pairs` | integer | Pairs in the compiled diagram, the measure of its size. | `compile` |
 | `tdd_width` | integer | The most nodes the compiled diagram has at one vtree node. | `compile` |
-| `peak_pairs` | integer | The largest diagram the compile held at once, in pairs. | `compile`, `mc` |
-| `answered_by` | string | The stage that produced the count: `compile`; `preprocessing`, when simplification settled it; or one of the stages that take over from a compile that gave up, `support-enumeration`, `no-sbva-retry`, `unreduced-retry` or `shannon-split`. | `mc` |
+| `peak_pairs` | integer | The largest diagram the compile held at once, in pairs; under `compile`, the compile that answered. | `compile`, `mc` |
+| `answered_by` | string | The stage that produced the count: `compile`; `preprocessing`, when simplification settled it; or one of the stages that take over from a compile that gave up: under `mc`, `support-enumeration`, `no-sbva-retry`, `unreduced-retry` or `shannon-split`, and under `compile`, `bisect-retry` ([`tasks.md`](tasks.md#vtrees)). | `compile`, `mc` |
 | `reduction` | string | `used` when the count went through the formula Arjun reduced, `unavailable` when Arjun gave up or its result was not kept. Absent when Arjun did not run. | `mc` |
 | `preprocess_ms` | integer | Time simplifying the formula; under `mc`, without Arjun, which has its own key. | `compile`, `mc` |
 | `arjun_ms` | integer | Time in Arjun's reduction. | `mc` |
 | `vtree_ms` | integer | Time building vtrees, over the whole run. | all, once a vtree was built |
-| `compile_ms` | integer | Time compiling, not counting the keys above; under `mc` it includes the stages that take over from a compile that gave up, and under `pmc` and `pwmc` every stage that did not rewrite the formula, enumeration included. 0 when preprocessing settled a `compile` or `mc` count. | `compile`, `mc`, `pmc`, `pwmc` |
+| `compile_ms` | integer | Time compiling, not counting the keys above; under `mc` and `compile` it includes the stages that take over from a compile that gave up, and under `pmc` and `pwmc` every stage that did not rewrite the formula, enumeration included. 0 when preprocessing settled a `compile` or `mc` count. | `compile`, `mc`, `pmc`, `pwmc` |
 | `cascade_ms` | integer | Time from the count's first compile to the answer, vtree construction and the stages that take over from a compile that gave up included. Absent when preprocessing settled the count. | `mc` |
 | `backbone_ms` | integer | Time finding the formula's backbone, the literals every model shares. | `compile`, `mc` |
 | `backbone_found` | integer | Backbone literals found. | `compile`, `mc` |

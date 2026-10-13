@@ -17,15 +17,19 @@ use tididi::Tdd;
 use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
-use crate::compile::{CompileOptions, CompileRun, ComponentPlan, GiveUp, compile_with};
+use crate::compile::{CompileOptions, CompileRun, Compiled, ComponentPlan, GiveUp, compile_with};
 use crate::compile::sat_prune::SatPrune;
 use crate::config::{Config, Limits, Mode, Settings};
 use crate::run::{Answer, Failure, Input};
 use crate::Error;
 use crate::output::{
-    CompileAnswer, PreprocessReport, Verdict, record_compile, record_mc, record_pmc, record_pwmc, record_wmc,
+    AnsweredBy, CompileAnswer, PreprocessReport, Verdict, record_compile, record_mc, record_pmc, record_pwmc,
+    record_wmc,
 };
-use crate::stage::{Run, run_mc_count, run_mc_streaming, run_pmc_count, run_pwmc_count, run_wmc_count};
+use crate::stage::{
+    RETRY_VTREE_SPEC, Run, run_mc_count, run_mc_streaming, run_pmc_count, run_pwmc_count, run_wmc_count,
+};
+use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components};
 
 /// Read the DIMACS file at `path` through the one reader
 /// ([`crate::parse_dimacs`] → vitri), so a run accepts and refuses exactly
@@ -93,38 +97,35 @@ fn parse_input(
 }
 
 /// The ordinary non-counting route: vitri's `compile` preprocessing, the
-/// paired vtree construction, reduced compilation, then exact function
-/// expansion through the returned total original-variable map. Preprocessing,
-/// vtree and compile all stop at the run's wall.
+/// paired vtree construction, reduced compilation ([`compile_with_retry`]),
+/// then exact function expansion through the returned total original-variable
+/// map. Preprocessing, vtree and compile all stop at the run's wall.
 fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAnswer, Error> {
     let Run { eng, config, deadline: program_deadline, .. } = *run;
     let crate::frontend::CompileFrontendAttempt { reduced, expansion, telemetry, vtree } =
         crate::frontend::compile_frontend(formula, config, program_deadline)
             .map_err(Error::stage_failed("compile preprocessing"))?;
     let preprocessing = PreprocessReport::of(&telemetry);
+    // The portfolio's winner, `None` when no portfolio ran.
+    let pick = config.portfolio_history.last_winning_spec();
 
-    let (tdd, peak, compile_ms) = match vtree {
+    let (tdd, peak, compile_ms, answered_by) = match vtree {
         crate::frontend::FrontendVtree::Built(built) => {
             let built = built.bind(eng);
-            let compile_vtree = built.root;
-            let component_vtrees = built.components;
-            eprintln!("[vtree] {}", config.vtree_spec());
+            match &pick {
+                Some(pick) => eprintln!("[vtree] {}: {pick}", config.vtree_spec()),
+                None => eprintln!("[vtree] {}", config.vtree_spec()),
+            }
             eprintln!("[compile] start");
             let clock = crate::budget::CompileClock::start(&config.vtree_time);
-            let plan = ComponentPlan::from_components(component_vtrees.as_deref());
-            // The compile runs to the run's wall, as every counting route's
-            // does; a compile stopped there, or refused memory mid-apply, is
-            // the run's give-up. There is nothing to fall back to: the circuit
-            // is the answer.
-            let options = CompileOptions { plan, deadline: program_deadline, ..CompileOptions::default() };
-            let compiled = compile_with(eng, &reduced, &compile_vtree, options, run.compile).map_err(gave_up)?;
+            let (compiled, answered_by) = compile_with_retry(run, &reduced, built, pick.as_deref())?;
             let tdd = compiled.diagram;
             let compile_ms = clock.compile_ms(0);
             let tdd = crate::frontend::expand::expand_to_originals(eng, &tdd, &expansion)
                 .map_err(Error::stage_failed("diagram expansion"))?;
             // The expanded diagram is the run's last and can be its largest.
             let peak = compiled.peak_pairs.max(tdd.pair_count());
-            (tdd, peak, compile_ms)
+            (tdd, peak, compile_ms, answered_by)
         }
         crate::frontend::FrontendVtree::Refuted => {
             // The function is constant false over the originals, of which
@@ -132,7 +133,8 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             // it preprocesses. Nothing is selected and nothing is compiled:
             // the refutation is the answer, and the zero output is the same
             // shape compiling a contradiction reaches by short-circuit.
-            (Tdd::zero(&Arc::new(Vtree::balanced(expansion.original_num_vars))), 0, 0)
+            let zero = Tdd::zero(&Arc::new(Vtree::balanced(expansion.original_num_vars)));
+            (zero, 0, 0, AnsweredBy::Preprocessing)
         }
         crate::frontend::FrontendVtree::FullyResolved => {
             if expansion.is_all_constants() {
@@ -140,15 +142,125 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             }
             let tdd = crate::frontend::expand::fully_resolved_tdd(eng, &expansion)
                 .map_err(Error::stage_failed("diagram expansion of the resolved formula"))?;
-            (tdd, 0, 0)
+            (tdd, 0, 0, AnsweredBy::Preprocessing)
         }
+    };
+    let vtree_candidate = match answered_by {
+        AnsweredBy::BisectRetry => Some(RETRY_VTREE_SPEC.to_owned()),
+        _ => pick,
     };
     // Function compilation expands every original variable back into the TDD,
     // so its intrinsic model count is already in the input formula's space.
     // The readout runs under the same limits as the compile, and a refusal
     // ends the run as the compile's would.
     let count = eng.model_count(&tdd).map_err(|error| gave_up(GiveUp::from_operation(eng, error)))?;
-    Ok(CompileAnswer { tdd, count, peak_pairs: peak, preprocessing, compile_ms })
+    Ok(CompileAnswer { tdd, count, peak_pairs: peak, preprocessing, compile_ms, answered_by, vtree_candidate })
+}
+
+/// Compile `reduced` on the frontend's vtree, `built`, and when that compile
+/// runs out of memory, once more on vitri's hypergraph bisection,
+/// [`RETRY_VTREE_SPEC`] ([`bisect_retry_applies`] says when). `pick` is the
+/// portfolio's winner, `None` when no portfolio ran.
+///
+/// The portfolio picks its vtree by scoring candidates, not by compiling on
+/// them, and on some formulas the diagram outgrows memory on the pick while
+/// the bisection, which keeps each clause's variables together, compiles in a
+/// small fraction of it. The retry runs only after the pick gave up, so a
+/// formula the pick compiles is never touched. Both compiles run to the run's
+/// wall, and a retry that gives up is the run's give-up: the circuit is the
+/// answer, so there is no cheaper stage to fall back to.
+///
+/// Returns the compile that answered, over `reduced`'s variables, and which
+/// one it was.
+fn compile_with_retry(
+    run: &Run<'_>,
+    reduced: &CnfFormula,
+    built: VtreeBuild,
+    pick: Option<&str>,
+) -> Result<(Compiled, AnsweredBy), Error> {
+    let give_up = match compile_on(run, reduced, built) {
+        Ok(compiled) => return Ok((compiled, AnsweredBy::Compile)),
+        Err(give_up) => give_up,
+    };
+    // Inputs that do not fit are a fault of the route, which a second vtree
+    // would only hide.
+    if matches!(give_up, GiveUp::Invalid(_))
+        || !bisect_retry_applies(run.config.vtree.is_some(), pick, run.deadline, Instant::now())
+    {
+        return Err(gave_up(give_up));
+    }
+    give_up.report();
+    // The failed compile's diagrams and vtrees are dropped; what it leaves on
+    // the engine and in the allocator is given back the way the model count's
+    // fallbacks do before they compile on the same engine.
+    let released = crate::compile::release_failed_compile(run.eng);
+    const MIB: u64 = 1024 * 1024;
+    eprintln!(
+        "[compile] bisect-retry: the compile on {} ran out of memory with {}; \
+         compiling once more on {RETRY_VTREE_SPEC} (mapped+retained {} → {} MiB after the purge)",
+        pick.unwrap_or(run.config.vtree_spec()),
+        run.deadline.map_or_else(
+            || "no time limit".to_owned(),
+            |deadline| format!("{}s left", deadline.saturating_duration_since(Instant::now()).as_secs()),
+        ),
+        (released.before.mapped + released.before.retained) / MIB,
+        (released.after.mapped + released.after.retained) / MIB,
+    );
+    compile_on_bisection(run, reduced).map(|compiled| (compiled, AnsweredBy::BisectRetry)).map_err(gave_up)
+}
+
+/// One compile of `reduced` to the run's wall on a [`RETRY_VTREE_SPEC`] vtree
+/// built for it now.
+///
+/// The construction gets the share of the time left that every standalone
+/// construction gets ([`crate::budget::vtree_deadline`]), which near the wall
+/// is all of it. A bisection still unfinished when it passes is no vtree, and
+/// the retry gives up as a compile stopped at its deadline does, with the
+/// construction's reason on stderr.
+fn compile_on_bisection(run: &Run<'_>, reduced: &CnfFormula) -> Result<Compiled, GiveUp> {
+    let options = VtreeOptions::default()
+        .with_deadline(crate::budget::vtree_deadline(run.deadline))
+        .with_run_policy(run.config);
+    let built = run.config.vtree_time.time(|| build_vtree_with_components(reduced, RETRY_VTREE_SPEC, &options));
+    match built {
+        Ok(built) => compile_on(run, reduced, built.bind(run.eng)),
+        Err(error) => {
+            eprintln!("[compile] bisect-retry: no tree: {error}");
+            Err(GiveUp::Stopped)
+        }
+    }
+}
+
+/// One compile of `reduced` on `built`, its component vtrees as the plan, to
+/// the run's wall. The vtrees are dropped when it returns.
+fn compile_on(run: &Run<'_>, reduced: &CnfFormula, built: VtreeBuild) -> Result<Compiled, GiveUp> {
+    let plan = ComponentPlan::from_components(built.components.as_deref());
+    let options = CompileOptions { plan, deadline: run.deadline, ..CompileOptions::default() };
+    compile_with(run.eng, reduced, &built.root, options, run.compile)
+}
+
+/// Whether a plain compile that gave up gets the retry on
+/// [`RETRY_VTREE_SPEC`]: its vtree came from the default portfolio, not an
+/// explicit `--vtree`; the portfolio's winner, `pick`, is not already of the
+/// retry's family; and the run has time left at `now`.
+///
+/// Time left is also what makes the give-up a memory one. A compile in this
+/// mode stops at its deadline or for memory: an apply refused under the
+/// batch limits ([`GiveUp::Refused`]), or an allocation refused in the final
+/// reduction ([`GiveUp::OutOfMemory`]). So one that stopped before the
+/// deadline ran out of memory, whichever it reports.
+fn bisect_retry_applies(explicit_vtree: bool, pick: Option<&str>, deadline: Option<Instant>, now: Instant) -> bool {
+    !explicit_vtree
+        && pick.is_none_or(|pick| spec_family(pick) != spec_family(RETRY_VTREE_SPEC))
+        && deadline.is_none_or(|deadline| now < deadline)
+}
+
+/// The construction family a vtree spec names, its text before any
+/// parameters: `hypergraph-bisect` for `hypergraph-bisect:imbalance=0.40`. A
+/// parameter that names another construction
+/// (`flowcutter-primal:binarize=hypergraph-bisect`) stays a parameter.
+fn spec_family(spec: &str) -> &str {
+    spec.split_once(':').map_or(spec, |(family, _)| family)
 }
 
 /// A give-up of the plain compile route, which has nothing to fall back to:
@@ -244,7 +356,7 @@ fn solve_on(
             // An explicit `--vtree` compiles on that vtree, without the cascade.
             Mode::Mc if config.vtree.is_some() => record_mc(stats, config, run_mc_streaming(run, &formula)?),
             Mode::Mc => record_mc(stats, config, run_mc_count(run, &formula)?),
-            Mode::Compile => record_compile(stats, config, run_function_compile(run, &formula)?),
+            Mode::Compile => record_compile(stats, run_function_compile(run, &formula)?),
         })
     });
     crate::output::close_record(&mut stats, &verdict, config.vtree_time.total(), sat_prune.into_stats());

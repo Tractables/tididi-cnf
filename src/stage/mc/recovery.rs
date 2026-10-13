@@ -76,9 +76,7 @@ use crate::budget::{clamped_to_deadline_ms, deadline_passed, not_past, resolve_s
 use crate::compile::CompileRun;
 use crate::formula::{most_frequent_var, with_unit};
 use crate::frontend::request::arjun_stage;
-use crate::mem::{
-    HeapStats, mapped_bytes, purge_all_arenas, reclaim_eagerly, rlimit_as_bytes,
-};
+use crate::mem::{mapped_bytes, purge_all_arenas, rlimit_as_bytes};
 use crate::output::AnsweredBy;
 use crate::stage::{Run, panic_payload_message};
 
@@ -416,13 +414,12 @@ fn check_arjun_accounting(
 
 /// Log the recovery trigger under `tag` and purge jemalloc pages.
 ///
-/// Logs the recovery event to stderr, drops this thread's retained apply scratch
-/// (`Engine::clear_scratch` — the sparse workspace and level pools the unwind
-/// left pinned), then switches jemalloc to eager reclamation
-/// ([`reclaim_eagerly`]) to advise the panicked parent's dirty pages away
-/// before child compiles begin allocating.
+/// Logs the recovery event to stderr, then
+/// [`release_failed_compile`](crate::compile::release_failed_compile) gives
+/// back the panicked parent's apply scratch and dirty pages, switching
+/// jemalloc to eager reclamation, before child compiles begin allocating.
 ///
-/// It logs the [`HeapStats`] (`allocated` / `mapped` / `retained`) before and
+/// It logs the [`HeapStats`](crate::mem::HeapStats) (`allocated` / `mapped` / `retained`) before and
 /// after the purge, with the mallctl return code:
 /// `allocated ≈ mapped` means live data the purge cannot reclaim, while
 /// `allocated ≪ mapped + retained` means address space jemalloc holds, which
@@ -445,14 +442,7 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
     // numbers) and shows the clean slate the children inherit (the after-
     // numbers); the `mapped + retained` sum alone is purge-invariant (see
     // mem.rs doc).
-    let before = HeapStats::read();
-    // Free this thread's retained apply scratch (chiefly the `RefCell`-owned
-    // sparse workspace, which survives the panic-unwind of the failed compile
-    // at full capacity) before the purge, so the purge can madvise the pages
-    // the drop just freed.
-    eng.clear_scratch();
-    let reclaimed = reclaim_eagerly();
-    let after = HeapStats::read();
+    let crate::compile::Released { before, after, reclaimed } = crate::compile::release_failed_compile(eng);
     // The mallctl return code: "Ok" or the bare errno int.
     let rc = match reclaimed {
         Ok(()) => "Ok".to_string(),

@@ -46,6 +46,18 @@ pub(crate) use wmc::run_wmc_count;
 /// weighted count's reduced attempt build on it.
 const PORTFOLIO_VTREE_SPEC: &str = "portfolio";
 
+/// The construction a retry rebuilds on after the first compile failed:
+/// vitri's hypergraph bisection, which keeps each clause's variables
+/// together.
+///
+/// Two retries use it: the model count's no-SBVA retry, which asks vitri for
+/// it beside the re-reduction on coloring-like inputs, where it keeps the
+/// clause structure that motivated removing SBVA; and the plain compile's
+/// retry when the compile on the portfolio's vtree runs out of memory. It is
+/// caller policy, not a vtree path of this crate's: vitri parses the spec and
+/// owns the construction.
+pub(crate) const RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
+
 /// What every stage of one run reads: the engine it compiles on, the resolved
 /// configuration, the run's wall, and what the run sets for each compile. The
 /// driver builds it once; a stage that needs more is handed it beside the run.

@@ -128,14 +128,6 @@ pub(super) fn unreduced_retry_window(
 /// later.
 const NO_SBVA_RETRY_RESERVE_FRAC: f64 = 0.25;
 
-/// vitri construction requested for the coloring-like no-SBVA retry.
-///
-/// This is caller policy, not a vtree path of this crate's: vitri parses the
-/// spec and owns the construction. The retry is entered only for coloring-like inputs,
-/// where the hypergraph construction keeps the clause structure that motivated
-/// removing SBVA in the first place.
-pub(super) const NO_SBVA_RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
-
 /// What the no-SBVA retry wants: [`NO_SBVA_RETRY_RESERVE_FRAC`] of the
 /// declared wall. [`no_sbva_retry_window`] caps it at what remains, and the
 /// primary deadline in `count_primary` carves it out of the primary compile's

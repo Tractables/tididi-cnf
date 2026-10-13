@@ -14,9 +14,10 @@ variable is still refused ([`env.md`](env.md)).
 - **The limit covers the whole run, in every mode.** Preprocessing, vtree
   construction and the compile each take a share of it, and so, in the
   counting modes, do the stages that take over when a compile gives up, up to
-  the reading of the final count. A `compile` run has no fallback stages: a
-  compile that reaches the limit gives up the run. A zero limit is already
-  expired; even a shortcut answer gives up.
+  the reading of the final count. A `compile` that reaches the limit gives
+  up the run: its one retry follows a compile that ran out of memory, not one
+  that ran out of time. A zero limit is already expired; even a shortcut
+  answer gives up.
 - **Without a time limit a run has none.** Each stage then keeps a fixed
   budget of its own, and a hard formula can run for as long as it takes. Set a
   limit for any run you do not watch.
@@ -46,9 +47,11 @@ is 30000 MiB**, and it applies without the flag.
   limit: when an `mc` compile nears it, the run splits the formula on a
   variable and counts the two halves, rather than growing until an allocation
   fails. The other modes have no such split: they give up, or end on the
-  failed allocation. A limit imposed from outside that the process cannot
-  see, such as a container's or a batch scheduler's, does not start that
-  split; the process is killed instead. Passing that same value as
+  failed allocation. A `compile` on the portfolio's vtree that gives up with
+  time left compiles once more on a second vtree before it gives up
+  ([`tasks.md`](tasks.md#vtrees)). A limit imposed from outside that the
+  process cannot see, such as a container's or a batch scheduler's, does not
+  start that split; the process is killed instead. Passing that same value as
   `--mem-limit-mb` lets the run see it. With `--mem-limit-mb 0` and no
   `ulimit -v`, nothing does.
 - **Runs side by side each have their own limit.** Choose it so that the runs
