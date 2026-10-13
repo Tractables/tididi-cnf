@@ -14,15 +14,22 @@ use crate::config::{
 use crate::Error;
 
 /// Run the `tididi` command line: parse the arguments, run the mode they
-/// select, and print its answer and its record. The binary's `main` prints the
-/// error this returns after `error: ` and exits with its
-/// [`exit_code`](Error::exit_code).
-#[doc(hidden)]
-pub fn run_cli() -> Result<(), Error> {
-    let cli = parse_args()?;
-    let input = crate::Input::File(cli.path.clone().into());
-    let solved = crate::driver::solve(input, cli.mode, &cli.limits, &cli.settings);
-    crate::output::finish(solved, &cli)
+/// select, and print its answer and its record. A run that fails prints its
+/// error on stderr after `error: `; the status is the one its class sets
+/// (`Error::exit_code`).
+pub fn run_cli() -> std::process::ExitCode {
+    let outcome = parse_args().and_then(|cli| {
+        let input = crate::Input::File(cli.path.clone().into());
+        let solved = crate::driver::solve(input, cli.mode, &cli.limits, &cli.settings);
+        crate::output::finish(solved, &cli)
+    });
+    match outcome {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("error: {error}");
+            std::process::ExitCode::from(error.exit_code())
+        }
+    }
 }
 
 /// One command line, parsed: the run it asks for and where its answer goes.

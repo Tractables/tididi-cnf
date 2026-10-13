@@ -2,11 +2,11 @@
 
 /// Everything that stops a run before it has an answer.
 ///
-/// The variant is the failure class, which fixes the status the binary leaves
-/// with ([`Error::exit_code`]) and the name the run record gives it
-/// ([`Error::kind`]). The string says what went wrong, in words an operator
-/// can act on; [`Display`](std::fmt::Display) prints it, and the binary
-/// prints it on stderr after `error: `.
+/// The variant is the failure class, which fixes the status the binary exits
+/// with and the name the run record gives it ([`Error::kind`]). The string
+/// says what went wrong, in words an operator can act on;
+/// [`Display`](std::fmt::Display) prints it, and the binary prints it on
+/// stderr after `error: `.
 #[derive(Debug)]
 pub enum Error {
     /// An option is contradictory, or inert in the mode this run resolved to.
@@ -65,7 +65,7 @@ impl Error {
     }
 
     /// The status the binary exits with for this class.
-    pub fn exit_code(&self) -> i32 {
+    pub(crate) fn exit_code(&self) -> u8 {
         match self {
             Error::Usage(_) | Error::Environment(_) | Error::Stage(_) => 2,
             Error::VtreeSpec(_)
