@@ -2,10 +2,11 @@
 
 /// Everything that stops a run before it has an answer.
 ///
-/// The variant is the failure class, and the class fixes the status the binary
-/// leaves with ([`Error::exit_code`]). The string says what went wrong, in
-/// words an operator can act on; [`Display`](std::fmt::Display) prints it, and
-/// the binary prints it on stderr after `error: `.
+/// The variant is the failure class, which fixes the status the binary leaves
+/// with ([`Error::exit_code`]) and the name the run record gives it
+/// ([`Error::kind`]). The string says what went wrong, in words an operator
+/// can act on; [`Display`](std::fmt::Display) prints it, and the binary
+/// prints it on stderr after `error: `.
 #[derive(Debug)]
 pub enum Error {
     /// An option is contradictory, or inert in the mode this run resolved to.
@@ -46,6 +47,21 @@ impl Error {
     /// `{what} failed: {error}`.
     pub(crate) fn stage_failed<E: std::fmt::Display>(what: &'static str) -> impl FnOnce(E) -> Self {
         move |error| Error::Stage(format!("{what} failed: {error}"))
+    }
+
+    /// The class's name, as the run record's `exit_reason` gives it: `usage`,
+    /// `environment`, `stage`, `vtree-spec`, `input`, `artifact` or
+    /// `incomplete`.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Error::Usage(_) => "usage",
+            Error::Environment(_) => "environment",
+            Error::Stage(_) => "stage",
+            Error::VtreeSpec(_) => "vtree-spec",
+            Error::Input(_) => "input",
+            Error::Artifact(_) => "artifact",
+            Error::Incomplete(_) => "incomplete",
+        }
     }
 
     /// The status the binary exits with for this class.

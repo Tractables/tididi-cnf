@@ -243,17 +243,11 @@ pub(crate) fn open_record(config: &Config, formula: &vitri::cnf::CnfFormula) -> 
     }
 }
 
-/// The error class, as the record names it.
+/// How the run ended, as the record names it: `solved`, or the error's class.
 pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
     match outcome {
         Ok(_) => "solved",
-        Err(Error::Usage(_)) => "usage",
-        Err(Error::Environment(_)) => "environment",
-        Err(Error::Stage(_)) => "stage",
-        Err(Error::VtreeSpec(_)) => "vtree-spec",
-        Err(Error::Input(_)) => "input",
-        Err(Error::Artifact(_)) => "artifact",
-        Err(Error::Incomplete(_)) => "incomplete",
+        Err(error) => error.kind(),
     }
 }
 

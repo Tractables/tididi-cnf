@@ -11,7 +11,7 @@ use std::ffi::{CStr, CString, c_char};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use serde_json::{Value, json};
-use tididi_bonsai::{Answer, Error, Limits, Mode};
+use tididi_bonsai::{Answer, Limits, Mode};
 
 fn main() {}
 
@@ -24,12 +24,12 @@ fn main() {}
 ///
 /// The answer is `{"ok": true, "mode", "satisfiable", "count", "value",
 /// "stats"}`: the mode the run resolved to, its verdict, the count as the
-/// binary prints it, the count's nearest `f64` ([`Count::to_f64`](tididi_bonsai::Count::to_f64), `null`
-/// past an `f64`'s range), and the record the binary's `--stats` writes.
-/// A run without an answer
-/// is `{"ok": false, "error": {"kind", "message"}}`, `kind` naming the
-/// [`Error`] variant as the record's `exit_reason` does, or `panic` for a
-/// panic that reached this function.
+/// binary prints it, the count's nearest `f64`
+/// ([`Count::to_f64`](tididi_bonsai::Count::to_f64), `null` past an `f64`'s
+/// range), and the record the binary's `--stats` writes. A run without an
+/// answer is `{"ok": false, "error": {"kind", "message"}}`, `kind` being
+/// [`Error::kind`](tididi_bonsai::Error::kind), or `panic` for a panic that
+/// reached this function.
 ///
 /// # Safety
 ///
@@ -88,7 +88,7 @@ fn count(dimacs: &[u8], mode: Option<&str>, limits: &Limits) -> Value {
     });
     match answer {
         Ok(answer) => answered(&answer),
-        Err(error) => failure(kind(&error), &error.to_string()),
+        Err(error) => failure(error.kind(), &error.to_string()),
     }
 }
 
@@ -106,17 +106,4 @@ fn answered(answer: &Answer) -> Value {
 
 fn failure(kind: &str, message: &str) -> Value {
     json!({ "ok": false, "error": { "kind": kind, "message": message } })
-}
-
-/// The error's class, as the record's `exit_reason` names it.
-fn kind(error: &Error) -> &'static str {
-    match error {
-        Error::Usage(_) => "usage",
-        Error::Environment(_) => "environment",
-        Error::Stage(_) => "stage",
-        Error::VtreeSpec(_) => "vtree-spec",
-        Error::Input(_) => "input",
-        Error::Artifact(_) => "artifact",
-        Error::Incomplete(_) => "incomplete",
-    }
 }
