@@ -1,7 +1,7 @@
-//! Clause scoping and intra-batch reordering: assigns each clause to its vtree
-//! LCA (`clause_scope`), groups clauses by scope node, and reorders within each
-//! group (variable-proximity). Produces the per-node clause batches consumed
-//! by `step.rs`.
+//! Clause scoping and the reordering within a node: assigns each clause to
+//! its vtree LCA (`clause_scope`), groups clauses by scope node, and reorders
+//! within each group (variable proximity). Produces the per-node clause
+//! groups `step.rs` folds.
 use vitri::cnf::{Clause, CnfFormula};
 use tididi::vtree::{Vtree, VtreeIdx};
 
@@ -76,9 +76,7 @@ fn reorder_by_variable_proximity(clauses: &mut [usize], formula: &CnfFormula) {
         new_order.push(best);
     }
 
-    // Apply `new_order` to `clauses` via a reordered copy. A straightforward
-    // copy here is simpler than cycle-following in-place permutation and
-    // uses only one extra Vec of `usize`.
+    // Apply `new_order` to `clauses` through a reordered copy.
     let reordered: Vec<usize> = new_order.iter().map(|&src| clauses[src]).collect();
     clauses.copy_from_slice(&reordered);
 }

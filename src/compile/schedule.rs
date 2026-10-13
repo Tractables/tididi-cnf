@@ -3,21 +3,21 @@
 use tididi::Literal;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
-/// Refine one step's [`marginalize_schedule`] group down to the individual
-/// clauses of that step's batch.
+/// Refine one step's [`marginalize_schedule`] group down to the step's
+/// clauses.
 ///
-/// `completes_at[i]` lists the vtree nodes whose last mention within the batch
-/// is clause `clause_lits[i]`: once that clause is conjoined, nothing later in
-/// the batch reads those subtrees, so they can be summed out mid-batch rather
-/// than at the batch's end. Only nodes the cross-step schedule already freed at
-/// this step (`cross_step_targets`) are considered — the rest wait for their own
-/// step — and each clause's list keeps their order.
+/// `completes_at[i]` lists the vtree nodes whose last mention among the
+/// step's clauses is `clause_lits[i]`: once that clause is conjoined, no later
+/// clause of the step reads those subtrees, so they can be summed out before
+/// the step ends. Only the nodes the schedule frees at this step
+/// (`step_targets`) are considered, the rest wait for their own step, and
+/// each clause's list keeps their order.
 ///
-/// Costs O(total clause length + number of vtree nodes) per batch.
-pub(crate) fn intra_batch_completions(
+/// Costs O(total clause length + number of vtree nodes) per step.
+pub(crate) fn step_completions(
     clause_lits: &[&[Literal]],
     vtree: &Vtree,
-    cross_step_targets: &[VtreeIdx],
+    step_targets: &[VtreeIdx],
 ) -> Vec<Vec<VtreeIdx>> {
     let num_vars = vtree.num_vars() as usize;
 
@@ -32,13 +32,12 @@ pub(crate) fn intra_batch_completions(
         }
     }
 
-    // Sub-vtrees outside subtree(current_node) have no in-batch mentions
-    // (clauses scoped to current_node have all vars in V_{current_node}), so
-    // their completion stays None.
+    // A subtree outside the step's node has no mention among its clauses,
+    // whose variables all lie under that node, so its completion stays None.
     let completion = subtree_max(vtree, |_, var| var.and_then(|var| last_clause_pos[var.idx()]));
 
     let mut completes_at: Vec<Vec<VtreeIdx>> = vec![Vec::new(); clause_lits.len()];
-    for &t in cross_step_targets {
+    for &t in step_targets {
         if let Some(c) = completion[t.idx()] {
             completes_at[c as usize].push(t);
         }

@@ -45,10 +45,10 @@ not when its parent's is.
 
 ## During the compile
 
-Most marginalization happens inside a step's fold: `intra_batch_completions`
-refines the step's group down to the clause of the batch after which each
-subtree is last mentioned, so it is summed out mid-batch
-(`src/compile/batch.rs`). After each internal step, `run_marginalize_at`
+Most marginalization happens inside a step's fold: `step_completions`
+refines the step's group down to the clause after which each subtree is last
+mentioned, so it is summed out at the merge of the batch that holds that
+clause (`src/compile/batch.rs`). After each internal step, `run_marginalize_at`
 (`src/compile/marginalize.rs`) marginalizes any scheduled level the fold left
 and applies the projected ∃-forget. The marginal-clustering rotation pass runs
 after that.

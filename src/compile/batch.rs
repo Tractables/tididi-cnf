@@ -1,12 +1,13 @@
 //! Folding one vtree node's clauses into its accumulator, a batch at a time.
 //!
-//! A step's clauses are not conjoined one by one into the accumulator: they are
-//! built into a batch TDD first, and the batch is merged. `build_one_batch`
-//! decides where a batch stops (clause count, width cap, UNSAT),
-//! `merge_batch` merges one batch and says whether the accumulator went UNSAT,
-//! and `batch_accumulate` is the fold over the two. The width cap, the spine
-//! marking that reads a batch's width, and the extra-TDD injection at a node
-//! are here as well. `step.rs` decides which node is folded and when.
+//! A node's clauses are not conjoined one by one into the accumulator: runs
+//! of up to `BATCH_SIZE` of them, the batches, are each built into a diagram
+//! first, and the batch is merged. `build_one_batch` decides where a batch
+//! stops (clause count, width cap, UNSAT), `merge_batch` merges one batch and
+//! says whether the accumulator went UNSAT, and `batch_accumulate` is the
+//! fold over the two. The width cap and the spine marking that reads a
+//! batch's width are here as well. `step.rs` decides which node is folded
+//! and when.
 
 use std::sync::Arc;
 
@@ -17,27 +18,23 @@ use tididi::vtree::{Vtree, VtreeIdx};
 use super::minimize::{CompileState, minimize_contract_only};
 use super::config::{BATCH_SIZE, BATCH_WIDTH_LIMIT, UNCAPPED_ACC_WIDTH};
 use super::marginalize::summable;
-use super::schedule::intra_batch_completions;
+use super::schedule::step_completions;
 use super::step::{DiagramClauses, PassState, StepContext};
 use crate::budget::deadline_passed;
 
 // ── `batch_accumulate` ────────────────────────────────────────────────────────
 
-/// Conjoin clause TDDs into an accumulator using batched apply.
+/// Conjoin a node's clauses, `clauses`, into the accumulator a batch at a
+/// time.
 ///
-/// Two-level minimize strategy:
-/// - **Within** a batch: clauses are conjoined one-by-one via the specialized
-///   `and_clause` (TDD × clause conjunction), followed by
-///   `minimize_contract_only`.
-///   Prune is unnecessary because `and_clause` output has no unreachable
-///   nodes (the `need_dt` filter ensures dead complement nodes are never created).
-/// - **Between** batches: the batch result is merged into the accumulator and
-///   [`CompileState::adaptive_minimize`] picks the minimize to run.
+/// Within a batch, clauses are conjoined one by one with
+/// [`Engine::and_clause`], each followed by twin contraction alone. Between
+/// batches, the batch is merged into the accumulator and
+/// [`CompileState::adaptive_minimize`] picks the reduction to run.
 ///
-/// Checks `ctx.job.deadline` between batches and returns
-/// `OperationError::Stopped` once it has passed.
-///
-/// Early-exits on UNSAT (empty conjunction detected).
+/// Checks `ctx.job.deadline` before each batch and returns
+/// `OperationError::Stopped` once it has passed; returns early once the
+/// accumulator is UNSAT.
 pub(crate) fn batch_accumulate(
     eng: &Engine,
     clauses: &[usize],
@@ -51,22 +48,18 @@ pub(crate) fn batch_accumulate(
         return Ok(acc);
     }
 
-    // Per-clause last-mention scheduler: precompute, for each clause position
-    // i in this X-batch, which sub-vtrees (S ∈ marginalize_at[X]) have their
-    // last-mention at clauses[i]. Streaming for S then fires at the *sub-batch
-    // boundary covering clauses[i]*, rather than waiting for the final merge.
+    // For each of the node's clauses, the targets the schedule frees at this
+    // step whose last mention it is: each is summed out at the merge of the
+    // batch that holds that clause, rather than at the step's end.
     let mut streaming = marginalize_targets.map(|targets| {
         let clause_lits: Vec<&[Literal]> =
             clauses.iter().map(|&ci| ctx.clauses.get(ci)).collect();
         StreamTargets {
-            completions: intra_batch_completions(&clause_lits, vtree, targets),
+            completions: step_completions(&clause_lits, vtree, targets),
             set: Vec::new(),
         }
     });
 
-    // A live accumulator makes a size-1 batch's TDD dead on arrival — the merge
-    // conjoins the clause straight into `acc` via the clause-specialized apply —
-    // so the builder skips that build and returns `None`.
     let mut i = 0;
     while i < clauses.len() {
         if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
@@ -93,7 +86,7 @@ pub(crate) fn batch_accumulate(
     Ok(acc)
 }
 
-/// The marginalize targets that become final within each sub-batch of one
+/// The marginalize targets that become final within each batch of one
 /// node's fold.
 struct StreamTargets {
     /// Per clause position, the sub-vtrees whose last mention it is, children
@@ -124,11 +117,11 @@ impl StreamTargets {
 // ── `merge_batch` ─────────────────────────────────────────────────────────────
 
 /// Merge one built batch into `acc`. Returns `Ok(true)` when the merged
-/// accumulator is UNSAT, so the fold can stop complete, and `Ok(false)` to
-/// continue.
+/// accumulator is UNSAT, so the fold can stop early, and `Ok(false)` to
+/// continue; an apply error aborts the pass.
 ///
-/// `local` is `None` when the builder skipped a size-1 batch's TDD, which it
-/// does only for a live accumulator; `first_clause` is then conjoined directly.
+/// `local` is `None` when [`build_one_batch`] built no diagram for a
+/// one-clause batch; `first_clause` is then conjoined directly.
 fn merge_batch(
     eng: &Engine,
     local: Option<Tdd>,
@@ -137,30 +130,18 @@ fn merge_batch(
     state: &mut CompileState,
     merge_targets: Option<&[VtreeIdx]>,
 ) -> Result<bool, OperationError> {
-    // Merge batch result into the accumulator. Propagates `OperationError::OverBudget` if
-    // `apply_and` cannot reserve scratch; the pass aborts and the compile gives up.
-    //
-    // A size-1 batch merged into a live accumulator is a single clause — conjoin it
-    // directly via the clause-specialized apply (touches only the clause's nodes; the
-    // grid merge would walk both operands' full level grids). This is the sole
-    // single-clause path: it is correctness-identical to the grid route and no
-    // slower in aggregate. That case needs no batch TDD at all, so the builder
-    // hands back `None` and never builds one; every other case
-    // (a multi-clause batch, or the first batch that becomes the accumulator) goes
-    // through the grid merge.
     let acc_in = acc.take();
     *acc = Some(match local {
         Some(batch) => merge_batch_into_acc(eng, acc_in, batch, state, merge_targets)?,
         None => merge_clause_into_acc(
             eng,
-            acc_in.expect("a skipped size-1 batch build implies a live accumulator"),
+            acc_in.expect("a one-clause batch builds no diagram only for a live accumulator"),
             first_clause,
             state,
             merge_targets,
         )?,
     });
-    // UNSAT accumulator: the step's conjunction is zero regardless of the remaining
-    // clauses, so this is a sound early-Complete.
+    // An UNSAT accumulator stays UNSAT whatever clauses remain.
     Ok(!eng.is_sat(acc.as_ref().unwrap())?)
 }
 
@@ -191,9 +172,7 @@ fn mark_clause_levels(
 
 /// `local.max_width()` for a batch diagram under construction, read off the
 /// union of the folded clauses' spines (`spine`) instead of sweeping every
-/// vtree level. Returns exactly the number `Tdd::max_width` would — this is a cost
-/// change, not a behavior change, so the flush decisions in `build_one_batch`
-/// are bit-identical to the sweeping version.
+/// vtree level. Returns exactly what `Tdd::max_width` would.
 ///
 /// Why it is exact. Three facts about a batch diagram, all local to
 /// `build_one_batch`:
@@ -202,10 +181,10 @@ fn mark_clause_levels(
 ///    `Tdd::clause(first clause)`, which gives every internal level outside
 ///    that clause's spine a single One node (width 1) and every leaf level no
 ///    stored nodes at all (width 0).
-/// 2. **Only spine levels ever grow.** `conjoin_clause_owned` rebuilds
-///    exactly the clause's spine levels and carries every other level through
-///    verbatim; `minimize_contract_only` only merges twins, which can shrink a
-///    level but never widen one. So a level outside the running spine union
+/// 2. **Only spine levels ever grow.** [`Engine::and_clause`] rebuilds only
+///    the paths from the clause's variables to the root and carries every
+///    other level through; `minimize_contract_only` only merges twins, which
+///    can shrink a level but never widen one. So a level outside the running spine union
 ///    still has width ≤ 1 at every check.
 /// 3. **The root is always in the union.** A spine is the ancestor-closed
 ///    Steiner tree of the clause's leaves, so it contains the vtree root. At
@@ -221,21 +200,22 @@ fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
 
 // ── `build_one_batch` ─────────────────────────────────────────────────────────
 
-/// Build a single batch TDD by conjoining clauses one-by-one starting at `clauses[start]`,
-/// stopping when the batch reaches `BATCH_SIZE` clauses, becomes UNSAT, or its width
-/// exceeds [`batch_width_cap`] of the accumulator `acc`'s width (so the later
-/// merge with the accumulator stays cheap). Returns the batch TDD and the index
-/// of the next unconsumed clause (`>= start + 1`, since the first clause is always
-/// taken). Each conjoin minimizes (no prune) to keep the running width honest before
-/// the width check. `on_spine` is the pass's spine-marking scratch.
+/// Build one batch diagram by conjoining clauses one by one from
+/// `clauses[start]`, stopping when the batch holds `BATCH_SIZE` clauses,
+/// becomes UNSAT, or grows wider than [`batch_width_cap`] of the
+/// accumulator `acc`'s width, so the merge that follows stays cheap. Each
+/// conjoin is followed by twin contraction, which keeps the width the cap
+/// reads honest. `on_spine` is the pass's spine-marking scratch.
 ///
-/// A live accumulator has no use for a size-1 batch's TDD:
-/// `merge_clause_into_acc` conjoins the clause through the clause-specialized
-/// apply and never looks at a prebuilt clause TDD. Whether the batch stops at
-/// one clause is decided by the two gates in `extends_past` — clause-list end
-/// and `BATCH_SIZE` — both of which are known before any TDD exists, so when
-/// `acc` is live and those gates say "size 1" the `Tdd::clause` build is
-/// skipped outright and the returned TDD is `None` (with `next == start + 1`).
+/// Returns the batch diagram and the index of the next clause, at least
+/// `start + 1`: the first clause is always taken. A one-clause batch merged
+/// into a live accumulator needs no diagram of its own, since
+/// `merge_clause_into_acc` conjoins the clause straight into the
+/// accumulator. So when `acc` is live and the end of the clause list or
+/// `BATCH_SIZE` ends the batch after its first clause, both known before any
+/// diagram exists, no diagram is built and the batch is `None`. UNSAT and
+/// the width cap are tested only once a second clause is in, so they never
+/// end a batch at one clause.
 fn build_one_batch(
     eng: &Engine,
     diagram_clauses: &DiagramClauses,
@@ -253,10 +233,6 @@ fn build_one_batch(
     let extends_past =
         |i: usize, batch_count: usize| i < clauses.len() && batch_count < BATCH_SIZE;
 
-    // Size-1 batch the caller will discard: nothing below would read `local`, so
-    // don't build it. (The content-dependent stops — UNSAT and the width cap —
-    // are checked *after* a second clause is folded in, so they can never turn
-    // a batch the gates above admit into a size-1 batch.)
     if acc.is_some() && !extends_past(start + 1, 1) {
         return Ok((None, start + 1));
     }
@@ -300,11 +276,9 @@ fn build_one_batch(
 /// accumulator: no cap (`usize::MAX`) while the accumulator is at most
 /// [`UNCAPPED_ACC_WIDTH`] wide, [`BATCH_WIDTH_LIMIT`] above that.
 ///
-/// Rationale: wide batch × wide accumulator triggers the most expensive apply_and
-/// path (NxM cross-product). When `acc` is already wide, the identity fast-paths
-/// inside `apply_and` matter more, so we keep batches narrow; floored at
-/// `BATCH_WIDTH_LIMIT` so batches never degenerate to single clauses, which
-/// would defeat batching entirely.
+/// A wide batch merged into a wide accumulator is the conjunction's costliest
+/// case, so once the accumulator is wide its batches are kept narrow, though
+/// not so narrow that a batch shrinks to a single clause.
 fn batch_width_cap(acc_width: usize) -> usize {
     if acc_width <= UNCAPPED_ACC_WIDTH { usize::MAX } else { BATCH_WIDTH_LIMIT }
 }
@@ -313,11 +287,7 @@ fn batch_width_cap(acc_width: usize) -> usize {
 
 /// Merge a batch TDD into the accumulator, marginalizing `marginalize_targets`
 /// inside the conjunction, then let [`CompileState::adaptive_minimize`] pick
-/// the minimize to run.
-///
-/// Returns `Err(OperationError::OverBudget)` if the underlying `apply_and`
-/// could not reserve memory (OS allocator refused); the bottom-up pass
-/// aborts on it.
+/// the minimize to run. An apply error aborts the pass.
 fn merge_batch_into_acc(
     eng: &Engine,
     acc: Option<Tdd>,
@@ -337,8 +307,6 @@ fn merge_batch_into_acc(
         return Ok(result);
     };
 
-    // The library's conjunction already skips the levels the batch cannot
-    // change, so every batch goes through the generic merge.
     let mut result = match marginalize_targets {
         Some(targets) => eng.and_marginalizing(a, batch, targets)?,
         None => eng.and(a, batch)?,
@@ -351,16 +319,10 @@ fn merge_batch_into_acc(
 
 // ── `merge_clause_into_acc` ───────────────────────────────────────────────────
 
-/// Specialized merge for a size-1 batch: conjoin `clause` directly into `acc`
-/// via the clause-specialized apply instead of the generic grid merge, minimize,
-/// then marginalize `marginalize_targets` (the grid merge marginalizes inside
-/// its conjunction, before minimizing).
-///
-/// Takes the accumulator by value, not as an `Option`: this path exists because
-/// there IS an accumulator to fold the clause into. A size-1 batch with no
-/// accumulator has nothing to conjoin — the clause TDD simply becomes the
-/// accumulator — which is `merge_batch_into_acc`'s empty-`acc` case verbatim, so
-/// the caller routes it there and no clause TDD is built here or passed in.
+/// Merge a one-clause batch: conjoin `clause` into `acc` with
+/// [`Engine::and_clause`], let [`CompileState::adaptive_minimize`] reduce,
+/// then marginalize `marginalize_targets` (a batch merge marginalizes inside
+/// its conjunction, before reducing).
 fn merge_clause_into_acc(
     eng: &Engine,
     acc: Tdd,

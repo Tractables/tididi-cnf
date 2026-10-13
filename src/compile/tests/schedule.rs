@@ -11,7 +11,7 @@ fn tree() -> Vtree {
 }
 
 #[test]
-fn cross_step_schedule_waits_for_last_mention_and_keeps_children_first() {
+fn the_schedule_waits_for_the_last_mention_and_keeps_children_first() {
     let vtree = tree();
     let clauses = [
         vec![Literal::new(VarId(1), true), Literal::new(VarId(2), true)],
@@ -27,7 +27,7 @@ fn cross_step_schedule_waits_for_last_mention_and_keeps_children_first() {
 }
 
 #[test]
-fn batch_completion_only_frees_cross_step_targets_after_their_last_clause() {
+fn step_completion_only_frees_the_step_targets_after_their_last_clause() {
     let vtree = tree();
     let clauses = [
         vec![Literal::new(VarId(1), true), Literal::new(VarId(3), true)],
@@ -35,9 +35,9 @@ fn batch_completion_only_frees_cross_step_targets_after_their_last_clause() {
         vec![Literal::new(VarId(1), false)],
     ];
     let literals: Vec<&[_]> = clauses.iter().map(Vec::as_slice).collect();
-    let completions = intra_batch_completions(&literals, &vtree, &[VtreeIdx(0), VtreeIdx(1), VtreeIdx(3)]);
+    let completions = step_completions(&literals, &vtree, &[VtreeIdx(0), VtreeIdx(1), VtreeIdx(3)]);
     assert_eq!(completions, vec![vec![], vec![VtreeIdx(1)], vec![VtreeIdx(0), VtreeIdx(3)]]);
-    assert!(intra_batch_completions(&[], &vtree, &[VtreeIdx(0)]).is_empty());
+    assert!(step_completions(&[], &vtree, &[VtreeIdx(0)]).is_empty());
 }
 
 /// A node whose subtree's clauses all lie below it is scheduled at its own

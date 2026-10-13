@@ -148,7 +148,7 @@ pub(crate) fn compile_component(
     // refusal a give-up names is this attempt's own.
     eng.limits().reset_meters();
     let mut tdds: Vec<Option<Tdd>> = vec![None; vtree.num_nodes()];
-    // Live vtree pointer that `batch_accumulate` / `apply_and` use. Mid-compile
+    // Live vtree pointer that `batch_accumulate` and the conjunction use. Mid-compile
     // rotation search reseats this Arc; downstream ptr_eq checks require
     // every live Tdd in `tdds` to share the same Arc, so we propagate.
     let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
