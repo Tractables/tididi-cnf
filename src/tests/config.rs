@@ -1,23 +1,21 @@
 use super::*;
 
 #[test]
-fn parse_preprocess_level_known_values() {
-    assert_eq!(parse_preprocess_level("none"), Some(PreprocessLevel::None));
-    assert_eq!(parse_preprocess_level("full"), Some(PreprocessLevel::Full));
+fn a_vocabulary_reads_back_each_spelling_and_lists_them_for_any_other() {
+    for level in PreprocessLevel::ALL {
+        assert_eq!(one_of("--preprocess", level.token(), &PreprocessLevel::ALL, PreprocessLevel::token), Ok(level));
+    }
     assert_eq!(
-        parse_preprocess_level("full-eq"),
-        None,
-        "any other spelling, retired ones included, fails",
+        one_of("--preprocess", "full-eq", &PreprocessLevel::ALL, PreprocessLevel::token),
+        Err("unknown --preprocess \"full-eq\"; valid: none, full.".to_owned()),
     );
 }
 
 #[test]
 fn mode_tokens_are_vitris() {
     for mode in Mode::ALL {
-        assert_eq!(Mode::parse(mode.token()), Some(mode));
         assert_eq!(vitri::cnf::Mode::parse_mode(mode.token()), Some(mode.vitri()));
     }
-    assert_eq!(Mode::parse("weighted"), None);
 }
 
 #[test]

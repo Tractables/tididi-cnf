@@ -11,13 +11,26 @@
 //! reads vitri's settings, and `driver`, `compile`, `vtree`, `frontend` and
 //! `output` read them.
 
-/// Caller-owned preprocessing policy selected by `--preprocess`.
+/// The `--preprocess` level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum PreprocessLevel {
     /// Pass the input formula through without simplification.
     None,
-    /// Run Vitri's full simplification pipeline.
+    /// Run vitri's full simplification pipeline.
     Full,
+}
+
+impl PreprocessLevel {
+    /// Every level, in the order `--help` lists them.
+    pub(crate) const ALL: [PreprocessLevel; 2] = [PreprocessLevel::None, PreprocessLevel::Full];
+
+    /// The level's name, as `--preprocess` spells it.
+    pub(crate) fn token(self) -> &'static str {
+        match self {
+            PreprocessLevel::None => "none",
+            PreprocessLevel::Full => "full",
+        }
+    }
 }
 
 /// The limits a run works under: the time it may take and the address space
@@ -43,9 +56,9 @@ pub struct Limits {
     /// splits the formula instead of failing. The run only ever lowers the
     /// limit, never raises it, and puts back the one it found when it
     /// returns. `0` leaves it unchanged, the library's default. The binary's
-    /// `--mem-limit-mb` defaults to 30000. A WebAssembly build has no such
-    /// limit and refuses any other value with
-    /// [`Error::Usage`](crate::Error::Usage).
+    /// `--mem-limit-mb` has a default of its own, which `tididi --help`
+    /// prints. A WebAssembly build has no such limit and refuses any other
+    /// value with [`Error::Usage`](crate::Error::Usage).
     pub mem_limit_mb: u64,
 }
 
@@ -198,31 +211,6 @@ impl Config {
     }
 }
 
-/// How stdout spells the answer (`--output-format`).
-///
-/// Set only by the flag, never by the instance's `c t` header: every
-/// MCC-format instance carries one, so a header-driven switch would take the
-/// plain answer line away from every such run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum OutputFormat {
-    /// One plainly worded line, such as `model count: 7`.
-    Plain,
-    /// The answer lines of the MCC output format.
-    Mcc,
-}
-
-impl OutputFormat {
-    /// The `--output-format` value, or `None` for a spelling the flag does
-    /// not take.
-    pub(crate) fn parse(token: &str) -> Option<Self> {
-        match token {
-            "plain" => Some(OutputFormat::Plain),
-            "mcc" => Some(OutputFormat::Mcc),
-            _ => None,
-        }
-    }
-}
-
 /// What a run answers: one of the four counting tasks, or a compile.
 ///
 /// The instance header declares it: a `c t mc|wmc|pmc|pwmc` line names the
@@ -274,10 +262,7 @@ impl std::str::FromStr for Mode {
     /// [`Error::Usage`](crate::Error::Usage), listing the tokens, for any
     /// other spelling.
     fn from_str(token: &str) -> Result<Self, crate::Error> {
-        Mode::parse(token).ok_or_else(|| {
-            let modes = Mode::ALL.map(Mode::token).join(", ");
-            crate::Error::Usage(format!("unknown mode {token:?}; valid: {modes}."))
-        })
+        one_of("mode", token, &Mode::ALL, Mode::token).map_err(crate::Error::Usage)
     }
 }
 
@@ -296,15 +281,8 @@ impl Mode {
         }
     }
 
-    /// The mode a `--mode` token names, or `None` for a spelling it does not
-    /// take. The tokens are vitri's, so the flag, the record and the `c t`
-    /// header spell a mode the same way.
-    pub(crate) fn parse(token: &str) -> Option<Self> {
-        Mode::ALL.into_iter().find(|mode| mode.token() == token)
-    }
-
-    /// The mode's name, as `--mode`, the record's `mode` and the `c s type`
-    /// line spell it.
+    /// The mode's name, as `--mode`, the record's `mode` and the `c t` header
+    /// spell it: vitri's token, so all three spell a mode the same way.
     pub(crate) fn token(self) -> &'static str {
         self.vitri().token()
     }
@@ -410,17 +388,20 @@ impl Mode {
     }
 }
 
-pub(crate) fn parse_preprocess_level(s: &str) -> Option<PreprocessLevel> {
-    match s {
-        "none" => Some(PreprocessLevel::None),
-        "full" => Some(PreprocessLevel::Full),
-        _ => None,
-    }
+/// The item of `all` whose `token` is `value`, or else a message that names
+/// `what` and lists every token. Modes, preprocessing levels and output
+/// formats are all read through it.
+pub(crate) fn one_of<T: Copy>(what: &str, value: &str, all: &[T], token: fn(T) -> &'static str) -> Result<T, String> {
+    all.iter()
+        .copied()
+        .find(|item| token(*item) == value)
+        .ok_or_else(|| format!("unknown {what} {value:?}; valid: {}.", spelled(all, token, ", ")))
 }
 
-/// Default self-imposed RLIMIT_AS ceiling (MiB) when `--mem-limit-mb` is absent,
-/// so a run without the flag still arms the memory-adaptive machinery.
-pub(crate) const DEFAULT_MEM_LIMIT_MB: u64 = 30_000;
+/// Every spelling of a vocabulary, in its order, joined by `separator`.
+pub(crate) fn spelled<T: Copy>(all: &[T], token: fn(T) -> &'static str, separator: &str) -> String {
+    all.iter().map(|item| token(*item)).collect::<Vec<_>>().join(separator)
+}
 
 #[cfg(test)]
 #[path = "tests/config.rs"]

@@ -9,11 +9,38 @@
 
 use std::path::PathBuf;
 
-use crate::config::{
-    Limits, Mode, OutputFormat, PreprocessLevel, Settings, parse_preprocess_level,
-    DEFAULT_MEM_LIMIT_MB,
-};
+use crate::config::{one_of, spelled, Limits, Mode, PreprocessLevel, Settings};
 use crate::Error;
+
+/// The address-space limit, in MiB, that `--mem-limit-mb` sets when it is
+/// absent, so a run without the flag still arms the memory-adaptive stages.
+const DEFAULT_MEM_LIMIT_MB: u64 = 30_000;
+
+/// How stdout spells the answer (`--output-format`).
+///
+/// Set only by the flag, never by the instance's `c t` header: every
+/// MCC-format instance carries one, so a header-driven switch would take the
+/// plain answer line away from every such run.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum OutputFormat {
+    /// One plainly worded line, such as `model count: 7`.
+    Plain,
+    /// The answer lines of the MCC output format.
+    Mcc,
+}
+
+impl OutputFormat {
+    /// Every format, in the order `--help` lists them.
+    const ALL: [OutputFormat; 2] = [OutputFormat::Plain, OutputFormat::Mcc];
+
+    /// The format's name, as `--output-format` spells it.
+    fn token(self) -> &'static str {
+        match self {
+            OutputFormat::Plain => "plain",
+            OutputFormat::Mcc => "mcc",
+        }
+    }
+}
 
 /// Run the `tididi` command line: parse the arguments, run the mode they
 /// select, and print its answer and its record. A run that fails prints its
@@ -71,7 +98,9 @@ pub(crate) struct Cli {
 /// The usage text: the flags, the exit statuses, and the vtree specs vitri's
 /// grammar accepts.
 fn usage(prog: &str) -> String {
-    let modes = Mode::ALL.map(Mode::token).join("|");
+    let modes = spelled(&Mode::ALL, Mode::token, "|");
+    let levels = spelled(&PreprocessLevel::ALL, PreprocessLevel::token, "|");
+    let formats = spelled(&OutputFormat::ALL, OutputFormat::token, "|");
     let mut text = format!(
         "Usage: {prog} [options] <dimacs-file>
 
@@ -94,13 +123,15 @@ Options:
                        for the reduced formula, and fallbacks follow if that
                        compile gives up. With it, mc compiles on <spec> without
                        the reduction, and wmc refuses it.
-  --preprocess <level> Preprocessing level: none, full (default). Applies to
-                       compile, mc and wmc; pmc and pwmc refuse it, since their
-                       projection stages always simplify.
+  --preprocess <{levels}>
+                       Simplify the formula before the compile (full, the
+                       default) or not (none). Applies to compile, mc and wmc;
+                       pmc and pwmc refuse it, since their projection stages
+                       always simplify.
   --save-tdd <file>    Write the compiled circuit to <file> and its vtree to
                        <file>.vtree (compile mode only); the library's load_tdd
                        reads the circuit back over that vtree.
-  --output-format <plain|mcc>
+  --output-format <{formats}>
                        How stdout spells the answer: one plain line (plain, the
                        default), or the MCC output format's answer lines (s,
                        c s type, c s log10-estimate, c s exact), with `s UNKNOWN`
@@ -201,17 +232,11 @@ fn parse_args() -> Result<Request, Error> {
             "--save-tdd" => save_tdd_path = Some(value()?.into()),
             "--stats" => stats_path = Some(value()?.into()),
             "--mode" => {
-                let val = text(value()?)?;
-                mode_flag = Some(Mode::parse(&val).ok_or_else(|| {
-                    let modes = Mode::ALL.map(Mode::token).join(", ");
-                    usage_error(format!("unknown --mode {val:?}; valid: {modes}."))
-                })?);
+                mode_flag = Some(one_of("--mode", &text(value()?)?, &Mode::ALL, Mode::token).map_err(usage_error)?);
             }
             "--output-format" => {
-                let val = text(value()?)?;
-                output_format = OutputFormat::parse(&val).ok_or_else(|| {
-                    usage_error(format!("unknown --output-format {val:?}; valid: plain (default), mcc."))
-                })?;
+                output_format = one_of("--output-format", &text(value()?)?, &OutputFormat::ALL, OutputFormat::token)
+                    .map_err(usage_error)?;
             }
             "--mem-limit-mb" => {
                 let val = text(value()?)?;
@@ -228,10 +253,10 @@ fn parse_args() -> Result<Request, Error> {
                 })?);
             }
             "--preprocess" => {
-                let val = text(value()?)?;
-                preprocess = Some(parse_preprocess_level(&val).ok_or_else(|| {
-                    usage_error(format!("unknown --preprocess level {val:?}; valid: none, full (default)."))
-                })?);
+                preprocess = Some(
+                    one_of("--preprocess", &text(value()?)?, &PreprocessLevel::ALL, PreprocessLevel::token)
+                        .map_err(usage_error)?,
+                );
             }
             // Help and the version are answers of their own, and the rest of
             // the command line is not read.
