@@ -229,6 +229,27 @@ fn refusals_name_what_is_wrong() {
     assert!(!std::path::Path::new(saved).exists(), "a refused --save-tdd wrote a diagram");
 }
 
+/// A reader that stops early closes stdout under the run, which still ends
+/// with its status and no panic, whatever it was printing.
+#[test]
+fn a_closed_stdout_ends_the_run_quietly() {
+    use std::process::Stdio;
+
+    for args in [vec![TINY], vec!["--output-format", "mcc", TINY], vec![TINY, "--stats", "-"], vec!["--help"]] {
+        let mut child = Command::new(BINARY)
+            .args(&args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("the binary runs");
+        drop(child.stdout.take());
+        let output = child.wait_with_output().expect("the binary ends");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(output.status.code(), Some(0), "{args:?}: {stderr}");
+        assert!(!stderr.contains("panicked"), "{args:?}: {stderr}");
+    }
+}
+
 /// An argument that is not text is read, never a panic: the input path and
 /// a record path are taken as the system gave them, and a flag value that
 /// must be text is refused by name.

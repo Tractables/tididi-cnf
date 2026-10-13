@@ -20,10 +20,13 @@ use crate::Error;
 /// error on stderr after `error: `; the status is the one its class sets
 /// (`Error::exit_code`).
 pub fn run_cli() -> std::process::ExitCode {
-    let outcome = parse_args().and_then(|cli| {
-        let input = crate::Input::File(cli.path.clone());
-        let solved = crate::driver::solve(input, cli.mode, &cli.limits, &cli.settings);
-        crate::output::finish(solved, &cli)
+    let outcome = parse_args().and_then(|request| match request {
+        Request::Print(text) => crate::output::print(&text),
+        Request::Run(cli) => {
+            let input = crate::Input::File(cli.path.clone());
+            let solved = crate::driver::solve(input, cli.mode, &cli.limits, &cli.settings);
+            crate::output::finish(solved, &cli)
+        }
     });
     match outcome {
         Ok(()) => std::process::ExitCode::SUCCESS,
@@ -32,6 +35,13 @@ pub fn run_cli() -> std::process::ExitCode {
             std::process::ExitCode::from(error.exit_code())
         }
     }
+}
+
+/// What a command line asks for: a run, or a text to print and nothing else
+/// (`--help`, `--version`).
+enum Request {
+    Run(Cli),
+    Print(String),
 }
 
 /// One command line, parsed: the run it asks for and where its answer goes.
@@ -132,16 +142,7 @@ Vtree specs:
     text
 }
 
-/// Print `text` to stdout and end the run with status 0. A closed stdout (a
-/// pager quit early) is not an error for a text the caller asked to see.
-fn print_and_exit(text: &str) -> ! {
-    use std::io::Write as _;
-    let mut stdout = std::io::stdout().lock();
-    let _ = stdout.write_all(text.as_bytes()).and_then(|()| stdout.flush());
-    std::process::exit(0);
-}
-
-fn parse_args() -> Result<Cli, Error> {
+fn parse_args() -> Result<Request, Error> {
     let mut args = std::env::args_os();
     let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
     // A command line the parser cannot read is a usage error: it names what
@@ -234,10 +235,10 @@ fn parse_args() -> Result<Cli, Error> {
                     usage_error(format!("unknown --preprocess level {val:?}; valid: none, full (default)."))
                 })?);
             }
-            // Help and the version are answers of their own: printed to stdout
-            // with status 0, and the rest of the command line is not read.
-            "--help" | "-h" => print_and_exit(&usage(&prog)),
-            "--version" | "-V" => print_and_exit(&format!("tididi {}\n", env!("CARGO_PKG_VERSION"))),
+            // Help and the version are answers of their own, and the rest of
+            // the command line is not read.
+            "--help" | "-h" => return Ok(Request::Print(usage(&prog))),
+            "--version" | "-V" => return Ok(Request::Print(format!("tididi {}\n", env!("CARGO_PKG_VERSION")))),
             other => return Err(usage_error(format!("unknown flag {other}."))),
         }
     }
@@ -277,7 +278,7 @@ fn parse_args() -> Result<Cli, Error> {
         }),
     };
 
-    Ok(Cli {
+    Ok(Request::Run(Cli {
         path: dimacs_path,
         mode: mode_flag,
         limits: Limits { time_limit_ms, mem_limit_mb },
@@ -290,5 +291,5 @@ fn parse_args() -> Result<Cli, Error> {
         output_format,
         stats_path,
         save_tdd_path,
-    })
+    }))
 }

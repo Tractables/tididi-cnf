@@ -170,6 +170,10 @@ tididi --stats /nonexistent/dir/x.json tests/data/mcc_mc_sat.cnf
 The answer `model count: 22` is on stdout, and the last line on stderr is
 `error: could not write /nonexistent/dir/x.json: No such file or directory (os error 2)`.
 
+A reader that stops early, such as `head` or a pager that quits, closes
+stdout under the run. That is not a failure: the run goes on without stdout,
+writes its other files, and ends with the status it would have had.
+
 ## Stderr
 
 Stderr is progress, not a contract. Each line is `[<mode>] <stage>: …` for a

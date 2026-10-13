@@ -494,14 +494,14 @@ pub(crate) fn record_compile(stats: &mut Stats, config: &Config, answer: Compile
 /// Stdout, in order: the answer, or `s UNKNOWN` for a give-up under
 /// `--output-format mcc`; the `tdd written to` line; the record, when
 /// `--stats -`. A run that failed before opening its record writes none. An
-/// unwritable record fails a run that otherwise succeeded, because the
-/// operator asked for the artifact.
+/// answer, a circuit or a record that cannot be written fails a run that
+/// otherwise succeeded, because the operator asked for it; a reader that
+/// closed stdout early is the exception ([`print`]).
 pub(crate) fn finish(solved: Result<Answer, crate::driver::Failure>, cli: &Cli) -> Result<(), Error> {
     let mcc = cli.output_format == OutputFormat::Mcc;
     let (outcome, stats) = match solved {
         Ok(answer) => {
-            print_answer(&answer, mcc);
-            let saved = match &cli.save_tdd_path {
+            let delivered = print_answer(&answer, mcc).and_then(|()| match &cli.save_tdd_path {
                 Some(path) => {
                     // The driver refuses `--save-tdd` on every mode but the
                     // compile, and the compile always answers with its diagram.
@@ -509,16 +509,18 @@ pub(crate) fn finish(solved: Result<Answer, crate::driver::Failure>, cli: &Cli) 
                     save_diagram(tdd, path, mcc)
                 }
                 None => Ok(()),
-            };
+            });
             let mut stats = answer.stats;
-            // A circuit that could not be written ends the run that computed it.
-            stats.exit_reason = Some(exit_reason(&saved));
-            (saved, Some(stats))
+            // An answer or a circuit that could not be written ends the run
+            // that computed it.
+            stats.exit_reason = Some(exit_reason(&delivered));
+            (delivered, Some(stats))
         }
         Err(crate::driver::Failure { error, stats }) => {
-            let outcome = Err(error);
-            report_give_up(&outcome, mcc);
-            (outcome, stats.map(|stats| *stats))
+            // The give-up is the run's outcome, whether or not its status
+            // line reaches stdout.
+            let _ = report_give_up(&error, mcc);
+            (Err(error), stats.map(|stats| *stats))
         }
     };
     let written = match (&cli.stats_path, stats) {
@@ -533,8 +535,7 @@ fn write_record(stats: &Stats, path: &Path) -> Result<(), Error> {
     let json = serde_json::to_string(stats)
         .map_err(|error| Error::Artifact(format!("could not build the stats record: {error}")))?;
     if path.as_os_str() == "-" {
-        println!("{json}");
-        return Ok(());
+        return print(&format!("{json}\n"));
     }
     std::fs::write(path, format!("{json}\n"))
         .map_err(|error| Error::Artifact(format!("could not write {}: {error}", path.display())))
@@ -554,14 +555,29 @@ fn save_diagram(tdd: &tididi::diagram::Tdd, path: &Path, mcc: bool) -> Result<()
         .map_err(|error| Error::Artifact(format!("could not write the diagram to {shown}: {error}")))?;
     std::fs::write(&vtree_path, tdd.vtree().to_text())
         .map_err(|error| Error::Artifact(format!("could not write the vtree to {vtree_shown}: {error}")))?;
-    if !mcc {
-        println!(
-            "tdd written to {shown}, vtree to {vtree_shown}: {} nodes, {} pairs",
-            tdd.node_count(),
-            tdd.pair_count(),
-        );
+    if mcc {
+        return Ok(());
     }
-    Ok(())
+    print(&format!(
+        "tdd written to {shown}, vtree to {vtree_shown}: {} nodes, {} pairs\n",
+        tdd.node_count(),
+        tdd.pair_count(),
+    ))
+}
+
+/// Write `text` to stdout, the one writer of everything the command line
+/// prints there. A reader that stops early, such as `head` or a pager that
+/// quit, closes the pipe: that is not an error, and the run goes on without
+/// stdout. Any other failed write is [`Error::Artifact`].
+pub(crate) fn print(text: &str) -> Result<(), Error> {
+    use std::io::Write as _;
+    let mut stdout = std::io::stdout().lock();
+    match stdout.write_all(text.as_bytes()).and_then(|()| stdout.flush()) {
+        Err(error) if error.kind() != std::io::ErrorKind::BrokenPipe => {
+            Err(Error::Artifact(format!("could not write to stdout: {error}")))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// log10 of a non-negative big integer to ~double precision, for the MCC
@@ -599,10 +615,11 @@ fn status_line(satisfiable: Option<bool>) -> &'static str {
 /// stage that gave up said why on stderr, so [`finish`] prints this once
 /// rather than each stage printing it. A run stopped by any other error has
 /// refused the instance or failed, and prints nothing on stdout.
-fn report_give_up(outcome: &Result<(), Error>, mcc: bool) {
-    if matches!(outcome, Err(Error::Incomplete(_))) && mcc {
-        println!("{}", status_line(None));
+fn report_give_up(error: &Error, mcc: bool) -> Result<(), Error> {
+    if matches!(error, Error::Incomplete(_)) && mcc {
+        return print(&format!("{}\n", status_line(None)));
     }
+    Ok(())
 }
 
 /// Print one answer.
@@ -622,18 +639,19 @@ fn report_give_up(outcome: &Result<(), Error>, mcc: bool) {
 /// so no task can drift from the order or the spelling. The status line is the
 /// solver's verdict, not the count's: a zero weight, or weights that cancel,
 /// make the weighted count of a satisfiable formula zero.
-fn print_answer(answer: &Answer, mcc: bool) {
+fn print_answer(answer: &Answer, mcc: bool) -> Result<(), Error> {
     let count = &answer.count;
-    if mcc {
-        let (log10, negative) = magnitude(count);
-        let estimate = if negative { "neglog10-estimate" } else { "log10-estimate" };
-        println!("{}", status_line(Some(answer.satisfiable)));
-        println!("c s type {}", task(answer.mode));
-        println!("c s {estimate} {log10}");
-        println!("c s {}", exact(count));
-    } else {
-        println!("{}: {count}", plain_label(answer.mode));
+    if !mcc {
+        return print(&format!("{}: {count}\n", plain_label(answer.mode)));
     }
+    let (log10, negative) = magnitude(count);
+    let estimate = if negative { "neglog10-estimate" } else { "log10-estimate" };
+    print(&format!(
+        "{}\nc s type {}\nc s {estimate} {log10}\nc s {}\n",
+        status_line(Some(answer.satisfiable)),
+        task(answer.mode),
+        exact(count),
+    ))
 }
 
 /// The task as `c s type` names it. The plain compile's count is a model count
