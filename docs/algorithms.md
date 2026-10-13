@@ -28,7 +28,7 @@ Two extremes for handling local clauses at a vtree node:
 - **One-by-one into recursive**: each clause conjoined directly with the (large) recursive TDD. Safe, but every clause triggers an expensive `Engine::and`.
 - **Batch-first**: build a TDD from all local clauses, then conjoin with the recursive TDD. Can blow up without the recursive constraints holding it down.
 
-**Fixed-batch strategy**: build a small TDD from a batch of clauses (clause × clause operations are cheap), then merge the batch result into the accumulator with `merge_batch_into_acc`. A batch closes at `BATCH_SIZE` clauses, when it becomes UNSAT, or — once the accumulator is wider than 64 — when its width passes `BATCH_WIDTH_LIMIT` (`batch_width_cap`). Both constants are in `src/compile/config.rs`.
+**Fixed-batch strategy**: build a small TDD from a batch of clauses (clause × clause operations are cheap), then merge the batch result into the accumulator with `merge_batch_into_acc`. A batch closes at `BATCH_SIZE` clauses, when it becomes UNSAT, or — once the accumulator is wider than `UNCAPPED_ACC_WIDTH` — when its width passes `BATCH_WIDTH_LIMIT` (`batch_width_cap`). The constants are in `src/compile/batch.rs`.
 
 **Reduce within the batch**: after each clause conjunction inside the batch, inner-node twins are contracted (`ReductionPlan::Contract`), so each successive conjunction works on a smaller input.
 

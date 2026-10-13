@@ -11,8 +11,6 @@ use tididi::limits::LimitConfig;
 use tididi::reduce::{ContentTwinPolicy, ContentTwinSchedule, ReductionPlan};
 use tididi::{Engine, OperationError};
 
-use super::config::{MIN_SIZE_MULT, PRUNE_GROWTH_TRIGGER};
-
 /// The full reduction, scanning content twins on `probe`'s schedule, or on
 /// every call without one; a cofactor's compile skips the scan
 /// (`skip_content_twins`, see [`CompileRun::cofactor`](super::CompileRun::cofactor)).
@@ -50,6 +48,14 @@ fn minimize_prune_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError
 pub(crate) fn minimize_contract_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError> {
     eng.reduce(tdd, ReductionPlan::Contract)
 }
+
+/// After a full minimize, the size threshold is this multiple of the
+/// diagram's node count.
+const MIN_SIZE_MULT: f64 = 1.1;
+
+/// A prune is due once the diagram has grown past this multiple of its node
+/// count after the last prune.
+const PRUNE_GROWTH_TRIGGER: f64 = 1.05;
 
 // The contract throttle: when the median fraction of nodes the last few
 // contractions removed is below a floor, the next few contractions the gate

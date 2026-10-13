@@ -22,7 +22,6 @@
 
 mod batch;
 mod component;
-mod config;
 mod marginalize;
 mod minimize;
 pub(crate) mod sat_prune;

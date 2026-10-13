@@ -16,11 +16,20 @@ use tididi::{Literal, OperationError};
 use tididi::diagram::Tdd;
 use tididi::vtree::{Vtree, VtreeIdx};
 use super::minimize::{MinimizeGate, minimize_contract_only};
-use super::config::{BATCH_SIZE, BATCH_WIDTH_LIMIT, UNCAPPED_ACC_WIDTH};
 use super::marginalize::summable;
 use super::schedule::step_completions;
 use super::step::{DiagramClauses, PassState, StepContext};
 use crate::budget::deadline_passed;
+
+/// Clauses per batch.
+const BATCH_SIZE: usize = 32;
+
+/// The accumulator width up to which a batch grows with no width cap.
+const UNCAPPED_ACC_WIDTH: usize = 64;
+
+/// The width past which a batch stops growing once the accumulator is wider
+/// than [`UNCAPPED_ACC_WIDTH`].
+const BATCH_WIDTH_LIMIT: usize = 256;
 
 // ── `batch_accumulate` ────────────────────────────────────────────────────────
 

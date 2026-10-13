@@ -93,7 +93,6 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `schedule.rs` | When each level may be summed out: after which step, and after which clause within it. |
 | `marginalize.rs` | Summing levels out as the pass climbs, a projection's ∃-forget, and the shield that keeps the levels a pending forget reads. |
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |
-| `config.rs` | The pass's fixed parameters. |
 | `sat_prune/` | SAT-based pruning of nodes no model of the formula reaches. |
 
 ## Paper sections to code

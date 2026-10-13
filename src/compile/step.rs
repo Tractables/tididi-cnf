@@ -14,7 +14,6 @@ use tididi::vtree::{VarId, Vtree, VtreeIdx};
 
 use super::{Compiled, GiveUp};
 use crate::budget::deadline_passed;
-use super::config::MARGINAL_CLUSTER_BOUND_FACTOR;
 use super::minimize::MinimizeGate;
 use super::component::{CompileJob, check_vtree};
 use super::scope::group_clauses_by_scope;
@@ -25,6 +24,11 @@ use tididi::{Literal, OperationError};
 use super::batch::batch_accumulate;
 use super::marginalize::{build_marginalize_targets, run_marginalize_at};
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
+
+/// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
+/// pairs are limited to this multiple of the two levels' pair count (see
+/// `Engine::rotate_marginal_cluster`).
+const MARGINAL_CLUSTER_BOUND_FACTOR: usize = 32;
 
 // ── StepContext ───────────────────────────────────────────────────────────────
 
