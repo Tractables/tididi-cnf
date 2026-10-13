@@ -201,12 +201,12 @@ impl From<GiveUp> for Error {
     }
 }
 
-/// The heap around one [`release_failed_compile`], and how its reclamation
-/// went: `Err` carries the first mallctl failure.
+/// The heap around one [`release_failed_compile`], and how its purge went:
+/// `Err` carries the mallctl failure.
 pub(crate) struct Released {
     pub(crate) before: crate::mem::HeapStats,
     pub(crate) after: crate::mem::HeapStats,
-    pub(crate) reclaimed: Result<(), libc::c_int>,
+    pub(crate) purged: Result<(), libc::c_int>,
 }
 
 /// Give back what a failed compile left behind, before the next compile
@@ -216,15 +216,17 @@ pub(crate) struct Released {
 /// the engine's retained apply scratch (`Engine::clear_scratch`: the sparse
 /// workspace and level pools the failure left pinned at full capacity), freed
 /// first so the purge can advise its pages away, and the allocator's dirty
-/// pages, which eager reclamation ([`crate::mem::reclaim_eagerly`]) returns.
-/// Every compile that follows a failed one on the same engine runs this first:
-/// the model count's fallbacks and Shannon split, and the plain compile's
-/// retry on a second vtree.
+/// pages, which the purge ([`crate::mem::purge_all_arenas`]) returns. The
+/// decay setting is left to the pressure check in `crate::mem`, so the
+/// compiles that follow keep their freed pages for reuse until the footprint
+/// nears the address-space cap. Every compile that follows a failed one on
+/// the same engine runs this first: the model count's fallbacks and Shannon
+/// split, and the plain compile's retry on a second vtree.
 pub(crate) fn release_failed_compile(eng: &Engine) -> Released {
     let before = crate::mem::HeapStats::read();
     eng.clear_scratch();
-    let reclaimed = crate::mem::reclaim_eagerly();
-    Released { before, after: crate::mem::HeapStats::read(), reclaimed }
+    let purged = crate::mem::purge_all_arenas();
+    Released { before, after: crate::mem::HeapStats::read(), purged }
 }
 
 /// What a compile produces.

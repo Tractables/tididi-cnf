@@ -49,16 +49,18 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 /// cascade no room for its re-Arjun'd sub-formulas.
 ///
 /// **`dirty_decay_ms:-1,muzzy_decay_ms:-1`** — never purge dirty pages on a
-/// timer; keep them in the arena for reuse. With `retain:false` alone, the
-/// alloc-heavy apply/contract cycle spends a large share of its wall in the
-/// kernel re-faulting pages jemalloc just gave back. Cost: `mapped+retained`
-/// tracks the high-water mark instead of live bytes, so this is safe only
-/// while comfortably under the address-space cap.
-/// [`preflight_alloc_decay_check`] switches to eager reclamation
-/// ([`reclaim_eagerly`]) when `mapped_bytes()` crosses [`LAZY_FLIP_FRAC`] of
-/// `RLIMIT_AS`, so every `mapped_bytes()`-based *decision* site reads
-/// post-purge (live-accurate) numbers. The OOM-recovery cascade
-/// (`stage/mc/recovery.rs`) switches itself.
+/// timer; keep them in the arena for reuse. The apply/contract cycle frees
+/// and reallocates level-sized buffers constantly, and pages handed back to
+/// the OS are faulted in again: with zero decay a large compile faults in
+/// several times its peak memory and spends a large share of its time in the
+/// kernel. A decay of a second or ten saves almost nothing, since the freed
+/// pages come back into use later than that. Cost: `mapped+retained` tracks
+/// the high-water mark instead of live bytes, and the held pages count
+/// against `RLIMIT_AS`. [`preflight_alloc_decay_check`] switches to eager
+/// reclamation ([`reclaim_eagerly`]) when `mapped_bytes()` reaches
+/// [`LAZY_FLIP_FRAC`] of `RLIMIT_AS`. The OOM-recovery cascade
+/// (`stage/mc/recovery.rs`) purges after every failed compile and leaves the
+/// decay setting as it is.
 #[allow(non_upper_case_globals)]
 #[unsafe(export_name = "_rjem_malloc_conf")]
 // Safety: jemalloc reads `malloc_conf` as a thin `const char *` (a `&[u8]`
@@ -75,14 +77,19 @@ pub(crate) static malloc_conf: Option<&'static libc::c_char> = Some(unsafe {
 
 /// One-way latch: `true` once the process has switched from lazy page
 /// reclamation (startup `dirty_decay_ms:-1`) to eager (`decay 0` + purge).
-/// Set by [`reclaim_eagerly`] so the recovery path and the pressure check
-/// below converge on the same state without repeating mallctl writes or
-/// purges on every call.
+/// Set by [`reclaim_eagerly`], so the pressure check below makes the mallctl
+/// writes once.
 static EAGER_DECAY_LATCHED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
 /// Fraction of `RLIMIT_AS` at which lazy decay switches to eager.
-const LAZY_FLIP_FRAC: f64 = 0.40;
+///
+/// Against an earlier 40%, compiles whose footprint passes 40% of the cap but
+/// stays under 60% run about a tenth faster, with fewer page faults and more
+/// peak memory. A 50% line gave up most of that gain, and purging at 60%
+/// while leaving decay off afterwards made the allocator refuse requests that
+/// the switch lets through.
+const LAZY_FLIP_FRAC: f64 = 0.60;
 
 thread_local! {
     /// Bytes of tracked capacity growth since this thread last did a real
@@ -145,13 +152,13 @@ fn lazy_check_due(accum: u64, request_bytes: u64) -> (u64, bool) {
 /// caller's `try_reserve`, so dirty pages are returned to the OS before the
 /// kernel charges the new request against `RLIMIT_AS`.
 ///
-/// Why flip below the cap: every other reader of `mapped_bytes()` — the
-/// library's growth-mode headroom check, installed as a memory hook in
-/// `driver::solve_on`, and the recovery bail projection — treats the number as
-/// the live footprint. Under lazy decay it tracks the high-water mark instead,
-/// so those readers would give up early on an instance whose live footprint is
-/// fine. Flipping and purging well below the cap leaves them live-accurate
-/// numbers for the rest of the run.
+/// Why flip below the cap: the library's growth-mode headroom check,
+/// installed as a memory hook in `driver::solve_on`, reads `mapped_bytes()`
+/// as the address space in use, and the held pages really are charged against
+/// `RLIMIT_AS`. Below the line the held pages only shrink that headroom; past
+/// it, zero decay keeps the number close to the live footprint while the cap
+/// approaches. Between two real reads `mapped+retained` can pass the line by
+/// several GiB, which the room above it absorbs.
 ///
 /// Every entry, sized request or heartbeat poll, goes through the per-thread
 /// throttle `lazy_check_due` first. No-op once latched, and inert when
@@ -235,7 +242,7 @@ pub(crate) fn purge_all_arenas() -> Result<(), libc::c_int> {
 /// already dirty go back now ([`purge_all_arenas`]).
 ///
 /// Best-effort, like both halves: `Err` carries the first mallctl failure.
-pub(crate) fn reclaim_eagerly() -> Result<(), libc::c_int> {
+fn reclaim_eagerly() -> Result<(), libc::c_int> {
     let decay = set_decay_zero();
     let purge = purge_all_arenas();
     decay.and(purge)

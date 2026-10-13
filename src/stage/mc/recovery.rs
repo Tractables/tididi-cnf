@@ -444,9 +444,9 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
     // numbers) and shows the clean slate the children inherit (the after-
     // numbers); the `mapped + retained` sum alone is purge-invariant (see
     // mem.rs doc).
-    let crate::compile::Released { before, after, reclaimed } = crate::compile::release_failed_compile(eng);
+    let crate::compile::Released { before, after, purged } = crate::compile::release_failed_compile(eng);
     // The mallctl return code: "Ok" or the bare errno int.
-    let rc = match reclaimed {
+    let rc = match purged {
         Ok(()) => "Ok".to_string(),
         Err(e) => e.to_string(),
     };

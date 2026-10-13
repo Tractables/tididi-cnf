@@ -14,11 +14,6 @@ pub(crate) fn purge_all_arenas() -> Result<(), libc::c_int> {
     Err(libc::ENOSYS)
 }
 
-/// There is no page reclamation to switch: always `ENOSYS`.
-pub(crate) fn reclaim_eagerly() -> Result<(), libc::c_int> {
-    Err(libc::ENOSYS)
-}
-
 /// The size of the module's linear memory, the address space it holds.
 pub(crate) fn mapped_bytes() -> u64 {
     (std::arch::wasm32::memory_size::<0>() as u64) * 65536
