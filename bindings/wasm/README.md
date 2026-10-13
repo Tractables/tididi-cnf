@@ -29,7 +29,7 @@ fetched from another site: the formula never leaves the browser.
 The module builds the way vitri's own browser build does, with the Emscripten
 SDK on `PATH`, the `wasm32-unknown-emscripten` target, and GMP and MPFR built
 for Emscripten into a prefix that `VITRI_EMSCRIPTEN_PREFIX` names
-([vitri's building guide](../../vendor/vitri/docs/building.md#building-for-emscripten)).
+([vitri's building guide](https://github.com/Tractables/vitri/blob/main/docs/building.md#building-for-emscripten)).
 vitri's `emscripten-prefix.sh` builds that prefix:
 
 ```sh

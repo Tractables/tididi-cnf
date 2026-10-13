@@ -58,7 +58,8 @@ What a Python program should know about a run:
   finish after it. For a hard wall-clock limit, make the call in a separate
   process and stop that process at the limit.
 
-[`examples/count.py`](examples/count.py) counts a file and prints the answer.
+[`examples/count.py`](https://github.com/Tractables/tididi-bonsai/blob/main/bindings/python/examples/count.py)
+counts a file and prints the answer.
 
 ## Building from source
 
@@ -77,4 +78,6 @@ The extension links the system GMP dynamically. No wheel is published yet.
 `maturin develop --release` installs the extension into the active virtual
 environment for `pytest bindings/python/tests`. Give pytest
 `--tididi-cli target/release/tididi` to also compare the counts of the
-instances [`bindings/parity.txt`](../parity.txt) lists with the binary's.
+instances
+[`bindings/parity.txt`](https://github.com/Tractables/tididi-bonsai/blob/main/bindings/parity.txt)
+lists with the binary's.
