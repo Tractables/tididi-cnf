@@ -541,10 +541,11 @@ fn sat_prune_off_skips_the_pass_and_keeps_the_count() {
 /// exhausts memory.
 ///
 /// 1,000 disjoint 200-variable chains, whose whole-formula matrix busts the
-/// 3 GB address-space cap while each component's fits easily. The run is
-/// time-boxed to 300 s, well past where a whole-formula build would fail.
+/// 3 GB address-space cap while each component's fits easily. The run's own
+/// one-minute time limit falls well past where a whole-formula build would
+/// fail, and it must end by answering or by giving up.
 #[test]
-#[ignore = "slow: ~300s wall (time-boxed). Run with --include-ignored."]
+#[ignore = "slow: runs up to its one-minute time limit"]
 fn the_cascade_splits_a_huge_formula_before_building_a_vtree() {
     let (components, size) = (1_000usize, 200usize);
     let mut text = format!("p cnf {} {}\n", components * size, components * (size - 1));
@@ -557,14 +558,13 @@ fn the_cascade_splits_a_huge_formula_before_building_a_vtree() {
     drop(text);
     let output = Command::new("bash")
         .arg("-c")
-        .arg(format!("ulimit -v 3145728; timeout 300 '{BINARY}' --mode mc '{}'", cnf.path()))
+        .arg(format!("ulimit -v 3145728; timeout 300 '{BINARY}' --mode mc --time-limit-ms 60000 '{}'", cnf.path()))
         .output()
         .expect("bash runs");
-    // 0: solved; 2: a stage reported an error; 124: the time box ran out, the
-    // expected outcome. A signal (139 SIGSEGV, 134 SIGABRT on a refused
-    // allocation) or none at all is the whole-formula blowup.
+    // 0: answered; 1: gave up at the time limit. A failed stage, a run past
+    // its own limit, or a crash on a refused allocation is the blowup.
     let code = output.status.code();
-    assert!(matches!(code, Some(0 | 2 | 124)), "exit {code:?}: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(matches!(code, Some(0 | 1)), "exit {code:?}: {}", String::from_utf8_lossy(&output.stderr));
 }
 
 // ── The wall ─────────────────────────────────────────────────────────────────
