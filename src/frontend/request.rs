@@ -5,7 +5,8 @@
 //! controls are read on each build, by [`resolve_vitri_selection_ctx`], and
 //! checked when the run starts. A run's frontend ([`frontend_config`])
 //! starts from the run's settings and sets only what the compiler owns: its
-//! wall, its simplify level, whether Arjun runs and the vtree spelling. A stage
+//! wall, its simplify level, the equivalence-probing budget
+//! ([`equivalence_budget_ms`]), whether Arjun runs and the vtree spelling. A stage
 //! a runner asks for later ([`arjun_stage`], [`projection_stage`]) starts from
 //! vitri's defaults with the run's Arjun options and the allowance the runner
 //! computed. Every vitri knob this compiler sets is set in one of the two.
@@ -51,7 +52,8 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
 }
 
 /// The run's frontend: the run's vitri settings under its wall, the parent's
-/// simplify level, and a portfolio vtree paired with the reduced formula.
+/// simplify level with [`equivalence_budget_ms`] for its SAT equivalence
+/// probing, and a portfolio vtree paired with the reduced formula.
 /// `arjun` keeps vitri's Arjun stage as the run's vitri settings have it
 /// (retaining its input checkpoint for a counting run, whose cascade may retry
 /// from it) or switches it off. Function compilation asks for the parent's
@@ -68,6 +70,12 @@ pub(crate) fn frontend_config(
     config.deadline = deadline;
     config.mode = Some(mode);
     config.stages.simplify = parent.preprocess_level == PreprocessLevel::Full;
+    // Only an enabled stage that probes at all takes the budget: a simplify
+    // policy changed under a disabled stage is an inert knob vitri refuses, and
+    // probing has no budget to widen when the backbone prefix is off.
+    if config.stages.simplify && config.simplify.equivalence_budget_ms.is_some() {
+        config.simplify.equivalence_budget_ms = Some(equivalence_budget_ms(parent.time_limit_ms));
+    }
     if mode == vitri::cnf::Mode::Compile {
         config.vtree_spec = parent.vtree_spec().to_owned();
     } else {
@@ -79,6 +87,27 @@ pub(crate) fn frontend_config(
         config.stages.arjun = false;
     }
     config
+}
+
+/// The most time SAT equivalence probing gets, in ms: its budget in a run
+/// without a time limit, and the cap on a quarter of one with a limit.
+const EQUIVALENCE_PROBING_CAP_MS: u64 = 30_000;
+
+/// The SAT equivalence-probing budget for a run limited to `time_limit_ms`: a
+/// quarter of the limit, at most [`EQUIVALENCE_PROBING_CAP_MS`], which is also
+/// the budget when the run has no limit.
+///
+/// It is caller policy, not a preprocessing step of this crate's: vitri owns
+/// the probing, inside its simplify stage's backbone prefix, and stops it at
+/// this budget or at the run's deadline, whichever comes first; the compiler
+/// picks the budget. vitri's own default is a short fixed wall, at which
+/// probing stops at a different probe from one run to the next, so two
+/// identical runs reduce the formula differently and the portfolio picks its
+/// vtree for different formulas. With a budget large enough for probing to
+/// finish, the reduced formulas are smaller, vtree construction is faster,
+/// and identical runs reduce the formula the same way.
+fn equivalence_budget_ms(time_limit_ms: Option<u64>) -> u64 {
+    time_limit_ms.map_or(EQUIVALENCE_PROBING_CAP_MS, |limit| (limit / 4).min(EQUIVALENCE_PROBING_CAP_MS))
 }
 
 /// Arjun under an exact allowance and nothing else, on a formula a runner

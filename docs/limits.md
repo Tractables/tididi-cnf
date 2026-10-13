@@ -18,6 +18,11 @@ variable is still refused ([`env.md`](env.md)).
   up the run: its one retry follows a compile that ran out of memory, not one
   that ran out of time. A zero limit is already expired; even a shortcut
   answer gives up.
+- **SAT equivalence probing**, part of vitri's simplification of the formula
+  in `compile`, `mc` and `wmc`, gets a quarter of the limit, at most 30 s, and
+  30 s when the run has no limit; probing that finishes in its budget reduces
+  the formula the same way on every run, where a shorter budget would stop it
+  at a different probe each time.
 - **Without a time limit a run has none.** Each stage then keeps a fixed
   budget of its own, and a hard formula can run for as long as it takes. Set a
   limit for any run you do not watch.

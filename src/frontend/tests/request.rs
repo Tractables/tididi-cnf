@@ -9,6 +9,15 @@ fn parent() -> crate::config::Config {
     }
 }
 
+/// vitri's default simplify policy with the equivalence-probing budget the
+/// frontend sets.
+fn probing_for(equivalence_budget_ms: u64) -> vitri::config::SimplifyPolicy {
+    vitri::config::SimplifyPolicy {
+        equivalence_budget_ms: Some(equivalence_budget_ms),
+        ..vitri::config::SimplifyPolicy::default()
+    }
+}
+
 #[test]
 fn frontend_maps_the_parent_wall_and_simplify_level() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
@@ -21,6 +30,7 @@ fn frontend_maps_the_parent_wall_and_simplify_level() {
     assert_eq!(config.vtree_spec, "portfolio");
     assert!(config.retain_arjun_input);
     assert!(config.stages.simplify);
+    assert_eq!(config.simplify, probing_for(11_250));
     assert_eq!(config.arjun, parent.vitri.arjun);
     assert_eq!(config.arjun_budget, parent.vitri.arjun_budget);
     assert_eq!(config.stages.arjun, parent.vitri.stages.arjun);
@@ -68,7 +78,33 @@ fn frontend_for_compilation_uses_the_parents_vtree_spec() {
     assert_eq!(config.mode, Some(Mode::Compile));
     assert_eq!(config.vtree_spec, "minfill-primal");
     assert!(!config.retain_arjun_input);
+    assert_eq!(config.simplify, probing_for(11_250));
     config.validate().expect("the compile config is valid");
+}
+
+#[test]
+fn equivalence_probing_gets_a_quarter_of_the_limit_up_to_its_cap() {
+    let cases = [(Some(120_000), 30_000), (Some(40_000), 10_000), (Some(3_600_000), 30_000), (None, 30_000)];
+    for (time_limit_ms, expected) in cases {
+        assert_eq!(equivalence_budget_ms(time_limit_ms), expected, "{time_limit_ms:?}");
+        let parent = crate::config::Config { time_limit_ms, ..parent() };
+        // The arguments each frontend in `frontend` passes.
+        let frontends = [(Mode::Compile, true), (Mode::Mc, true), (Mode::Mc, false), (Mode::Wmc, false)];
+        for (mode, arjun) in frontends {
+            let config = frontend_config(&parent, mode, None, arjun);
+            assert_eq!(config.simplify, probing_for(expected), "{mode:?} under {time_limit_ms:?}");
+            config.validate().expect("the widened probing budget is a valid request");
+        }
+    }
+
+    let simplify_off = crate::config::Config {
+        preprocess_level: crate::config::PreprocessLevel::None,
+        time_limit_ms: Some(120_000),
+        ..parent()
+    };
+    let config = frontend_config(&simplify_off, Mode::Mc, None, true);
+    assert_eq!(config.simplify, vitri::config::SimplifyPolicy::default());
+    config.validate().expect("simplify off leaves the default policy");
 }
 
 #[test]
