@@ -16,7 +16,7 @@ use super::projected::{
     run_stages, trivial_residual,
 };
 use crate::problem::WeightedCount;
-use crate::enumeration::{EnumLimits, FORECAST_AT, WeightedModels, allsat_share_ms};
+use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
 use crate::output::Projected;
 use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};
 
@@ -62,26 +62,36 @@ struct PwmcCase<'a> {
     weights: &'a [(BigRational, BigRational)],
 }
 
+/// Who asks [`pwmc_show_enum_fastpath`] for an enumeration, which sets its
+/// AllSAT wall, its model cap and whether it forecasts its count.
+#[derive(Clone, Copy)]
+enum PwmcEnumeration {
+    /// The enumerate-show stage: AllSAT under half the run's time limit and
+    /// the default model cap, with the count forecast ([`enumerate_show`]), so
+    /// an enumeration heading past its wall returns the rest of it to the
+    /// compile.
+    Stage,
+    /// A component of the decomposition before vitri: the stage's wall and
+    /// cap, with no forecast.
+    InputComponent,
+    /// A component of the decomposition after preprocessing
+    /// (`pwmc_solve_component`): AllSAT under `allsat_wall_ms`, a tight wall,
+    /// so a component with many feasible projections does not spend its share
+    /// of the run enumerating before it compiles, and under
+    /// `model_budget_override` in place of the default cap when set, which
+    /// lets AllSAT exhaust a small-show component's projections. No forecast.
+    ReducedComponent { allsat_wall_ms: u64, model_budget_override: Option<u64> },
+}
+
 /// The weighted show-set enumeration: the sweep and AllSAT add up the rational
-/// weight of each feasible projection. Declines on symmetric weights and when
-/// there is no show set.
-///
-/// `allsat_wall_ms` replaces the AllSAT wall of half the run's time limit,
-/// and `model_budget_override` the model cap. The component decomposition
-/// passes a tight wall, so a component with many feasible projections does not
-/// spend its share of the run enumerating before it compiles, and raises the
-/// model cap to 2^show for a small-show component, so AllSAT ends by
-/// exhausting the projections.
-/// Neither enumeration runs past `run`'s wall. `forecast` is the AllSAT run's
-/// count forecast, which only the enumerate-show stage asks for
-/// ([`enumerate_show`]).
+/// weight of each feasible projection, with the wall, cap and forecast
+/// `asker` sets. Declines on symmetric weights and when there is no show set.
+/// Neither enumeration runs past `run`'s wall.
 fn pwmc_show_enum_fastpath(
     run: &Run<'_>,
     formula: &CnfFormula,
     case: PwmcCase<'_>,
-    allsat_wall_ms: Option<u64>,
-    model_budget_override: Option<u64>,
-    forecast: Option<std::time::Duration>,
+    asker: PwmcEnumeration,
 ) -> Option<WeightedCount<BigRational>> {
     let PwmcCase { show, weights } = case;
     // Symmetric weights make PWMC a scaled projected count, which
@@ -89,13 +99,15 @@ fn pwmc_show_enum_fastpath(
     if weights.iter().all(|(negative, positive)| negative == positive) {
         return None;
     }
-    let limits = EnumLimits {
-        allsat_wall_ms: allsat_wall_ms
-            .unwrap_or_else(|| allsat_share_ms(run.config.time_limit_ms, 0.5)),
-        model_budget_override,
-        skip_near_full: false,
-        deadline: run.deadline,
+    let half_the_limit = || allsat_share_ms(run.config.time_limit_ms, 0.5);
+    let (allsat_wall_ms, model_budget_override, forecast) = match asker {
+        PwmcEnumeration::Stage => (half_the_limit(), None, true),
+        PwmcEnumeration::InputComponent => (half_the_limit(), None, false),
+        PwmcEnumeration::ReducedComponent { allsat_wall_ms, model_budget_override } => {
+            (allsat_wall_ms, model_budget_override, false)
+        }
     };
+    let limits = EnumLimits { allsat_wall_ms, model_budget_override, skip_near_full: false, deadline: run.deadline };
     enumerate_show("[pwmc]", formula, show?, WeightedModels::new(weights), limits, forecast)
 }
 
@@ -211,9 +223,8 @@ fn pwmc_solve_component(
         (TIGHT_ALLSAT_MS, None)
     };
     let case = PwmcCase { show: Some(local_show), weights };
-    if let Some(v) =
-        pwmc_show_enum_fastpath(run, sub, case, Some(allsat_ms), model_override, None)
-    {
+    let asker = PwmcEnumeration::ReducedComponent { allsat_wall_ms: allsat_ms, model_budget_override: model_override };
+    if let Some(v) = pwmc_show_enum_fastpath(run, sub, case, asker) {
         return Some(v);
     }
     // Compile-evaluate the component alone (`build_vtree` sees one connected
@@ -413,7 +424,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
         "[pwmc] decompose",
         |sub, local_show, weights| {
             let case = PwmcCase { show: Some(local_show), weights };
-            pwmc_show_enum_fastpath(run, sub, case, None, None, None)
+            pwmc_show_enum_fastpath(run, sub, case, PwmcEnumeration::InputComponent)
         },
     );
     decomposed.map_or(Step::Decline, Step::Answer)
@@ -448,8 +459,7 @@ fn preprocess(
 fn enumerate(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted> {
     let weights = problem_weight_tables(problem);
     let case = PwmcCase { show: problem.show.as_ref(), weights: &weights };
-    pwmc_show_enum_fastpath(run, &problem.formula, case, None, None, Some(FORECAST_AT))
-        .map_or(Step::Decline, Step::Answer)
+    pwmc_show_enum_fastpath(run, &problem.formula, case, PwmcEnumeration::Stage).map_or(Step::Decline, Step::Answer)
 }
 
 /// Stage: independent-component decomposition on the reduced residual.

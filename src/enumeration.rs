@@ -321,6 +321,12 @@ pub(crate) struct AllsatCtl<'a> {
 }
 
 impl AllsatCtl<'_> {
+    /// The plain enumerator, asking for the count forecast at [`FORECAST_AT`]
+    /// when `forecast` is set.
+    pub(crate) fn with_forecast(forecast: bool) -> Self {
+        AllsatCtl { forecast: forecast.then_some(FORECAST_AT), ..Default::default() }
+    }
+
     /// Why the enumeration under this control gave no count, in the words the
     /// stage lines print. A [`AllsatStop::TallyCeiling`] caller states its own
     /// ceiling alongside.
@@ -331,7 +337,7 @@ impl AllsatCtl<'_> {
             Some(AllsatStop::ModelCap) => "model cap",
             Some(AllsatStop::TallyCeiling) => "gate ceiling exceeded",
             Some(AllsatStop::Forecast(_)) => {
-                "the estimated count needs more than twice the wall left at the current rate"
+                "the estimated count is out of the wall's reach at the current rate"
             }
             None => "declined before enumerating",
         }
@@ -364,7 +370,7 @@ impl AllsatCtl<'_> {
 /// their count forecast ([`AllsatCtl::forecast`]). Early enough that a stop
 /// returns most of the wall to the compile behind the stage; late enough that
 /// the tally gives a rate.
-pub(crate) const FORECAST_AT: Duration = Duration::from_secs(5);
+const FORECAST_AT: Duration = Duration::from_secs(5);
 
 /// Most wall a forecast's path estimate may spend, from the enumeration's
 /// own wall.
@@ -384,12 +390,9 @@ const FORECAST_MARGIN: f64 = 2.0;
 
 /// The forecast rule: whether `tally` projections found in `enumerated`, with
 /// `left` of the wall to go, are heading for an `estimate` the wall cannot
-/// hold. No estimate, no rate or no wall left keeps enumerating (a spent wall
-/// is the wall check's to report).
-fn forecast_exceeds_wall(estimate: Option<f64>, tally: u64, enumerated: Duration, left: Duration) -> bool {
-    let Some(estimate) = estimate else {
-        return false;
-    };
+/// hold. No rate or no wall left keeps enumerating (a spent wall is the wall
+/// check's to report).
+fn forecast_exceeds_wall(estimate: f64, tally: u64, enumerated: Duration, left: Duration) -> bool {
     let secs = enumerated.as_secs_f64();
     if tally == 0 || secs <= 0.0 || left.is_zero() {
         return false;
@@ -399,22 +402,17 @@ fn forecast_exceeds_wall(estimate: Option<f64>, tally: u64, enumerated: Duration
 }
 
 /// Take the count forecast of an enumeration of the `constrained` show
-/// variables, `enumerated` into a wall of `budget` that started at `start`,
-/// with `tally` projections found: the estimate when [`forecast_exceeds_wall`]
-/// says stop, `None` to keep going.
-fn forecast(
-    formula: &CnfFormula,
-    constrained: &[i32],
-    tally: u64,
-    enumerated: Duration,
-    start: Instant,
-    budget: Duration,
-) -> Option<f64> {
-    let wall = FORECAST_WALL.min(budget.saturating_sub(start.elapsed()));
+/// variables, now, into a wall of `budget` that started at `start`, with
+/// `tally` projections found: the estimate when [`forecast_exceeds_wall`]
+/// says stop, `None` to keep going, as when every path was cut and there is
+/// no estimate.
+fn forecast(formula: &CnfFormula, constrained: &[i32], tally: u64, start: Instant, budget: Duration) -> Option<f64> {
+    let enumerated = start.elapsed();
+    let wall = FORECAST_WALL.min(budget.saturating_sub(enumerated));
     let show: Vec<VarId> = constrained.iter().map(|&d| VarId(d as u32)).collect();
-    let estimate = estimate_by_paths(formula, &show, FORECAST_PATHS, FORECAST_MAX_CUT, wall, Some(wall)).mean();
+    let estimate = estimate_by_paths(formula, &show, FORECAST_PATHS, FORECAST_MAX_CUT, wall, Some(wall)).mean()?;
     let left = budget.saturating_sub(start.elapsed());
-    estimate.filter(|_| forecast_exceeds_wall(estimate, tally, enumerated, left))
+    forecast_exceeds_wall(estimate, tally, enumerated, left).then_some(estimate)
 }
 
 /// Projected AllSAT: enumerate the feasible constrained-show projections via
@@ -484,8 +482,7 @@ fn allsat<T: Tally>(
             && start.elapsed() >= at
         {
             forecast_at = None;
-            let enumerated = start.elapsed();
-            if let Some(estimate) = forecast(formula, constrained, count, enumerated, start, window.budget) {
+            if let Some(estimate) = forecast(formula, constrained, count, start, window.budget) {
                 return bust(ctl, AllsatStop::Forecast(estimate), count);
             }
         }

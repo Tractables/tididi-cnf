@@ -18,7 +18,7 @@ use super::projected::{
 };
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
-use crate::enumeration::{EnumLimits, FORECAST_AT, Models, allsat_share_ms, constrained_show_count};
+use crate::enumeration::{EnumLimits, Models, allsat_share_ms, constrained_show_count};
 use crate::output::Projected;
 use crate::problem::{Problem, ShowSet, Unweighted};
 
@@ -155,7 +155,7 @@ fn enumerate(run: &Run<'_>, problem: &Problem<Unweighted>, small_show: bool) -> 
         skip_near_full: true,
         deadline: run.deadline,
     };
-    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits, Some(FORECAST_AT))
+    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits, true)
         .map_or(Step::Decline, Step::Answer)
 }
 

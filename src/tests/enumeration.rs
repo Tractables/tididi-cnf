@@ -302,23 +302,21 @@ fn a_forecast_lets_a_small_count_finish() {
 }
 
 /// The forecast rule on its own: the projections still missing, at the rate
-/// so far, against twice the wall left. No estimate (every path cut) keeps
-/// enumerating however far behind the run is; so does an estimate at or
-/// under the tally, and a spent wall, which the wall check reports.
+/// so far, against twice the wall left. An estimate at or under the tally
+/// keeps enumerating, and so does a spent wall, which the wall check reports.
 #[test]
 fn the_forecast_rule_compares_the_missing_projections_with_twice_the_wall_left() {
     let s = Duration::from_secs;
-    // 1000 projections in 5 s is 200/s, with 55 s left.
-    assert!(!forecast_exceeds_wall(None, 1000, s(5), s(55)));
-    // 1e6 needs about 5000 s.
-    assert!(forecast_exceeds_wall(Some(1e6), 1000, s(5), s(55)));
+    // 1000 projections in 5 s is 200/s, with 55 s left; 1e6 needs about
+    // 5000 s.
+    assert!(forecast_exceeds_wall(1e6, 1000, s(5), s(55)));
     // 20 000 needs 95 s, inside twice the 55 s left.
-    assert!(!forecast_exceeds_wall(Some(20_000.0), 1000, s(5), s(55)));
+    assert!(!forecast_exceeds_wall(20_000.0, 1000, s(5), s(55)));
     // 23 001 needs just over 110 s.
-    assert!(forecast_exceeds_wall(Some(23_001.0), 1000, s(5), s(55)));
-    assert!(!forecast_exceeds_wall(Some(500.0), 1000, s(5), s(55)));
-    assert!(!forecast_exceeds_wall(Some(1e9), 1000, s(5), Duration::ZERO));
-    assert!(!forecast_exceeds_wall(Some(1e9), 0, s(5), s(55)));
+    assert!(forecast_exceeds_wall(23_001.0, 1000, s(5), s(55)));
+    assert!(!forecast_exceeds_wall(500.0, 1000, s(5), s(55)));
+    assert!(!forecast_exceeds_wall(1e9, 1000, s(5), Duration::ZERO));
+    assert!(!forecast_exceeds_wall(1e9, 0, s(5), s(55)));
 }
 
 /// The engine's generator starts at `seed | 1`: the paths' seeds must stay
