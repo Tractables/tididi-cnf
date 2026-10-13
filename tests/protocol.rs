@@ -270,16 +270,13 @@ fn first_difference(expected: &str, actual: &str) -> (usize, String, String) {
 }
 
 /// One `#[test]` per row, so a failure names the row and cargo schedules the
-/// rows across cores. Every row but one is quick; the one that spends most of
-/// its time limit reaching the projected compile is `#[ignore]`d into the
-/// thorough tier that `CONTRIBUTING.md` describes. A row names its own
-/// `--time-limit-ms` only where the shared limit would make a clock-bounded
-/// stage stop at a machine-dependent point.
+/// rows across cores. A row names its own `--time-limit-ms` only where the
+/// shared limit would make a clock-bounded stage stop at a machine-dependent
+/// point.
 macro_rules! protocol_rows {
-    ($( $( #[$attr:meta] )* $row:ident : [$($flag:literal),*], $cnf:literal; )*) => {
+    ($( $row:ident : [$($flag:literal),*], $cnf:literal; )*) => {
         $(
             #[test]
-            $( #[$attr] )*
             fn $row() {
                 check_row(stringify!($row), &[$($flag),*], $cnf);
             }
@@ -308,11 +305,13 @@ protocol_rows! {
     pmc_tiny_show:        ["--mode", "pmc"], "tests/data/pmc_tiny_show.cnf";
     // The only rows that reach the projected compile: no earlier stage answers
     // either instance, so the run falls through to preprocessing and a
-    // diagram. The weighted row spends most of its time limit before its
-    // compile, which is why it is the thorough tier's share.
+    // diagram. The weighted row's portfolio vtree would be built under a
+    // clock budget, and a SAT-pruning pass fires in its compile; it compiles on
+    // a step-budgeted FlowCutter vtree under the hour-long limit, so neither
+    // stops at a machine-dependent point.
     pmc_compile:          ["--mode", "pmc"], "tests/data/cnfs/mcc/2026/track3/mc2026_track3_187.cnf";
-    #[ignore = "~50s: the row spends most of its time limit"]
-    pwmc_compile:         ["--mode", "pwmc"], "tests/data/cnfs/mcc/2023/track4/mc2023_track4_097.cnf";
+    pwmc_compile:         ["--mode", "pwmc", "--vtree", "flowcutter-primal:budget=1000steps,iters=10", "--time-limit-ms", "3600000"],
+                          "tests/data/pwmc_banded.cnf";
 
     // --- the streaming entry: --mode mc with an explicit --vtree -----------
     stream_mc_s641:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/iscas89/s641.scan.cnf";
