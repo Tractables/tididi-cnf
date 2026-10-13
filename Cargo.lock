@@ -364,7 +364,6 @@ dependencies = [
  "num-bigint",
  "num-rational",
  "num-traits",
- "rand",
  "rustc-hash",
  "serde",
  "serde_json",

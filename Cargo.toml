@@ -95,7 +95,6 @@ overflow-checks = true
 opt-level = 1
 
 [dev-dependencies]
-rand = "0.10"
 # The library's oracles and generators (`tididi::test_helpers`) for this
 # crate's tests, including a `cargo test -p tididi-bonsai` that does not build
 # the library's own tests beside it.
