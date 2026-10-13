@@ -31,11 +31,12 @@ read as its shortest decimal:
 
 ```python
 # (x1 or x2) and (not x1 or x3) and (not x2 or not x3), counted over x1 and
-# x2, with x1 weighing 0.3 true and 0.7 false, and x2 0.5 true.
+# x2, with x1 weighing 0.3 true and 0.7 false, and x2 0.4 true, so 0.6 false
+# as the competition's format reads a lone weight.
 answer = tididi_bonsai.count(
-    [[1, 2], [-1, 3], [-2, -3]], mode="pwmc", show=[1, 2], weights={1: "0.3", -1: "0.7", 2: 0.5}
+    [[1, 2], [-1, 3], [-2, -3]], mode="pwmc", show=[1, 2], weights={1: "0.3", -1: "0.7", 2: 0.4}
 )
-answer.count  # Fraction(13, 20)
+answer.count  # Fraction(23, 50)
 ```
 
 Both calls take `mode`, which must agree with the instance's `c t` and

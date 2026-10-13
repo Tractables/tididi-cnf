@@ -6,7 +6,7 @@
 - Count models (MC), projected models (PMC) and projected weighted models (PWMC) exactly, and weighted models (WMC) in bounded-precision log arithmetic.
 - Compile a CNF into a TDD and write the circuit to a file.
 - Build a formula from clauses held as data, with `formula_from_clauses`: clauses of DIMACS integers, the show set and the literal weights, for a program that would otherwise write DIMACS text.
-- Read literal weights and projection sets from the header lines of the model counting competition's instance format, so an instance can name its own task.
+- Read literal weights and projection sets from the header lines of the model counting competition's instance format, so an instance can name its own task. A literal without a weight line weighs as that format defines: `1 - w` when the other literal of its variable weighs `w` strictly between 0 and 1, and 1 when neither has a line; any other lone weight is refused.
 - Print an answer in the model counting competition's output format on request, besides the plain one-line answer.
 - Prune an intermediate diagram of nodes that no model of the formula passes through, with SAT calls against the formula.
 - Run within a wall-clock limit and a memory limit. A model count whose compile runs out of memory splits the formula on a variable and carries on rather than aborting.

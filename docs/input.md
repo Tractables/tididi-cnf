@@ -69,7 +69,7 @@ anywhere in the file.
 
 [`tasks.md`](tasks.md#how-a-run-picks-its-mode) says how these lines and
 `--mode` pick the task. A show line makes the count projected, and a weight
-line on its own changes nothing: weights are read only when the mode is `wmc`
+line on its own changes nothing: weights count only when the mode is `wmc`
 or `pwmc`.
 
 ## Weights
@@ -78,10 +78,17 @@ A weight is a decimal (`0.4`), a number in scientific notation (`1.5e-1`) or
 a fraction (`3/10`). Weights are read as exact fractions, and may be zero or
 negative.
 
-**A literal with no weight line weighs 1, even when the other literal of its
-variable has one.** The competition's format reads a lone
-`c p weight 1 0.3 0` as also giving `-1` the weight 0.7; `tididi` gives `-1`
-the weight 1, and prints no warning:
+The two literals of a variable are weighed as the competition's format
+defines:
+
+- **both have a weight line:** each weighs what its line gives it;
+- **neither has one:** both weigh 1;
+- **one has a line, with a weight `w` strictly between 0 and 1:** the other
+  weighs `1 - w`;
+- **one has a line, with any other weight:** the format gives the other
+  literal no weight, and the file is refused.
+
+In `half.cnf`, only `1` has a weight line, so `-1` weighs 0.7:
 
 ```sh
 printf 'c t wmc\np cnf 2 1\nc p weight 1 0.3 0\n1 2 0\n' > half.cnf
@@ -91,15 +98,28 @@ tididi half.cnf
 Output:
 
 ```text
-weighted count: 1.5999999999999999e0
+weighted count: 1.2999999999999996e0
 ```
 
-The three models weigh 0.3 (both true), 0.3 (x1 true, x2 false) and 1
-(x1 false), which makes 1.6. With `c p weight -1 0.7 0` added, `tididi`
-prints `weighted count: 1.2999999999999996e0`, the 1.3 of the competition's
-reading. Write a weight line for both literals of every weighted variable, and
-the two readings agree.
+The three models weigh 0.3 (both true), 0.3 (x1 true, x2 false) and 0.7
+(x1 false), which makes 1.3; x2 has no weight line and weighs 1 either way.
+Adding `c p weight -1 0.7 0` gives the same answer.
 
-A variable with no weight line at all weighs 1 either way, as the
-competition's format also has it. In a projected weighted count, only the
-show variables' weights count ([`tasks.md`](tasks.md#the-five-modes)).
+A weight of 0 or less, or of 1 or more, on one literal alone stops the run
+with exit status 1, in every mode, and the message names the literal:
+
+```sh
+printf 'c t wmc\np cnf 2 1\nc p weight 1 3/2 0\n1 2 0\n' > lone.cnf
+tididi lone.cnf
+```
+
+Stderr:
+
+```text
+[input] reading lone.cnf
+error: could not parse lone.cnf: weight literal 1 has weight 3/2 and literal -1 has none; the Model Counting Competition format defines the missing weight as 1 - w only for 0 < w < 1, so give both literals
+```
+
+To use such a weight, write a weight line for both literals of the variable.
+In a projected weighted count, only the show variables' weights count
+([`tasks.md`](tasks.md#the-five-modes)).

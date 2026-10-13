@@ -34,8 +34,8 @@ product of its literals' weights, and the count is the sum over the
 assignments that satisfy the formula. With a link's probability of working on
 its positive literal and the probability of failing on its negative one, an
 assignment weighs its probability, and the count is the probability that the
-sites are connected. `c p weight` lines carry the weights; a literal without
-one weighs 1, so both literals of each link get a line.
+sites are connected. `c p weight` lines carry the weights, one for each
+literal of each link.
 
 ```rust,ignore,{class=tested-example}
 /// The weight lines for links that each work with the given percentage.

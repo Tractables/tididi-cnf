@@ -331,9 +331,9 @@ static void test_counts(void) {
 
 static void test_clauses(void) {
   /* TWO_MODELS counted over x1 and x2, with x1 weighing 0.3 true and 0.7
-   * false and x2 1/2 true: 0.3 + 0.7 / 2 = 13/20. */
+   * false and x2 2/5 true, so 3/5 false: 0.3 * 3/5 + 0.7 * 2/5 = 23/50. */
   static const uint32_t shown[] = {1, 2};
-  const tididi_bonsai_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "1/2"}};
+  const tididi_bonsai_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "2/5"}};
   tididi_bonsai_answer *answer = NULL;
   tididi_bonsai_code code;
 
@@ -344,8 +344,8 @@ static void test_clauses(void) {
   tididi_bonsai_answer_free(answer);
 
   code = count_two_models(shown, 2, weights, 3, "pwmc", &answer);
-  expect_count("weighted clauses", code, answer, "pwmc", 1, "13/20");
-  CHECK(near(tididi_bonsai_answer_count_f64(answer), 0.65), "the count as a double is %g",
+  expect_count("weighted clauses", code, answer, "pwmc", 1, "23/50");
+  CHECK(near(tididi_bonsai_answer_count_f64(answer), 0.46), "the count as a double is %g",
         tididi_bonsai_answer_count_f64(answer));
   tididi_bonsai_answer_free(answer);
 

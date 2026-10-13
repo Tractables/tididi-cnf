@@ -114,15 +114,16 @@ def test_weights_are_exact_whatever_their_python_type():
     assert answer.count == tididi_bonsai.count(WEIGHTED).count
     # x1 or x2, counted over x1, where x1 weighs 2 and then 0.1, and not x1
     # weighs 1: an int is exact, and a float is its shortest decimal.
-    assert tididi_bonsai.count([[1, 2]], mode="pwmc", show=[1], weights={1: 2}).count == 3
-    assert tididi_bonsai.count([[1, 2]], mode="pwmc", show=[1], weights={1: 0.1}).count == Fraction(11, 10)
+    assert tididi_bonsai.count([[1, 2]], mode="pwmc", show=[1], weights={1: 2, -1: 1}).count == 3
+    weights = {1: 0.1, -1: 1}
+    assert tididi_bonsai.count([[1, 2]], mode="pwmc", show=[1], weights=weights).count == Fraction(11, 10)
     projected = {1: Fraction(1, 3), -1: Fraction(2, 3), 2: Fraction(1, 4), -2: Fraction(1, 2)}
     answer = tididi_bonsai.count([[-1, 3], [1, 2]], mode="pwmc", show=[1, 2], weights=projected)
     assert answer.count == Fraction(5, 12)
     # The README's example.
-    weights = {1: "0.3", -1: "0.7", 2: 0.5}
+    weights = {1: "0.3", -1: "0.7", 2: 0.4}
     answer = tididi_bonsai.count(TWO_MODELS_CLAUSES, mode="pwmc", show=[1, 2], weights=weights)
-    assert answer.count == Fraction(13, 20)
+    assert answer.count == Fraction(23, 50)
 
 
 def test_clauses_that_name_no_variable_raise_input_error():

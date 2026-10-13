@@ -53,8 +53,8 @@ pub(crate) fn preprocess_problem<D: Domain>(
         formula.num_vars(),
         config.mode,
         show.cloned(),
-        // vitri's projected weighted chain weighs a literal a `c p weight`
-        // line leaves unnamed at 1, so the table is handed through as is.
+        // vitri's chains weigh a literal no `c p weight` line names by the
+        // table's own rule, so the table is handed through as is.
         weights.cloned(),
     )?;
     let PreprocessBundle {

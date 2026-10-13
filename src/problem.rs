@@ -137,7 +137,11 @@ impl Domain for Weighted {
     fn lifted(value: Self::Value, lift: &Self::Lift) -> Self::Value {
         value.map(|value| value * lift)
     }
-    /// An unspecified literal weighs 1, the MCC convention.
+    /// The table as vitri's [`resolve`](vitri::cnf::WeightTable::resolve)
+    /// reads it, weighing a literal the table leaves out as the model
+    /// counting competition's format does: `1 - w` beside a partner given `w`
+    /// in `(0, 1)`, and 1 when neither literal is given. With no table, every
+    /// literal weighs 1.
     fn declared_weights(
         table: Option<&vitri::cnf::WeightTable>,
         num_vars: usize,

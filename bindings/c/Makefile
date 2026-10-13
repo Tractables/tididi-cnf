@@ -42,7 +42,7 @@ PROGRAMS := $(foreach kind,$(KINDS),$(foreach example,$(EXAMPLES),$(OUT)/$(examp
 EXAMPLE_CNF := $(ROOT)/tests/data/queens5.cnf
 EXAMPLE_OUTPUT := mode: compile\nsatisfiable: yes\ncount: 10
 # What examples/clauses.c promises in its header comment.
-CLAUSES_OUTPUT := mode: pwmc\nsatisfiable: yes\ncount: 13/20\nas a double: 0.65
+CLAUSES_OUTPUT := mode: pwmc\nsatisfiable: yes\ncount: 23/50\nas a double: 0.46
 
 .PHONY: all libs check link-libs-check header header-check clean
 

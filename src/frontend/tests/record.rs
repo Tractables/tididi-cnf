@@ -65,13 +65,15 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
     );
 }
 
-/// A `c p weight` line may name one literal of a variable and leave the
-/// other to weigh 1. Through the projected weighted chain with its Arjun
+/// A `c p weight` line may name one literal of a variable at a weight `w`
+/// in `(0, 1)` and leave the other to weigh `1 - w`, as the competition's
+/// format defines it. Through the projected weighted chain with its Arjun
 /// reduction kept, the reduced problem's count times its lift is the
 /// declared instance's count by brute force, whether Arjun eliminates the
 /// weighted show variable into the lift or keeps it in the reduced table.
+/// At a lone 1/2 the two literals weigh the same.
 #[test]
-fn pwmc_preprocessing_weighs_an_unnamed_literal_one() {
+fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
     use vitri::cnf::{Original, ShowSet, VarId, WeightTable};
 
     // The chain the PWMC stage runs: Arjun, then the projected reduction.
@@ -85,7 +87,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one() {
     let cases = [
         ("a free show variable, its positive literal named", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(3, 10))]),
         ("a free show variable, its negative literal named", fixtures::formula(1, vec![]), vec![1], vec![(-1, rat(3, 10))]),
-        ("a named literal weighing 1", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1, 1))]),
+        ("a named literal weighing 1/2", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1, 2))]),
         (
             "show 1 over projected 2, 1 ∨ 2",
             fixtures::formula(2, vec![clause(&[1, 2])]),

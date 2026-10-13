@@ -36,11 +36,11 @@ fn the_most_frequent_eligible_variable_wins_and_a_tie_goes_to_the_lowest() {
 /// reader returns for the same formula as text, header lines included.
 #[test]
 fn clauses_build_what_the_same_text_reads() {
-    let text = "p cnf 3 4\nc p show 1 2 0\nc p weight 1 1/4 0\nc p weight -2 3 0\n1 2 0\n-1 3 0\n-2 -3 0\n0\n";
+    let text = "p cnf 3 4\nc p show 1 2 0\nc p weight 1 1/4 0\nc p weight -2 3 0\nc p weight 2 5 0\n1 2 0\n-1 3 0\n-2 -3 0\n0\n";
     let (read, read_meta) = parse_dimacs(text.as_bytes()).unwrap();
     let clauses: [&[i32]; 4] = [&[2, 1], &[-1, 3], &[-3, -2], &[]];
     let show: &[u32] = &[2, 1];
-    let weights = [(1, rat(1, 4)), (-2, rat(3, 1))];
+    let weights = [(1, rat(1, 4)), (-2, rat(3, 1)), (2, rat(5, 1))];
     let (built, built_meta) = formula_from_clauses(3, clauses, Some(show), &weights).unwrap();
     assert_eq!(built, read);
     assert_eq!(built_meta.declared_track(), read_meta.declared_track());

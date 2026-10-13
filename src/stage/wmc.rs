@@ -76,7 +76,7 @@ fn compile_weighted(
 /// formula is one vitri WMC frontend bundle, so its formula, complete weights,
 /// exact lift and portfolio vtree cannot drift apart at the compiler boundary.
 /// `declared_weights` is the instance's `c p weight` table; a literal it
-/// leaves out weighs one.
+/// leaves out weighs what [`vitri::cnf::WeightTable::resolve`] gives it.
 pub(crate) fn run_wmc_count(
     run: &Run<'_>,
     formula: &CnfFormula,
@@ -86,7 +86,7 @@ pub(crate) fn run_wmc_count(
     // The domain decides which exact-only rewrites can run, so the log says it.
     eprintln!("[wmc] arithmetic: log (bounded)");
     // The declared table as vitri reads it: its count chain resolves every
-    // literal the table leaves out to one.
+    // literal the table leaves out.
     let orig_table = declared_weights.cloned().unwrap_or_default();
     let crate::frontend::WmcFrontend { outcome, vtree, report } =
         crate::frontend::wmc_frontend(formula, &orig_table, run.config, program_deadline)

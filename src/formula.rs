@@ -54,8 +54,10 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 /// without the closing `0`: `3` is variable 3 and `-3` its negation. `show`
 /// is the `c p show` set, the variables a projected count projects onto, and
 /// `None` declares none. `weights` are the `c p weight` lines as
-/// `(literal, weight)` pairs: a literal they leave out weighs 1, and a literal
-/// given twice takes its last weight. The pair is what [`parse_dimacs`]
+/// `(literal, weight)` pairs, read as the competition's format reads its lines:
+/// a literal they leave out weighs `1 - w` when the other literal of its
+/// variable is given a `w` strictly between 0 and 1, and 1 when neither is
+/// given, and a literal given twice takes its last weight. The pair is what [`parse_dimacs`]
 /// returns for the same formula written as DIMACS text, so it goes to
 /// [`count`](crate::count) or [`compile_cnf`](crate::compile::compile_cnf)
 /// the same way, and the run is the one that text makes.
@@ -65,15 +67,15 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 /// use tididi_bonsai::{count, formula_from_clauses, Count, Limits, Mode};
 ///
 /// // (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3), projected onto x1 and x2, where
-/// // x1 weighs 1/4, ¬x1 weighs 3/4 and x2 weighs 1/2.
+/// // x1 weighs 1/4, ¬x1 weighs 3/4, and x2 weighs 1/2, so ¬x2 weighs 1/2.
 /// let clauses = [vec![1, 2], vec![-1, 3], vec![-2, -3]];
 /// let show: &[u32] = &[1, 2];
 /// let quarters = |n: i32| BigRational::new(n.into(), 4.into());
 /// let weights = [(1, quarters(1)), (-1, quarters(3)), (2, quarters(2))];
 /// let formula = formula_from_clauses(3, &clauses, Some(show), &weights)?;
 /// let answer = count(formula, Some(Mode::Pwmc), &Limits::default())?;
-/// // x1 ¬x2 weighs 1/4 · 1, and ¬x1 x2 weighs 3/4 · 1/2.
-/// assert_eq!(answer.count(), &Count::Rational(BigRational::new(5.into(), 8.into())));
+/// // x1 ¬x2 weighs 1/4 · 1/2, and ¬x1 x2 weighs 3/4 · 1/2.
+/// assert_eq!(answer.count(), &Count::Rational(BigRational::new(1.into(), 2.into())));
 /// # Ok::<(), tididi_bonsai::Error>(())
 /// ```
 ///
@@ -81,7 +83,8 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 ///
 /// [`Error::Input`](crate::Error::Input) for a clause literal, shown variable
 /// or weight literal that names no variable, such as `0`, or a variable past
-/// `num_vars`, and for a clause that names a variable twice. The DIMACS reader
+/// `num_vars`, for a clause that names a variable twice, and for a literal
+/// given alone at a weight outside `(0, 1)`, which leaves its partner none. The DIMACS reader
 /// merges a repeated literal and drops a clause holding both literals of a
 /// variable; clauses given as data are taken as they are, so they hold each
 /// variable once.

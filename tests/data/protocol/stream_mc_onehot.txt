@@ -2,7 +2,7 @@ $ tididi --mode mc --vtree portfolio --time-limit-ms 60000 --stats - tests/data/
 exit 0
 --- stdout
 model count: 12
-{"mode":"mc","exit_reason":"solved","variables":5,"clauses":4,"vtree_spec":"portfolio","satisfiable":true,"model_count":"12","peak_pairs":1,"answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":4,"sat_prune_solver_setup_us":"<t>"}
+{"mode":"mc","exit_reason":"solved","variables":5,"clauses":4,"vtree_spec":"portfolio","satisfiable":true,"model_count":"12","peak_pairs":1,"answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":2,"sat_prune_solver_setup_us":"<t>"}
 --- stderr
 [input] reading tests/data/onehot_free_residual.cnf
 [input] 5 variables, 4 clauses

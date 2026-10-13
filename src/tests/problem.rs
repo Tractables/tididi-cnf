@@ -44,8 +44,11 @@ fn a_rewrite_composes_the_lifts_and_takes_the_rest_from_the_reduction() {
     assert_eq!(problem.show, show(&[1]));
 }
 
+/// Variable 2 is given only its positive literal, at 1/4, so its negative
+/// literal weighs 1 - 1/4; variables 1 and 3, given nothing, weigh 1 both
+/// ways.
 #[test]
-fn a_declared_problem_reads_the_show_set_and_resolves_unspecified_weights_to_one() {
+fn a_declared_problem_reads_the_show_set_and_resolves_unspecified_weights_by_the_competition_rule() {
     let formula = crate::test_support::formula(3, vec![]);
     let show = vitri::cnf::ShowSet::<vitri::cnf::Original>::from_vars(
         [2usize, 0].into_iter().map(vitri::cnf::VarId::from_idx),
@@ -66,7 +69,7 @@ fn a_declared_problem_reads_the_show_set_and_resolves_unspecified_weights_to_one
         problem.weights,
         vec![
             (rat(1, 1), rat(1, 1)),
-            (rat(1, 1), rat(1, 4)),
+            (rat(3, 4), rat(1, 4)),
             (rat(1, 1), rat(1, 1)),
         ]
     );

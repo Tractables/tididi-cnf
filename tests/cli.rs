@@ -137,6 +137,7 @@ fn version_prints_the_crate_version() {
 #[test]
 fn refusals_name_what_is_wrong() {
     let literal_above_count = TempCnf::new("literal_above_count", "p cnf 2 1\n999 0\n");
+    let lone_weight = TempCnf::new("lone_weight", "c t wmc\np cnf 2 1\nc p weight 1 1 0\n1 2 0\n");
     let unit = TempCnf::new("unit", "p cnf 1 1\n1 0\n");
     let weighted =
         TempCnf::new("weighted", "c t wmc\np cnf 3 2\nc p weight 1 0.7 0\nc p weight -1 0.3 0\n1 2 0\n-1 3 0\n");
@@ -179,6 +180,14 @@ fn refusals_name_what_is_wrong() {
         (2, vec![TINY, "tests/data/mc_header_tiny.cnf"], &[], vec!["tests/data/mc_header_tiny.cnf", "one DIMACS file"]),
         (1, vec!["/nonexistent/tididi_test.cnf"], &[], vec!["error: could not open"]),
         (1, vec![literal_above_count.path()], &[], vec!["error: could not parse"]),
+        // A literal weighed alone at a weight outside (0, 1): the competition's
+        // format gives the other literal no weight, so the file is refused.
+        (
+            1,
+            vec![lone_weight.path()],
+            &[],
+            vec!["error: could not parse", "weight literal 1 has weight 1 and literal -1 has none", "give both literals"],
+        ),
         // Only the compile mode's diagram is the circuit whose count is the
         // answer, whether `--mode` or the header made the run count.
         (2, vec!["--mode", "mc", "--save-tdd", saved, TINY], &[], vec!["--save-tdd", "--mode mc"]),
@@ -793,20 +802,22 @@ counts! {
     pwmc_projected_variable_weighs_one: [] "tests/data/pwmc_projected_var_weight.cnf"
         => "projected weighted count: 1/1";
     /// Show 1 free, only its positive literal weighed: the negative one
-    /// weighs 1, so 3/10 + 1, not the 3/10 + 7/10 of reading the weight as a
-    /// probability.
-    pwmc_unnamed_negative_literal_weighs_one: [] "c t pwmc\np cnf 1 0\nc p show 1 0\nc p weight 1 3/10 0\n"
-        => "projected weighted count: 13/10";
-    pwmc_unnamed_positive_literal_weighs_one: [] "c t pwmc\np cnf 1 0\nc p show 1 0\nc p weight -1 3/10 0\n"
-        => "projected weighted count: 13/10";
+    /// weighs 1 - 3/10, so 3/10 + 7/10, not the 3/10 + 1 of weighing a
+    /// missing literal 1.
+    pwmc_unnamed_negative_literal_weighs_one_minus_the_positive: []
+        "c t pwmc\np cnf 1 0\nc p show 1 0\nc p weight 1 3/10 0\n" => "projected weighted count: 1/1";
+    pwmc_unnamed_positive_literal_weighs_one_minus_the_negative: []
+        "c t pwmc\np cnf 1 0\nc p show 1 0\nc p weight -1 3/10 0\n" => "projected weighted count: 1/1";
     /// Show 1 over projected 2, 1 ∨ 2: 1 true weighs 3/10, and 1 false
-    /// extends through 2 and weighs 1.
+    /// extends through 2 and weighs 7/10.
     pwmc_unnamed_literal_beside_a_projected_variable: []
-        "c t pwmc\np cnf 2 1\nc p show 1 0\nc p weight 1 3/10 0\n1 2 0\n" => "projected weighted count: 13/10";
+        "c t pwmc\np cnf 2 1\nc p show 1 0\nc p weight 1 3/10 0\n1 2 0\n" => "projected weighted count: 1/1";
     /// The compile path, each weighted variable weighed on its positive
-    /// literal alone: 3/10 · 7/10 + 1099 · 7/10 + 1.
+    /// literal alone, so its negative literal weighs the rest of 1. The show
+    /// assignments are all false, 7/10 · 3/10, all true, 3/10 · 7/10, and the
+    /// 1099 that turn true after the first variable, 7/10 · 7/10 each.
     pwmc_unnamed_literals_on_the_compile_path: [] weighted_chain(1100)
-        => "projected weighted count: 77051/100", "[pwmc] compile: preprocessing";
+        => "projected weighted count: 53893/100", "[pwmc] compile: preprocessing";
     /// Projected 2 forced both ways: the residual has no variables.
     pmc_empty_residual_unsat: ["--time-limit-ms", "30000"] "c t pmc\nc p show 1 0\np cnf 2 2\n2 0\n-2 0\n"
         => "projected model count: 0";

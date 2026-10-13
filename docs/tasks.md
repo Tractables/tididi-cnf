@@ -23,9 +23,11 @@ Some details of what each count ranges over are easy to miss:
 - **Every declared variable counts.** A variable that `p cnf` declares but no
   clause mentions doubles the model count: `p cnf 4 2` over the clauses
   `1 2 0` and `-1 -2 0` has 8 models, not 2.
-- **A literal without a weight weighs 1**, in both weighted modes, even when
-  the other literal of its variable has a weight. [`input.md`](input.md#weights)
-  shows where this departs from the competition's format.
+- **A literal without a weight line weighs `1 - w`** when the other literal
+  of its variable has the weight `w`, strictly between 0 and 1, as the
+  competition's format defines. Any other weight on one literal alone is
+  refused, and a variable with no weight line weighs 1 either way.
+  [`input.md`](input.md#weights) has an example of each.
 - **The projected weighted count reads only the show variables' weights.**
   A weight on any other variable is ignored.
 - **The show set can be empty.** `c p show 0` projects onto no variables, so
@@ -52,7 +54,7 @@ competition's format ([`input.md`](input.md#header-lines)):
 - an instance with neither is compiled: mode `compile`.
 
 `c p weight` lines declare nothing on their own. A formula with weights and
-no `c t` line is compiled, and its weights are not read.
+no `c t` line is compiled, and its weights do not count.
 
 `--mode <compile|mc|wmc|pmc|pwmc>` names the mode on the command line. With no
 header, it decides. With a header, it must agree: a mode the header
@@ -107,7 +109,10 @@ diagram's shape follows it: on the same formula, one vtree can compile in a
 second and another not finish. Without `--vtree`, the run chooses:
 
 - `compile`, `pmc` and `pwmc` build vitri's `portfolio`, which constructs
-  several vtrees for the formula and keeps the one that scores best.
+  several vtrees for the formula and keeps the one that scores best. Under
+  `compile`, a formula that splits into independent parts and has at least
+  1000 variables and 4.5 clauses per variable gets vitri's force-directed
+  `force` tree on every part instead.
 - `mc` and `wmc` run the counting cascade: vitri's Arjun preprocessing reduces
   the formula, the portfolio picks a vtree for what is left, and if that
   compile gives up, further stages follow. The record's `answered_by`
