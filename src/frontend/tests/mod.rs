@@ -20,7 +20,7 @@ fn wmc_frontend_returns_one_aligned_bundle() {
     .expect("valid");
     let parent = crate::config::Config {
         preprocess_level: crate::config::PreprocessLevel::None,
-        ..crate::test_support::minimal_config()
+        ..fixtures::minimal_config()
     };
 
     let WmcFrontend {
@@ -60,7 +60,7 @@ fn wmc_frontend_maps_unsat_without_a_weight_table() {
     .expect("valid");
     let parent = crate::config::Config {
         preprocess_level: crate::config::PreprocessLevel::Full,
-        ..crate::test_support::minimal_config()
+        ..fixtures::minimal_config()
     };
 
     match wmc_frontend(&formula, &table, &parent, None) {
@@ -80,7 +80,7 @@ fn streaming_mc_preprocess_crosses_without_arjun_outputs() {
     // With the stage off, vitri reports Arjun as not requested.
     let parent = crate::config::Config {
         preprocess_level: crate::config::PreprocessLevel::Full,
-        ..crate::test_support::minimal_config()
+        ..fixtures::minimal_config()
     };
     let bundle = mc_streaming_preprocess(&tididi_formula(), &parent, None)
         .expect("the simplify-only MC bundle crosses the boundary");
@@ -97,7 +97,7 @@ fn plain_mc_frontend_scopes_one_conversion_and_the_prepared_session() {
     let parent = crate::config::Config {
         preprocess_level: crate::config::PreprocessLevel::None,
         time_limit_ms: Some(5_000),
-        ..crate::test_support::minimal_config()
+        ..fixtures::minimal_config()
     };
     let formula = tididi_formula();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);

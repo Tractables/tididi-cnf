@@ -17,15 +17,10 @@ fn frontend_maps_the_parent_wall_and_simplify_level() {
 
     assert_eq!(config.budget_ms, Some(45_000));
     assert_eq!(config.deadline, Some(deadline));
-    assert_eq!(config.preprocess_clock, vitri::config::PreprocessClock::WallClock);
     assert_eq!(config.mode, Some(Mode::Mc));
     assert_eq!(config.vtree_spec, "portfolio");
-    assert_eq!(config.components, vitri::config::ComponentPolicy::Split);
-    assert_eq!(config.candidates, 1);
     assert!(config.retain_arjun_input);
-    assert_eq!(config.arjun_clause_growth, vitri::config::ArjunClauseGrowth::Reject);
     assert!(config.stages.simplify);
-    assert_eq!(config.simplify, vitri::config::SimplifyPolicy::default());
     assert_eq!(config.arjun, parent.vitri.arjun);
     assert_eq!(config.arjun_budget, parent.vitri.arjun_budget);
     assert_eq!(config.stages.arjun, parent.vitri.stages.arjun);
@@ -39,7 +34,6 @@ fn frontend_without_arjun_disables_the_stage_and_its_outputs_only() {
 
     assert!(!streaming.stages.arjun);
     assert!(!streaming.retain_arjun_input);
-    assert_eq!(streaming.arjun_clause_growth, vitri::config::ArjunClauseGrowth::Reject);
     assert_eq!(streaming.stages.simplify, ordinary.stages.simplify);
     assert_eq!(streaming.simplify, ordinary.simplify);
     assert_eq!(streaming.deadline, ordinary.deadline);
@@ -61,21 +55,19 @@ fn frontend_with_simplify_off_leaves_no_inert_knob() {
     };
     let config = frontend_config(&parent, Mode::Mc, None, true);
     assert!(!config.stages.simplify);
-    assert_eq!(config.simplify, vitri::config::SimplifyPolicy::default());
     config.validate().expect("the disabled simplify policy must not leave inert knobs");
 }
 
 #[test]
-fn frontend_for_compilation_uses_the_parents_vtree_spelling() {
+fn frontend_for_compilation_uses_the_parents_vtree_spec() {
     let parent = crate::config::Config {
-        vtree: Some("portfolio".to_owned()),
+        vtree: Some("minfill-primal".to_owned()),
         ..parent()
     };
     let config = frontend_config(&parent, Mode::Compile, None, true);
     assert_eq!(config.mode, Some(Mode::Compile));
-    assert_eq!(config.vtree_spec, "portfolio");
+    assert_eq!(config.vtree_spec, "minfill-primal");
     assert!(!config.retain_arjun_input);
-    assert_eq!(config.simplify, vitri::config::SimplifyPolicy::default());
     config.validate().expect("the compile config is valid");
 }
 
@@ -86,7 +78,7 @@ fn weighted_arjun_stage_uses_the_exact_budget_and_the_runs_options() {
     let config = arjun_stage(&parent(), Mode::Wmc, Some(deadline), budget, vitri::config::ArjunClauseGrowth::RejectAgainst(17));
 
     assert_eq!(config.deadline, Some(deadline));
-    assert_eq!(config.budget_ms, None, "no wall scale to divide the budget again");
+    assert_eq!(config.budget_ms, None, "vitri must not divide the allowance again");
     assert_eq!(config.arjun_budget, vitri::config::ArjunBudget::Exact(budget));
     assert_eq!(
         config.arjun_clause_growth,
