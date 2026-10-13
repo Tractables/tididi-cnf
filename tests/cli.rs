@@ -604,18 +604,12 @@ fn the_cascade_splits_a_huge_formula_before_building_a_vtree() {
 // ── The wall ─────────────────────────────────────────────────────────────────
 
 /// A random 3-CNF over 400 variables and 1500 clauses, near the
-/// satisfiability threshold, after the lines `header`. With `show` it shows
-/// variables `1..=200`, and with `weighted`, `w(v) = 2` and `w(¬v) = 1` on
-/// them. The seed is fixed, so every run reads the same clauses.
-fn random_3cnf(header: &str, show: bool, weighted: bool) -> String {
-    let (vars, clauses) = (400u64, 1500);
-    let mut state = 0x9e37_79b9_7f4a_7c15u64;
-    let mut next = move || {
-        state ^= state << 13;
-        state ^= state >> 7;
-        state ^= state << 17;
-        state
-    };
+/// satisfiability threshold, as DIMACS text after the lines `header`. With
+/// `show` it shows variables `1..=200`, and with `weighted`, `w(v) = 2` and
+/// `w(¬v) = 1` on them. The seed is fixed, so every run reads the same
+/// clauses.
+fn random_3cnf_text(header: &str, show: bool, weighted: bool) -> String {
+    let formula = common::random_3cnf(400, 1500, 1);
     let mut text = header.to_owned();
     if show {
         text.push_str(&format!("c p show {} 0\n", (1..=200).map(|v| v.to_string()).collect::<Vec<_>>().join(" ")));
@@ -625,17 +619,10 @@ fn random_3cnf(header: &str, show: bool, weighted: bool) -> String {
             text.push_str(&format!("c p weight {v} 2 0\nc p weight -{v} 1 0\n"));
         }
     }
-    text.push_str(&format!("p cnf {vars} {clauses}\n"));
-    for _ in 0..clauses {
-        let mut picked: Vec<u64> = Vec::with_capacity(3);
-        while picked.len() < 3 {
-            let var = next() % vars + 1;
-            if !picked.contains(&var) {
-                picked.push(var);
-            }
-        }
-        for var in picked {
-            text.push_str(&format!("{}{var} ", if next() & 1 == 1 { "-" } else { "" }));
+    text.push_str(&format!("p cnf {} {}\n", formula.num_vars(), formula.clauses().len()));
+    for clause in formula.clauses() {
+        for literal in &clause.literals {
+            text.push_str(&format!("{} ", literal.to_dimacs()));
         }
         text.push_str("0\n");
     }
@@ -652,7 +639,7 @@ fn random_3cnf(header: &str, show: bool, weighted: bool) -> String {
 #[test]
 fn projected_counts_end_at_the_wall() {
     for (task, weighted) in [("pmc", false), ("pwmc", true)] {
-        let cnf = TempCnf::new(&format!("wall_{task}"), &random_3cnf(&format!("c t {task}\n"), true, weighted));
+        let cnf = TempCnf::new(&format!("wall_{task}"), &random_3cnf_text(&format!("c t {task}\n"), true, weighted));
         let started = std::time::Instant::now();
         let output = Command::new("timeout")
             .args(["60", BINARY, "--time-limit-ms", "2000", cnf.path()])
@@ -674,10 +661,10 @@ fn projected_counts_end_at_the_wall() {
 /// task without a count, and every run ends soon after it.
 #[test]
 fn a_give_up_exits_1_on_every_task() {
-    let plain = TempCnf::new("give_up_plain", &random_3cnf("", false, false));
-    let weighted = TempCnf::new("give_up_weighted", &random_3cnf("", false, true));
-    let shown = TempCnf::new("give_up_shown", &random_3cnf("", true, false));
-    let shown_weighted = TempCnf::new("give_up_shown_weighted", &random_3cnf("", true, true));
+    let plain = TempCnf::new("give_up_plain", &random_3cnf_text("", false, false));
+    let weighted = TempCnf::new("give_up_weighted", &random_3cnf_text("", false, true));
+    let shown = TempCnf::new("give_up_shown", &random_3cnf_text("", true, false));
+    let shown_weighted = TempCnf::new("give_up_shown_weighted", &random_3cnf_text("", true, true));
     // Whole-run expiry has one diagnostic, regardless of the active stage.
     let last_line = "error: no answer: the time limit was reached";
     for (task, flags, cnf) in [
@@ -955,11 +942,11 @@ fn save_tdd_reloads_through_the_library() {
 #[test]
 fn mcc_output_prints_the_mcc_answer() {
     let give_up = |task: &str, show: bool, weighted: bool| {
-        TempCnf::new(&format!("mc_format_give_up_{task}"), &random_3cnf(&format!("c t {task}\n"), show, weighted))
+        TempCnf::new(&format!("mc_format_give_up_{task}"), &random_3cnf_text(&format!("c t {task}\n"), show, weighted))
     };
     let (mc_hard, wmc_hard, pmc_hard, pwmc_hard) =
         (give_up("mc", false, false), give_up("wmc", false, true), give_up("pmc", true, false), give_up("pwmc", true, true));
-    let compile_hard = TempCnf::new("mc_format_give_up_compile", &random_3cnf("", false, false));
+    let compile_hard = TempCnf::new("mc_format_give_up_compile", &random_3cnf_text("", false, false));
     let wall = ["--time-limit-ms", "1"];
     // (task and case, flags, instance, stdout)
     let rows: [(&str, &[&str], &str, &str); 19] = [

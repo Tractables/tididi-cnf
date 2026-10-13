@@ -1,4 +1,4 @@
-use num_rational::BigRational;
+use tididi::test_helpers::rat;
 use vitri::cnf::{CnfFormula, CnfMeta, VarId, WeightTable};
 
 use super::{formula_from_clauses, most_frequent_var, parse_dimacs};
@@ -32,10 +32,6 @@ fn the_most_frequent_eligible_variable_wins_and_a_tie_goes_to_the_lowest() {
     assert_eq!(most_frequent_var(&h, 0, |i| i != 0), Some(v(2)));
 }
 
-fn rational(numer: i32, denom: i32) -> BigRational {
-    BigRational::new(numer.into(), denom.into())
-}
-
 /// Clauses given as data, in any literal order, build the pair the DIMACS
 /// reader returns for the same formula as text, header lines included.
 #[test]
@@ -44,7 +40,7 @@ fn clauses_build_what_the_same_text_reads() {
     let (read, read_meta) = parse_dimacs(text.as_bytes()).unwrap();
     let clauses: [&[i32]; 4] = [&[2, 1], &[-1, 3], &[-3, -2], &[]];
     let show: &[u32] = &[2, 1];
-    let weights = [(1, rational(1, 4)), (-2, rational(3, 1))];
+    let weights = [(1, rat(1, 4)), (-2, rat(3, 1))];
     let (built, built_meta) = formula_from_clauses(3, clauses, Some(show), &weights).unwrap();
     assert_eq!(built, read);
     assert_eq!(built_meta.declared_track(), read_meta.declared_track());
@@ -85,8 +81,8 @@ fn clauses_naming_no_variable_or_one_twice_are_refused() {
     assert_refused(formula_from_clauses(3, [[3, 2, 3]], None, &[]), "clause 1 names variable 3 twice");
     assert_refused(formula_from_clauses(3, [[1]], Some(&[0][..]), &[]), "0 is not a variable");
     assert_refused(formula_from_clauses(3, [[1]], Some(&[4][..]), &[]), "show variable 4");
-    assert_refused(formula_from_clauses(3, [[1]], None, &[(-4, rational(1, 2))]), "weight literal -4");
-    assert_refused(formula_from_clauses(3, [[1]], None, &[(0, rational(1, 2))]), "weight literal 0");
+    assert_refused(formula_from_clauses(3, [[1]], None, &[(-4, rat(1, 2))]), "weight literal -4");
+    assert_refused(formula_from_clauses(3, [[1]], None, &[(0, rat(1, 2))]), "weight literal 0");
 }
 
 /// Text that is not DIMACS, and an id above the declared count, are input

@@ -8,12 +8,12 @@ use std::time::{Duration, Instant};
 
 use num_bigint::BigUint;
 use tididi::Engine;
-use tididi::test_helpers::{CnfShape, Lcg, rand_cnf};
+use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
 use tididi_bonsai::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
 use tididi_bonsai::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
 use tididi::vtree::{VarId, Vtree};
 
-use common::{brute_force_count, brute_force_projected_count, make_formula};
+use common::{brute_force_projected_count, make_formula};
 
 #[test]
 fn a_deadline_ahead_leaves_the_count_alone() {

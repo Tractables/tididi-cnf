@@ -1,6 +1,7 @@
 use super::*;
 use crate::problem::{Unweighted, Weighted};
-use crate::test_support::{self as fixtures, clause, rat, rat_ratio};
+use crate::test_support::{self as fixtures, clause};
+use tididi::test_helpers::rat;
 use vitri::cnf::{Clause, Literal};
 
 fn pmc_tail_config() -> vitri::RunConfig {
@@ -26,7 +27,7 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
         clause(&[-1, -3, -4]),
     ]);
     let weights = vitri::cnf::WeightTable::from_dimacs_pairs(
-        [(1, rat(2)), (-1, rat(3)), (2, rat(5)), (-2, rat(7))],
+        [(1, rat(2, 1)), (-1, rat(3, 1)), (2, rat(5, 1)), (-2, rat(7, 1))],
         formula.num_vars(),
     )
     .expect("the fixture weights name formula variables");
@@ -54,9 +55,9 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
         Some(&[1][..]),
         "one shown anti-equivalent partner must survive"
     );
-    assert_eq!(lift, rat(1), "the exact rational lift must cross");
-    assert_eq!(weights[0].1, rat(14), "x1=true absorbs x2=false");
-    assert_eq!(weights[0].0, rat(15), "x1=false absorbs x2=true");
+    assert_eq!(lift, rat(1, 1), "the exact rational lift must cross");
+    assert_eq!(weights[0].1, rat(14, 1), "x1=true absorbs x2=false");
+    assert_eq!(weights[0].0, rat(15, 1), "x1=false absorbs x2=true");
     assert_eq!(
         weights.len(),
         formula.num_vars() as usize,
@@ -82,20 +83,20 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one() {
         vitri::config::ProjectionPolicy::Full,
     );
     let cases = [
-        ("a free show variable, its positive literal named", fixtures::formula(1, vec![]), vec![1], vec![(1, rat_ratio(3, 10))]),
-        ("a free show variable, its negative literal named", fixtures::formula(1, vec![]), vec![1], vec![(-1, rat_ratio(3, 10))]),
-        ("a named literal weighing 1", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1))]),
+        ("a free show variable, its positive literal named", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(3, 10))]),
+        ("a free show variable, its negative literal named", fixtures::formula(1, vec![]), vec![1], vec![(-1, rat(3, 10))]),
+        ("a named literal weighing 1", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1, 1))]),
         (
             "show 1 over projected 2, 1 ∨ 2",
             fixtures::formula(2, vec![clause(&[1, 2])]),
             vec![1],
-            vec![(1, rat_ratio(3, 10))],
+            vec![(1, rat(3, 10))],
         ),
         (
             "show 1 and 2 kept by 1 ∨ 2, projected 3 ↔ 1 ∧ 2",
             fixtures::formula(3, vec![clause(&[1, 2]), clause(&[-3, 1]), clause(&[-3, 2]), clause(&[3, -1, -2])]),
             vec![1, 2],
-            vec![(1, rat_ratio(3, 10)), (2, rat_ratio(1, 4)), (-2, rat_ratio(1, 2))],
+            vec![(1, rat(3, 10)), (2, rat(1, 4)), (-2, rat(1, 2))],
         ),
     ];
     let mut wrong = Vec::new();
@@ -136,7 +137,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one() {
 fn wmc_outcome_exposes_exact_reduced_weights_and_lift() {
     let formula = fixtures::formula(2, vec![clause(&[1, -2])]);
     let table = vitri::cnf::WeightTable::from_dimacs_pairs(
-        [(1, rat(3)), (-1, rat(2)), (2, rat(7)), (-2, rat(5))],
+        [(1, rat(3, 1)), (-1, rat(2, 1)), (2, rat(7, 1)), (-2, rat(5, 1))],
         formula.num_vars(),
     )
     .expect("valid WMC weights");
@@ -178,10 +179,10 @@ fn wmc_outcome_exposes_exact_reduced_weights_and_lift() {
         panic!("the fixture is satisfiable");
     };
     assert_eq!(reduced, formula);
-    assert_eq!(lift, rat_ratio(11, 13));
+    assert_eq!(lift, rat(11, 13));
     assert_eq!(
         reduced_weights,
-        vec![(rat_ratio(2, 3), rat_ratio(3, 2)), (rat(5), rat(7))],
+        vec![(rat(2, 3), rat(3, 2)), (rat(5, 1), rat(7, 1))],
     );
 }
 

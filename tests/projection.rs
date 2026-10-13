@@ -15,18 +15,13 @@ use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
 /// The variables with the given zero-based indices.
-fn vars(indices: impl IntoIterator<Item = usize>) -> Vec<VarId> {
-    indices.into_iter().map(|i| VarId(i as u32 + 1)).collect()
+fn vars(indices: impl IntoIterator<Item = u32>) -> Vec<VarId> {
+    indices.into_iter().map(|i| VarId(i + 1)).collect()
 }
 
 /// The variables of `0..n` outside `show`.
-fn hidden(n: usize, show: &[usize]) -> Vec<VarId> {
+fn hidden(n: u32, show: &[u32]) -> Vec<VarId> {
     vars((0..n).filter(|i| !show.contains(i)))
-}
-
-fn brute_pmc(clauses: &[Vec<i32>], n: usize, show: &[usize]) -> BigUint {
-    let show: Vec<u32> = show.iter().map(|&v| v as u32).collect();
-    common::brute_force_projected_count(&common::make_formula(n as u32, clauses.to_vec()), &show)
 }
 
 /// `Output::ProjectedCount`: the count halved once per
@@ -68,22 +63,22 @@ fn compile_project_counts() {
 fn compile_project_matches_brute_force() {
     let eng = &Engine::new();
     let mut rng = Lcg::new(0x9E0EC7);
-    for n in 3..=7usize {
-        let vtree = Arc::new(Vtree::balanced(n as u32));
+    for n in 3..=7u32 {
+        let vtree = Arc::new(Vtree::balanced(n));
         for _ in 0..150 {
-            let clauses = rand_cnf(&mut rng, n as u32, CnfShape { clauses: 5, width: n });
-            let formula = common::make_formula(n as u32, clauses.clone());
+            let clauses = rand_cnf(&mut rng, n, CnfShape { clauses: 5, width: n as usize });
+            let formula = common::make_formula(n, clauses.clone());
 
             for show_mask in [0u32, 1, 2, 0b101, (1u32 << n) - 1, 0b1010] {
                 let show_mask = show_mask & ((1u32 << n) - 1);
-                let show: Vec<usize> = (0..n).filter(|&i| (show_mask >> i) & 1 == 1).collect();
+                let show: Vec<u32> = (0..n).filter(|&i| (show_mask >> i) & 1 == 1).collect();
                 let projected = hidden(n, &show);
                 if projected.is_empty() {
                     continue;
                 }
-                let expected = brute_pmc(&clauses, n, &show);
+                let expected = common::brute_force_projected_count(&formula, &show);
                 let show_set = vitri::cnf::ShowSet::<vitri::cnf::Reduced>::from_vars(
-                    show.iter().map(|&var| vitri::cnf::VarId::from_idx(var)),
+                    show.iter().map(|&var| vitri::cnf::VarId::from_idx(var as usize)),
                 );
                 let reduced = vitri::projection::eliminate_hidden(&formula, &show_set)
                     .expect("the show set is inside the formula");
@@ -121,16 +116,16 @@ fn every_plan_counts_a_free_variable_once() {
     use tididi_bonsai::vtree::ComponentVtree;
     use tididi_bonsai::compile::ComponentPlan;
     let eng = &Engine::new();
-    let check = |formula: &CnfFormula, clauses: &[Vec<i32>], show: &[usize], components: &[ComponentVtree]| {
+    let check = |formula: &CnfFormula, clauses: &[Vec<i32>], show: &[u32], components: &[ComponentVtree]| {
         let n = formula.num_vars();
         let root = Arc::new(Vtree::balanced(n));
-        let expected = brute_pmc(clauses, n as usize, show);
+        let expected = common::brute_force_projected_count(formula, show);
         for (name, plan) in [
             ("whole", ComponentPlan::Whole),
             ("split", ComponentPlan::Split(components)),
             ("detect", ComponentPlan::Detect),
         ] {
-            let forget = hidden(n as usize, show);
+            let forget = hidden(n, show);
             let opts = CompileOptions { output: Output::ProjectedCount(&forget), plan, ..CompileOptions::default() };
             let compiled = compile_cnf(eng, formula, &root, opts)
                 .expect("the compile completes");

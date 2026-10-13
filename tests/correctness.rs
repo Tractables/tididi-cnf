@@ -15,7 +15,7 @@ use tididi_bonsai::compile::{CompileOptions, ComponentPlan, compile_cnf};
 use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
 use tididi::test_helpers::check::{check_all_fast, check_determinism};
 use tididi::test_helpers::check_minimize_soundness;
-use tididi::test_helpers::{CnfShape, Lcg, rand_cnf};
+use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
 use tididi::vtree::Vtree;
 
 use common::*;

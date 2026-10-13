@@ -1,4 +1,4 @@
-//! Formulas, rationals and a configuration the crate's unit tests share.
+//! Formulas, oracles and a configuration the crate's unit tests share.
 
 use vitri::cnf::{Clause, CnfFormula, Literal, VarId};
 
@@ -81,14 +81,6 @@ pub(crate) fn with_clause(formula: CnfFormula, clause: Clause) -> CnfFormula {
 pub(crate) fn tididi_formula() -> CnfFormula {
     // (x1 ∨ ¬x2) ∧ (x2 ∨ x3)
     formula(3, vec![clause(&[1, -2]), clause(&[2, 3])])
-}
-
-pub(crate) fn rat(numerator: i64) -> num_rational::BigRational {
-    rat_ratio(numerator, 1)
-}
-
-pub(crate) fn rat_ratio(numerator: i64, denominator: i64) -> num_rational::BigRational {
-    num_rational::BigRational::new(numerator.into(), denominator.into())
 }
 
 /// Minimal Config for unit tests that only exercise a couple of fields.

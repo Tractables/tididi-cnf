@@ -60,12 +60,6 @@ pub fn models(formula: &CnfFormula) -> impl Iterator<Item = u64> + '_ {
     })
 }
 
-/// Brute-force model count of the formula over `num_vars` variables with
-/// DIMACS `clauses`.
-pub fn brute_force_count(num_vars: u32, clauses: &[Vec<i32>]) -> u64 {
-    models(&make_formula(num_vars, clauses.to_vec())).count() as u64
-}
-
 /// Brute-force projected model count onto `show` (zero-based variable indices).
 pub fn brute_force_projected_count(formula: &CnfFormula, show: &[u32]) -> BigUint {
     let mask = show.iter().fold(0u64, |mask, &v| mask | 1 << v);

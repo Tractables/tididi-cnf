@@ -1,7 +1,7 @@
 use tididi::Engine;
 use super::compile_weighted;
 use crate::test_support as fixtures;
-use crate::test_support::rat_ratio as rat;
+use tididi::test_helpers::rat;
 
 /// A weighted compile with no vtree builds its own and counts exactly.
 #[test]

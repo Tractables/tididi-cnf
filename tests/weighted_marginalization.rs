@@ -17,13 +17,12 @@
 mod common;
 use std::sync::Arc;
 
-use num_bigint::BigInt;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
 
 use tididi::Engine;
-use tididi::diagram::{Arithmetic, Tdd, WeightStore, WeightValue};
-use tididi::test_helpers::Lcg;
+use tididi::diagram::{Arithmetic, Tdd, WeightStore};
+use tididi::test_helpers::{Lcg, exact_weight, rat};
 use tididi_bonsai::vtree::VtreeOptions;
 use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
@@ -41,16 +40,6 @@ fn rational_weight_algebra(weights: &[(BigRational, BigRational)]) -> tididi::di
     let (negative, positive) = weights.iter().cloned().unzip();
     tididi::diagram::RationalWeights::from_polarities(tididi::diagram::LiteralWeights { negative, positive })
         .expect("both polarity columns come from the same variable pairs")
-}
-
-fn rat(n: i64, d: i64) -> BigRational {
-    BigRational::new(BigInt::from(n), BigInt::from(d))
-}
-
-/// A weight's exact value; these tests never arm log mode.
-fn exact(v: &WeightValue) -> BigRational {
-    assert!(v.as_log().is_none(), "test expected exact-mode WeightValue");
-    v.as_rational().into_owned()
 }
 
 /// The oracle: a plain compile evaluated under `w`.
@@ -97,7 +86,7 @@ fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRatio
 }
 
 fn weighted_value(tdd: &Tdd) -> BigRational {
-    exact(&tdd.weighted_value().unwrap().expect("a weighted diagram has a value"))
+    exact_weight(&tdd.weighted_value().unwrap().expect("a weighted diagram has a value"))
 }
 
 /// The oracle against brute force, then both weighted paths against the
@@ -226,9 +215,9 @@ fn assert_leaf_column(tdd: &Tdd, vtree: &Vtree, var: u32, w: &(BigRational, BigR
         .unwrap_or_else(|| panic!("[{label}] leaf of x{} lost its column", var + 1));
     let (w_neg, w_pos) = w;
     assert_eq!(column.len(), 3, "[{label}] the leaf column carries One, Pos and Neg");
-    assert_eq!(exact(&column[0]), w_pos + w_neg, "[{label}] slot 0 is One = w⁺ + w⁻");
-    assert_eq!(exact(&column[1]), w_pos.clone(), "[{label}] slot 1 is Pos = w⁺");
-    assert_eq!(exact(&column[2]), w_neg.clone(), "[{label}] slot 2 is Neg = w⁻");
+    assert_eq!(exact_weight(&column[0]), w_pos + w_neg, "[{label}] slot 0 is One = w⁺ + w⁻");
+    assert_eq!(exact_weight(&column[1]), w_pos.clone(), "[{label}] slot 1 is Pos = w⁺");
+    assert_eq!(exact_weight(&column[2]), w_neg.clone(), "[{label}] slot 2 is Neg = w⁻");
 }
 
 /// A lone leaf target turns weight-marginal and leaves the value alone.

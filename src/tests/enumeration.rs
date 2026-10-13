@@ -9,7 +9,7 @@ use super::{
 use vitri::cnf::{Clause, CnfFormula};
 use tididi::vtree::VarId;
 use crate::test_support::lit;
-use crate::test_support::rat_ratio as rat;
+use tididi::test_helpers::rat;
 
 /// Show vars 0 and 2 occur (2 three times) and are constrained; show var 3
 /// does not occur and is free; var 1 is hidden.

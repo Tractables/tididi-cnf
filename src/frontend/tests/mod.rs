@@ -1,19 +1,20 @@
 use super::*;
-use crate::test_support::{self as fixtures, clause, rat, rat_ratio, tididi_formula};
+use crate::test_support::{self as fixtures, clause, tididi_formula};
+use tididi::test_helpers::rat;
 
 #[test]
 fn wmc_frontend_returns_one_aligned_bundle() {
     let formula = fixtures::formula(2, vec![clause(&[1, -2])]);
     let weights = vec![
-        (rat_ratio(2, 3), rat_ratio(5, 7)),
-        (rat_ratio(11, 13), rat_ratio(17, 19)),
+        (rat(2, 3), rat(5, 7)),
+        (rat(11, 13), rat(17, 19)),
     ];
     let table = vitri::cnf::WeightTable::from_dimacs_pairs(
         [
-            (1, rat_ratio(5, 7)),
-            (-1, rat_ratio(2, 3)),
-            (2, rat_ratio(17, 19)),
-            (-2, rat_ratio(11, 13)),
+            (1, rat(5, 7)),
+            (-1, rat(2, 3)),
+            (2, rat(17, 19)),
+            (-2, rat(11, 13)),
         ],
         formula.num_vars(),
     )
@@ -40,7 +41,7 @@ fn wmc_frontend_returns_one_aligned_bundle() {
 
     assert_eq!(reduced.clauses(), formula.clauses());
     assert_eq!(reduced_weights, weights);
-    assert_eq!(lift, rat(1));
+    assert_eq!(lift, rat(1, 1));
     assert_eq!(vtree.root.num_leaves(), reduced.num_vars());
     assert_eq!(
         report.stages.arjun,
@@ -54,7 +55,7 @@ fn wmc_frontend_returns_one_aligned_bundle() {
 fn wmc_frontend_maps_unsat_without_a_weight_table() {
     let formula = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
     let table = vitri::cnf::WeightTable::from_dimacs_pairs(
-        [(1, rat_ratio(5, 7)), (-1, rat_ratio(2, 3))],
+        [(1, rat(5, 7)), (-1, rat(2, 3))],
         formula.num_vars(),
     )
     .expect("valid");

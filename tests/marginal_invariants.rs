@@ -19,7 +19,9 @@ use tididi_bonsai::vtree::VtreeOptions;
 use tididi_bonsai::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
 use tididi_bonsai::vtree::build_vtree;
 
-use common::{all_vtree_shapes, brute_force_count, get_test_cases, load_cnf, make_formula};
+use tididi::test_helpers::brute_force_count;
+
+use common::{all_vtree_shapes, get_test_cases, load_cnf, make_formula};
 
 #[test]
 fn marginalizing_compile_is_canonical_on_every_shape() {
