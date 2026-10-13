@@ -25,9 +25,9 @@ crate-type = ["cdylib"]
 tididi-bonsai = { path = "../.." }
 # `extension-module` links against the interpreter that loads the wheel rather
 # than a libpython. `abi3-py310` builds against the stable ABI, so one wheel
-# per platform covers CPython 3.10 and later. `num-bigint` hands an exact
-# count to Python as an int.
-pyo3 = { version = "0.29.2", features = ["abi3-py310", "extension-module", "num-bigint"] }
+# per platform covers CPython 3.10 and later. `num-bigint` and `num-rational`
+# hand an exact count to Python as an int or a fractions.Fraction.
+pyo3 = { version = "0.29.2", features = ["abi3-py310", "extension-module", "num-bigint", "num-rational"] }
 # Exact weights pass from Python to the library as these, which the library
 # counts with.
 num-bigint = "0.4"

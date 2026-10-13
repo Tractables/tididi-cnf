@@ -125,9 +125,7 @@ impl Answer {
     fn count<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
         match &self.count {
             Count::Integer(count) => Ok(count.into_pyobject(py)?.into_any()),
-            Count::Rational(count) => {
-                py.import("fractions")?.getattr("Fraction")?.call1((count.numer(), count.denom()))
-            }
+            Count::Rational(count) => count.into_pyobject(py),
             Count::Log(_) => Ok(self.count.to_f64().into_pyobject(py)?.into_any()),
         }
     }
