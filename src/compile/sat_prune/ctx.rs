@@ -16,7 +16,6 @@ use vitri::cnf::CnfFormula;
 use vitri::sat::{Bounded, CaDiCal, Status, WallClockTerminator};
 
 use crate::budget::resolve_scaled;
-
 use super::stats::{PruneStop, SatPruneStats};
 
 /// The limits a compile's SAT pruning passes run under.

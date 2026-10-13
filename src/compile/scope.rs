@@ -2,8 +2,9 @@
 //! its vtree LCA (`clause_scope`), groups clauses by scope node, and reorders
 //! within each group (variable proximity). Produces the per-node clause
 //! groups `step.rs` folds.
-use vitri::cnf::{Clause, CnfFormula};
+
 use tididi::vtree::{Vtree, VtreeIdx};
+use vitri::cnf::{Clause, CnfFormula};
 
 use crate::convert::diagram_var;
 

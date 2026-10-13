@@ -8,29 +8,26 @@ use std::collections::HashSet;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use vitri::cnf::CnfFormula;
+use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use vitri::cnf::CnfFormula;
 
-use super::{Compiled, GiveUp};
 use crate::budget::deadline_passed;
-use super::minimize::MinimizeGate;
-use super::component::{CompileJob, check_vtree};
-use super::scope::group_clauses_by_scope;
-use super::schedule::marginalize_schedule;
 use crate::convert::diagram_literal;
-use tididi::Engine;
-use tididi::{Literal, OperationError};
+use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
+use super::component::{CompileJob, check_vtree};
 use super::marginalize::{build_marginalize_targets, run_marginalize_at};
+use super::minimize::MinimizeGate;
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
+use super::schedule::marginalize_schedule;
+use super::scope::group_clauses_by_scope;
 
 /// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
 /// pairs are limited to this multiple of the two levels' pair count (see
 /// `Engine::rotate_marginal_cluster`).
 const MARGINAL_CLUSTER_BOUND_FACTOR: usize = 32;
-
-// ── StepContext ───────────────────────────────────────────────────────────────
 
 /// Read-only context every step of one bottom-up pass sees.
 pub(crate) struct StepContext<'a> {
@@ -46,8 +43,6 @@ pub(crate) struct StepContext<'a> {
     /// `None` for an output that follows no schedule.
     pub(crate) marginalize_schedule: Option<&'a [Vec<VtreeIdx>]>,
 }
-
-// ── PassState ─────────────────────────────────────────────────────────────────
 
 /// What one bottom-up pass changes as it goes.
 #[derive(Default)]
@@ -65,8 +60,6 @@ pub(crate) struct PassState {
     /// paid once per pass rather than once per batch.
     pub(crate) on_spine: Vec<bool>,
 }
-
-// ── DiagramClauses ────────────────────────────────────────────────────────────
 
 /// The formula's clauses in the diagram library's literal type.
 ///
@@ -105,8 +98,6 @@ impl DiagramClauses {
         &self.literals[self.bounds[i] as usize..self.bounds[i + 1] as usize]
     }
 }
-
-// ── `compile_component` ───────────────────────────────────────────────────────
 
 /// Compile one component, all of `formula`, bottom-up against the vtree:
 /// process each vtree node, conjoining child TDDs and accumulating local
@@ -256,8 +247,6 @@ pub(crate) fn compile_component(
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size })
 }
 
-// ── `propagate_vtree_arc` ─────────────────────────────────────────────────────
-
 /// Reseat every TDD's `vtree` Arc to match `current_vtree` if a marginal-cluster
 /// rotation just rotated the vtree held by `tdds[just_updated.idx()]`.
 fn propagate_vtree_arc(
@@ -280,7 +269,7 @@ fn propagate_vtree_arc(
     }
 }
 
-// ── steps ─────────────────────────────────────────────────────────────────────
+// ── The steps ────────────────────────────────────────────────────────────────
 
 /// Fold node `t`'s clauses into `children` (the conjoined child diagrams, or
 /// `None`), marginalizing in the fold, and store the result in `tdds[t]`.

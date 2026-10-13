@@ -11,15 +11,15 @@
 
 use std::sync::Arc;
 
-use tididi::Engine;
-use tididi::{Literal, OperationError};
+use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
 use tididi::vtree::{Vtree, VtreeIdx};
-use super::minimize::{MinimizeGate, minimize_contract_only};
+
+use crate::budget::deadline_passed;
 use super::marginalize::summable;
+use super::minimize::{MinimizeGate, minimize_contract_only};
 use super::schedule::step_completions;
 use super::step::{DiagramClauses, PassState, StepContext};
-use crate::budget::deadline_passed;
 
 /// Clauses per batch.
 const BATCH_SIZE: usize = 32;
@@ -30,8 +30,6 @@ const UNCAPPED_ACC_WIDTH: usize = 64;
 /// The width past which a batch stops growing once the accumulator is wider
 /// than [`UNCAPPED_ACC_WIDTH`].
 const BATCH_WIDTH_LIMIT: usize = 256;
-
-// ── `batch_accumulate` ────────────────────────────────────────────────────────
 
 /// Conjoin a node's clauses, `clauses`, into the accumulator a batch at a
 /// time.
@@ -123,8 +121,6 @@ impl StreamTargets {
     }
 }
 
-// ── `merge_batch` ─────────────────────────────────────────────────────────────
-
 /// Merge one built batch into `acc`. Returns `Ok(true)` when the merged
 /// accumulator is UNSAT, so the fold can stop early, and `Ok(false)` to
 /// continue; an apply error aborts the pass.
@@ -177,8 +173,6 @@ fn mark_clause_levels(
     }
 }
 
-// ── `batch_max_width` ─────────────────────────────────────────────────────────
-
 /// `local.max_width()` for a batch diagram under construction, read off the
 /// union of the folded clauses' spines (`spine`) instead of sweeping every
 /// vtree level. Returns exactly what `Tdd::max_width` would.
@@ -206,8 +200,6 @@ fn mark_clause_levels(
 fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine.iter().map(|&t| local.level(t).slot_count()).max().unwrap_or(0)
 }
-
-// ── `build_one_batch` ─────────────────────────────────────────────────────────
 
 /// Build one batch diagram by conjoining clauses one by one from
 /// `clauses[start]`, stopping when the batch holds `BATCH_SIZE` clauses,
@@ -279,8 +271,6 @@ fn build_one_batch(
     Ok((Some(local), i))
 }
 
-// ── `batch_width_cap` ─────────────────────────────────────────────────────────
-
 /// Maximum allowed batch-TDD width before the batch should be flushed into the
 /// accumulator: no cap (`usize::MAX`) while the accumulator is at most
 /// [`UNCAPPED_ACC_WIDTH`] wide, [`BATCH_WIDTH_LIMIT`] above that.
@@ -291,8 +281,6 @@ fn build_one_batch(
 fn batch_width_cap(acc_width: usize) -> usize {
     if acc_width <= UNCAPPED_ACC_WIDTH { usize::MAX } else { BATCH_WIDTH_LIMIT }
 }
-
-// ── `merge_batch_into_acc` ────────────────────────────────────────────────────
 
 /// Merge a batch TDD into the accumulator, marginalizing `marginalize_targets`
 /// inside the conjunction, then let [`MinimizeGate::adaptive_minimize`] pick
@@ -325,8 +313,6 @@ fn merge_batch_into_acc(
 
     Ok(result)
 }
-
-// ── `merge_clause_into_acc` ───────────────────────────────────────────────────
 
 /// Merge a one-clause batch: conjoin `clause` into `acc` with
 /// [`Engine::and_clause`], let [`MinimizeGate::adaptive_minimize`] reduce,

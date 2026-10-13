@@ -34,20 +34,17 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use num_bigint::BigUint;
-
-use vitri::cnf::CnfFormula;
-use minimize::minimize_full;
 use tididi::{Engine, OperationError};
 use tididi::diagram::{Arithmetic, RationalWeights, Tdd, WeightStore, WeightValue};
+use tididi::vtree::{VarId, Vtree};
+use vitri::cnf::CnfFormula;
+
 use crate::Error;
 use crate::budget::{deadline_passed, deadline_scope};
 use crate::problem::WeightedCount;
 use crate::vtree::{Component, ComponentVtree};
-use tididi::vtree::{VarId, Vtree};
-
-use component::{
-    CompileJob, PassOutput, compile_split, detected_split,
-};
+use component::{CompileJob, PassOutput, compile_split, detected_split};
+use minimize::minimize_full;
 use step::compile_component;
 
 /// Which independent components a compile splits the formula into.
@@ -74,8 +71,6 @@ impl<'a> ComponentPlan<'a> {
     }
 }
 
-// ── What the run sets for each compile ──────────────────────────────────────
-
 /// What a run sets for one compile, beyond what the compile is asked to
 /// produce: the run's SAT pruning, and whether the compile is a Shannon
 /// cofactor's.
@@ -89,8 +84,6 @@ pub(crate) struct CompileRun<'a> {
     /// diagram about to be split or dropped adds no useful work.
     pub(crate) cofactor: bool,
 }
-
-// ── Public API ───────────────────────────────────────────────────────────────
 
 /// Why a compile has no diagram to return.
 #[derive(Clone, PartialEq, Eq, Debug)]

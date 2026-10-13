@@ -5,14 +5,14 @@
 
 use std::time::Instant;
 
+use tididi::{Engine, OperationError};
 use tididi::apply::FilterOutcome;
 use tididi::cnf::{ProbeOrder, ProbeOutcome, Witness};
 use tididi::diagram::Tdd;
-use tididi::{Engine, OperationError};
 
+use crate::compile::minimize::full_reduction;
 use super::ctx::{PassSolver, SatPruneCtx};
 use super::stats::PruneStop;
-use crate::compile::minimize::full_reduction;
 
 /// Outcome of a single triggered pruning pass. The diagram probed is never
 /// modified.

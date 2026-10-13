@@ -14,14 +14,11 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use tididi::Engine;
-use tididi::OperationError;
+use tididi::{Engine, OperationError};
 use tididi::diagram::Tdd;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
 use super::step::StepContext;
-
-// ── `forget_shield` ───────────────────────────────────────
 
 /// The projection shield: the vtree nodes that must stay explicit while a
 /// projected variable is not yet ∃-forgotten, namely its ancestors and the
@@ -93,8 +90,6 @@ pub(crate) fn summable<'a>(
     }
 }
 
-// ── `build_marginalize_targets` ───────────────────────────────────────────────
-
 /// The nodes step `t` may sum out — `marginalize_schedule[t.idx()]` minus
 /// the projection shield — in the schedule's order, children before parents.
 /// Returns `None` if the pass sums nothing out or there is nothing to sum
@@ -115,8 +110,6 @@ pub(crate) fn build_marginalize_targets<'a>(
     let kept = unshielded(&schedule[t_idx], vtree, ctx.job.output.forget(), forgotten);
     if kept.is_empty() { None } else { Some(kept) }
 }
-
-// ── `run_marginalize_at` ──────────────────────────────────────────────────────
 
 /// What step `t` does after its fold:
 /// - ∃-forget each projected variable whose leaf is scheduled at `t`.

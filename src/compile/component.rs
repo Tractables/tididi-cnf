@@ -7,17 +7,15 @@
 use std::collections::HashSet;
 
 use tididi::Engine;
+use tididi::diagram::{Tdd, WeightStore};
+use tididi::restructure::GraftError;
+use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
+
+use crate::convert::{diagram_var, rational_weight_algebra};
+use crate::vtree::{Component, ComponentVtree};
 use super::{Compiled, GiveUp};
 use super::minimize::minimize_full;
-use tididi::diagram::Tdd;
-use tididi::restructure::GraftError;
-use tididi::diagram::WeightStore;
-use crate::vtree::{Component, ComponentVtree};
-use crate::convert::rational_weight_algebra;
-use crate::convert::diagram_var;
-use tididi::vtree::{VarId, Vtree};
-
 use super::step::compile_component;
 
 // ── Per-call compile inputs ──────────────────────────────────────────────────
@@ -156,8 +154,6 @@ fn covered_vars<'a>(num_vars: u32, maps: impl Iterator<Item = &'a Vec<VarId>>) -
     covered
 }
 
-// ── `remap_component_clauses_into` ────────────────────────────────────────────
-
 /// Reusable buffers for a loop that compiles one component at a time.
 ///
 /// The loop remaps one component's clauses into a self-contained sub-formula
@@ -254,7 +250,7 @@ fn invert_local_to_global_into(out: &mut Vec<Option<u32>>, local_to_global: &[Va
     }
 }
 
-// ── `check_vtree`, `check_partition` ──────────────────────────────────────────
+// ── Checks ───────────────────────────────────────────────────────────────────
 
 /// Whether `vtree` places exactly `formula`'s variables, one leaf each: a
 /// variable with no leaf has nowhere to put its clauses, and a leaf with no
@@ -307,7 +303,7 @@ fn check_partition(formula: &CnfFormula, components: &[ComponentVtree]) -> Resul
     }
 }
 
-// ── `detected_split`, `compile_split` ────────────────────────────────────────
+// ── The split ────────────────────────────────────────────────────────────────
 
 /// The split [`super::ComponentPlan::Detect`] compiles: each of the
 /// `detected` clause groups with its variables in ascending order and a

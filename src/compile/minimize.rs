@@ -6,10 +6,10 @@
 //! Every reduction the compiler runs is built here, so a cofactor's compile
 //! skips the content-twin scan in each of them.
 
+use tididi::{Engine, OperationError};
 use tididi::diagram::Tdd;
 use tididi::limits::LimitConfig;
 use tididi::reduce::{ContentTwinPolicy, ContentTwinSchedule, ReductionPlan};
-use tididi::{Engine, OperationError};
 
 /// The full reduction, scanning content twins on `probe`'s schedule, or on
 /// every call without one; a cofactor's compile skips the scan
