@@ -3,26 +3,30 @@ Copyright (c) The tididi-bonsai authors.
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
+Each licence text below is named by its path in the source tree, and by its
+path in the release archive, which carries it under notices/.
+
 tididi — Tree Decision Diagram library
 --------------------------------------
-Apache License 2.0. Full text: tididi/LICENSE
+Apache License 2.0. Full text: tididi/LICENSE (notices/tididi/LICENSE).
 
 Pinned as the tididi submodule. It is pure Rust and carries no third-party
 source.
 
 Vitri — CNF preprocessing and vtree construction library
 --------------------------------------------------------
-Apache License 2.0. Full text: vendor/vitri/LICENSE
+Apache License 2.0. Full text: vendor/vitri/LICENSE (notices/vitri/LICENSE).
 
 Pinned as the vendor/vitri submodule. Vitri vendors and builds CaDiCaL and the
 Arjun stack (Arjun, CryptoMiniSat, cadiback, SBVA), and links FlowCutter
 through the goatd crate. Their copyright notices, exact provenance, local
 modifications and complete licence texts are maintained with that library:
 
-  vendor/vitri/docs/THIRD-PARTY.md
+  vendor/vitri/docs/THIRD-PARTY.md (notices/vitri/THIRD-PARTY.md)
 
-That file links goatd's own THIRD-PARTY.md for the FlowCutter backend. Both
-are the authoritative attribution for the native dependency stack.
+That file links goatd's own THIRD-PARTY.md for the FlowCutter backend
+(notices/vitri/goatd-THIRD-PARTY.md). Both are the authoritative attribution
+for the native dependency stack.
 
 Rust crates
 -----------
@@ -30,4 +34,4 @@ The other dependencies are Rust crates that Cargo fetches from crates.io, each
 under its own licence; Cargo.lock names every one and its version. One of them,
 tikv-jemalloc-sys, builds the jemalloc allocator into the binary. jemalloc is
 BSD-2-Clause: a binary distribution must reproduce its copyright notice, which
-is the file jemalloc/COPYING inside that crate.
+is the file jemalloc/COPYING inside that crate (notices/jemalloc/COPYING).
