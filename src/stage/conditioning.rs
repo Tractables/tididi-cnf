@@ -105,8 +105,9 @@ fn condition_and_count(
 /// what the run sets for each compile; then its projected count
 /// ([`Compiled::projected_count`](crate::compile::Compiled::projected_count)).
 ///
-/// `None` means the deadline cut the compile before a diagram existed (a cut
-/// never yields part of one), or the engine's limits refused the readout.
+/// `None` means the compile gave up, cut by the deadline or refused an apply
+/// by the batch limits (a give-up never yields part of a diagram), or the
+/// limits refused the readout.
 pub(super) fn projected_compile(
     run: &Run<'_>,
     work: &CnfFormula,

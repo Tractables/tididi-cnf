@@ -350,7 +350,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
             // with no wall its applies would poll nothing and run until the
             // external timeout kills the process.
             let Some(pmc) = compile(run.deadline) else {
-                eprintln!("[pmc] no answer: the last compile stopped at the time limit");
+                eprintln!("[pmc] no answer: the last compile gave up");
                 return Step::Decline;
             };
             pmc

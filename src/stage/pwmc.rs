@@ -529,10 +529,10 @@ fn compile_evaluate(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -
     let case = PwmcCase { show: problem.show.as_ref(), weights: &weights };
     match pwmc_compile_evaluate(run, &problem.formula, trace, case) {
         Some(value) => Step::Answer(value),
-        // Say plainly that nothing finished in the budget: "declined" would
-        // conflate a stage that did not apply with a compile cut at the deadline.
+        // Say that the compile gave up: "declined" would conflate a stage
+        // that did not apply with a compile that ran and did not finish.
         None => {
-            eprintln!("[pwmc] no answer within the time limit");
+            eprintln!("[pwmc] no answer: the compile gave up");
             Step::Decline
         }
     }
