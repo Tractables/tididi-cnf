@@ -14,8 +14,8 @@ readme = "README.md"
 # "knowledge-compiler" over the 21-character "knowledge-compilation".
 keywords = ["model-counting", "knowledge-compiler", "decision-diagram", "sat", "cnf"]
 categories = ["science", "algorithms", "command-line-utilities"]
-# Allowlist, not a denylist: `cargo package` ships exactly these, so benchmark
-# data, scratch directories, scripts and notes can never leak into a package.
+# Allowlist, not a denylist: `cargo package` ships exactly these files, and a
+# file added anywhere else stays out of the package.
 # The patterns follow gitignore rules, so a bare file name would match at any
 # depth (every `README.md` in the tree); the leading `/` anchors it at the root.
 include = [
@@ -56,6 +56,8 @@ path = "src/main.rs"
 
 [dependencies]
 tididi = { version = "0.1.0", path = "tididi" }
+# vitri builds the C++ CaDiCaL and Arjun stack, and takes FlowCutter from the
+# goatd crate.
 vitri = { version = "0.2.0", path = "vendor/vitri" }
 num-bigint = "0.4"
 num-rational = "0.4"
@@ -65,8 +67,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 libc = "0.2"
 
-# Vitri owns and builds the C++ CaDiCaL and Arjun stack; FlowCutter comes from the goatd crate.
-
 # jemalloc is the allocator everywhere but WebAssembly, which has neither
 # jemalloc nor an address-space limit for its statistics to watch: there the
 # target's own allocator serves, and `src/mem_wasm.rs` stands in for
@@ -74,19 +74,14 @@ libc = "0.2"
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 tikv-jemallocator = { version = "0.6", features = ["stats"] }
 tikv-jemalloc-ctl = { version = "0.6", features = ["use_std", "stats"] }
-# Direct dep for raw `mallctlbymib` — needed for void controls like
-# `arena.<i>.purge`, which tikv-jemalloc-ctl's typed wrappers can't
-# invoke correctly (see mem.rs::purge_all_arenas).
+# Raw `mallctlbymib`, for `src/mem.rs`'s `purge_all_arenas`.
 tikv-jemalloc-sys = "0.6"
 
 [profile.release]
 lto = "fat"
 codegen-units = 1
-# panic = "unwind" (the implicit default) is required: Rust's default
-# alloc-error handler panics at the allocation's call site, and
-# `src/compile/recovery.rs` catches that unwind and Shannon-splits the CNF
-# instead of letting the process die. `panic = "abort"` silently disables that
-# recovery. See the module doc of `src/mem.rs`.
+# `panic` stays `unwind`, the default, as the Behaviour rules in CONTRIBUTING.md
+# require.
 
 # An optimized build that keeps every `debug_assert!` and overflow check live,
 # for a bug that only shows on an instance too large for a debug build:
