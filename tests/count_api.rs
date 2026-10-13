@@ -5,20 +5,10 @@
 
 mod common;
 
-use std::sync::Mutex;
-
 use num_bigint::BigUint;
 use tididi_bonsai::{Count, Error, Limits, Mode, count, parse_dimacs};
 
 const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
-
-/// One run at a time in this process: vitri, which the run preprocesses
-/// through, is not known to be safe to enter from two threads at once.
-static ONE_RUN: Mutex<()> = Mutex::new(());
-
-fn one_run() -> std::sync::MutexGuard<'static, ()> {
-    ONE_RUN.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
 
 fn integer(n: u32) -> Count {
     Count::Integer(BigUint::from(n))
@@ -108,7 +98,6 @@ fn count_environment_honors_sbva_policy() {
 /// domain and `c t pwmc` a projected weighted one, exact.
 #[test]
 fn the_header_names_the_task() {
-    let _one = one_run();
     let limits = Limits::default();
 
     // 1 ∨ 2 ∨ 3: seven of the eight assignments.
@@ -160,7 +149,6 @@ fn a_count_converts_to_the_nearest_f64() {
 /// refused as a usage error before anything runs.
 #[test]
 fn a_mode_given_overrides_the_default_and_must_agree_with_the_header() {
-    let _one = one_run();
     let limits = Limits::default();
     // (1 ∨ 2) ∧ (¬1 ∨ 3): 1 forces 3, ¬1 forces 2, and the third is free.
     let formula = || parse_dimacs("p cnf 3 2\n1 2 0\n-1 3 0\n".as_bytes()).unwrap();
@@ -182,7 +170,6 @@ fn a_mode_given_overrides_the_default_and_must_agree_with_the_header() {
 /// run ended.
 #[test]
 fn the_answer_carries_the_verdict_and_the_record() {
-    let _one = one_run();
     let answer = count("tests/data/mcc_mc_unsat.cnf", None, &Limits::default()).unwrap();
     assert_eq!((answer.satisfiable(), answer.count()), (false, &integer(0)));
     let stats = answer.stats();
@@ -199,7 +186,6 @@ fn the_answer_carries_the_verdict_and_the_record() {
 /// are compiled one after the other.
 #[test]
 fn a_projected_record_describes_the_whole_count() {
-    let _one = one_run();
     let enumerated = count("tests/data/pmc_tiny_show.cnf", None, &Limits::default()).unwrap();
     assert_eq!(enumerated.stats().show_vars, Some(4));
     assert!(enumerated.stats().compile_ms.is_some());
@@ -213,7 +199,6 @@ fn a_projected_record_describes_the_whole_count() {
 /// with its own domain and its own record.
 #[test]
 fn runs_on_one_thread_are_independent() {
-    let _one = one_run();
     let limits = Limits::default();
     let first = count("tests/data/wmc_header_tiny_sat.cnf", None, &limits).unwrap();
     let exact = count("tests/data/mcc_pwmc_sat.cnf", None, &limits).unwrap();
@@ -230,7 +215,6 @@ fn runs_on_one_thread_are_independent() {
 /// counts keeps its own.
 #[test]
 fn a_memory_limit_ends_with_the_run() {
-    let _one = one_run();
     let address_space = || {
         let mut limit = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
         // Safety: `limit` is a valid `rlimit` for `getrlimit` to write into.
@@ -250,7 +234,6 @@ fn a_memory_limit_ends_with_the_run() {
 
 #[test]
 fn a_file_that_cannot_be_read_is_an_input_error() {
-    let _one = one_run();
     let missing = count("tests/data/no_such_instance.cnf", None, &Limits::default());
     assert!(matches!(&missing, Err(Error::Input(message)) if message.contains("no_such_instance")), "{missing:?}");
 }
@@ -259,7 +242,6 @@ fn a_file_that_cannot_be_read_is_an_input_error() {
 /// the same record field for field, clock readings aside.
 #[test]
 fn the_binary_answers_as_the_library_does() {
-    let _one = one_run();
     for (cnf, plain) in [
         ("tests/data/mc_header_tiny.cnf", "model count"),
         ("tests/data/pmc_tiny_show.cnf", "projected model count"),

@@ -5,6 +5,7 @@
 //! same `driver::solve`, and prints the [`Answer`] it gets back.
 
 use std::path::PathBuf;
+use std::sync::{Mutex, PoisonError};
 
 use num_bigint::BigUint;
 use num_rational::BigRational;
@@ -182,7 +183,8 @@ impl Answer {
 /// declares none; a `mode` given must agree with the header. The run is the
 /// binary's without its printing: the same preprocessing, vtree selection and
 /// fallbacks, the same answer, and the same record in [`Answer::stats`]. Its
-/// progress lines go to stderr, as the binary's do.
+/// progress lines go to stderr, as the binary's do. Calls from several
+/// threads run one at a time: a call waits for the one in progress to return.
 ///
 /// # Errors
 ///
@@ -210,6 +212,12 @@ impl Answer {
 /// # Ok::<(), tididi_bonsai::Error>(())
 /// ```
 pub fn count(input: impl Into<Input>, mode: Option<Mode>, limits: &Limits) -> Result<Answer, Error> {
+    let _one_at_a_time = ONE_RUN.lock().unwrap_or_else(PoisonError::into_inner);
     crate::driver::solve(input.into(), mode, limits, &Settings::default())
         .map_err(|failure| failure.error)
 }
+
+/// Held for the whole of every [`count`]: the memory limit and the memory
+/// readings belong to the process, and preprocessing goes through vitri, which
+/// is not known to be safe to enter from two threads at once.
+static ONE_RUN: Mutex<()> = Mutex::new(());

@@ -7,7 +7,6 @@
 //! arguments and the answer.
 
 use std::path::PathBuf;
-use std::sync::{Mutex, PoisonError};
 
 use num_bigint::BigInt;
 use num_rational::BigRational;
@@ -87,11 +86,6 @@ mod errors {
     }
 }
 
-/// Held for the whole of every count: a run keeps its state on the calling
-/// thread, and preprocessing is not known to be safe to enter from two
-/// threads at once.
-static ONE_CALL: Mutex<()> = Mutex::new(());
-
 /// What a count answered: the mode the run resolved to, whether the formula
 /// has a model, the count, and the run's record.
 ///
@@ -168,18 +162,14 @@ fn mode(token: Option<&str>) -> PyResult<Option<Mode>> {
 }
 
 /// Count `input` under the mode and limits, with the interpreter lock
-/// released and one call at a time.
+/// released.
 fn run(
     py: Python<'_>,
     input: impl FnOnce() -> Result<Input, tididi_bonsai::Error> + Send,
     mode: Option<Mode>,
     limits: Limits,
 ) -> PyResult<Answer> {
-    py.detach(|| {
-        let _one_at_a_time = ONE_CALL.lock().unwrap_or_else(PoisonError::into_inner);
-        tididi_bonsai::count(input()?, mode, &limits).map(Answer::of)
-    })
-    .map_err(errors::of)
+    py.detach(|| tididi_bonsai::count(input()?, mode, &limits).map(Answer::of)).map_err(errors::of)
 }
 
 /// Count the models of a CNF, given as DIMACS text or as clauses, as

@@ -121,11 +121,10 @@
 //! formula; the call puts the limit back when it returns. The default sets
 //! neither.
 //!
-//! A run keeps its state on the calling thread and clears it when it returns,
-//! so one thread can make any number of runs. Preprocessing goes through
-//! vitri, which is not known to be safe to enter from two threads at once: a
-//! program with threads makes one [`count`] call at a time. [`count`] prints
-//! its progress to stderr, as the binary does.
+//! A run clears its state when it returns, so one thread can make any number
+//! of runs, and calls from several threads run one at a time: a [`count`]
+//! call waits for the one in progress to return. [`count`] prints its
+//! progress to stderr, as the binary does.
 //!
 //! # Platform
 //!

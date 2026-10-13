@@ -19,7 +19,7 @@ use std::ffi::{CStr, CString, OsStr, c_char};
 use std::os::unix::ffi::OsStrExt;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock, PoisonError};
+use std::sync::OnceLock;
 use std::{ptr, slice};
 
 use tididi_bonsai::{Answer, Error, Input, Limits, Mode};
@@ -491,13 +491,8 @@ pub unsafe extern "C" fn tididi_bonsai_answer_error_message(
     unsafe { lend(message, len) }
 }
 
-/// Held for the whole of every count call: a run keeps its state on the
-/// calling thread, and preprocessing is not known to be safe to enter from two
-/// threads at once.
-static ONE_CALL: Mutex<()> = Mutex::new(());
-
-/// Run `body` one call at a time, turning a panic into an answer that carries
-/// its message, and hand the answer to `*out`.
+/// Run `body`, turning a panic into an answer that carries its message, and
+/// hand the answer to `*out`.
 ///
 /// # Safety
 ///
@@ -509,15 +504,10 @@ unsafe fn deliver(
     if out.is_null() {
         return TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT;
     }
-    let result = answer(|| {
-        let _one_at_a_time = ONE_CALL.lock().unwrap_or_else(PoisonError::into_inner);
-        match body() {
-            Ok(counted) => tididi_bonsai_answer::counted(&counted),
-            Err(Refusal::Argument(message)) => {
-                tididi_bonsai_answer::failed(TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, message)
-            }
-            Err(Refusal::Bonsai(error)) => tididi_bonsai_answer::failed(code_of(&error), error.to_string()),
-        }
+    let result = answer(|| match body() {
+        Ok(counted) => tididi_bonsai_answer::counted(&counted),
+        Err(Refusal::Argument(message)) => tididi_bonsai_answer::failed(TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, message),
+        Err(Refusal::Bonsai(error)) => tididi_bonsai_answer::failed(code_of(&error), error.to_string()),
     });
     let code = result.code;
     unsafe { out.write(Box::into_raw(Box::new(result))) };
