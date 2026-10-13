@@ -166,7 +166,7 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
 ## Design pages
 
 - [Algorithms][algorithms]: the vtree-guided bottom-up compile, the
-  fixed-batch clause merge and the component graft.
+  batched clause merge and the component graft.
 - [Marginal TDD levels][marginal-tdd-levels]: levels replaced by per-node
   counts once no later step can change them, and the peak size they save.
 - [Weighted marginal levels][weighted-marginal-levels]: the arithmetic a
