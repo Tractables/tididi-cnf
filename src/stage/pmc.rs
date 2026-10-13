@@ -18,7 +18,7 @@ use super::projected::{
 };
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
-use crate::enumeration::{EnumLimits, Models, allsat_share_ms, constrained_show_count};
+use crate::enumeration::{EnumLimits, FORECAST_AT, Models, allsat_share_ms, constrained_show_count};
 use crate::output::Projected;
 use crate::problem::{Problem, ShowSet, Unweighted};
 
@@ -146,8 +146,8 @@ fn enumerate(run: &Run<'_>, problem: &Problem<Unweighted>, small_show: bool) -> 
     };
     // The AllSAT wall is half the run's time limit, ~90% behind the
     // small-show gate (Arjun skipped): the compile fallback cannot solve
-    // these. The near-full skip routes a projection too full to enumerate to
-    // compile.
+    // these, and the count forecast applies to the widened wall alike. The
+    // near-full skip routes a projection too full to enumerate to compile.
     let share = if small_show { 0.9 } else { 0.5 };
     let limits = EnumLimits {
         allsat_wall_ms: allsat_share_ms(run.config.time_limit_ms, share),
@@ -155,7 +155,8 @@ fn enumerate(run: &Run<'_>, problem: &Problem<Unweighted>, small_show: bool) -> 
         skip_near_full: true,
         deadline: run.deadline,
     };
-    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits).map_or(Step::Decline, Step::Answer)
+    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits, Some(FORECAST_AT))
+        .map_or(Step::Decline, Step::Answer)
 }
 
 /// Stage: the projection-preserving tail — strengthening and BVE with Arjun

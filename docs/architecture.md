@@ -67,7 +67,7 @@ everything below is called, and nothing below calls back up. Below the stages,
 | `src/cli.rs` | The command line: argument parsing, the usage text, and `run_cli`, which solves what argv asks and prints the answer. |
 | `src/driver/` | `solve`, the phase spine, the mode dispatch, and the plain compile route. |
 | `src/stage/` | The counting runners the driver dispatches to, and what they share. See below. |
-| `src/enumeration.rs` | Counting a show set's feasible assignments with a SAT solver: the small-show sweep, projected AllSAT, and the estimates that gate them. |
+| `src/enumeration.rs` | Counting a show set's feasible assignments with a SAT solver: the small-show sweep, projected AllSAT, and the estimates that gate them and forecast its count. |
 | `src/compile/` | `compile_cnf`, what it takes and what it returns; the bottom-up pass beneath it; and the counts the stages build on it. See below. |
 | `src/problem.rs` | The counting problem every runner works on: a formula, its show set, its weights and the domain of its answer, and the weighted count that carries whether the formula has a model. |
 | `src/vtree.rs` | Vtree construction from a spec, whole or one tree per independent component: the public calls and their options, the vitri request and selection context every construction makes, the conversion of the trees vitri returns, and the descriptors of a formula's independent components. |
@@ -174,7 +174,8 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
 - [SAT-based pruning][sat-pruning]: dropping intermediate nodes that no
   model of the formula passes through.
 - [The support-enumeration stage][support-enum-stage]: a fallback of the
-  model count cascade: when it runs and why its count is sound.
+  model count cascade: when it runs and why its count is sound; and the same
+  estimate as the count forecast of the projected enumerations.
 - [Using diagrams from the compiler][library-integration]: a bounded
   compile on one engine, and what this crate adds to the library.
 

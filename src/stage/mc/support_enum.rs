@@ -106,9 +106,9 @@ fn plan_support_enum(
 }
 
 /// Estimate the feasible-projection count N by walking random paths down the
-/// projection tree (the engine's `estimate_count_by_random_paths`), one path at
-/// a time until [`ESTIMATOR_SAMPLES`] are drawn or [`ESTIMATOR_MAX_TRUNCATED`]
-/// are cut.
+/// projection tree (the engine's `estimate_by_paths`, one path at a time, each
+/// under [`ESTIMATOR_SAMPLE_WALL_MS`]) until [`ESTIMATOR_SAMPLES`] are drawn
+/// or [`ESTIMATOR_MAX_TRUNCATED`] are cut.
 ///
 /// The stage's whole question is "will this enumeration finish inside the wall
 /// left?", i.e. is N small. The estimator therefore has to be trustworthy in the
@@ -123,37 +123,14 @@ fn estimate_projected_count(
     formula: &CnfFormula,
     show_vec: &[tididi::vtree::VarId],
 ) -> PathEstimate {
-    let mut acc = PathEstimate::default();
-    // Drawn one path at a time so the truncation cut-off costs at most one extra
-    // path: an instance whose paths already outrun the path wall gets out after
-    // `ESTIMATOR_MAX_TRUNCATED` cut paths instead of paying for every sample.
-    let drawn =
-        |a: &PathEstimate| a.weights.len() as u32 + a.truncated;
-    while drawn(&acc) < ESTIMATOR_SAMPLES && acc.truncated < ESTIMATOR_MAX_TRUNCATED {
-        let est = crate::enumeration::estimate_count_by_random_paths(
-            formula,
-            show_vec,
-            1,
-            std::time::Duration::from_millis(ESTIMATOR_SAMPLE_WALL_MS),
-            path_seed(drawn(&acc)),
-        );
-        if est.unsat {
-            acc.unsat = true;
-            break;
-        }
-        acc.truncated += est.truncated;
-        acc.weights.extend(est.weights);
-    }
-    acc
-}
-
-/// The seed of path `k`. One fixed base, so a re-run of the same instance
-/// routes the same way. The engine starts its generator at `seed | 1` and each
-/// call loads a fresh solver, so the seeds step by 2 from an odd base: every
-/// path gets its own generator state, where a step of 1 would pair them up.
-fn path_seed(k: u32) -> u64 {
-    const SEED: u64 = 0x9E37_79B9_7F4A_7C15;
-    SEED.wrapping_add(2 * u64::from(k))
+    crate::enumeration::estimate_by_paths(
+        formula,
+        show_vec,
+        ESTIMATOR_SAMPLES,
+        ESTIMATOR_MAX_TRUNCATED,
+        std::time::Duration::from_millis(ESTIMATOR_SAMPLE_WALL_MS),
+        None,
+    )
 }
 
 /// N̂ for the log: the mean of the completed paths, or "unmeasured".

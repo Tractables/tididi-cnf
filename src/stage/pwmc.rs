@@ -16,7 +16,7 @@ use super::projected::{
     run_stages, trivial_residual,
 };
 use crate::problem::WeightedCount;
-use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
+use crate::enumeration::{EnumLimits, FORECAST_AT, WeightedModels, allsat_share_ms};
 use crate::output::Projected;
 use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};
 
@@ -72,13 +72,16 @@ struct PwmcCase<'a> {
 /// spend its share of the run enumerating before it compiles, and raises the
 /// model cap to 2^show for a small-show component, so AllSAT ends by
 /// exhausting the projections.
-/// Neither enumeration runs past `run`'s wall.
+/// Neither enumeration runs past `run`'s wall. `forecast` is the AllSAT run's
+/// count forecast, which only the enumerate-show stage asks for
+/// ([`enumerate_show`]).
 fn pwmc_show_enum_fastpath(
     run: &Run<'_>,
     formula: &CnfFormula,
     case: PwmcCase<'_>,
     allsat_wall_ms: Option<u64>,
     model_budget_override: Option<u64>,
+    forecast: Option<std::time::Duration>,
 ) -> Option<WeightedCount<BigRational>> {
     let PwmcCase { show, weights } = case;
     // Symmetric weights make PWMC a scaled projected count, which
@@ -93,7 +96,7 @@ fn pwmc_show_enum_fastpath(
         skip_near_full: false,
         deadline: run.deadline,
     };
-    enumerate_show("[pwmc]", formula, show?, WeightedModels::new(weights), limits)
+    enumerate_show("[pwmc]", formula, show?, WeightedModels::new(weights), limits, forecast)
 }
 
 /// Weighted compile + evaluate — the terminal PWMC phase. Builds the
@@ -209,7 +212,7 @@ fn pwmc_solve_component(
     };
     let case = PwmcCase { show: Some(local_show), weights };
     if let Some(v) =
-        pwmc_show_enum_fastpath(run, sub, case, Some(allsat_ms), model_override)
+        pwmc_show_enum_fastpath(run, sub, case, Some(allsat_ms), model_override, None)
     {
         return Some(v);
     }
@@ -410,7 +413,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
         "[pwmc] decompose",
         |sub, local_show, weights| {
             let case = PwmcCase { show: Some(local_show), weights };
-            pwmc_show_enum_fastpath(run, sub, case, None, None)
+            pwmc_show_enum_fastpath(run, sub, case, None, None, None)
         },
     );
     decomposed.map_or(Step::Decline, Step::Answer)
@@ -445,7 +448,7 @@ fn preprocess(
 fn enumerate(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted> {
     let weights = problem_weight_tables(problem);
     let case = PwmcCase { show: problem.show.as_ref(), weights: &weights };
-    pwmc_show_enum_fastpath(run, &problem.formula, case, None, None)
+    pwmc_show_enum_fastpath(run, &problem.formula, case, None, None, Some(FORECAST_AT))
         .map_or(Step::Decline, Step::Answer)
 }
 

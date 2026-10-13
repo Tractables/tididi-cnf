@@ -120,15 +120,19 @@ pub(super) fn run_stages<D: Domain>(
 /// Count `show`'s feasible assignments by enumeration
 /// ([`show_enum_fastpath`]) under `limits`, adding them up with `tally`, and
 /// print under the mode's `tag` what answered, or why nothing did. `None` when
-/// the enumeration gave no count.
+/// the enumeration gave no count. `forecast` is the AllSAT run's
+/// [`AllsatCtl::forecast`]: the enumerate-show stages ask for one, so that an
+/// enumeration heading for more projections than its wall holds returns the
+/// rest of that wall to the compile; the component paths do not.
 pub(super) fn enumerate_show<T: Tally + Clone>(
     tag: &str,
     formula: &CnfFormula,
     show: &ShowSet,
     tally: T,
     limits: EnumLimits,
+    forecast: Option<std::time::Duration>,
 ) -> Option<T::Value> {
-    let mut ctl = AllsatCtl::default();
+    let mut ctl = AllsatCtl { forecast, ..Default::default() };
     let started = Instant::now();
     let Some((value, method, elapsed_ms)) = show_enum_fastpath(formula, show, tally, limits, &mut ctl) else {
         ctl.report_no_count(&format!("{tag} enumerate-show"), started.elapsed().as_millis());

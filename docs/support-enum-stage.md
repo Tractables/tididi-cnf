@@ -87,3 +87,28 @@ deadline, gave up, was skipped, or was discarded as not smaller or
 non-injective — so it has no support to hand the stage. The hook buys one with
 a second, tightly bounded Arjun pass on the recovery window
 (`reduce_for_support`), sized against the same `shannon_split_reserve_ms` rule.
+
+## The same estimate as a forecast in projected counting
+
+The PMC and PWMC enumerate-show stages run the same projected-AllSAT engine
+on the show variables, under a wall of half the run (most of it when the
+small-show gate skipped Arjun). An enumeration that cannot finish in that
+wall would spend all of it and then fall through to the compile with half the
+run gone. Neither its tally, its rate, how fast the rate falls, nor its
+per-solve cost tells it apart from a slow enumeration that does finish.
+
+The path estimate does. So these stages ask the engine for one count forecast
+(`FORECAST_AT` into the enumeration, between solves, once a model gives a
+rate): `estimate_by_paths` estimates the feasible count under at most
+`FORECAST_WALL` of the enumeration's own wall, and when the projections still
+missing need more than `FORECAST_MARGIN` times the wall left at the rate so
+far, the enumeration stops (`AllsatStop::Forecast`; the stage line prints the
+estimate) and the rest of its wall goes to the compile. When every path is
+cut there is no estimate, and the enumeration goes on.
+
+The rule errs toward enumerating. The rate only falls as blocking clauses
+accumulate, so the projected time under-reads what the enumeration would
+need, and the estimate's typical error is an under-read too; the margin
+covers the over-reads. A stop costs no correctness: the stage falls through,
+as on any other stop. The support-enum stage keeps its own entry gate and
+grant terms and takes no forecast.

@@ -8,7 +8,7 @@ use tididi::vtree::VarId;
 
 use super::{
     AllsatStop, AllsatCtl, Models, WallGrant, WeightedModels, allsat, constrained_show_count,
-    estimate_count_by_random_paths, split_show, sweep,
+    estimate_count_by_random_paths, forecast_exceeds_wall, path_seed, split_show, sweep,
 };
 use crate::test_support::lit;
 
@@ -269,6 +269,66 @@ fn model_cap_bust_reports_the_cap_and_a_partial_tally() {
         &f, &split_show(&f, &show), 1, Duration::from_secs(5), &mut AllsatCtl::default(), WeightedModels::new(&weights),
     );
     assert!(weighted.is_none(), "the cap busts a weighted tally too");
+}
+
+/// The count forecast stops an enumeration heading for far more projections
+/// than its wall holds: one forced and 60 free constrained vars make 2^60
+/// feasible projections, which every random path weighs exactly, against a
+/// 30 s wall. A forecast at zero is taken after the first model, and the stop
+/// reports the estimate and the tally.
+#[test]
+fn a_forecast_stops_a_count_the_wall_cannot_hold() {
+    let f = subcube_formula(1, 60);
+    let show: Vec<VarId> = (1..=f.num_vars()).map(VarId).collect();
+    let mut ctl = AllsatCtl { forecast: Some(Duration::ZERO), ..Default::default() };
+    let started = std::time::Instant::now();
+    let got = allsat(&f, &split_show(&f, &show), u64::MAX, Duration::from_secs(30), &mut ctl, Models(0));
+    assert_eq!(got, None);
+    assert_eq!(ctl.bust, Some(AllsatStop::Forecast(2f64.powi(60))));
+    assert_eq!(ctl.models, 1, "the forecast is taken after the first model");
+    assert!(started.elapsed() < Duration::from_secs(10), "stopped at once, not at the wall");
+}
+
+/// A count the wall holds is enumerated to the end under a forecast: four
+/// feasible projections, forecast after the first model.
+#[test]
+fn a_forecast_lets_a_small_count_finish() {
+    let f = subcube_formula(18, 2);
+    let show: Vec<VarId> = (1..=f.num_vars()).map(VarId).collect();
+    let mut ctl = AllsatCtl { forecast: Some(Duration::ZERO), ..Default::default() };
+    let got = allsat(&f, &split_show(&f, &show), 1_000_000, Duration::from_secs(30), &mut ctl, Models(0));
+    assert_eq!(got, Some(BigUint::from(4u32)));
+    assert_eq!(ctl.bust, None);
+}
+
+/// The forecast rule on its own: the projections still missing, at the rate
+/// so far, against twice the wall left. No estimate (every path cut) keeps
+/// enumerating however far behind the run is; so does an estimate at or
+/// under the tally, and a spent wall, which the wall check reports.
+#[test]
+fn the_forecast_rule_compares_the_missing_projections_with_twice_the_wall_left() {
+    let s = Duration::from_secs;
+    // 1000 projections in 5 s is 200/s, with 55 s left.
+    assert!(!forecast_exceeds_wall(None, 1000, s(5), s(55)));
+    // 1e6 needs about 5000 s.
+    assert!(forecast_exceeds_wall(Some(1e6), 1000, s(5), s(55)));
+    // 20 000 needs 95 s, inside twice the 55 s left.
+    assert!(!forecast_exceeds_wall(Some(20_000.0), 1000, s(5), s(55)));
+    // 23 001 needs just over 110 s.
+    assert!(forecast_exceeds_wall(Some(23_001.0), 1000, s(5), s(55)));
+    assert!(!forecast_exceeds_wall(Some(500.0), 1000, s(5), s(55)));
+    assert!(!forecast_exceeds_wall(Some(1e9), 1000, s(5), Duration::ZERO));
+    assert!(!forecast_exceeds_wall(Some(1e9), 0, s(5), s(55)));
+}
+
+/// The engine's generator starts at `seed | 1`: the paths' seeds must stay
+/// distinct through it, or two paths walk the same way.
+#[test]
+fn path_seeds_give_distinct_generator_states() {
+    let states: std::collections::HashSet<u64> = (0..64).map(|k| path_seed(k) | 1).collect();
+    assert_eq!(states.len(), 64);
+    // Path 0 keeps the base seed.
+    assert_eq!(path_seed(0), 0x9E37_79B9_7F4A_7C15);
 }
 
 /// Formula (x0 ∨ x1) over two show vars; feasible projections are

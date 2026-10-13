@@ -10,8 +10,11 @@
 //! - the projected AllSAT enumeration ([`allsat`]) finds
 //!   only the feasible assignments, one blocking clause each, so it reaches
 //!   large constrained sets whose feasible count is small;
-//! - the path estimator ([`estimate_count_by_random_paths`]) estimates that
-//!   feasible count, so the support-enum stage can decide whether to enumerate;
+//! - the path estimator ([`estimate_count_by_random_paths`], drawn path by
+//!   path through [`estimate_by_paths`]) estimates that feasible count, so the
+//!   support-enum stage can decide whether to enumerate and an enumeration
+//!   under [`AllsatCtl::forecast`] can stop once the count it is heading for
+//!   cannot fit its wall;
 //! - the feasibility probe ([`feasible_fraction_estimate`]) samples random
 //!   assignments, so PMC can skip enumerating a near-full projection.
 //!
@@ -234,7 +237,7 @@ fn sweep<T: Tally>(
 /// Why a projected AllSAT enumeration returned `None` instead of a complete
 /// feasible set. Reported through [`AllsatCtl::bust`] so a caller can print
 /// the actual reason rather than an ambiguous "model or wall cap".
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum AllsatStop {
     /// The wall budget was already spent when a solve was about to start.
     Wall,
@@ -248,6 +251,10 @@ pub(crate) enum AllsatStop {
     /// enumeration itself. Distinct from `ModelCap`: the cap is a standing
     /// ceiling, this is a caller's own premise failing mid-run.
     TallyCeiling,
+    /// The count forecast taken at [`AllsatCtl::forecast`] estimated this
+    /// many feasible projections, more than [`FORECAST_MARGIN`] times the
+    /// wall left holds at the rate the enumeration has run so far.
+    Forecast(f64),
 }
 
 /// What a caller grants when an enumeration reaches its wall — more time,
@@ -269,8 +276,12 @@ pub(crate) struct WallGrant {
 
 /// Caller control and observation for a single projected-AllSAT enumeration.
 ///
-/// `AllsatCtl::default()` is the plain enumerator — no callback, so the wall is
-/// checked only between solves — which is what PMC and PWMC run under.
+/// `AllsatCtl::default()` is the plain enumerator: no callback, so the wall is
+/// checked only between solves, and no forecast. The PMC and PWMC
+/// enumerate-show stages run it with one addition, the count
+/// [`forecast`](Self::forecast) at [`FORECAST_AT`]; the model count's
+/// support-enum stage supervises through [`at_wall`](Self::at_wall) and its
+/// own grant terms instead.
 #[derive(Default)]
 pub(crate) struct AllsatCtl<'a> {
     /// Consulted when the wall budget runs out (between solves, or when a
@@ -295,6 +306,18 @@ pub(crate) struct AllsatCtl<'a> {
     /// or not. On a bust this is a lower bound on the true count — which is
     /// exactly what a caller estimating the count from a truncated run wants.
     pub(crate) models: u64,
+    /// When to forecast. `Some(at)` asks for one count forecast, taken at the
+    /// first point between solves at least `at` into the enumeration with a
+    /// model tallied, so that there is a rate to forecast from: the path
+    /// estimator ([`estimate_by_paths`], at most [`FORECAST_PATHS`] paths
+    /// under [`FORECAST_WALL`] or the wall left, whichever is less, all of it
+    /// spent from the enumeration's own wall) estimates the feasible count N̂,
+    /// and when the projections still missing at the rate so far,
+    /// `(N̂ − tally) / (tally / elapsed)`, need more than [`FORECAST_MARGIN`]
+    /// times the wall left, the enumeration stops with
+    /// [`AllsatStop::Forecast`]. A forecast with no estimate (every path cut)
+    /// keeps enumerating. `None` never forecasts.
+    pub(crate) forecast: Option<Duration>,
 }
 
 impl AllsatCtl<'_> {
@@ -307,13 +330,18 @@ impl AllsatCtl<'_> {
             Some(AllsatStop::Terminated) => "wall budget cut a solve in flight",
             Some(AllsatStop::ModelCap) => "model cap",
             Some(AllsatStop::TallyCeiling) => "gate ceiling exceeded",
+            Some(AllsatStop::Forecast(_)) => {
+                "the estimated count needs more than twice the wall left at the current rate"
+            }
             None => "declined before enumerating",
         }
     }
 
     /// Print `{tag}: no count: {reason} (…)` for an enumeration stage that
     /// gave no count after `elapsed_ms`. The tally is printed only when the
-    /// stop is not a wall: under a wall it measures the machine's speed.
+    /// stop is not a wall: under a wall it measures the machine's speed. A
+    /// forecast stop prints the estimate it was made on, but not its tally:
+    /// taken at a fixed time into the run, that too measures the machine.
     pub(crate) fn report_no_count(&self, tag: &str, elapsed_ms: u128) {
         match self.bust {
             Some(AllsatStop::Wall | AllsatStop::Terminated) | None => {
@@ -324,8 +352,69 @@ impl AllsatCtl<'_> {
                 self.stop_reason(),
                 self.models,
             ),
+            Some(AllsatStop::Forecast(estimate)) => eprintln!(
+                "{tag}: no count: {} (estimate {estimate:.3e} projections, {elapsed_ms}ms)",
+                self.stop_reason(),
+            ),
         }
     }
+}
+
+/// How far into an enumeration the PMC and PWMC enumerate-show stages take
+/// their count forecast ([`AllsatCtl::forecast`]). Early enough that a stop
+/// returns most of the wall to the compile behind the stage; late enough that
+/// the tally gives a rate.
+pub(crate) const FORECAST_AT: Duration = Duration::from_secs(5);
+
+/// Most wall a forecast's path estimate may spend, from the enumeration's
+/// own wall.
+const FORECAST_WALL: Duration = Duration::from_secs(2);
+
+/// Most random paths a forecast walks, and the cut paths after which it gives
+/// up estimating.
+const FORECAST_PATHS: u32 = 16;
+const FORECAST_MAX_CUT: u32 = 2;
+
+/// How many times the wall left the projections still missing may need, at
+/// the rate so far, before a forecast stops the enumeration. The rate only
+/// falls as the blocking clauses accumulate, so the forecast already
+/// under-reads the time an enumeration needs; the margin covers an estimate
+/// that over-reads the count.
+const FORECAST_MARGIN: f64 = 2.0;
+
+/// The forecast rule: whether `tally` projections found in `enumerated`, with
+/// `left` of the wall to go, are heading for an `estimate` the wall cannot
+/// hold. No estimate, no rate or no wall left keeps enumerating (a spent wall
+/// is the wall check's to report).
+fn forecast_exceeds_wall(estimate: Option<f64>, tally: u64, enumerated: Duration, left: Duration) -> bool {
+    let Some(estimate) = estimate else {
+        return false;
+    };
+    let secs = enumerated.as_secs_f64();
+    if tally == 0 || secs <= 0.0 || left.is_zero() {
+        return false;
+    }
+    let rate = tally as f64 / secs;
+    (estimate - tally as f64) / rate > FORECAST_MARGIN * left.as_secs_f64()
+}
+
+/// Take the count forecast of an enumeration of the `constrained` show
+/// variables, `enumerated` into a wall of `budget` that started at `start`,
+/// with `tally` projections found: the estimate when [`forecast_exceeds_wall`]
+/// says stop, `None` to keep going.
+fn forecast(
+    formula: &CnfFormula,
+    constrained: &[i32],
+    tally: u64,
+    enumerated: Duration,
+    start: Instant,
+    budget: Duration,
+) -> Option<f64> {
+    let wall = FORECAST_WALL.min(budget.saturating_sub(start.elapsed()));
+    let show: Vec<VarId> = constrained.iter().map(|&d| VarId(d as u32)).collect();
+    let estimate = estimate_by_paths(formula, &show, FORECAST_PATHS, FORECAST_MAX_CUT, wall, Some(wall)).mean();
+    let left = budget.saturating_sub(start.elapsed());
+    estimate.filter(|_| forecast_exceeds_wall(estimate, tally, enumerated, left))
 }
 
 /// Projected AllSAT: enumerate the feasible constrained-show projections via
@@ -339,8 +428,9 @@ impl AllsatCtl<'_> {
 /// and its true extension, if feasible, is found in a later round).
 ///
 /// Returns `None` (fall through to compile) when the feasible count exceeds
-/// `model_budget`, when the time budget is hit, or on an unknown result, never
-/// a wrong answer. Soundness is the same as the sweep: the tally, scaled by
+/// `model_budget`, when the time budget is hit, on an unknown result, or when
+/// a requested [`AllsatCtl::forecast`] finds the count out of the wall's
+/// reach, never a wrong answer. Soundness is the same as the sweep: the tally, scaled by
 /// the free show vars, is exact.
 ///
 /// `ctl` is the caller's control and observation — see [`AllsatCtl`].
@@ -380,9 +470,24 @@ fn allsat<T: Tally>(
     // own opening budget, e.g. the support-enum stage's fixed-cost probe) is
     // never guarded.
     let mut window = Window { budget: time_budget, deadline: term.deadline_handle(), abort_at: None };
+    // Pending until the one forecast is taken.
+    let mut forecast_at = ctl.forecast;
     loop {
         if start.elapsed() > window.budget && !window.at_wall(ctl, count, start.elapsed()) {
             return bust(ctl, AllsatStop::Wall, count);
+        }
+        // The count forecast, once, between solves (see `AllsatCtl::forecast`).
+        // The estimator loads its own solver, so this one is untouched, and
+        // its wall is spent from the enumeration's.
+        if let Some(at) = forecast_at
+            && count > 0
+            && start.elapsed() >= at
+        {
+            forecast_at = None;
+            let enumerated = start.elapsed();
+            if let Some(estimate) = forecast(formula, constrained, count, enumerated, start, window.budget) {
+                return bust(ctl, AllsatStop::Forecast(estimate), count);
+            }
         }
         let status = if supervised {
             Bounded::new(&mut solver, term.clone()).solve()
@@ -442,6 +547,58 @@ fn allsat<T: Tally>(
 
     ctl.models = count;
     Some(tally.total(free))
+}
+
+/// Estimate the feasible-projection count by drawing random paths one at a
+/// time through [`estimate_count_by_random_paths`], until `paths` are drawn,
+/// `max_cut` of them are cut, or, when `total` is given, that much wall is
+/// spent. Each path runs under `path_wall`, and under what is left of `total`.
+///
+/// One at a time so the cut-off costs at most one extra path: an instance
+/// whose paths outrun their wall gets out after `max_cut` of them instead of
+/// paying for all. Every path loads a fresh solver and gets its own
+/// [`path_seed`], so the draw is reproducible. The one path-drawing loop: the
+/// support-enum stage's estimate and the [`AllsatCtl::forecast`] both use it.
+pub(crate) fn estimate_by_paths(
+    formula: &CnfFormula,
+    show_vars: &[VarId],
+    paths: u32,
+    max_cut: u32,
+    path_wall: Duration,
+    total: Option<Duration>,
+) -> PathEstimate {
+    let started = Instant::now();
+    let mut acc = PathEstimate::default();
+    let drawn = |a: &PathEstimate| a.weights.len() as u32 + a.truncated;
+    while drawn(&acc) < paths && acc.truncated < max_cut {
+        let wall = match total {
+            Some(total) => {
+                let left = total.saturating_sub(started.elapsed());
+                if left.is_zero() {
+                    break;
+                }
+                path_wall.min(left)
+            }
+            None => path_wall,
+        };
+        let est = estimate_count_by_random_paths(formula, show_vars, 1, wall, path_seed(drawn(&acc)));
+        if est.unsat {
+            acc.unsat = true;
+            break;
+        }
+        acc.truncated += est.truncated;
+        acc.weights.extend(est.weights);
+    }
+    acc
+}
+
+/// The seed of path `k`. One fixed base, so a re-run of the same instance
+/// routes the same way. The engine starts its generator at `seed | 1` and each
+/// call loads a fresh solver, so the seeds step by 2 from an odd base: every
+/// path gets its own generator state, where a step of 1 would pair them up.
+fn path_seed(k: u32) -> u64 {
+    const SEED: u64 = 0x9E37_79B9_7F4A_7C15;
+    SEED.wrapping_add(2 * u64::from(k))
 }
 
 /// One random-path sample set from [`estimate_count_by_random_paths`].
@@ -508,7 +665,7 @@ fn lcg_next(state: &mut u64) -> u64 {
 /// prefix, so it would pull the mean further below the true count, which
 /// this estimator already under-reads (see `TALLY_CEILING` in
 /// `stage::mc::support_enum`).
-pub(crate) fn estimate_count_by_random_paths(
+fn estimate_count_by_random_paths(
     formula: &CnfFormula,
     show_vars: &[VarId],
     samples: u32,

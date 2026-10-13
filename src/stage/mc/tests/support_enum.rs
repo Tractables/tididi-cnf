@@ -208,17 +208,6 @@ fn declines_when_the_stage_wall_trips() {
     assert_eq!(run_support_enum(&f, &support, 0, 0), None);
 }
 
-/// The engine's generator starts at `seed | 1`: the paths' seeds must stay
-/// distinct through it, or two paths walk the same way.
-#[test]
-fn path_seeds_give_distinct_generator_states() {
-    let states: std::collections::HashSet<u64> =
-        (0..ESTIMATOR_SAMPLES).map(|k| path_seed(k) | 1).collect();
-    assert_eq!(states.len() as u32, ESTIMATOR_SAMPLES);
-    // Path 0 keeps the base seed.
-    assert_eq!(path_seed(0), 0x9E37_79B9_7F4A_7C15);
-}
-
 /// The estimator must land in the right universe on a formula whose
 /// feasible-projection count is known exactly: the chain has k+1 of them.
 ///
