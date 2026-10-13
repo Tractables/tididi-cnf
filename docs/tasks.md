@@ -110,11 +110,13 @@ second and another not finish. Without `--vtree`, the run chooses:
 
 - `compile`, `pmc` and `pwmc` build vitri's `portfolio`, which constructs
   several vtrees for the formula and keeps the one that scores best. Under
-  `compile`, a formula that splits into independent parts and has at least
-  1000 variables and 4.5 clauses per variable gets vitri's force-directed
-  `force` tree on every part instead. The portfolio scores trees without
-  compiling on them, and on some formulas the diagram outgrows the memory
-  limit on its pick while another tree compiles in a small fraction of it.
+  `compile`, a large, clause-dense formula that splits into independent
+  parts, none of which dominates the split, gets vitri's force-directed
+  `force` tree on every part instead
+  ([vitri's vtree guide](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md)
+  gives the rule). The portfolio scores trees without compiling on them, and
+  on some formulas the diagram outgrows the memory limit on its pick while
+  another tree compiles in a small fraction of it.
   When a `compile` runs out of memory with time left, it compiles once more
   on vitri's hypergraph bisection, `hypergraph-bisect:imbalance=0.40`, unless
   the portfolio's pick already was a `hypergraph-bisect` tree; the record's

@@ -51,3 +51,16 @@ fn batch_spine_is_the_union_of_ancestor_paths() {
         assert_eq!(value, expected.contains(&VtreeIdx(index as u32)));
     }
 }
+
+/// Over every level, the spine count is the library's whole-diagram pair
+/// count, which the sum restates level by level.
+#[test]
+fn batch_spine_pairs_over_every_level_is_the_pair_count() {
+    let eng = &Engine::new();
+    let vtree = Arc::new(Vtree::balanced(6));
+    let diagram = eng.clause(&vtree, [Literal::pos(VarId(1)), Literal::neg(VarId(4))]).unwrap();
+    let diagram =
+        eng.and_clause(diagram, &[Literal::pos(VarId(2)), Literal::pos(VarId(5)), Literal::neg(VarId(6))]).unwrap();
+    let every: Vec<VtreeIdx> = (0..vtree.num_nodes() as u32).map(VtreeIdx).collect();
+    assert_eq!(batch_spine_pairs(&diagram, &every), diagram.pair_count());
+}

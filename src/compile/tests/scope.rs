@@ -128,8 +128,9 @@ fn proximity_reorder_matches_the_hash_set_reference() {
     assert_eq!(widths_seen, [true; 4], "every overlap representation was exercised");
 }
 
-/// The completion greedy as first written: every placement rescores every
-/// unplaced clause from the variables' state. Returns group positions.
+/// The direct hash-map implementation of the completion greedy, the
+/// reference `completion_order` must reproduce: every placement rescores
+/// every unplaced clause from the variables' state. Returns group positions.
 fn reference_completion(group: &[usize], formula: &CnfFormula, finishes: impl Fn(VarId) -> bool) -> Vec<usize> {
     use rustc_hash::{FxHashMap, FxHashSet};
     let vars_of = |k: usize| formula.clauses()[group[k]].literals.iter().map(|l| l.var);
@@ -185,8 +186,8 @@ fn reference_completion(group: &[usize], formula: &CnfFormula, finishes: impl Fn
     order
 }
 
-/// The open profile as first written, over hash sets; `order` holds group
-/// positions.
+/// The direct hash-set implementation of the open profile, the reference
+/// `profile` must reproduce; `order` holds group positions.
 fn reference_profile(
     order: &[usize],
     group: &[usize],

@@ -41,24 +41,24 @@ const UNCAPPED_ACC_WIDTH: usize = 64;
 const BATCH_WIDTH_LIMIT: usize = 256;
 
 /// The width an extended batch never passes once the accumulator is wider
-/// than [`UNCAPPED_ACC_WIDTH`]. A wider extended batch was seen to multiply
-/// the merge's unreduced product more than a hundredfold.
+/// than [`UNCAPPED_ACC_WIDTH`]: a wide batch merged into a wide accumulator
+/// multiplies the merge's unreduced product.
 const BATCH_WIDTH_GUARD: usize = 1024;
 
 /// How many times more one merge costs per accumulator pair than conjoining
 /// one clause into a batch costs per batch pair; the extension past the floor
-/// weighs the two ([`build_one_batch`]). On formulas with few variables and
-/// many clauses a merge, conjoin and reduction, measured about 150-180 ns per
-/// accumulator pair, and a batch conjoin 20-35 ns per batch pair.
+/// weighs the two ([`build_one_batch`]). A merge conjoins and reduces the
+/// whole accumulator, where a batch conjoin touches only the batch.
 const BATCH_MERGE_COST_RATIO: usize = 5;
 
 /// A merge is absorbing when its unreduced product holds at most this
 /// fraction (numerator, denominator) of the accumulator's pairs; only after
 /// an absorbing merge may the next batch at the node extend past the floor
-/// ([`next_batch_limit`]). The merges that earned an extension measured
-/// products 1.2-1.4 times the accumulator; where a node's clauses multiply
-/// the diagram it is 3-20 times, and a node about to turn from absorbing to
-/// expanding was seen at 1.75.
+/// ([`next_batch_limit`]). A merge whose clauses the accumulator absorbs has
+/// a product a little above the accumulator's pairs, and one whose clauses
+/// multiply it a product several times as large; the factor sits between the
+/// two, low enough to end the extension as a node starts to turn from
+/// absorbing to expanding.
 const BATCH_ABSORB_FACTOR: (usize, usize) = (3, 2);
 
 /// After an absorbing merge the next batch may hold up to this fraction
@@ -73,9 +73,8 @@ const BATCH_GROWTH: (usize, usize) = (3, 2);
 /// pairs whether or not the node's clauses multiply it, and the earned
 /// extension only lengthens batches after absorbing merges, so a node that
 /// starts large and expands pays a full accumulator merge every floor's worth
-/// of clauses. On formulas whose late nodes start from accumulators of tens
-/// of millions of pairs, the large floor cut compile time by a fifth to a
-/// quarter at unchanged peak pairs.
+/// of clauses. The large floor merges such a node less often, and leaves the
+/// peak pairs as they are.
 const BATCH_LARGE_ENTRY_PAIRS: usize = 10_000_000;
 
 /// The floor's clause count for a fold that starts above
@@ -351,6 +350,10 @@ fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
 /// reads it as the cost of conjoining one more clause, which is linear in the
 /// batch's pairs; the off-spine constant does not matter there, and skipping
 /// those levels keeps the read proportional to the batch's spine.
+///
+/// The library publishes the whole diagram's pair count and each node's, but
+/// no count over a chosen set of levels, so the sum is taken here node by
+/// node; a test holds it equal to `Tdd::pair_count` over every level.
 fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine
         .iter()
@@ -408,9 +411,9 @@ impl BatchStop<'_> {
 ///   accumulator that follows stays cheap. A batch the cap stops stops even
 ///   when it may extend: a batch that turns wide before the floor is not
 ///   behaving like the absorbed batches that earned the extension, and
-///   merging it wide into a wide accumulator was seen to multiply the merge's
-///   product several times over. A batch that may not extend
-///   (`stop.limit == stop.floor`) stops at the floor.
+///   merging it wide into a wide accumulator multiplies the merge's product.
+///   A batch that may not extend (`stop.limit == stop.floor`) stops at the
+///   floor.
 /// - **Extension.** Past the floor, a merge costs time in proportion to the
 ///   accumulator's pairs, nearly independent of the batch, while conjoining
 ///   one more clause costs time in proportion to the batch's pairs. So the

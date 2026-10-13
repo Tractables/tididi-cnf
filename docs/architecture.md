@@ -98,6 +98,8 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `step.rs` | `compile_component`, the bottom-up pass over one vtree, and its per-pass state. |
 | `scope.rs` | The vtree node each clause is conjoined at, and the clause order within a node. |
 | `batch.rs` | One node's clauses folded into its diagram, a batch at a time. |
+| `cofactor.rs` | The cofactor step: a node whose smaller child spans a few variables folds its clauses once per assignment of them, into the other child's diagram alone. |
+| `stall.rs` | The per-step wall: the rule that bounds each step's time, and the watch that keeps a step stopped on it for the caller to read. |
 | `schedule.rs` | When each level may be summed out: after which step, and after which clause within it. |
 | `marginalize.rs` | Summing levels out as the pass climbs, a projection's ∃-forget, and the shield that keeps the levels a pending forget reads. |
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |

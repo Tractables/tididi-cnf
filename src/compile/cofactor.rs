@@ -54,8 +54,8 @@ use super::step::{DiagramClauses, PassState, StepContext};
 /// for the node to take the cofactor step, which folds the node's clauses
 /// once per assignment of those variables: at most two to this power
 /// branches. The assignments are bit masks in a `u8`, so it stays below
-/// eight. Five rather than three lets more nodes of formulas over few
-/// variables take the step, which cuts their accumulator work.
+/// eight. A larger bound lets more nodes take the step; the cost guard leaves
+/// a node whose branches outnumber its fold's merges to the normal step.
 const COFACTOR_MAX_VARS: usize = 5;
 const _: () = assert!(COFACTOR_MAX_VARS < 8, "the cofactor step's assignments are u8 masks");
 
@@ -205,8 +205,8 @@ fn plan_cofactor(
         return Ok(None);
     }
 
-    // Shortest first, stably: on the formulas the step was developed on, the
-    // branches folded in scope order cost a multiple of the work.
+    // Shortest first, stably: the shortest clauses constrain a branch most, so
+    // folding them first keeps small the diagram the longer ones meet.
     let mut order: Vec<usize> = (0..clauses.len()).collect();
     order.sort_by_key(|&i| rest_len[i]);
     let mut rest = DiagramClauses::with_capacity(clauses.len(), rest_len.iter().sum());

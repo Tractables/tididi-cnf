@@ -22,10 +22,8 @@ const COMPLETION_ORDER_MAX_CLAUSES: usize = 4096;
 /// margin keeps the tour on near-ties, where the completion order can score a
 /// little smaller and still build far larger diagrams: bipartite stars of
 /// two-literal clauses, where it opens one side's hubs before it finishes
-/// any. Compiled on fixed vtrees, the rule with this margin lost no formula
-/// the tour finished and kept the completion order's wins, where taking the
-/// completion order wherever its profile was smaller lost formulas the tour
-/// finished, compiling and counting alike.
+/// any. The profile is only a proxy for the diagrams' size, so the order is
+/// changed only where the proxy says so clearly.
 const COMPLETION_ORDER_MAX_RATIO: f64 = 0.9;
 
 /// The completion order's summed open count, as a fraction of the tour's,

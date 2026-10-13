@@ -181,8 +181,8 @@ fn no_sbva_retry(
 
 /// The portfolio entry the stall recompile builds its tree from: goatd's
 /// refinement schedule on the primal graph, an entry the default portfolio
-/// leaves out. On the reductions whose primary compile stalls, it is the entry
-/// that most often compiled when each was forced alone.
+/// leaves out. On reductions whose primary compile stalls, it is the entry
+/// that compiles most often when each is forced alone.
 const STALL_RECOMPILE_ENTRY: &str = "goatd-primal";
 
 /// The stall recompile: the primary compile gave up on one internal step that

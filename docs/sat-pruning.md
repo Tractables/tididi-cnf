@@ -27,12 +27,12 @@ compile has its own pruning context with its own cap on that spend
 contexts of one compile also share a cap three times as large
 (`PruneLimits::compile_spend_cap_ms`). A context hands its unproductive spend
 on to the compile's next context when it closes, and no pass gets more of a
-budget than the compile's cap has left. Without the shared cap, a compile
-split into many components paid a cap for each, mostly on passes that removed
-nothing. A context alone ends at about twice its own cap, since the cap admits
-a pass just under it and gives that pass a whole budget; at three times, a
-compile of one component stops on its own cap first, and prunes as it would
-without the shared cap.
+budget than the compile's cap has left. The shared cap keeps a compile split
+into many components from spending a whole cap in each, on passes that may
+remove nothing. A context alone ends at about twice its own cap, since the
+cap admits a pass just under it and gives that pass a whole budget; at three
+times, a compile of one component stops on its own cap first, and prunes as
+it would without the shared cap.
 
 Where each part is documented:
 

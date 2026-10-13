@@ -47,17 +47,15 @@ clauses by one of two orders:
 Each order is scored by its open profile, the largest and the summed open
 count after each clause. Where some variable finishes at the node, the
 completion order replaces the tour only when it is clearly smaller on both
-(`COMPLETION_ORDER_MAX_RATIO`, `COMPLETION_ORDER_SUM_RATIO`). The margin
-keeps the tour on near-ties, where the completion order was seen to build far
-larger diagrams: bipartite stars of two-literal clauses, where it opens one
-side's hubs before it finishes any. Where no variable finishes, both orders
-end with every variable open, so the maxima tie and only the order of
-touching differs; a smaller sum suffices there. Groups over
+(`COMPLETION_ORDER_MAX_RATIO`, `COMPLETION_ORDER_SUM_RATIO`). The profile is
+only a proxy for the diagrams' size, and the margin keeps the tour on
+near-ties, where the completion order can score a little smaller and still
+build far larger diagrams: bipartite stars of two-literal clauses, where it
+opens one side's hubs before it finishes any. Where no variable finishes,
+both orders end with every variable open, so the maxima tie and only the
+order of touching differs; a smaller sum suffices there. Groups over
 `COMPLETION_ORDER_MAX_CLAUSES` keep the tour without computing the
-completion order, whose greedy is quadratic in the group. On fixed vtrees,
-the rule kept every formula the tour finished and cut the accumulator pairs of
-several large compiles and counts, where taking the completion order on any
-smaller profile lost formulas.
+completion order, whose greedy is quadratic in the group.
 
 **Why this is faster**: A clause scoped to a sub-vtree only affects widths
 within that subtree, leaving ancestor levels at width 1. The naive
@@ -160,9 +158,8 @@ disjunction of `cube(a) ∧ R_a`.
   `ceil(clauses / floor)` exceeds the number of branches, a test made before
   any fold.
 
-The shortest-first order matters: on the formulas over few variables the step
-was developed on, folding the branches' clauses in their original order cost a
-multiple of the work.
+The shortest-first order matters: the shortest clauses constrain a branch
+most, so folding them first keeps small the diagram the longer ones meet.
 
 ### Independent component compilation
 

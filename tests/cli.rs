@@ -433,8 +433,8 @@ fn stdout_is_the_answer_and_the_record_the_run() {
 
 /// Compile mode puts the forced variables back on the circuit in space linear
 /// in their number: 100 000 of them compile under a 3 GiB address-space cap.
-/// A vtree per forced variable sizes each leaf's table by its variable id, a
-/// quadratic expansion that ran this out of memory.
+/// A vtree per forced variable would size each leaf's table by its variable
+/// id, an expansion quadratic in their number that this cap does not hold.
 #[test]
 fn compile_expands_many_forced_variables_in_linear_space() {
     let n = 100_000u32;

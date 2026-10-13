@@ -53,14 +53,13 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 /// **`dirty_decay_ms:-1,muzzy_decay_ms:-1`** — never purge dirty pages on a
 /// timer; keep them in the arena for reuse. The apply/contract cycle frees
 /// and reallocates level-sized buffers constantly, and pages handed back to
-/// the OS are faulted in again: with zero decay a large compile faults in
-/// several times its peak memory and spends a large share of its time in the
-/// kernel. A decay of a second or ten saves almost nothing, since the freed
-/// pages come back into use later than that. Cost: `mapped+retained` tracks
-/// the high-water mark instead of live bytes, and the held pages count
-/// against `RLIMIT_AS`. [`preflight_alloc_decay_check`] switches to eager
-/// reclamation ([`reclaim_eagerly`]) when `mapped_bytes()` reaches
-/// [`LAZY_FLIP_FRAC`] of `RLIMIT_AS`. The OOM-recovery cascade
+/// the OS are faulted in again: with zero decay a large compile spends much
+/// of its time in the kernel. A short timed decay does not help, since the
+/// freed pages come back into use later than it keeps them. Cost:
+/// `mapped+retained` tracks the high-water mark instead of live bytes, and
+/// the held pages count against `RLIMIT_AS`. [`preflight_alloc_decay_check`]
+/// switches to eager reclamation ([`reclaim_eagerly`]) when `mapped_bytes()`
+/// reaches [`LAZY_FLIP_FRAC`] of `RLIMIT_AS`. The OOM-recovery cascade
 /// (`stage/mc/recovery.rs`) purges after every failed compile and leaves the
 /// decay setting as it is.
 #[allow(non_upper_case_globals)]
@@ -86,11 +85,11 @@ static EAGER_DECAY_LATCHED: std::sync::atomic::AtomicBool =
 
 /// Fraction of `RLIMIT_AS` at which lazy decay switches to eager.
 ///
-/// Against an earlier 40%, compiles whose footprint passes 40% of the cap but
-/// stays under 60% run about a tenth faster, with fewer page faults and more
-/// peak memory. A 50% line gave up most of that gain, and purging at 60%
-/// while leaving decay off afterwards made the allocator refuse requests that
-/// the switch lets through.
+/// Lazy decay keeps freed pages for reuse, which saves page faults at the
+/// cost of a larger footprint, so the switch comes only once the footprint
+/// nears the cap. Purging once at the line and leaving decay lazy afterwards
+/// is not enough: the allocator then refuses requests that the switch lets
+/// through.
 const LAZY_FLIP_FRAC: f64 = 0.60;
 
 thread_local! {
@@ -159,8 +158,8 @@ fn lazy_check_due(accum: u64, request_bytes: u64) -> (u64, bool) {
 /// as the address space in use, and the held pages really are charged against
 /// `RLIMIT_AS`. Below the line the held pages only shrink that headroom; past
 /// it, zero decay keeps the number close to the live footprint while the cap
-/// approaches. Between two real reads `mapped+retained` can pass the line by
-/// several GiB, which the room above it absorbs.
+/// approaches. Between two real reads `mapped+retained` can pass the line,
+/// which the room above it absorbs.
 ///
 /// Every entry, sized request or heartbeat poll, goes through the per-thread
 /// throttle `lazy_check_due` first. No-op once latched, and inert when
