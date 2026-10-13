@@ -1,9 +1,8 @@
 //! The [worked examples](examples) put the crate to work on applications, from
 //! counting a product's configurations to the distinct outputs of a circuit.
 //! The [architecture reference](architecture) maps the source for
-//! contributors. The command-line guide, the input format and the run record
-//! are documented with the
-//! [binary](https://github.com/Tractables/tididi-bonsai/tree/main/docs).
+//! contributors. The binary, the input format and the run record are in the
+//! [command-line guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md).
 
 // Keep the index, sidebar and module declarations in one reading order.
 macro_rules! walkthroughs {

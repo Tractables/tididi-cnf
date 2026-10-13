@@ -2,10 +2,12 @@
 //! Diagram.
 //!
 //! tididi-bonsai answers the model count, the weighted model count and their
-//! projections onto a set of variables exactly: it preprocesses the formula,
-//! chooses a vtree for what is left and compiles it bottom-up, with fallbacks
-//! when a compile runs out of time or memory. It is the library behind the
-//! `tididi` binary, and [`count`] makes the binary's whole run on one instance.
+//! projections onto a set of variables: the model count and the projected
+//! counts exactly, the weighted model count in a bounded-precision log domain.
+//! It preprocesses the formula, chooses a vtree for what is left and compiles
+//! it bottom-up, with fallbacks when a compile runs out of time or memory. It
+//! is the library behind the `tididi` binary, and [`count`] makes the binary's
+//! whole run on one instance.
 //!
 //! # Start here
 //!
@@ -44,9 +46,15 @@
 //!
 //! let formula = formula_from_clauses(3, [[1, 2], [-1, 3], [-2, -3]], None, &[])?;
 //! let answer = count(formula, Some(Mode::Mc), &Limits::default())?;
-//! println!("Models: {}", answer.count()); // Models: 2
+//! println!("Models: {}", answer.count());
 //! # assert_eq!(answer.count(), &tididi_bonsai::Count::Integer(2u32.into()));
 //! # Ok::<(), tididi_bonsai::Error>(())
+//! ```
+//!
+//! Output:
+//!
+//! ```text
+//! Models: 2
 //! ```
 //!
 //! # Tasks and input
@@ -54,8 +62,9 @@
 //! The instance is DIMACS CNF. Its `c t mc|wmc|pmc|pwmc` line names the task
 //! ([`Mode`]): the model count, the weighted count, and their projected forms,
 //! with `c p weight` lines for the literal weights and a `c p show` line for
-//! the variables projected onto; a formula with no task line is compiled. The
-//! [user guide](https://github.com/Tractables/tididi-bonsai/tree/main/docs)
+//! the variables projected onto; a formula that declares neither a task nor a
+//! show set is compiled.
+//! The [user guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md)
 //! describes the input format, the answers and the binary.
 //!
 //! # One step at a time
@@ -106,8 +115,8 @@
 //! their probabilities to find how likely two sites stay connected.
 //! The [circuit example](guide::examples::circuits) counts the distinct
 //! products a multiplier outputs.
-//! The [vtree example](guide::examples::vtree_choice) compiles one formula on several
-//! vtrees and compares the circuits.
+//! The [vtree example](guide::examples::vtree_choice) compiles one formula on
+//! several vtrees and compares the circuits.
 //!
 //! The [guide] holds these worked examples and the architecture reference.
 //!
@@ -119,7 +128,9 @@
 //! memory limit lowers the process's address-space limit while the run lasts,
 //! and a model count that is refused memory retries on smaller pieces of the
 //! formula; the call puts the limit back when it returns. The default sets
-//! neither.
+//! neither. A run that nears the address-space limit switches the allocator to
+//! handing freed pages back to the system at once, and the process keeps that
+//! setting after the run returns.
 //!
 //! Calls from several threads run one at a time: a [`count`] call waits for
 //! the one in progress to return. [`count`] prints its progress to stderr, as
@@ -133,7 +144,9 @@
 //! Arjun and their dependencies from source and links them natively; its
 //! [building guide](https://github.com/Tractables/vitri/blob/main/docs/building.md)
 //! lists the C++ toolchain it needs, for either target. Natively the crate
-//! installs jemalloc as the global allocator, and recovering from a refused
+//! installs jemalloc as the global allocator, so a program that links it
+//! cannot choose its own, and it exports jemalloc's startup configuration,
+//! which then holds for the whole process. Recovering from a refused
 //! allocation needs `panic = "unwind"`, the default. WebAssembly keeps the
 //! target's own allocator and has no address-space limit to lower, so it
 //! refuses [`Limits::mem_limit_mb`].
@@ -159,28 +172,29 @@
 #![warn(rustdoc::private_intra_doc_links)]
 #![warn(unreachable_pub)]
 
+pub mod compile;
+pub mod guide;
+pub mod vtree;
+
+mod budget;
 mod cli;
 mod config;
-pub mod vtree;
-mod driver;
-mod stage;
-mod enumeration;
-mod output;
-#[cfg_attr(target_family = "wasm", path = "mem_wasm.rs")]
-mod mem;
-mod budget;
-mod error;
 mod convert;
+mod driver;
+mod enumeration;
+mod error;
 mod formula;
 mod frontend;
+#[cfg_attr(target_family = "wasm", path = "mem_wasm.rs")]
+mod mem;
+mod output;
 mod problem;
 mod run;
+mod stage;
 
 #[cfg(test)]
 #[path = "tests/support.rs"]
 pub(crate) mod test_support;
-
-pub use formula::{formula_from_clauses, parse_dimacs};
 
 /// The diagram library this crate compiles into: vtrees, diagrams, the engine
 /// and its queries.
@@ -192,11 +206,9 @@ pub use tididi;
 /// and [`compile`] takes.
 pub use vitri;
 
-pub mod compile;
-pub mod guide;
-
 pub use config::{Limits, Mode};
 pub use error::Error;
+pub use formula::{formula_from_clauses, parse_dimacs};
 pub use output::Stats;
 pub use run::{Answer, Count, Input, count};
 
