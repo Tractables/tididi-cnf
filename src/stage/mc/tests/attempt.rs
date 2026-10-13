@@ -6,20 +6,16 @@ use num_bigint::BigUint;
 /// The attempt over `formula`: its components, one minfill vtree per
 /// component, and no `2^k` lift.
 fn attempt(formula: &CnfFormula) -> CompileAttempt {
-    let components = crate::vtree::split_components(formula, "minfill-primal");
-    let vtrees = components
-        .iter()
-        .map(|spec| {
-            let (sub, _) = formula.extract_component(&spec.clause_indices);
-            crate::vtree::build_vtree(
-                &sub,
-                "minfill-primal",
-                &crate::vtree::VtreeOptions::default(),
-            )
-            .unwrap()
+    let components = crate::vtree::split_components(formula, "minfill-primal")
+        .into_iter()
+        .map(|component| {
+            let (sub, _) = formula.extract_component(&component.clause_indices);
+            let vtree = crate::vtree::build_vtree(&sub, "minfill-primal", &crate::vtree::VtreeOptions::default())
+                .unwrap();
+            crate::vtree::ComponentVtree { vtree, component }
         })
         .collect();
-    CompileAttempt { formula: formula.clone(), components, vtrees, lift_pow2: 0 }
+    CompileAttempt { formula: formula.clone(), components, lift_pow2: 0 }
 }
 
 /// Two identical components compile to the product of their counts, and

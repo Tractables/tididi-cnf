@@ -7,63 +7,52 @@
 //! bounded by the time limit the attempt will be compiled against, then hand
 //! them to the same constructor. All end at the same `CompileAttempt`, so an
 //! attempt cannot arrive at the compile half-built. [`count_attempt`] compiles
-//! one on the calling thread under panic isolation.
-use std::sync::Arc;
+//! one under panic isolation.
+
 use std::time::Instant;
 
 use num_bigint::BigUint;
-use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
 use crate::budget::vtree_deadline;
 use crate::compile::model_count_streaming;
 use crate::stage::{PORTFOLIO_VTREE_SPEC, Run, run_isolated};
 use crate::vtree::{
-    Component, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
+    ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
 };
 
-/// One attempt of a streaming model-count compile: a formula, its components
-/// and their vtrees, pre-built by the caller.
+/// One attempt of a streaming model-count compile: a formula, and its
+/// components with their vtrees, pre-built by the caller.
 pub(super) struct CompileAttempt {
     /// The formula this attempt compiles.
-    pub formula: CnfFormula,
-    /// The formula's components, in the order the compile drains them.
-    pub components: Vec<Component>,
-    /// One vtree per entry of `components`, in the same order.
-    pub vtrees: Vec<Arc<Vtree>>,
+    pub(super) formula: CnfFormula,
+    /// The formula's components and their vtrees, in the order the compile
+    /// drains them.
+    pub(super) components: Vec<ComponentVtree>,
     /// `2^k` lift from this attempt's formula back to the base formula's
     /// space, which [`count_attempt`] folds into the count it returns (the
     /// correction invariant, in the `mc` module doc). Shannon cofactors and
     /// the unreduced retry carry 0: they compile the base formula, or a
     /// cofactor of it, directly.
-    pub lift_pow2: u32,
+    pub(super) lift_pow2: u32,
 }
 
-/// Compile `attempt` on the calling thread: `model_count_streaming`
-/// over its pre-built vtrees, under panic isolation, with what the run sets
-/// for it, against `deadline`. Returns `(count, peak_size)`, the count lifted
-/// by the attempt's `lift_pow2`, or `None` if the compile gave up or panicked;
-/// a panic is logged as `[mc] compile: panicked: ...`.
+/// Compile `attempt`: `model_count_streaming` over its pre-built vtrees,
+/// under panic isolation, with what the run sets for it, against `deadline`.
+/// Returns `(count, peak_size)`, the count lifted by the attempt's
+/// `lift_pow2`, or `None` if the compile gave up or panicked; a panic is
+/// logged as `[mc] compile: panicked: ...`.
 pub(super) fn count_attempt(
     run: &Run<'_>,
     attempt: CompileAttempt,
     deadline: Option<Instant>,
 ) -> Option<(BigUint, usize)> {
-    let CompileAttempt { formula, components, vtrees, lift_pow2 } = attempt;
-    let mut prebuilt = vtrees.into_iter();
+    let CompileAttempt { formula, components, lift_pow2 } = attempt;
+    let (components, vtrees): (Vec<_>, Vec<_>) = components.into_iter().map(|cv| (cv.component, cv.vtree)).unzip();
+    // The compile asks for one vtree per component, in order.
+    let mut vtrees = vtrees.into_iter();
     run_isolated("[mc] compile", || {
-        model_count_streaming(
-            run.eng,
-            &formula,
-            &components,
-            |_sub| {
-                Some(prebuilt.next()
-                    .expect("pre-built vtree drained: vtrees.len() must match components.len()"))
-            },
-            None,
-            deadline,
-            run.compile,
-        )
+        model_count_streaming(run.eng, &formula, &components, |_sub| vtrees.next(), None, deadline, run.compile)
     })
     .map(|(count, peak)| (count << lift_pow2, peak))
 }
@@ -71,7 +60,7 @@ pub(super) fn count_attempt(
 /// Consume a Vitri frontend attempt's already-built vtree into one compile
 /// attempt.
 ///
-/// This is the only unpacking path for paired whole-run frontend results.  The
+/// This is the only unpacking path for paired whole-run frontend results. The
 /// primary and checkpointed retry attempts must use the tree Vitri built over
 /// their own reduced formula; rebuilding here would separate the two halves of
 /// Vitri's result and repeat construction work.
@@ -80,16 +69,10 @@ pub(super) fn attempt_from_vitri_build(
     built: VtreeBuild,
     lift_pow2: u32,
 ) -> CompileAttempt {
-    let (components, vtrees): (Vec<_>, Vec<_>) = match built.components {
-        Some(cvs) => cvs.into_iter().map(|cv| (cv.component, cv.vtree)).unzip(),
-        None => (vec![whole_formula_component(&formula)], vec![built.root]),
-    };
-    CompileAttempt {
-        formula,
-        components,
-        vtrees,
-        lift_pow2,
-    }
+    let components = built.components.unwrap_or_else(|| {
+        vec![ComponentVtree { vtree: built.root, component: whole_formula_component(&formula) }]
+    });
+    CompileAttempt { formula, components, lift_pow2 }
 }
 
 /// An attempt for `formula` on Vitri's portfolio, every component's
