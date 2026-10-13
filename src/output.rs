@@ -18,6 +18,7 @@
 //! `docs/stats.md` is the record's field table.
 
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
@@ -528,31 +529,34 @@ pub(crate) fn finish(solved: Result<Answer, crate::driver::Failure>, cli: &Cli) 
 }
 
 /// Write the record as one JSON object at `path`, or on stdout for `-`.
-fn write_record(stats: &Stats, path: &str) -> Result<(), Error> {
+fn write_record(stats: &Stats, path: &Path) -> Result<(), Error> {
     let json = serde_json::to_string(stats)
         .map_err(|error| Error::Artifact(format!("could not build the stats record: {error}")))?;
-    if path == "-" {
+    if path.as_os_str() == "-" {
         println!("{json}");
         return Ok(());
     }
     std::fs::write(path, format!("{json}\n"))
-        .map_err(|error| Error::Artifact(format!("could not write {path}: {error}")))
+        .map_err(|error| Error::Artifact(format!("could not write {}: {error}", path.display())))
 }
 
 /// Write the compiled circuit to `path` and its vtree to `<path>.vtree`, and
 /// say so on stdout under the plain output format.
-fn save_diagram(tdd: &tididi::diagram::Tdd, path: &str, mcc: bool) -> Result<(), Error> {
+fn save_diagram(tdd: &tididi::diagram::Tdd, path: &Path, mcc: bool) -> Result<(), Error> {
     // The `.tdd` format labels vtree nodes but does not describe the tree,
     // and `tididi::io::load_tdd` takes the vtree as an argument, so the
     // vtree goes beside the circuit in its own text format.
-    let vtree_path = format!("{path}.vtree");
+    let mut vtree_path = path.as_os_str().to_owned();
+    vtree_path.push(".vtree");
+    let vtree_path = PathBuf::from(vtree_path);
+    let (shown, vtree_shown) = (path.display(), vtree_path.display());
     tididi::io::save_tdd(tdd, path)
-        .map_err(|error| Error::Artifact(format!("could not write the diagram to {path}: {error}")))?;
+        .map_err(|error| Error::Artifact(format!("could not write the diagram to {shown}: {error}")))?;
     std::fs::write(&vtree_path, tdd.vtree().to_text())
-        .map_err(|error| Error::Artifact(format!("could not write the vtree to {vtree_path}: {error}")))?;
+        .map_err(|error| Error::Artifact(format!("could not write the vtree to {vtree_shown}: {error}")))?;
     if !mcc {
         println!(
-            "tdd written to {path}, vtree to {vtree_path}: {} nodes, {} pairs",
+            "tdd written to {shown}, vtree to {vtree_shown}: {} nodes, {} pairs",
             tdd.node_count(),
             tdd.pair_count(),
         );

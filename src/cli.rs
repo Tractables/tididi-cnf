@@ -7,6 +7,8 @@
 //! (`Settings::refuse_inert`); the rest says how `output` prints what it
 //! answered.
 
+use std::path::PathBuf;
+
 use crate::config::{
     Limits, Mode, OutputFormat, PreprocessLevel, Settings, parse_preprocess_level,
     DEFAULT_MEM_LIMIT_MB,
@@ -19,7 +21,7 @@ use crate::Error;
 /// (`Error::exit_code`).
 pub fn run_cli() -> std::process::ExitCode {
     let outcome = parse_args().and_then(|cli| {
-        let input = crate::Input::File(cli.path.clone().into());
+        let input = crate::Input::File(cli.path.clone());
         let solved = crate::driver::solve(input, cli.mode, &cli.limits, &cli.settings);
         crate::output::finish(solved, &cli)
     });
@@ -35,7 +37,7 @@ pub fn run_cli() -> std::process::ExitCode {
 /// One command line, parsed: the run it asks for and where its answer goes.
 pub(crate) struct Cli {
     /// The DIMACS file.
-    pub(crate) path: String,
+    pub(crate) path: PathBuf,
     /// `--mode`, when it was on the command line.
     pub(crate) mode: Option<Mode>,
     /// `--time-limit-ms` (or `TIDIDI_TIME_LIMIT_MS`) and `--mem-limit-mb`.
@@ -50,10 +52,10 @@ pub(crate) struct Cli {
     /// ended — as one JSON object at `<path>`, or to stdout after the answer
     /// when the path is `-`. Valid in every mode.
     /// `docs/stats.md` is the field table.
-    pub(crate) stats_path: Option<String>,
+    pub(crate) stats_path: Option<PathBuf>,
     /// `--save-tdd <path>`: where the compiled circuit goes, and its vtree
     /// beside it at `<path>.vtree`.
-    pub(crate) save_tdd_path: Option<String>,
+    pub(crate) save_tdd_path: Option<PathBuf>,
 }
 
 /// The usage text: the flags, the exit statuses, and the vtree specs vitri's
@@ -140,14 +142,22 @@ fn print_and_exit(text: &str) -> ! {
 }
 
 fn parse_args() -> Result<Cli, Error> {
-    let args: Vec<String> = std::env::args().collect();
+    let mut args = std::env::args_os();
+    let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
+    // A command line the parser cannot read is a usage error: it names what
+    // is wrong and points to the usage, and the binary exits 2.
+    let usage_error = |what: String| {
+        Error::Usage(format!(
+            "{what}\nUsage: {prog} [options] <dimacs-file> (`{prog} --help` lists the options)"
+        ))
+    };
 
     let mut vtree_spec: Option<String> = None;
-    let mut dimacs_path = None;
-    let mut save_tdd_path: Option<String> = None;
+    let mut dimacs_path: Option<PathBuf> = None;
+    let mut save_tdd_path: Option<PathBuf> = None;
     // `--stats <path>`: where the run's stats record goes. Valid in every
     // mode, so it has no inert-combination guard of its own.
-    let mut stats_path: Option<String> = None;
+    let mut stats_path: Option<PathBuf> = None;
     // `--time-limit-ms`; `TIDIDI_TIME_LIMIT_MS` fills it in below when the
     // flag is absent.
     let mut time_limit_ms: Option<u64> = None;
@@ -157,28 +167,32 @@ fn parse_args() -> Result<Cli, Error> {
     let mut mem_limit_mb = DEFAULT_MEM_LIMIT_MB;
     // `--preprocess`; the run's default, full, applies without it.
     let mut preprocess: Option<PreprocessLevel> = None;
-    let mut i = 1;
 
-    let prog = args.first().map_or("tididi", String::as_str);
-    // A command line the parser cannot read is a usage error: it names what
-    // is wrong and points to the usage, and the binary exits 2.
-    let usage_error = |what: String| {
-        Error::Usage(format!(
-            "{what}\nUsage: {prog} [options] <dimacs-file> (`{prog} --help` lists the options)"
-        ))
-    };
-    let next_arg = |i: &mut usize| -> Result<String, Error> {
-        *i += 1;
-        args.get(*i).cloned().ok_or_else(|| usage_error(format!("{} needs a value.", args[*i - 1])))
-    };
-
-    while i < args.len() {
-        match args[i].as_str() {
-            "--vtree" => vtree_spec = Some(next_arg(&mut i)?),
-            "--save-tdd" => save_tdd_path = Some(next_arg(&mut i)?),
-            "--stats" => stats_path = Some(next_arg(&mut i)?),
+    while let Some(arg) = args.next() {
+        // Anything that is not a flag is the input file, taken as the system
+        // gave it: a path need not be text.
+        if !arg.as_encoded_bytes().starts_with(b"-") {
+            if let Some(first) = &dimacs_path {
+                return Err(usage_error(format!(
+                    "a second input file {arg:?} after {first:?}; tididi reads one DIMACS file."
+                )));
+            }
+            dimacs_path = Some(arg.into());
+            continue;
+        }
+        let flag = arg.to_string_lossy();
+        // The argument after the flag: as given for a path, and otherwise
+        // read as text.
+        let mut value = || args.next().ok_or_else(|| usage_error(format!("{flag} needs a value.")));
+        let text = |value: std::ffi::OsString| {
+            value.into_string().map_err(|value| usage_error(format!("{flag} {value:?} is not text.")))
+        };
+        match flag.as_ref() {
+            "--vtree" => vtree_spec = Some(text(value()?)?),
+            "--save-tdd" => save_tdd_path = Some(value()?.into()),
+            "--stats" => stats_path = Some(value()?.into()),
             "--mode" => {
-                let val = next_arg(&mut i)?;
+                let val = text(value()?)?;
                 let mode = Mode::parse(&val).ok_or_else(|| {
                     let modes = Mode::ALL.map(Mode::token).join(", ");
                     usage_error(format!("unknown --mode {val:?}; valid: {modes}."))
@@ -195,13 +209,13 @@ fn parse_args() -> Result<Cli, Error> {
                 mode_flag = Some(mode);
             }
             "--output-format" => {
-                let val = next_arg(&mut i)?;
+                let val = text(value()?)?;
                 output_format = OutputFormat::parse(&val).ok_or_else(|| {
                     usage_error(format!("unknown --output-format {val:?}; valid: plain (default), mcc."))
                 })?;
             }
             "--mem-limit-mb" => {
-                let val = next_arg(&mut i)?;
+                let val = text(value()?)?;
                 mem_limit_mb = val.parse().map_err(|_| {
                     usage_error(format!(
                         "--mem-limit-mb {val:?} is not a whole number of MiB (0 leaves RLIMIT_AS untouched)."
@@ -209,34 +223,23 @@ fn parse_args() -> Result<Cli, Error> {
                 })?;
             }
             "--time-limit-ms" => {
-                let val = next_arg(&mut i)?;
+                let val = text(value()?)?;
                 time_limit_ms = Some(val.parse().map_err(|_| {
                     usage_error(format!("--time-limit-ms {val:?} is not a whole number of milliseconds."))
                 })?);
             }
             "--preprocess" => {
-                let val = next_arg(&mut i)?;
+                let val = text(value()?)?;
                 preprocess = Some(parse_preprocess_level(&val).ok_or_else(|| {
                     usage_error(format!("unknown --preprocess level {val:?}; valid: none, full (default)."))
                 })?);
             }
             // Help and the version are answers of their own: printed to stdout
             // with status 0, and the rest of the command line is not read.
-            "--help" | "-h" => print_and_exit(&usage(prog)),
+            "--help" | "-h" => print_and_exit(&usage(&prog)),
             "--version" | "-V" => print_and_exit(&format!("tididi {}\n", env!("CARGO_PKG_VERSION"))),
-            other if other.starts_with('-') => {
-                return Err(usage_error(format!("unknown flag {other}.")));
-            }
-            path => {
-                if let Some(first) = &dimacs_path {
-                    return Err(usage_error(format!(
-                        "a second input file {path:?} after {first:?}; tididi reads one DIMACS file."
-                    )));
-                }
-                dimacs_path = Some(path.to_owned());
-            }
+            other => return Err(usage_error(format!("unknown flag {other}."))),
         }
-        i += 1;
     }
 
     let dimacs_path = dimacs_path.ok_or_else(|| usage_error("no DIMACS file given.".to_owned()))?;

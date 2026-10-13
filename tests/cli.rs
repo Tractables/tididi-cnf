@@ -229,6 +229,33 @@ fn refusals_name_what_is_wrong() {
     assert!(!std::path::Path::new(saved).exists(), "a refused --save-tdd wrote a diagram");
 }
 
+/// An argument that is not text is read, never a panic: the input path and
+/// a record path are taken as the system gave them, and a flag value that
+/// must be text is refused by name.
+#[test]
+fn arguments_need_not_be_text() {
+    use std::ffi::{OsStr, OsString};
+    use std::os::unix::ffi::OsStrExt;
+
+    let run_os = |args: &[&OsStr]| {
+        let output = Command::new(BINARY).args(args).output().expect("the binary runs");
+        (output.status.code(), String::from_utf8_lossy(&output.stderr).into_owned())
+    };
+    let (code, stderr) = run_os(&[OsStr::from_bytes(b"/nonexistent/\xff.cnf")]);
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(stderr.contains("could not open"), "{stderr}");
+
+    let (code, stderr) = run_os(&[OsStr::new("--vtree"), OsStr::from_bytes(b"\xff"), OsStr::new(TINY)]);
+    assert_eq!(code, Some(2), "{stderr}");
+    assert!(stderr.contains("--vtree") && stderr.contains("not text"), "{stderr}");
+
+    let mut record = OsString::from(common::tmp_path("record_"));
+    record.push(OsStr::from_bytes(b"\xff.json"));
+    let (code, stderr) = run_os(&[OsStr::new(TINY), OsStr::new("--stats"), &record]);
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(std::fs::remove_file(&record).is_ok(), "the record was written at the path given");
+}
+
 /// `--mode` names the mode, and without it the header declares one: a `c t`
 /// line names the count, a `c p show` line makes it projected, and a CNF that
 /// declares neither is compiled. `c p weight` lines alone declare nothing, but
