@@ -138,6 +138,24 @@ pub(super) fn enumerate_show<T: Tally + Clone>(
     Some(value)
 }
 
+/// The projected Arjun budget, of PMC's minimization and PWMC's preprocessing
+/// alike: 38% of the run's declared wall, 50% on a formula of a million
+/// variables or more, clamped to `[5s, 300s]`; 300 s without a wall. The stage
+/// cuts it to what the run has left ([`crate::budget::clamped_to_deadline_ms`]).
+///
+/// A share of the wall, so that under a short limit a reduction that does not
+/// converge cannot spend all of it: Arjun's oracle pass runs to its deadline.
+/// A large share, because Arjun stops the moment it converges: more budget
+/// costs only the reductions that never converge, while a reduction cut off
+/// just short of converging leaves the raw formula, which is far slower to
+/// count.
+pub(super) fn projected_arjun_budget_ms(time_limit_ms: Option<u64>, num_vars: u64) -> u64 {
+    let frac: u64 = if num_vars >= 1_000_000 { 50 } else { 38 };
+    time_limit_ms
+        .map(|w| (w * frac / 100).clamp(5_000, 300_000))
+        .unwrap_or(300_000)
+}
+
 /// One vitri preprocessing stage on `problem`, as a pipeline step: UNSAT is
 /// the answer zero, a reduction is a rewrite that prints what it kept and its
 /// wall, and an error prints `{tag}: {error} — keeping {kept}` and declines.

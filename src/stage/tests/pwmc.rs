@@ -1,17 +1,22 @@
 use super::pwmc_preprocess_config;
 use std::time::{Duration, Instant};
 
-/// The Arjun window is the flat 300 s policy when the deadline has room,
-/// what is left when it has less, and off once it is spent.
+/// The Arjun window is the projected budget when the deadline has room,
+/// 300 s with no declared wall and 38% of a two-minute one, what is left when
+/// it has less, and off once it is spent.
 #[test]
 fn pwmc_preprocess_uses_the_callers_exact_arjun_window_once() {
     let parent = crate::test_support::minimal_config();
     let now = Instant::now();
-    let roomy = pwmc_preprocess_config(&parent, Some(now + Duration::from_secs(900)), now);
+    let roomy = pwmc_preprocess_config(&parent, 1_000, Some(now + Duration::from_secs(900)), now);
     assert_eq!(roomy.arjun_budget, vitri::config::ArjunBudget::Exact(Duration::from_millis(300_000)));
 
+    let two_minutes = crate::config::Config { time_limit_ms: Some(120_000), ..crate::test_support::minimal_config() };
+    let short = pwmc_preprocess_config(&two_minutes, 1_000, Some(now + Duration::from_secs(120)), now);
+    assert_eq!(short.arjun_budget, vitri::config::ArjunBudget::Exact(Duration::from_millis(45_600)));
+
     let deadline = now + Duration::from_millis(45_000);
-    let config = pwmc_preprocess_config(&parent, Some(deadline), now);
+    let config = pwmc_preprocess_config(&parent, 1_000, Some(deadline), now);
 
     assert_eq!(config.budget_ms, None, "do not derive a second stage share");
     assert_eq!(config.deadline, Some(deadline));
@@ -22,7 +27,7 @@ fn pwmc_preprocess_uses_the_callers_exact_arjun_window_once() {
     assert!(config.stages.arjun);
 
     let spent = now - Duration::from_millis(1);
-    let config = pwmc_preprocess_config(&parent, Some(spent), now);
+    let config = pwmc_preprocess_config(&parent, 1_000, Some(spent), now);
     assert_eq!(config.budget_ms, None);
     assert_eq!(config.deadline, Some(spent));
     assert_eq!(config.arjun_budget, vitri::config::ArjunBudget::Derived);

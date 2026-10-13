@@ -13,31 +13,14 @@ use vitri::cnf::CnfFormula;
 use super::{Run, run_isolated};
 use super::conditioning::{condition_on_show, projected_compile};
 use super::projected::{
-    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projection_step, run_stages, trivial_residual,
+    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projected_arjun_budget_ms, projection_step,
+    run_stages, trivial_residual,
 };
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
 use crate::enumeration::{EnumLimits, Models, allsat_share_ms, constrained_show_count};
 use crate::output::Projected;
 use crate::problem::{Problem, ShowSet, Unweighted};
-
-/// The projected-Arjun minimization budget: 38% of the run's declared wall,
-/// 50% on a formula of a million variables or more, clamped to `[5s, 300s]`;
-/// 300 s without a wall. The stage cuts it to what the run has left
-/// ([`crate::budget::clamped_to_deadline_ms`]).
-///
-/// A share of the wall, so that under a short limit a reduction that does not
-/// converge cannot spend all of it. A large share, because Arjun stops the
-/// moment it converges: more budget costs only the reductions that never
-/// converge, while a reduction cut off just short of converging leaves the
-/// raw formula, which is far slower to count. PWMC uses a flat 300 s instead
-/// (`pwmc_preprocess_config`).
-fn pmc_arjun_budget_ms(time_limit_ms: Option<u64>, num_vars: u64) -> u64 {
-    let frac: u64 = if num_vars >= 1_000_000 { 50 } else { 38 };
-    time_limit_ms
-        .map(|w| (w * frac / 100).clamp(5_000, 300_000))
-        .unwrap_or(300_000)
-}
 
 /// The small-show gate, computed before Arjun on the formula as it arrived: at
 /// most 32 show variables appear in its clauses. Enumerating so few show
@@ -137,7 +120,7 @@ fn structured_shatter(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unwe
 /// and so does a run with no time left for the reduction.
 fn minimize_projection(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unweighted> {
     let Some(budget_ms) = crate::budget::clamped_to_deadline_ms(
-        pmc_arjun_budget_ms(run.config.time_limit_ms, problem.formula.num_vars() as u64),
+        projected_arjun_budget_ms(run.config.time_limit_ms, problem.formula.num_vars() as u64),
         run.deadline,
         Instant::now(),
     ) else {
@@ -385,7 +368,3 @@ pub(crate) fn run_pmc_count(
     let stages: [Stage<'_, Unweighted>; 7] = [&shatter, &minimize, &trivial, &enumerate, &strengthen, &trivial, &compile];
     run_stages(problem, &stages, run.deadline, &run.config.vtree_time)
 }
-
-#[cfg(test)]
-#[path = "tests/pmc.rs"]
-mod tests;

@@ -12,7 +12,8 @@ use vitri::cnf::CnfFormula;
 
 use super::{Run, run_isolated};
 use super::projected::{
-    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projection_step, run_stages, trivial_residual,
+    CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projected_arjun_budget_ms, projection_step,
+    run_stages, trivial_residual,
 };
 use crate::problem::WeightedCount;
 use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
@@ -21,22 +22,26 @@ use crate::problem::{Domain, Problem, ShowSet, Weighted, problem_show};
 
 /// The one vitri configuration for top-level PWMC preprocessing.
 ///
-/// The Arjun budget is a flat 300 s policy — PWMC deliberately does not mirror
-/// PMC's size-adaptive fraction (`pmc_arjun_budget_ms`), the converge-vs-yield
-/// balance differs per mode — never past what the program deadline still has
-/// ([`crate::budget::clamped_to_deadline_ms`]).
+/// The Arjun budget is the projected one, [`projected_arjun_budget_ms`] for a
+/// formula of `num_vars` variables, never past what the program deadline
+/// still has at `now` ([`crate::budget::clamped_to_deadline_ms`]).
 ///
-/// The caller already owns the whole-program deadline and the flat Arjun
-/// policy, so an available Arjun window is passed as `Exact` with no
+/// The caller already owns the whole-program deadline and the Arjun policy,
+/// so an available Arjun window is passed as `Exact` with no
 /// `budget_ms` scale to derive it a second time. Once the deadline is spent,
 /// Arjun is switched off and its budget returns to `Derived`; vitri's projected
 /// strengthening and BVE still run.
 fn pwmc_preprocess_config(
     parent: &crate::config::Config,
+    num_vars: u64,
     program_deadline: Option<Instant>,
     now: Instant,
 ) -> vitri::RunConfig {
-    let exact_ms = crate::budget::clamped_to_deadline_ms(300_000, program_deadline, now);
+    let exact_ms = crate::budget::clamped_to_deadline_ms(
+        projected_arjun_budget_ms(parent.time_limit_ms, num_vars),
+        program_deadline,
+        now,
+    );
     crate::frontend::request::projection_stage(
         parent,
         vitri::cnf::Mode::Pwmc,
@@ -427,7 +432,8 @@ fn preprocess(
     problem: &Problem<Weighted>,
     declared_weights: Option<&vitri::cnf::WeightTable>,
 ) -> Step<Weighted> {
-    let config = pwmc_preprocess_config(run.config, run.deadline, Instant::now());
+    let config =
+        pwmc_preprocess_config(run.config, problem.formula.num_vars() as u64, run.deadline, Instant::now());
     projection_step(problem, declared_weights, &config, "[pwmc] preprocessing", "the raw formula")
 }
 
