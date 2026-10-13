@@ -296,38 +296,34 @@ fn original_expansion_translates_every_target_kind_once() {
         OriginalTarget::Literal(2),
     ]));
 
-    let expansion = OriginalExpansion::from_record(&record, 2);
+    let expansion = original_expansion(&record, 2);
+    let (pos, neg) = (tididi::diagram::Literal::pos, tididi::diagram::Literal::neg);
     assert_eq!(
         expansion.classes,
-        vec![
-            vec![(tididi::vtree::VarId(1), true), (tididi::vtree::VarId(2), false)],
-            vec![(tididi::vtree::VarId(6), true)],
-        ],
+        vec![vec![pos(VarId(1)), neg(VarId(2))], vec![pos(VarId(6))]],
     );
-    assert_eq!(
-        expansion.constants,
-        vec![(tididi::vtree::VarId(3), true), (tididi::vtree::VarId(4), false)],
-    );
-    assert_eq!(expansion.free, vec![tididi::vtree::VarId(5)]);
-    assert_eq!(expansion.original_num_vars, 6);
-    assert!(!expansion.is_all_constants());
+    assert_eq!(expansion.constants, vec![pos(VarId(3)), neg(VarId(4))]);
+    assert_eq!(expansion.free, vec![VarId(5)]);
+    assert_eq!(expansion.num_vars, 6);
+    assert!(!is_all_constants(&expansion));
 }
 
 #[test]
 fn original_expansion_distinguishes_all_constants_from_other_fully_resolved_maps() {
-    let all_constants = OriginalExpansion {
+    let (pos, neg) = (tididi::diagram::Literal::pos, tididi::diagram::Literal::neg);
+    let all_constants = VariableExpansion {
         classes: Vec::new(),
-        constants: vec![(tididi::vtree::VarId(1), true), (tididi::vtree::VarId(2), false)],
+        constants: vec![pos(VarId(1)), neg(VarId(2))],
         free: Vec::new(),
-        original_num_vars: 2,
+        num_vars: 2,
     };
-    assert!(all_constants.is_all_constants());
+    assert!(is_all_constants(&all_constants));
 
-    let with_free = OriginalExpansion {
+    let with_free = VariableExpansion {
         classes: Vec::new(),
-        constants: vec![(tididi::vtree::VarId(1), true)],
-        free: vec![tididi::vtree::VarId(2)],
-        original_num_vars: 2,
+        constants: vec![pos(VarId(1))],
+        free: vec![VarId(2)],
+        num_vars: 2,
     };
-    assert!(!with_free.is_all_constants());
+    assert!(!is_all_constants(&with_free));
 }

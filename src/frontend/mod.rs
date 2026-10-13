@@ -23,7 +23,7 @@ use crate::budget::VtreeTime;
 use crate::config::Config;
 use crate::problem::Weighted;
 use crate::vtree::{VtreeBuild, VtreeOptions, resolve_vitri_selection_ctx, vtree_build_from_vitri};
-use record::{OriginalExpansion, Outcome, Report, outcome};
+use record::{Outcome, Report, original_expansion, outcome};
 use request::frontend_config;
 
 /// One plain-model-counting frontend attempt: vitri's preprocessing result as
@@ -56,7 +56,7 @@ pub(crate) enum FrontendVtree {
 /// built alongside it.
 pub(crate) struct CompileFrontendAttempt {
     pub(crate) reduced: CnfFormula,
-    pub(crate) expansion: OriginalExpansion,
+    pub(crate) expansion: tididi::restructure::VariableExpansion,
     pub(crate) telemetry: vitri::bundle::PreprocessTelemetry,
     pub(crate) vtree: FrontendVtree,
 }
@@ -128,7 +128,7 @@ pub(crate) fn compile_frontend(
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
         vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
     let PreprocessBundle { reduced, record, telemetry, .. } = preprocessed;
-    let expansion = OriginalExpansion::from_record(&record, reduced.num_vars());
+    let expansion = original_expansion(&record, reduced.num_vars());
     Ok(CompileFrontendAttempt {
         reduced,
         expansion,

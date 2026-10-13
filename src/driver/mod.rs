@@ -133,11 +133,11 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             // it preprocesses. Nothing is selected and nothing is compiled:
             // the refutation is the answer, and the zero output is the same
             // shape compiling a contradiction reaches by short-circuit.
-            let zero = Tdd::zero(&Arc::new(Vtree::balanced(expansion.original_num_vars)));
+            let zero = Tdd::zero(&Arc::new(Vtree::balanced(expansion.num_vars)));
             (zero, 0, 0, AnsweredBy::Preprocessing)
         }
         crate::frontend::FrontendVtree::FullyResolved => {
-            if expansion.is_all_constants() {
+            if crate::frontend::record::is_all_constants(&expansion) {
                 eprintln!("[compile] preprocessing: every variable is a backbone");
             }
             let tdd = crate::frontend::expand::fully_resolved_tdd(eng, &expansion)

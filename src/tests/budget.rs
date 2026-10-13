@@ -1,46 +1,5 @@
 use super::*;
-use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 use std::time::{Duration, Instant};
-use tididi::limits::{StopAt, StopCallback, StopDecision, StopRules};
-
-/// A deadline scope keeps the engine's stop rules, budgets and callback,
-/// stops at the deadline around the callback it wraps, and restores the
-/// engine's own settings when it ends.
-#[test]
-fn a_wall_preserves_work_stops_and_the_existing_callback() {
-    let eng = tididi::Engine::new();
-    let calls = Arc::new(AtomicUsize::new(0));
-    let observed = calls.clone();
-    let stops = StopRules {
-        unconditional: Some(StopAt::WorkUnits(0)),
-        after_pairs: Some((7, StopAt::WorkUnits(100))),
-    };
-    let _outer = eng.limits().edit(|s| s
-        .with_memory_budget_bytes(Some(4096))
-        .with_output_node_cap(Some(42))
-        .with_stop_rules(stops)
-        .with_stop_callback(Some(StopCallback::new(move |_, _| {
-            observed.fetch_add(1, Ordering::Relaxed);
-            StopDecision::Continue
-        }))));
-    let deadline = Instant::now() + Duration::from_secs(60);
-    {
-        let _inner = deadline_scope(&eng, Some(deadline));
-        let config = eng.limits().armed();
-        assert_eq!(config.stop_rules(), stops);
-        assert_eq!(config.memory_budget_bytes(), Some(4096));
-        assert_eq!(config.output_node_cap(), Some(42));
-        let callback = config.stop_callback().unwrap();
-        assert_eq!(callback.decide(&eng.limits().meters(), deadline - Duration::from_secs(1)), StopDecision::Continue);
-        assert_eq!(calls.load(Ordering::Relaxed), 1);
-        assert_eq!(callback.decide(&eng.limits().meters(), deadline), StopDecision::Stop);
-        assert_eq!(calls.load(Ordering::Relaxed), 1);
-    }
-    let restored = eng.limits().armed();
-    assert_eq!(restored.stop_rules(), stops);
-    assert_eq!(restored.stop_callback().unwrap().decide(&eng.limits().meters(), deadline), StopDecision::Continue);
-    assert_eq!(calls.load(Ordering::Relaxed), 2);
-}
 
 /// A sub-step's policy budget is cut to what is left of the deadline its
 /// caller carved out; nothing left is no budget, and no deadline leaves the

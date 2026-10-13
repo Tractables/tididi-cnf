@@ -91,36 +91,20 @@ fn component_boundary_function(
 
     // Read w(a) for every boundary assignment via the pinned counter (it decodes
     // the marginal tagging internally — the safe public route).
-    let mut w = vec![BigUint::ZERO; 1usize << boundary.len()];
     // A structurally-zero component has no output count slot, which the pinned
     // counter needs; every w(a) is 0. Mirrors the `is_zero` guard
     // the BigUint entry points carry.
     if tdd.is_zero() {
-        return Some(w);
+        return Some(vec![BigUint::ZERO; 1usize << boundary.len()]);
     }
-    // Reuse one frontier counter and one stack buffer for every assignment.
-    // Evidence pins restrict the boundary; marginalized local counts retain
-    // their multiplicity.
+    // One frontier counter reads every assignment, changing only the boundary
+    // pins each binary increment carries through. Evidence pins restrict the
+    // boundary; marginalized local counts retain their multiplicity.
     let mut ctr =
         eng.counter_with(&tdd, Retention::Frontier, PinSemantics::Evidence).ok()?;
-    let mut pins = [(VarId(0), None); MAX_SEPARATOR];
-    let pins = &mut pins[..boundary.len()];
-    for (pin, &variable) in pins.iter_mut().zip(boundary) {
-        pin.0 = variable;
-    }
-    for (assignment, count) in w.iter_mut().enumerate() {
-        // A binary increment changes only the low bits through its carry.
-        // The first assignment initializes every boundary pin.
-        let changed = if assignment == 0 {
-            boundary.len()
-        } else {
-            assignment.trailing_zeros() as usize + 1
-        };
-        for (bit, (_, value)) in pins[..changed].iter_mut().enumerate() {
-            *value = Some((assignment >> bit) & 1 == 1);
-        }
-        ctr.set_pins(&pins[..changed]).ok()?;
-        *count = ctr.model_count().ok()? / &div;
+    let mut w = ctr.count_table(boundary).ok()?;
+    for count in &mut w {
+        *count /= &div;
     }
     Some(w)
 }
@@ -173,9 +157,9 @@ pub(super) struct ShatterCfg {
 }
 
 /// The widest separator detection tries, whatever [`ShatterCfg::max_k`]
-/// asks: each component's count is read out densely, one entry per
-/// assignment of its boundary, a part of the separator.
-const MAX_SEPARATOR: usize = 30;
+/// asks: each component's count is read out densely as the library's count
+/// table, one entry per assignment of its boundary, a part of the separator.
+const MAX_SEPARATOR: usize = tididi::query::MAX_COUNT_TABLE_VARS;
 
 /// Try to find a useful separator `S ⊆ show` (occurrence-greedy prefix) whose
 /// removal shatters `formula` into `>= cfg.min_components` independent

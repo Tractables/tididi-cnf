@@ -431,6 +431,23 @@ fn stdout_is_the_answer_and_the_record_the_run() {
     assert!(out.stderr.contains(&format!("[vtree] portfolio: {pick}\n")), "{}", out.stderr);
 }
 
+/// Compile mode puts the forced variables back on the circuit in space linear
+/// in their number: 100 000 of them compile under a 3 GiB address-space cap.
+/// A vtree per forced variable sizes each leaf's table by its variable id, a
+/// quadratic expansion that ran this out of memory.
+#[test]
+fn compile_expands_many_forced_variables_in_linear_space() {
+    let n = 100_000u32;
+    let mut text = format!("p cnf {n} {}\n1 2 0\n-1 3 0\n", n - 1);
+    for v in 4..=n {
+        text.push_str(&format!("{v} 0\n"));
+    }
+    let cnf = TempCnf::new("many_forced", &text);
+    let out = run(&["--mode", "compile", "--mem-limit-mb", "3072", cnf.path()], &[]);
+    assert!(out.ok(), "exit {:?}: {}", out.code, out.stderr);
+    assert!(out.prints("model count: 4"), "{}", out.stdout);
+}
+
 /// `--save-tdd` writes the diagram, also when every variable is forced.
 #[test]
 fn save_tdd_writes_the_diagram() {

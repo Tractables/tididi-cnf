@@ -12,7 +12,7 @@ use tididi::restructure::GraftError;
 use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
-use crate::convert::{diagram_var, rational_weight_algebra};
+use crate::convert::diagram_var;
 use crate::vtree::{Component, ComponentVtree};
 use super::{Compiled, GiveUp};
 use super::minimize::minimize_full;
@@ -358,7 +358,12 @@ pub(crate) fn compile_split(
         let output = match job.output {
             PassOutput::Function => PassOutput::Function,
             PassOutput::Count(weights) => {
-                comp_weights = weights.map(|ws| localized_store(ws, l2g));
+                // The marginal leaf lookup indexes the weight table by the
+                // vtree leaf's own VarId, which inside a component is local.
+                comp_weights = weights.map(|ws| {
+                    let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
+                    WeightStore::new(local, ws.arithmetic())
+                });
                 PassOutput::Count(comp_weights.as_ref())
             }
             PassOutput::ProjectedCount(forget) => {
@@ -411,28 +416,6 @@ pub(crate) fn compile_split(
         minimize_full(eng, &mut grafted, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
     }
     Ok(Compiled { diagram: grafted, forgotten, peak_pairs })
-}
-
-/// `global`'s weight table restated in a component's local variable numbering.
-///
-/// The marginal leaf lookup indexes the algebra by the vtree leaf's own VarId,
-/// which inside a component is local, so a per-component store needs a
-/// local-var algebra.
-fn localized_store(global: &WeightStore, local_to_global: &[VarId]) -> WeightStore {
-    let global_algebra = global.algebra();
-    let weights: Vec<(num_rational::BigRational, num_rational::BigRational)> = local_to_global
-        .iter()
-        .map(|&g| {
-            (
-                global_algebra.neg_weight(g).clone(),
-                global_algebra.pos_weight(g).clone(),
-            )
-        })
-        .collect();
-    WeightStore::new(
-        rational_weight_algebra(&weights),
-        global.arithmetic(),
-    )
 }
 
 #[cfg(test)]

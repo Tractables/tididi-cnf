@@ -47,32 +47,14 @@ pub(crate) fn check_deadline(deadline: Option<std::time::Instant>) -> Result<(),
 }
 
 /// Temporarily tighten an engine's deadline, retaining an enclosing deadline
-/// when this attempt has none or asks for more time. Other limits survive.
+/// when this attempt has none or asks for more time. Other limits survive,
+/// including a work-clock bound a standalone compiler caller armed.
 pub(crate) fn deadline_scope(
     eng: &tididi::Engine,
     deadline: Option<std::time::Instant>,
 ) -> Option<tididi::limits::LimitScope<'_>> {
-    use tididi::limits::{StopAt, StopCallback, StopDecision};
     let deadline = deadline?;
-    Some(eng.limits().edit(|config| {
-        match config.stop_rules().unconditional {
-            Some(StopAt::Time(outer)) => config.with_deadline(Some(deadline.min(outer))),
-            None => config.with_deadline(Some(deadline)),
-            // A standalone compiler caller may already use the work clock.
-            // Preserve both threshold slots and its callback, adding the wall
-            // through the callback only in this mixed-clock case.
-            Some(StopAt::WorkUnits(_)) => {
-                let previous = config.stop_callback();
-                config.with_stop_callback(Some(StopCallback::new(move |meters, now| {
-                    if now >= deadline {
-                        StopDecision::Stop
-                    } else {
-                        previous.as_ref().map_or(StopDecision::Continue, |cb| cb.decide(meters, now))
-                    }
-                })))
-            }
-        }
-    }))
+    Some(eng.limits().edit(|config| config.with_deadline_at_most(deadline)))
 }
 
 /// A sub-step's policy budget cut to what is left of `deadline` at `now`;
