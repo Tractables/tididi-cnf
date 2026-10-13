@@ -21,12 +21,12 @@ use tididi_bonsai::vtree::build_vtree;
 
 use tididi::test_helpers::brute_force_count;
 
-use common::{all_vtree_shapes, get_test_cases, load_cnf, make_formula};
+use common::{all_vtree_shapes, case_table, load_cnf, make_formula};
 
 #[test]
 fn marginalizing_compile_is_canonical_on_every_shape() {
     let eng = &Engine::new();
-    let mut cases = get_test_cases();
+    let mut cases = case_table();
     cases.extend([
         // Two components, one side marginalized under its parent, then that
         // parent under the root.

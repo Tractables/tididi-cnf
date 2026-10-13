@@ -4,15 +4,15 @@
 
 // A grab-bag `mod common;` pulled into many test binaries; any one binary
 // uses only a slice of it.
-#![allow(dead_code, unused_imports)]
+#![allow(dead_code)]
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use num_bigint::BigUint;
 use num_rational::BigRational;
-use vitri::cnf::{Clause, CnfFormula, Literal};
-use vitri::cnf::VarId;
+use vitri::cnf::{Clause, CnfFormula, Literal, VarId};
+
 use tididi::vtree::Vtree;
 
 /// Parse the DIMACS file at `path`, relative to the crate root.
@@ -35,6 +35,8 @@ pub fn formula(num_vars: u32, clauses: Vec<Clause>) -> CnfFormula {
     CnfFormula::new(num_vars, clauses).expect("a test formula names only variables in its space")
 }
 
+/// A test formula over `num_vars` variables, from clauses of DIMACS
+/// literals.
 pub fn make_formula(num_vars: u32, clauses: Vec<Vec<i32>>) -> CnfFormula {
     let clauses = clauses
         .into_iter()
@@ -76,7 +78,10 @@ pub fn brute_force_wmc(formula: &CnfFormula, w: &[(BigRational, BigRational)]) -
         .sum()
 }
 
-pub fn get_test_cases() -> Vec<(u32, Vec<Vec<i32>>)> {
+/// The shared case table: small formulas, as a variable count and clauses
+/// of DIMACS literals, that cover the shapes a compile meets, satisfiable
+/// and not.
+pub fn case_table() -> Vec<(u32, Vec<Vec<i32>>)> {
     vec![
         // --- Basic small formulas ---
         (3, vec![vec![1, 2], vec![-2, 3], vec![-1, -3]]),

@@ -40,7 +40,7 @@ fn check_on_every_shape(eng: &Engine, num_vars: u32, clauses: &[Vec<i32>], expec
 #[test]
 fn the_case_table_compiles_right_on_every_shape() {
     let eng = &Engine::new();
-    for (num_vars, clauses) in &get_test_cases() {
+    for (num_vars, clauses) in &case_table() {
         check_on_every_shape(eng, *num_vars, clauses, brute_force_count(*num_vars, clauses));
     }
 }
