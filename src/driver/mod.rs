@@ -139,7 +139,7 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             let component_vtrees = built.components;
             eprintln!("[vtree] {}", config.vtree_spec);
             eprintln!("[compile] start");
-            let clock = crate::budget::CompileClock::start();
+            let clock = crate::budget::CompileClock::start(&config.vtree_time);
             let plan = ComponentPlan::from_components(component_vtrees.as_deref());
             // The compile runs to the run's wall, as every counting route's
             // does; a compile stopped there, or refused memory mid-apply, is
@@ -197,11 +197,10 @@ pub(crate) struct Failure {
 /// the binary both come through here.
 ///
 /// The run is one shared execution context: nested limit guards and all
-/// component compiles use the same meters and recycled buffers. Its
-/// thread-local state starts fresh and is cleared when it returns
-/// ([`RunState`]), so two runs on one thread share nothing. Its memory limit
-/// lowers the process's address-space limit before the instance is read, so
-/// every route runs under it, and puts the limit back when the run returns.
+/// component compiles use the same meters and recycled buffers. Its memory
+/// limit lowers the process's address-space limit before the instance is
+/// read, so every route runs under it, and puts the limit back when the run
+/// returns.
 pub(crate) fn solve(
     input: Input,
     mode_flag: Option<Mode>,
@@ -210,30 +209,10 @@ pub(crate) fn solve(
 ) -> Result<Answer, Failure> {
     let vitri = crate::frontend::request::resolve_env_config()
         .map_err(|error| Failure { error, stats: None })?;
-    let _state = RunState::install();
     let _address_space = crate::mem::limit_address_space(limits.mem_limit_mb)
         .map_err(|error| Failure { error, stats: None })?;
     let context = std::sync::Arc::new(tididi::Context::new());
     context.run(|eng| solve_on(eng, input, mode_flag, limits, settings, vitri))
-}
-
-/// The run's thread-local state: the vtree-construction wall.
-/// Installing it clears what an earlier run left; dropping it clears it
-/// again, on every return and unwind path, so a lower-level call after a run
-/// sees none of it.
-struct RunState;
-
-impl RunState {
-    fn install() -> Self {
-        crate::budget::reset_vtree_build_ms();
-        RunState
-    }
-}
-
-impl Drop for RunState {
-    fn drop(&mut self) {
-        crate::budget::reset_vtree_build_ms();
-    }
 }
 
 fn solve_on(
@@ -303,7 +282,7 @@ fn solve_on(
             Mode::Compile => record_compile(stats, config, run_function_compile(run, &formula)?),
         })
     });
-    crate::output::close_record(&mut stats, &verdict, sat_prune.into_stats());
+    crate::output::close_record(&mut stats, &verdict, config.vtree_time.total(), sat_prune.into_stats());
     match verdict {
         Ok(Verdict { satisfiable, count, diagram }) => {
             Ok(Answer { mode: config.mode, satisfiable, count, diagram, stats })

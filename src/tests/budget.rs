@@ -109,3 +109,28 @@ fn deadline_never_exceeds_the_program_deadline() {
     let pd = Instant::now() + Duration::from_secs(60);
     assert_eq!(vtree_deadline(Some(pd)), Some(pd));
 }
+
+/// A run's vtree time is absent until something is built, and then counts
+/// even a build too quick to reach a millisecond.
+#[test]
+fn vtree_time_is_absent_until_a_build() {
+    let time = VtreeTime::default();
+    assert_eq!(time.total(), None);
+    time.time(|| ());
+    assert!(time.total().is_some());
+    time.add(Duration::from_millis(5));
+    assert!(time.total() >= Some(Duration::from_millis(5)));
+}
+
+/// The compile clock leaves out the vtree construction added since it
+/// started, and only that.
+#[test]
+fn the_compile_clock_leaves_out_vtree_time() {
+    let time = VtreeTime::default();
+    time.add(Duration::from_secs(3600));
+    let clock = CompileClock::start(&time);
+    std::thread::sleep(Duration::from_millis(20));
+    assert!(clock.compile_ms(0) >= 20, "construction before the clock started is not taken out");
+    time.add(Duration::from_secs(3600));
+    assert_eq!(clock.compile_ms(0), 0, "construction since the clock started is taken out");
+}

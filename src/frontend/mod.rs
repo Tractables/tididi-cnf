@@ -19,7 +19,7 @@ pub(crate) mod request;
 use vitri::bundle::PreprocessBundle;
 use vitri::cnf::CnfFormula;
 
-use crate::budget::record_vtree_build_ms;
+use crate::budget::VtreeTime;
 use crate::config::Config;
 use crate::problem::Weighted;
 use crate::vtree::{VtreeBuild, VtreeOptions, resolve_vitri_selection_ctx, vtree_build_from_vitri};
@@ -97,7 +97,7 @@ pub(crate) fn wmc_frontend(
         vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
     let PreprocessBundle { reduced, record, stages, telemetry, .. } = preprocessed;
     let outcome = outcome::<Weighted>(reduced, &record)?;
-    let vtree = match frontend_vtree(vtree) {
+    let vtree = match frontend_vtree(vtree, &parent.vtree_time) {
         FrontendVtree::Built(built) => Some(built),
         FrontendVtree::FullyResolved | FrontendVtree::Refuted => None,
     };
@@ -133,23 +133,24 @@ pub(crate) fn compile_frontend(
         reduced,
         expansion,
         telemetry,
-        vtree: frontend_vtree(vtree),
+        vtree: frontend_vtree(vtree, &parent.vtree_time),
     })
 }
 
 /// Convert one plain-MC front-end run, the first or a later attempt from a live
-/// session, into the compiler's types, converting the vtree once.
-pub(crate) fn mc_frontend_attempt(run: vitri::bundle::VitriRun) -> McFrontendAttempt {
-    McFrontendAttempt { preprocessed: run.preprocessed, vtree: frontend_vtree(run.vtree) }
+/// session, into the compiler's types, converting the vtree once and adding
+/// its construction to the run's `vtree_time`.
+pub(crate) fn mc_frontend_attempt(run: vitri::bundle::VitriRun, vtree_time: &VtreeTime) -> McFrontendAttempt {
+    McFrontendAttempt { preprocessed: run.preprocessed, vtree: frontend_vtree(run.vtree, vtree_time) }
 }
 
-/// Every frontend's vtree crosses here, and the wall vitri reports for its
-/// construction is billed to [`crate::budget`] here; a standalone build in
-/// [`crate::vtree`] times its own.
-fn frontend_vtree(vtree: vitri::bundle::RunVtree) -> FrontendVtree {
+/// Every frontend's vtree crosses here, and the construction time vitri
+/// reports for it is added to the run's `vtree_time` here: the frontend's one
+/// call also preprocesses, so timing the call would count that too.
+fn frontend_vtree(vtree: vitri::bundle::RunVtree, vtree_time: &VtreeTime) -> FrontendVtree {
     match vtree {
         vitri::bundle::RunVtree::Built(built) => {
-            record_vtree_build_ms(built.construction_ms);
+            vtree_time.add(std::time::Duration::from_millis(built.construction_ms));
             FrontendVtree::Built(vtree_build_from_vitri(built))
         }
         vitri::bundle::RunVtree::FullyResolved => FrontendVtree::FullyResolved,
@@ -174,7 +175,7 @@ pub(crate) fn with_mc_frontend<R>(
     let config = front_end_config(parent, vitri::cnf::Mode::Mc, deadline, true);
     let mut session = vitri::bundle::frontend(formula, &meta, &config, &run_selection(parent)?)?;
     let run = session.prepare()?;
-    let attempt = mc_frontend_attempt(run);
+    let attempt = mc_frontend_attempt(run, &parent.vtree_time);
     Ok(continuation(attempt, &session))
 }
 

@@ -14,7 +14,6 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use tididi::Engine;
 use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
@@ -74,8 +73,9 @@ pub(super) type Stage<'s, D> = &'s dyn Fn(&Problem<D>, &Trace) -> Step<D>;
 
 /// Run `stages` in order on `problem`; the first answer, lifted, with the
 /// show set it was answered over and the stages' wall less the rewrites' and
-/// the vtree construction's. Checks the run's deadline on both sides of each
-/// stage, including shortcuts and native preprocessing calls.
+/// the vtree construction's, which the run's `vtree_time` holds. Checks the
+/// run's deadline on both sides of each stage, including shortcuts and native
+/// preprocessing calls.
 ///
 /// # Errors
 ///
@@ -85,13 +85,14 @@ pub(super) fn run_stages<D: Domain>(
     problem: Problem<D>,
     stages: &[Stage<'_, D>],
     deadline: Option<Instant>,
+    vtree_time: &crate::budget::VtreeTime,
 ) -> Result<Projected<D::Value>, crate::Error> {
     let mut trace = Trace {
         input_vars: problem.formula.num_vars(),
         input_clauses: problem.formula.clauses().len(),
         preprocess_ms: 0,
     };
-    let clock = crate::budget::CompileClock::start();
+    let clock = crate::budget::CompileClock::start(vtree_time);
     let mut problem = problem;
     for stage in stages {
         crate::budget::check_deadline(deadline)?;
@@ -196,7 +197,7 @@ pub(super) fn pmc_vtree(
 ) -> Option<CountVtree> {
     let ctx = if show.is_some() { VtreeOptions::by_peak_width() } else { VtreeOptions::default() };
     count_vtree(
-        run.eng,
+        run,
         work,
         &run.config.vtree_spec,
         &ctx.with_deadline(crate::budget::vtree_deadline(run.deadline))
@@ -209,14 +210,15 @@ pub(super) fn pmc_vtree(
 /// or `None` when the construction failed. The projected ones are the leaves
 /// outside `show`; none without one.
 pub(super) fn count_vtree(
-    eng: &Engine,
+    run: &Run<'_>,
     work: &CnfFormula,
     spec: &str,
     ctx: &VtreeOptions,
     show: Option<&ShowSet>,
 ) -> Option<CountVtree> {
+    let built = run.config.vtree_time.time(|| crate::vtree::build_vtree_with_components(work, spec, ctx));
     let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees } =
-        crate::vtree::built_or_give_up(crate::vtree::build_vtree_with_components(work, spec, ctx))?.bind(eng);
+        crate::vtree::built_or_give_up(built)?.bind(run.eng);
     let projected = show.map_or_else(Vec::new, |show| {
         vtree
             .leaf_bottomup()

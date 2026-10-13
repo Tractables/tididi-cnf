@@ -52,7 +52,7 @@ fn run_fixtures(
         .map(|&fixture| move |problem: &Problem<Unweighted>, trace: &Trace| fixture(run, problem, trace))
         .collect();
     let stages: Vec<Stage<'_, Unweighted>> = stages.iter().map(|stage| stage as Stage<'_, Unweighted>).collect();
-    run_stages(problem, &stages, deadline)
+    run_stages(problem, &stages, deadline, &crate::budget::VtreeTime::default())
 }
 
 #[test]

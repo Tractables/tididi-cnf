@@ -1,9 +1,10 @@
-//! Caller-side wall slicing: how the driver carves its per-CNF wall into the
-//! sub-budgets it hands down.
+//! The run's time: how the driver carves its time limit into the sub-budgets
+//! and deadlines it hands down, and the clocks behind the record's `vtree_ms`
+//! and `compile_ms`.
 //!
-//! These are caller policies: TiDiDi knows the run wall and the downstream
-//! stages that need time. Vitri receives the resulting typed deadline and owns
-//! construction-internal budget division.
+//! The budgets are the compiler's policies, since it knows the run's time
+//! limit and the stages that need a share of it; vitri receives the resulting
+//! deadline and divides it inside a construction itself.
 
 /// `ratio` of the run's time limit clamped to `[min, max]`, or `abs_default`
 /// when the run has none.
@@ -119,39 +120,37 @@ pub(crate) fn vtree_deadline(program_deadline: Option<std::time::Instant>) -> Op
     Some(not_past(now + budget, program_deadline))
 }
 
-thread_local! {
-    /// Total wall spent constructing vtrees on this thread since the run
-    /// started, and how many constructions ran.
-    ///
-    /// The single source for the reported `vtree_ms`. Standalone constructions
-    /// all pass through `vtree`, which wraps its one Vitri call in
-    /// [`timed_vtree_build`]; a whole-run frontend, which interleaves
-    /// preprocessing and construction, adds Vitri's own construction time through
-    /// [`record_vtree_build_ms`]. Timing at those two points rather than at call
-    /// sites keeps the total complete wherever the vtrees get built.
-    static VTREE_BUILD_NANOS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
-    static VTREE_BUILD_CALLS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
-}
-
-/// Zero the vtree-construction accumulator; `driver::solve` does as a run
-/// starts and ends.
-pub(crate) fn reset_vtree_build_ms() {
-    VTREE_BUILD_NANOS.set(0);
-    VTREE_BUILD_CALLS.set(0);
-}
-
-/// Vtree-construction wall so far, or `None` when nothing built a vtree.
+/// The time a run spends building vtrees: the record's `vtree_ms`.
 ///
-/// `None` is not zero, and must not be reported as zero. A printed 0 is
-/// indistinguishable from a timer that missed the work, so callers omit the
-/// field entirely on `None`,
-/// leaving `Some(0)` to carry the honest "built, and it took under a
-/// millisecond".
-pub(crate) fn vtree_build_ms() -> Option<u128> {
-    if VTREE_BUILD_CALLS.get() == 0 {
-        return None;
+/// The run's `Config` holds one, so every stage reaches it. A stage that
+/// builds a vtree times the build with [`VtreeTime::time`], and a frontend,
+/// which interleaves preprocessing and construction in one vitri call, adds
+/// the construction time vitri reports with [`VtreeTime::add`].
+#[derive(Debug, Default)]
+pub(crate) struct VtreeTime(std::cell::Cell<Option<std::time::Duration>>);
+
+impl VtreeTime {
+    /// Run the construction `build` and add its wall-clock time.
+    pub(crate) fn time<T>(&self, build: impl FnOnce() -> T) -> T {
+        let started = std::time::Instant::now();
+        let built = build();
+        self.add(started.elapsed());
+        built
     }
-    Some(VTREE_BUILD_NANOS.get() as u128 / 1_000_000)
+
+    /// Add one construction that took `spent`.
+    pub(crate) fn add(&self, spent: std::time::Duration) {
+        self.0.set(Some(self.0.get().unwrap_or_default() + spent));
+    }
+
+    /// The time spent so far, or `None` when nothing built a vtree.
+    ///
+    /// `None` is not zero: the record leaves `vtree_ms` out rather than print
+    /// a 0 that would read like a timer that missed the work, so `Some(0)`
+    /// carries "built, in under a millisecond".
+    pub(crate) fn total(&self) -> Option<std::time::Duration> {
+        self.0.get()
+    }
 }
 
 /// The clock behind the record's `compile_ms`, on every route.
@@ -160,19 +159,21 @@ pub(crate) fn vtree_build_ms() -> Option<u128> {
 /// `vtree_ms`, `compile_ms` — and each key excludes the others. A compile
 /// stage can build vtrees inside it (a component's, a cofactor's), and on the
 /// model count's cascade it also runs the preprocessing and Arjun it reports
-/// separately, so the clock takes both out: the vtree construction billed to
-/// the accumulator since it started, and the phase time its caller names.
-pub(crate) struct CompileClock {
+/// separately, so the clock takes both out: the run's vtree time since it
+/// started, and the phase time its caller names.
+pub(crate) struct CompileClock<'a> {
     started: std::time::Instant,
-    vtree_nanos: u64,
+    vtree: &'a VtreeTime,
+    vtree_at_start: std::time::Duration,
 }
 
-impl CompileClock {
-    /// Start timing a compile stage now.
-    pub(crate) fn start() -> Self {
+impl<'a> CompileClock<'a> {
+    /// Start timing a compile stage now, against the run's `vtree` time.
+    pub(crate) fn start(vtree: &'a VtreeTime) -> Self {
         CompileClock {
             started: std::time::Instant::now(),
-            vtree_nanos: VTREE_BUILD_NANOS.get(),
+            vtree,
+            vtree_at_start: vtree.total().unwrap_or_default(),
         }
     }
 
@@ -180,41 +181,13 @@ impl CompileClock {
     /// since then and less `other_phases_ms`, the time the caller reports under
     /// another key.
     pub(crate) fn compile_ms(&self, other_phases_ms: u64) -> u128 {
-        let vtree_nanos = VTREE_BUILD_NANOS.get().saturating_sub(self.vtree_nanos);
+        let vtree = self.vtree.total().unwrap_or_default().saturating_sub(self.vtree_at_start);
         self.started
             .elapsed()
             .as_millis()
-            .saturating_sub(vtree_nanos as u128 / 1_000_000)
+            .saturating_sub(vtree.as_millis())
             .saturating_sub(other_phases_ms as u128)
     }
-}
-
-/// Bill a construction whose owner, Vitri, already measured its wall.
-///
-/// Vitri's whole-run frontend interleaves preprocessing and construction, so
-/// wrapping the whole call would charge preprocessing to `vtree_ms`. Its
-/// returned `construction_ms` is instead added to this same accumulator. A
-/// standalone build remains wrapped by [`timed_vtree_build`] and must not call
-/// this as well.
-pub(crate) fn record_vtree_build_ms(ms: u64) {
-    bill_vtree_build(ms.saturating_mul(1_000_000));
-}
-
-/// Run `f` and bill its wall to the vtree-construction accumulator.
-///
-/// `vtree` already wraps every construction it makes; wrapping a call
-/// into it again would double-count.
-pub(crate) fn timed_vtree_build<T>(f: impl FnOnce() -> T) -> T {
-    let t0 = std::time::Instant::now();
-    let out = f();
-    bill_vtree_build(t0.elapsed().as_nanos() as u64);
-    out
-}
-
-/// Add one construction of `nanos` to the accumulator.
-fn bill_vtree_build(nanos: u64) {
-    VTREE_BUILD_NANOS.set(VTREE_BUILD_NANOS.get().wrapping_add(nanos));
-    VTREE_BUILD_CALLS.set(VTREE_BUILD_CALLS.get().wrapping_add(1));
 }
 
 #[cfg(test)]

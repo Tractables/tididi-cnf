@@ -82,7 +82,7 @@ pub(crate) fn count_streaming(
         .with_run_policy(run.config);
     let build = |component: &CnfFormula| {
         let spec = if component.num_vars() <= 30 { "minfill-primal" } else { run.config.vtree_spec.as_str() };
-        built_or_give_up(build_vtree(component, spec, &options))
+        built_or_give_up(run.config.vtree_time.time(|| build_vtree(component, spec, &options)))
     };
     model_count_streaming(run.eng, formula, components, build, forget, run.deadline, run.compile)
 }

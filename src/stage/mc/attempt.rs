@@ -108,7 +108,8 @@ pub(super) fn portfolio_attempt(
     let ctx = VtreeOptions::default()
         .with_deadline(vtree_deadline(deadline))
         .with_run_policy(run.config);
-    let built = built_or_give_up(build_vtree_with_components(formula, PORTFOLIO_VTREE_SPEC, &ctx))?.bind(run.eng);
+    let built = run.config.vtree_time.time(|| build_vtree_with_components(formula, PORTFOLIO_VTREE_SPEC, &ctx));
+    let built = built_or_give_up(built)?.bind(run.eng);
     Some(attempt_from_vitri_build(formula.clone(), built, 0))
 }
 

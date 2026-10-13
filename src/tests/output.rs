@@ -18,7 +18,7 @@ fn an_expired_run_drops_a_late_answer_from_its_record() {
     let mut stats = super::open_record(&config, &formula);
     let answer = Projected { value: BigUint::from(4u32), show_vars: Some(1), compile_ms: 0 };
     super::record_pmc(&mut stats, answer);
-    super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), None);
+    super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), None, None);
     assert!(stats.model_count.is_none());
     assert!(stats.satisfiable.is_none());
     assert_eq!(stats.show_vars, Some(1));

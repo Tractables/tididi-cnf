@@ -199,7 +199,7 @@ fn pmc_branch_count(
     // per branch, so an unbounded build here multiplies across the whole
     // branch set.
     let CountVtree { vtree, component_vtrees, projected, .. } = count_vtree(
-        run.eng,
+        run,
         cformula,
         super::PORTFOLIO_VTREE_SPEC,
         &VtreeOptions::by_peak_width().with_deadline(crate::budget::vtree_deadline(deadline)),

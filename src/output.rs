@@ -254,13 +254,14 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 /// Close the run's record once its mode has returned.
 ///
 /// The last three facts land here rather than with the answer, because they
-/// are the run's and not any one stage's: the vtree accumulator's total, the
-/// sat-prune tallies of every compile in the run, `sat_prune`, and how the run
-/// ended. Reading each in one place is also what keeps a give-up row carrying
-/// them.
+/// are the run's and not any one stage's: the time every vtree construction
+/// took, `vtree_time`, the sat-prune tallies of every compile in the run,
+/// `sat_prune`, and how the run ended. Reading each in one place is also what
+/// keeps a give-up row carrying them.
 pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
+    vtree_time: Option<std::time::Duration>,
     sat_prune: Option<crate::compile::sat_prune::SatPruneStats>,
 ) {
     stats.exit_reason = Some(exit_reason(outcome));
@@ -275,7 +276,7 @@ pub(crate) fn close_record(
         stats.weighted_count_sign = None;
         stats.answered_by = None;
     }
-    stats.vtree_ms = crate::budget::vtree_build_ms().map(|ms| ms as u64);
+    stats.vtree_ms = vtree_time.map(|time| time.as_millis() as u64);
     // Each tally is recorded only when it is nonzero: presence is the "this
     // happened" signal. None is there when no pass ran to its end.
     if let Some(prune) = sat_prune {

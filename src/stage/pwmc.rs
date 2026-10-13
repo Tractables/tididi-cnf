@@ -139,7 +139,7 @@ fn pwmc_compile_evaluate(
         };
         let plan = crate::compile::ComponentPlan::from_components(component_vtrees.as_deref());
         let compile = crate::compile::CompileOptions { plan, output, ..crate::compile::CompileOptions::default() };
-        let clock = crate::budget::CompileClock::start();
+        let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
         // An apply-deadline cut returns `None` here: scored unsolved.
         let compiled = crate::compile::settle(crate::compile::compile_with(eng, work, &vtree, compile, run.compile))?;
         let g = &compiled.diagram;
@@ -574,7 +574,7 @@ pub(crate) fn run_pwmc_count(
     let symmetric = |problem: &Problem<Weighted>, trace: &Trace| symmetric_subsumption(run, problem, trace);
     let compile = |problem: &Problem<Weighted>, trace: &Trace| compile_evaluate(run, problem, trace);
     if problem.show.is_none() {
-        return run_stages(problem, &[&preprocess, &trivial, &symmetric, &compile], run.deadline);
+        return run_stages(problem, &[&preprocess, &trivial, &symmetric, &compile], run.deadline, &run.config.vtree_time);
     }
     let decompose_input = |problem: &Problem<Weighted>, _: &Trace| decompose_input(run, problem);
     let enumerate = |problem: &Problem<Weighted>, _: &Trace| enumerate(run, problem);
@@ -583,7 +583,7 @@ pub(crate) fn run_pwmc_count(
         [&decompose_input, &preprocess, &enumerate, &trivial, &decompose_reduced, &symmetric, &compile];
     // Every stage that answers answers in its own problem's space; the seam
     // folds the lift.
-    run_stages(problem, &stages, run.deadline)
+    run_stages(problem, &stages, run.deadline, &run.config.vtree_time)
 }
 
 #[cfg(test)]

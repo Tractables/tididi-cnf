@@ -121,10 +121,9 @@
 //! formula; the call puts the limit back when it returns. The default sets
 //! neither.
 //!
-//! A run clears its state when it returns, so one thread can make any number
-//! of runs, and calls from several threads run one at a time: a [`count`]
-//! call waits for the one in progress to return. [`count`] prints its
-//! progress to stderr, as the binary does.
+//! Calls from several threads run one at a time: a [`count`] call waits for
+//! the one in progress to return. [`count`] prints its progress to stderr, as
+//! the binary does.
 //!
 //! # Platform
 //!

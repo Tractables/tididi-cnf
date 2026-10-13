@@ -135,7 +135,8 @@ impl Settings {
 
 /// The run's settings: what the caller asked for, plus `mode`,
 /// `source_structure_profile` and `no_sbva_retry_armed`, which the driver fills
-/// from the instance.
+/// from the instance, and what the run's vtree constructions share,
+/// `portfolio_history` and `vtree_time`.
 pub(crate) struct Config {
     /// The vtree the run compiles on: `--vtree`, or `portfolio` without it.
     pub(crate) vtree_spec: String,
@@ -145,6 +146,9 @@ pub(crate) struct Config {
     pub(crate) vtree_explicit: bool,
     /// One caller-owned portfolio history for this retry cascade.
     pub(crate) portfolio_history: vitri::decompose::PortfolioBuildHistory,
+    /// The time the run's vtree constructions take, which every stage that
+    /// builds one adds to and the record reports as `vtree_ms`.
+    pub(crate) vtree_time: crate::budget::VtreeTime,
     /// Vitri's structure profile of the source formula before preprocessing. Measured
     /// once by the driver and copied into every vtree-selection request derived
     /// from this run.
@@ -182,6 +186,7 @@ impl Config {
             vtree_explicit: settings.vtree.is_some(),
             vtree_spec: settings.vtree.clone().unwrap_or_else(|| "portfolio".to_owned()),
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
+            vtree_time: crate::budget::VtreeTime::default(),
             source_structure_profile: None,
             no_sbva_retry_armed: false,
             preprocess_level: settings.preprocess.unwrap_or(PreprocessLevel::Full),

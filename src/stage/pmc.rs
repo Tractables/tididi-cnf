@@ -116,7 +116,9 @@ fn structured_shatter(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unwe
         // The structured counter's callback consumes one root, not a component
         // plan. Request that exact Whole construction at Vitri's boundary
         // instead of building Split and discarding it.
-        crate::vtree::built_or_give_up(crate::vtree::build_vtree(f, super::PORTFOLIO_VTREE_SPEC, &vtree_ctx))
+        crate::vtree::built_or_give_up(
+            run.config.vtree_time.time(|| crate::vtree::build_vtree(f, super::PORTFOLIO_VTREE_SPEC, &vtree_ctx)),
+        )
     });
     match total {
         Some(total) => {
@@ -302,7 +304,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     };
 
     let t_compile = Instant::now();
-    let clock = crate::budget::CompileClock::start();
+    let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
     // Reactive recovery: a short single-shot compile, then show-var cutset
     // conditioning, then the same compile again on the run's wall.
     //
@@ -385,7 +387,7 @@ pub(crate) fn run_pmc_count(
     let trivial = |problem: &Problem<Unweighted>, trace: &Trace| trivial_residual("[pmc] trivial", problem, trace);
     let compile = |problem: &Problem<Unweighted>, trace: &Trace| compile_projected(run, problem, trace);
     let Some(show) = &problem.show else {
-        return run_stages(problem, &[&trivial, &compile], run.deadline);
+        return run_stages(problem, &[&trivial, &compile], run.deadline, &run.config.vtree_time);
     };
     let small_show = small_show_gate(&problem.formula, show);
     let shatter = |problem: &Problem<Unweighted>, _: &Trace| structured_shatter(run, problem);
@@ -397,7 +399,7 @@ pub(crate) fn run_pmc_count(
     let stages: [Stage<'_, Unweighted>; 7] = [&shatter, &minimize, &trivial, &enumerate, &strengthen, &trivial, &compile];
     // Every stage that answers answers in its own problem's space; the seam
     // folds the lift.
-    run_stages(problem, &stages, run.deadline)
+    run_stages(problem, &stages, run.deadline, &run.config.vtree_time)
 }
 
 #[cfg(test)]

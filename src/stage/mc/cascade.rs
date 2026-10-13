@@ -130,7 +130,7 @@ fn no_sbva_retry(
         }
     };
     let crate::frontend::McFrontendAttempt { preprocessed: ar, vtree } =
-        crate::frontend::mc_frontend_attempt(retried);
+        crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
     let arjun_pow2 = ar.count_lift.arjun_pow2;
     eprintln!(
         "[mc] no-sbva-retry: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",

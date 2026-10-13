@@ -47,13 +47,15 @@ fn compile_weighted(
     run_isolated("[wmc] compile", || {
         let VtreeBuild { root: vtree, components } = match prebuilt {
             Some(built) => built,
-            None => crate::vtree::built_or_give_up(crate::vtree::build_vtree_with_components(
-                formula,
-                super::PORTFOLIO_VTREE_SPEC,
-                &VtreeOptions::default()
-                    .with_deadline(crate::budget::vtree_deadline(deadline))
-                    .with_portfolio_history(run.config.portfolio_history.clone()),
-            ))?
+            None => crate::vtree::built_or_give_up(run.config.vtree_time.time(|| {
+                crate::vtree::build_vtree_with_components(
+                    formula,
+                    super::PORTFOLIO_VTREE_SPEC,
+                    &VtreeOptions::default()
+                        .with_deadline(crate::budget::vtree_deadline(deadline))
+                        .with_portfolio_history(run.config.portfolio_history.clone()),
+                )
+            }))?
             .bind(eng),
         };
         crate::compile::weighted_count(

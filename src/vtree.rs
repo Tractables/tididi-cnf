@@ -25,7 +25,6 @@ use std::sync::Arc;
 use vitri::cnf::CnfFormula;
 use tididi::vtree::{VarId, Vtree};
 
-use crate::budget::timed_vtree_build;
 use crate::config::Config;
 use crate::convert::{diagram_var, vtree_from_vitri};
 use crate::Error;
@@ -160,8 +159,8 @@ pub(crate) fn validate_vtree_spec(spec: &str) -> Result<(), Error> {
 /// has carved the absolute construction deadline out of its run, so vitri
 /// spends all of what remains of it rather than dividing it again.
 ///
-/// `spec` goes to Vitri as written; the caller times the build and supplies
-/// every policy that has a Vitri representation.
+/// `spec` goes to Vitri as written; the caller supplies every policy that has
+/// a Vitri representation.
 fn vitri_vtree_build_config(
     spec: &str,
     deadline: Option<std::time::Instant>,
@@ -208,8 +207,8 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
         candidate_sets: _,
         limits: _,
         cached_components: _,
-        // The build's wall: a frontend bills it, and a standalone build is
-        // timed by its caller instead.
+        // A frontend adds it to the run's vtree time; a stage times its own
+        // builds (`budget::VtreeTime`).
         construction_ms: _,
     } = built;
 
@@ -234,9 +233,7 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
 }
 
 /// Every standalone construction goes through here, so its selection context
-/// and the wall it bills to [`crate::budget`] each happen once; a frontend
-/// bills the wall vitri reports for its build instead. Vitri validates
-/// `spec`.
+/// is resolved in one place. Vitri validates `spec`.
 fn build(
     formula: &CnfFormula,
     spec: &str,
@@ -249,12 +246,10 @@ fn build(
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.
-    timed_vtree_build(|| {
-        let config = vitri_vtree_build_config(spec, options.deadline, components);
-        vitri::component::build_vtree(formula, &config, &selection)
-            .map(vtree_build_from_vitri)
-            .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))
-    })
+    let config = vitri_vtree_build_config(spec, options.deadline, components);
+    vitri::component::build_vtree(formula, &config, &selection)
+        .map(vtree_build_from_vitri)
+        .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))
 }
 
 /// Build one vtree for the whole formula from a spec, such as `"portfolio"`.

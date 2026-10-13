@@ -217,7 +217,7 @@ fn reduction(outcome: Option<&vitri::bundle::StageOutcome>) -> Option<Reduction>
 /// the preprocessing and Arjun that [`count_mc`] runs first.
 pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnswer, crate::Error> {
     eprintln!("[mc] preprocessing: start");
-    let clock = crate::budget::CompileClock::start();
+    let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
     // The stage that gave up has already said so on stderr, and there is no
     // other path behind this one.
     let out = count_mc(run, formula).ok_or_else(crate::Error::compile_gave_up)?;
@@ -309,7 +309,7 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
     );
     eprintln!("[mc] compile: start");
     // In-loop sub-vtree builds bill to `vtree_ms`, not `compile_ms`.
-    let clock = crate::budget::CompileClock::start();
+    let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
     // The first compile streams over the components detected above; a
     // cofactor carries an extra unit clause, so it may decompose differently
     // and detects its own. Each builds its vtrees as the compile reaches them.
