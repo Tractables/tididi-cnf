@@ -14,7 +14,7 @@ use vitri::cnf::CnfFormula;
 use crate::compile::component::{CompileJob, PassOutput};
 use crate::compile::marginalize::run_marginalize_at;
 use crate::compile::schedule::marginalize_schedule;
-use crate::compile::scope::group_clauses_by_scope;
+use crate::compile::scope::{ScopeGroups, group_clauses_by_scope};
 use crate::compile::step::splice_and_fold;
 use crate::compile::{CompileOptions, ComponentPlan, Output, WeightedCount, compile_cnf, weighted_count};
 use crate::test_support::{self as fixtures, clause};
@@ -59,6 +59,7 @@ struct Fixture {
     vtree: Arc<Vtree>,
     clauses: DiagramClauses,
     clauses_at: Vec<Vec<usize>>,
+    last_scope_pos: Vec<u32>,
     /// The node under test: the root's left child, joining `S` to `B`.
     t: VtreeIdx,
     prune_spent_us: Cell<u64>,
@@ -71,13 +72,14 @@ impl Fixture {
         let t_tree = Vtree::join(&side(s.to_vec()), &side(b.collect())).unwrap();
         let vtree = Arc::new(Vtree::join(&t_tree, &Vtree::leaf(VarId(top))).unwrap());
         let formula = fixtures::formula(top, clauses.iter().map(|c| clause(c)).collect());
-        let clauses_at = group_clauses_by_scope(&formula, &vtree);
+        let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
         let t = vtree.children(vtree.root()).0;
         Fixture {
             clauses: DiagramClauses::new(&formula),
             formula,
             vtree,
             clauses_at,
+            last_scope_pos,
             t,
             prune_spent_us: Cell::new(0),
         }
@@ -88,8 +90,7 @@ impl Fixture {
     }
 
     fn schedule(&self) -> Vec<Vec<VtreeIdx>> {
-        let lits: Vec<&[Literal]> = (0..self.formula.clauses().len()).map(|i| self.clauses.get(i)).collect();
-        marginalize_schedule(&lits, &self.vtree, &self.clauses_at)
+        marginalize_schedule(&self.vtree, &self.last_scope_pos)
     }
 
     fn ctx<'a>(&'a self, job: CompileJob<'a>, schedule: Option<&'a [Vec<VtreeIdx>]>) -> StepContext<'a> {

@@ -53,18 +53,12 @@ pub(crate) fn step_completions(
 /// children are marginal before it. A node is scheduled at the step of the
 /// highest-scoped clause mentioning any variable of its subtree — after that
 /// step nothing reads the subtree explicitly again — or at its own step if
-/// that is later.
-pub(crate) fn marginalize_schedule(
-    clause_lits: &[&[Literal]],
-    vtree: &Vtree,
-    clauses_at: &[Vec<usize>],
-) -> Vec<Vec<VtreeIdx>> {
+/// that is later. `last_scope_pos` is [`last_scope_positions`] of the
+/// compile's clause groups.
+pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<Vec<VtreeIdx>> {
     let n = vtree.num_nodes();
 
-    // Step 1: for each variable, find the highest-scoped clause mentioning it.
-    let last_scope_pos = last_scope_positions(clause_lits, vtree, clauses_at);
-
-    // Step 2: compute completion_pos bottom-up, never before the node's own
+    // Compute completion_pos bottom-up, never before the node's own
     // step: a leaf no clause mentions completes there, and an internal node
     // whose subtree's clauses all lie below it still has its children joined
     // there, which needs its level structural.
@@ -73,7 +67,7 @@ pub(crate) fn marginalize_schedule(
         var.map_or(own, |var| last_scope_pos[var.idx()].max(own))
     });
 
-    // Step 3: group the nodes by the step that frees them, walking the vtree
+    // Group the nodes by the step that frees them, walking the vtree
     // bottom-up so each group lists children before parents.
     let mut marginalize_at: Vec<Vec<VtreeIdx>> = vec![Vec::new(); n];
     for node in vtree.bottomup() {
@@ -87,12 +81,16 @@ pub(crate) fn marginalize_schedule(
     marginalize_at
 }
 
-/// For each variable, the bottom-up topo position of the highest-scoped clause
-/// that mentions it, or 0 when no clause does.
-fn last_scope_positions(
-    clause_lits: &[&[Literal]],
+/// For each variable (`VarId::idx`), the bottom-up topo position of the
+/// highest-scoped clause that mentions it, or 0 when no clause does: its last
+/// scope. Every scope of a clause mentioning a variable is an ancestor of the
+/// variable's leaf, so the highest of them is their lowest common ancestor.
+/// `clauses_at[t.idx()]` lists the clauses scoped to node t, and
+/// `vars_of(ci)` yields clause ci's variables.
+pub(crate) fn last_scope_positions<I: IntoIterator<Item = VarId>>(
     vtree: &Vtree,
     clauses_at: &[Vec<usize>],
+    vars_of: impl Fn(usize) -> I,
 ) -> Vec<u32> {
     let num_vars = vtree.num_vars() as usize;
     let mut last_scope_pos: Vec<u32> = vec![0; num_vars];
@@ -102,8 +100,8 @@ fn last_scope_positions(
         }
         let scope_pos = vtree.topo_pos(VtreeIdx(scope_idx as u32));
         for &ci in clause_indices {
-            for lit in clause_lits[ci] {
-                let v = lit.var.idx();
+            for var in vars_of(ci) {
+                let v = var.idx();
                 if v < num_vars {
                     last_scope_pos[v] = last_scope_pos[v].max(scope_pos);
                 }

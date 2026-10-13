@@ -25,7 +25,7 @@ use super::marginalize::{build_marginalize_targets, run_marginalize_at};
 use super::minimize::MinimizeGate;
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
 use super::schedule::marginalize_schedule;
-use super::scope::group_clauses_by_scope;
+use super::scope::{ScopeGroups, group_clauses_by_scope};
 
 /// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
 /// pairs are limited to this multiple of the two levels' pair count (see
@@ -135,16 +135,12 @@ pub(crate) fn compile_component(
     }
 
     // Decided before the pass starts: which clauses are conjoined at which
-    // vtree node, and (for a scheduled output) when each variable may be
-    // marginalized.
-    let clauses_at = group_clauses_by_scope(formula, vtree);
-    // Converted once for both the schedule and the bottom-up pass.
+    // vtree node and in what order, and (for a scheduled output) when each
+    // variable may be marginalized.
+    let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(formula, vtree);
+    let marginalize_schedule = job.output.scheduled().then(|| marginalize_schedule(vtree, &last_scope_pos));
+    // Converted once for the bottom-up pass.
     let clauses = DiagramClauses::new(formula);
-    let marginalize_schedule = job.output.scheduled().then(|| {
-        let clause_lits: Vec<&[Literal]> =
-            (0..formula.clauses().len()).map(|i| clauses.get(i)).collect();
-        marginalize_schedule(&clause_lits, vtree, &clauses_at)
-    });
 
     // Start from state this attempt charges itself; the recovery cascade's
     // split compiles run on the same thread after it. Zero the in-flight byte

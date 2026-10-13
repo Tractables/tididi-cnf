@@ -1,5 +1,10 @@
 use super::*;
 
+/// The last scopes of the clauses `literals`, scoped as `scopes` lists.
+fn last_scopes(vtree: &Vtree, literals: &[&[Literal]], scopes: &[Vec<usize>]) -> Vec<u32> {
+    last_scope_positions(vtree, scopes, |ci| literals[ci].iter().map(|lit| lit.var))
+}
+
 fn tree() -> Vtree {
     Vtree::from_nodes(vec![
         VtreeNode::Leaf { var: VarId(1), parent: None },
@@ -19,7 +24,7 @@ fn the_schedule_waits_for_the_last_mention_and_keeps_children_first() {
     ];
     let literals: Vec<&[_]> = clauses.iter().map(Vec::as_slice).collect();
     let scopes = vec![vec![], vec![], vec![], vec![0], vec![1]];
-    let schedule = marginalize_schedule(&literals, &vtree, &scopes);
+    let schedule = marginalize_schedule(&vtree, &last_scopes(&vtree, &literals, &scopes));
     assert_eq!(schedule[3], vec![VtreeIdx(0)]);
     assert_eq!(schedule[4], vec![VtreeIdx(1), VtreeIdx(2), VtreeIdx(3)]);
     assert!(!schedule.iter().flatten().any(|&t| t == vtree.root()));
@@ -53,7 +58,7 @@ fn no_node_is_scheduled_before_its_own_step() {
     ];
     let literals: Vec<&[_]> = clauses.iter().map(Vec::as_slice).collect();
     let scopes = vec![vec![0], vec![1], vec![2], vec![], vec![]];
-    let schedule = marginalize_schedule(&literals, &vtree, &scopes);
+    let schedule = marginalize_schedule(&vtree, &last_scopes(&vtree, &literals, &scopes));
     assert_eq!(schedule[1], vec![VtreeIdx(1)]);
     assert_eq!(schedule[3], vec![VtreeIdx(3)]);
     for (step, group) in schedule.iter().enumerate() {

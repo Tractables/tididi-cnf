@@ -13,7 +13,7 @@ That keeps intermediate TDDs much smaller.
 
 ```
 1. For each clause, compute its scope = LCA of its variables' vtree leaves
-2. Group clauses by scope
+2. Group clauses by scope, and order each group
 3. Bottom-up traversal of the vtree:
    - At each internal node t, conjoin child TDDs (from left/right subtrees)
    - Then batch-accumulate clauses scoped to t (see below), or fold them
@@ -23,6 +23,41 @@ That keeps intermediate TDDs much smaller.
 
 **Scope**: `clause_scope` (`src/compile/scope.rs`) folds `Vtree::lca` over the
 clause's leaves.
+
+**Clause order within a node**: the order of a node's clauses cannot change
+what the node conjoins, only the intermediate diagrams of its fold.
+`order_group` (`src/compile/scope.rs`) orders each group of more than two
+clauses by one of two orders:
+
+- The *proximity tour* starts at the clause with the most variables and
+  repeatedly takes the unplaced clause sharing the most variables with the
+  last one placed.
+- The *completion order* is a greedy over *open* variables: a variable opens
+  when a placed clause first mentions it and finishes when its last clause in
+  the group is placed and the node is its last scope (the highest scope of a
+  clause mentioning it, `last_scope_positions`); one whose last scope is
+  higher stays open. The greedy places next the clause that leaves the fewest
+  open, ties to the one finishing more, then to the earlier clause. *Pendant*
+  clauses, none of whose variables occurs in another clause of the group and
+  all of whose variables finish at the node, go last, in group order: the
+  open count scores them free, but each couples the node's two sides and
+  multiplies the accumulator until its variables are summed out, so placed
+  early it enlarges every later step of the fold.
+
+Each order is scored by its open profile, the largest and the summed open
+count after each clause. Where some variable finishes at the node, the
+completion order replaces the tour only when it is clearly smaller on both
+(`COMPLETION_ORDER_MAX_RATIO`, `COMPLETION_ORDER_SUM_RATIO`). The margin
+keeps the tour on near-ties, where the completion order was seen to build far
+larger diagrams: bipartite stars of two-literal clauses, where it opens one
+side's hubs before it finishes any. Where no variable finishes, both orders
+end with every variable open, so the maxima tie and only the order of
+touching differs; a smaller sum suffices there. Groups over
+`COMPLETION_ORDER_MAX_CLAUSES` keep the tour without computing the
+completion order, whose greedy is quadratic in the group. On fixed vtrees,
+the rule kept every formula the tour finished and cut the accumulator pairs of
+several large compiles and counts, where taking the completion order on any
+smaller profile lost formulas.
 
 **Why this is faster**: A clause scoped to a sub-vtree only affects widths
 within that subtree, leaving ancestor levels at width 1. The naive
