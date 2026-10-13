@@ -50,19 +50,11 @@ use component::{
 };
 use step::compile_component;
 
-/// How the compiler should treat independent components for this exact formula.
-///
-/// Vtree construction ([`crate::vtree::build_vtree_with_components`]) has
-/// already made this decision: `Whole` means its root is the tree to compile,
-/// while `Split` carries the exact component-local trees and numbering maps it
-/// returned. `Detect`, the default, has the compiler discover the components
-/// itself. Keeping these states distinct prevents a construction's
-/// `components: None` (meaning whole-formula construction) from being mistaken
-/// for a request to discard the supplied root and build local balanced
-/// component trees.
+/// Which independent components a compile splits the formula into.
 #[derive(Clone, Copy, Default)]
 pub enum ComponentPlan<'a> {
-    /// Let the compiler discover the components.
+    /// Find them; with two or more, compile each on a balanced vtree of its
+    /// own and leave `vtree` unused.
     #[default]
     Detect,
     /// Compile the formula whole, against the supplied root vtree.
@@ -247,7 +239,7 @@ pub enum Output<'a> {
 pub struct CompileOptions<'a> {
     /// Which components to compile separately, and against which vtrees.
     pub plan: ComponentPlan<'a>,
-    /// What the compile produces. Variable ids it lists at or past
+    /// What the compile produces. Variable ids it lists above
     /// `formula.num_vars` are ignored.
     pub output: Output<'a>,
     /// The wall-clock the compile gives up at. When set it is also installed
@@ -335,7 +327,6 @@ pub(crate) fn compile_with(
     run: CompileRun<'_>,
 ) -> Result<Compiled, GiveUp> {
     let CompileOptions { plan, output, deadline } = opts;
-    let in_range = |v: &&VarId| v.idx() < formula.num_vars() as usize;
     // The apply-level deadline, whose Drop restores the previous value on every
     // return and panic path.
     let _apply_deadline = deadline_scope(eng, deadline);
@@ -350,11 +341,11 @@ pub(crate) fn compile_with(
             PassOutput::Count(Some(&weights))
         }
         Output::ProjectedCount(vars) => {
-            forget = vars.iter().filter(in_range).copied().collect();
+            forget = formula_vars(formula, vars);
             PassOutput::ProjectedCount(&forget)
         }
         Output::ProjectedFunction(vars) => {
-            forget = vars.iter().filter(in_range).copied().collect();
+            forget = formula_vars(formula, vars);
             PassOutput::ProjectedFunction(&forget)
         }
     };
@@ -397,6 +388,12 @@ pub(crate) fn compile_with(
     let mut result = compile_component(eng, formula, vtree, job)?;
     minimize_full(eng, &mut result.diagram, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
     Ok(result)
+}
+
+/// The variables of `vars` that `formula` has: ids above `formula.num_vars`
+/// are dropped.
+fn formula_vars(formula: &CnfFormula, vars: &[VarId]) -> HashSet<VarId> {
+    vars.iter().filter(|v| v.idx() < formula.num_vars() as usize).copied().collect()
 }
 
 /// The weighted count of `formula` under `algebra`, computed in
@@ -470,13 +467,9 @@ pub(crate) fn model_count_streaming<F>(
 where
     F: FnMut(&CnfFormula) -> Option<Arc<Vtree>>,
 {
-    let forget: Option<HashSet<VarId>> = forget.map(|vars| {
-        vars.iter().filter(|v| v.idx() < formula.num_vars() as usize).copied().collect()
-    });
+    let forget = forget.map(|vars| formula_vars(formula, vars));
 
     if formula.clauses().is_empty() {
-        // Projection-aware: projected free vars ∃-away to factor 1, only
-        // non-projected free vars contribute ×2. `2^num_vars` for plain MC.
         return Some((
             BigUint::from(1u32) << component::streaming_free_var_count(formula, &[], forget.as_ref()),
             0,
@@ -508,11 +501,6 @@ where
             let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
             let compiled =
                 settle(compile_component(eng, sub_formula, &sub_vtree, CompileJob { deadline, output, run }))?;
-            // This component's own forgotten vars come out before it enters
-            // the product. A divisor taken over the whole run would divide
-            // component n by the forgets of 1..n and could shift one to 0,
-            // reporting a satisfiable formula UNSAT through the zero
-            // short-circuit below.
             (compiled.projected_count(eng).ok()?, compiled.peak_pairs)
         };
         peak = peak.max(sub_peak);
@@ -522,9 +510,6 @@ where
         }
         total *= sub_count;
     }
-    // Recover variables present in `num_vars` but in no clause of any component:
-    // the streaming product only ranged over clause-appearing vars, and each
-    // free var contributes ×2.
     total <<= component::streaming_free_var_count(formula, components, forget.as_ref());
     Some((total, peak))
 }

@@ -121,13 +121,15 @@ fn collect_free_vars(components: &[ComponentVtree], total_vars: u32) -> Vec<VarI
 }
 
 /// The number of variables in `formula.num_vars` covered by no component's
-/// `local_to_global`, other than one in `forget`. These are *free* variables —
+/// `local_to_global` and not in `forget`. These are *free* variables —
 /// declared in `num_vars` but absent from every clause of every component —
-/// and each contributes a factor of 2 to the model count. With no components,
-/// as for a formula with no clauses, every variable is covered by none.
+/// and each contributes a factor of 2 to the model count; a projected one is
+/// ∃-forgotten to a factor of 1. With no components, as for a formula with no
+/// clauses, every variable is covered by none.
 ///
 /// The streaming count builds each `sub_formula` with
-/// `num_vars == component.local_to_global.len()` (see `remap_component_clauses`), so
+/// `num_vars == component.local_to_global.len()` (see
+/// [`remap_component_clauses_into`]), so
 /// its product runs only over clause-appearing vars and drops free vars; the
 /// caller folds `2^free` on top. The grafted (TDD-returning) paths handle this
 /// separately via `collect_free_vars` + `graft_over`, and count a projected
@@ -138,9 +140,6 @@ pub(crate) fn streaming_free_var_count(
     forget: Option<&HashSet<VarId>>,
 ) -> usize {
     let covered = covered_vars(formula.num_vars(), components.iter().map(|component| &component.local_to_global));
-    // A projected var that appears in no clause is covered by no component, so
-    // it never reaches a component's ∃-forget. But ∃x.φ = φ when x∉φ, so it
-    // contributes factor 1, not 2: it is left out of the free-var lift.
     (1..=formula.num_vars())
         .map(VarId)
         .filter(|v| !covered[v.idx()] && !forget.is_some_and(|forget| forget.contains(v)))
@@ -157,9 +156,9 @@ fn covered_vars<'a>(num_vars: u32, maps: impl Iterator<Item = &'a Vec<VarId>>) -
     covered
 }
 
-// ── `remap_component_clauses` ─────────────────────────────────────────────────
+// ── `remap_component_clauses_into` ────────────────────────────────────────────
 
-/// Reusable buffers for the per-component streaming loop.
+/// Reusable buffers for a loop that compiles one component at a time.
 ///
 /// The loop remaps one component's clauses into a self-contained sub-formula
 /// before every compile; the buffers here keep that remap from allocating a
@@ -192,25 +191,9 @@ impl RemapScratch {
     }
 }
 
-/// Remap a component's clauses from global VarIds to local VarIds (`0..K-1`),
-/// producing a self-contained sub-formula that can be compiled against the
-/// component's small per-component vtree.
-///
-/// Allocating form of [`remap_component_clauses_into`], for callers that remap
-/// a bounded number of components and want an owned result.
-fn remap_component_clauses(
-    formula: &CnfFormula,
-    clause_indices: &[usize],
-    local_to_global: &[VarId],
-) -> CnfFormula {
-    let mut scratch = RemapScratch::default();
-    remap_component_clauses_into(&mut scratch, formula, clause_indices, local_to_global);
-    scratch.sub
-}
-
-/// [`remap_component_clauses`] into caller-owned buffers — the single
-/// implementation of the remap; the allocating form above is this plus a
-/// throwaway [`RemapScratch`].
+/// Remap a component's clauses from global VarIds to local VarIds (`0..K-1`)
+/// into `scratch`, producing a self-contained sub-formula, [`RemapScratch::sub`],
+/// that can be compiled against the component's own vtree.
 pub(crate) fn remap_component_clauses_into(
     scratch: &mut RemapScratch,
     formula: &CnfFormula,
@@ -368,8 +351,9 @@ pub(crate) fn compile_split(
     let mut comp_tdds: Vec<(Tdd, Vec<VarId>)> = Vec::with_capacity(components.len());
     let mut forgotten = 0;
     let mut peak_pairs = 0;
+    let mut scratch = RemapScratch::default();
     for ComponentVtree { vtree: sub_vtree, component: Component { clause_indices, local_to_global: l2g } } in components {
-        let sub_formula = remap_component_clauses(formula, clause_indices, l2g);
+        remap_component_clauses_into(&mut scratch, formula, clause_indices, l2g);
         // The pass tests membership against the local VarIds the component
         // vtree's leaves carry, and reads weights by them; untranslated, a
         // forgotten variable would be kept inside every component.
@@ -390,7 +374,7 @@ pub(crate) fn compile_split(
                 PassOutput::ProjectedFunction(&comp_forget)
             }
         };
-        let comp = compile_component(eng, &sub_formula, sub_vtree, CompileJob { output, ..job })?;
+        let comp = compile_component(eng, scratch.sub(), sub_vtree, CompileJob { output, ..job })?;
         forgotten += comp.forgotten;
         peak_pairs = peak_pairs.max(comp.peak_pairs);
         let comp_tdd = comp.diagram;

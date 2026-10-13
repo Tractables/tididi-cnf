@@ -41,7 +41,6 @@ fn forget_shield(
     let mut skip = HashSet::new();
     for v in forget {
         if forgotten.contains(v) { continue; }
-        if v.idx() >= vtree.num_vars() as usize { continue; }
         let leaf_idx = vtree.leaf_of(*v).expect("the vtree carries this variable");
         // Walk leaf→root: shield each ancestor, and the whole subtree of
         // each lower path node's sibling (the pair's sibling-side child).
@@ -169,10 +168,7 @@ pub(crate) fn run_marginalize_at(
         // uniform 2^k divisor valid.)
         if t == current_vtree.root() {
             for &var in proj_vars {
-                if var.idx() < current_vtree.num_vars() as usize
-                    && !forgotten.contains(&var)
-                    && !vars_to_forget.contains(&var)
-                {
+                if !forgotten.contains(&var) && !vars_to_forget.contains(&var) {
                     vars_to_forget.push(var);
                 }
             }
