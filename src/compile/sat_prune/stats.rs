@@ -43,7 +43,7 @@ sat_prune_stats! {
     passes_triggered,
     /// Sum of the diagram's [`Tdd::pair_count`] at the moment of each trigger.
     /// Divide by `passes_triggered` for the average subcircuit size at trigger.
-    nodes_inspected,
+    pairs_inspected,
     /// Number of internal TDD nodes probed across all passes.
     probes_attempted,
     /// Number of probes that returned UNSAT (i.e. proved-dead nodes).

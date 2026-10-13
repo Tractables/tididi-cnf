@@ -80,7 +80,7 @@ tallies, summed over every compile of the run, appear as
 | `sat_prune_…` | counts |
 |---|---|
 | `passes_triggered` | passes started |
-| `nodes_inspected` | the diagram's size in pairs at the start of each pass, summed over passes |
+| `pairs_inspected` | the diagram's size in pairs at the start of each pass, summed over passes |
 | `probes_attempted` | nodes checked one at a time |
 | `probes_unsat` | nodes a check proved dead |
 | `probes_unknown` | checks that ran out of budget; the node is kept |

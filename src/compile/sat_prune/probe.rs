@@ -140,7 +140,7 @@ impl SatPruneCtx {
         }
 
         self.stats.passes_triggered += 1;
-        self.stats.nodes_inspected += tdd_size as u64;
+        self.stats.pairs_inspected += tdd_size as u64;
         self.last_trigger_size = tdd_size;
 
         // Wall-time ceiling on the spend since the last productive rewrite
