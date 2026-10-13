@@ -3,18 +3,8 @@
 //!
 //! ## Why a failed compile can be caught
 //!
-//! When the compiler runs out of memory deep in the recursive cascade,
-//! jemalloc returns null and Rust's default `__rust_alloc_error_handler`
-//! (Rust 1.81+) panics with `"memory allocation of N bytes failed"`.
-//! That panic originates at the call site of the allocation
-//! (`Vec::with_capacity`, `Box::new`, `RawVec::reserve`, …) — *not* from
-//! inside `GlobalAlloc::alloc`. That distinction matters because
-//! `__rust_alloc` is `#[rustc_nounwind]`; unwinding from inside it is UB
-//! and was empirically observed to terminate with rc=101 *without* ever
-//! reaching `catch_unwind`. Letting the default handler do the panic from
-//! a regular (unwindable) frame restores the unwind path.
-//!
-//! [`count_with_recovery`] runs every compile under
+//! A refused allocation unwinds from its call site (`crate::mem` says why), so
+//! `catch_unwind` here catches it. [`count_with_recovery`] runs every compile under
 //! [`std::panic::catch_unwind`]. When it catches a panic, the state inside
 //! the failed compile is by then either freed (drops ran) or unreachable.
 //! The only live state is the input `CnfFormula` — which was passed by
@@ -72,9 +62,8 @@
 //! re-Arjun both ways: whether a cofactor's re-Arjun starts (the check before
 //! each child) and how long it may then run
 //! ([`crate::budget::clamped_to_deadline_ms`] in `prepare_cofactor`). With only
-//! the first, a child starting a millisecond before the deadline still takes
-//! the full policy budget of up to 300 s, which is wall the stage below it had
-//! been promised.
+//! the first, a child starting a millisecond before the deadline would take
+//! its whole budget, up to [`RECOVERY_ARJUN_MAX_MS`], past the wall.
 
 use std::panic;
 use std::time::Instant;
@@ -184,7 +173,7 @@ enum Cofactor {
 /// `branched` holds the variables the enclosing splits fixed since this
 /// formula's numbering began: the whole formula's, or the re-reduction that
 /// renumbered it.
-fn count_cofactor<F>(
+fn count_or_split<F>(
     run: &Run<'_>,
     formula: &CnfFormula,
     depth: u32,
@@ -240,11 +229,10 @@ where
     let mut acc: Counted = (BigUint::ZERO, 0);
     for (child_idx, unit) in [Literal::pos(var), Literal::neg(var)].into_iter().enumerate() {
         // Past the deadline the whole split can no longer produce a countable
-        // result, and the per-child `prepare_cofactor` re-Arjun can burn up to
-        // 300s. Give the entire split up (None) rather than continue — returning
-        // the partial `acc` would silently undercount. Checked before any
-        // per-child work (BCP / re-Arjun / recurse). Fires only once the wall
-        // has passed, so it never abandons a countable result.
+        // result. Give the entire split up (None) rather than continue —
+        // returning the partial `acc` would silently undercount. Checked before
+        // any per-child work (BCP / re-Arjun / recurse). Fires only once the
+        // wall has passed, so it never abandons a countable result.
         if deadline_passed(run.deadline) {
             eprintln!("[mc] shannon-split: the time limit passed mid-split; giving up");
             return None;
@@ -260,10 +248,10 @@ where
             // A reduction renumbers the cofactor, and the variables the
             // enclosing splits fixed are gone from it, so none is excluded.
             Cofactor::Reduced { formula, lift_pow2 } => {
-                let (count, peak) = count_cofactor(run, &formula, depth + 1, &[], cofactor)?;
+                let (count, peak) = count_or_split(run, &formula, depth + 1, &[], cofactor)?;
                 (count << lift_pow2, peak)
             }
-            Cofactor::Unreduced(formula) => count_cofactor(run, &formula, depth + 1, &child_branched, cofactor)?,
+            Cofactor::Unreduced(formula) => count_or_split(run, &formula, depth + 1, &child_branched, cofactor)?,
         };
         // Purge between siblings so the next cofactor doesn't inherit this
         // one's retained extents.
@@ -275,30 +263,40 @@ where
     Some(acc)
 }
 
-/// Absolute budget for a recovery cofactor's Arjun pass when the enclosing run
-/// declares no wall.
-const RECOVERY_ARJUN_ABS_DEFAULT_MS: u64 = 60_000;
+/// Max recovery depth (exclusive) at which each Shannon cofactor is re-Arjun'd
+/// before its sub-compile. 1 = depth-0 only: only the first split's children get
+/// projection cleanup.
+const SPLIT_ARJUN_MAX_DEPTH: u32 = 1;
 
+/// A recovery cofactor's Arjun budget: this share of the declared wall,
+/// clamped to [`RECOVERY_ARJUN_MIN_MS`, `RECOVERY_ARJUN_MAX_MS`], or
+/// [`RECOVERY_ARJUN_DEFAULT_MS`] when the run declares no wall; then cut to
+/// the time the run has left.
+const RECOVERY_ARJUN_SHARE: f64 = 0.10;
+const RECOVERY_ARJUN_MIN_MS: u64 = 5_000;
+const RECOVERY_ARJUN_MAX_MS: u64 = 300_000;
+const RECOVERY_ARJUN_DEFAULT_MS: u64 = 60_000;
+
+/// Prepare the BCP-closed cofactor `sub`, child `child_idx` of a split at
+/// `depth`, for its count: re-run Arjun on it while `depth` is under
+/// [`SPLIT_ARJUN_MAX_DEPTH`] and the run has time left, and keep the
+/// reduction Arjun keeps.
 fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize) -> Cofactor {
     let deadline = run.deadline;
-    // Re-run Arjun on the BCP-closed sub-formula. Sampling-set shrinkage
-    // compounds across recovery levels; gate by depth to bound the
-    // exponential cost of 2^N budgeted Arjun calls. The returned multiplier
-    // is applied to this child's count before the sum.
-    // 10% of max-time, clamped to [5 s, 300 s] and to the time left before
-    // the cascade's deadline (see the section comment above). `None` is a budget with
-    // nothing left in it, which compiles the cofactor as it stands, as the
-    // depth gate does.
-    let now = std::time::Instant::now();
+    // Sampling-set shrinkage compounds across recovery levels; the depth gate
+    // bounds the exponential cost of 2^N budgeted Arjun calls. `None` is a
+    // budget with nothing left in it, which compiles the cofactor as it
+    // stands, as the depth gate does.
+    let now = Instant::now();
     let budget_ms = (depth < SPLIT_ARJUN_MAX_DEPTH)
         .then(|| {
             clamped_to_deadline_ms(
                 resolve_scaled(
                     run.config.time_limit_ms,
-                    0.10,
-                    RECOVERY_ARJUN_ABS_DEFAULT_MS,
-                    5_000,
-                    300_000,
+                    RECOVERY_ARJUN_SHARE,
+                    RECOVERY_ARJUN_DEFAULT_MS,
+                    RECOVERY_ARJUN_MIN_MS,
+                    RECOVERY_ARJUN_MAX_MS,
                 ),
                 deadline,
                 now,
@@ -375,7 +373,7 @@ fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize
     }
 }
 
-/// Soundness guard (A) on a re-Arjun'd cofactor: free-eliminated vars (each ×2)
+/// The soundness guard on a re-Arjun'd cofactor: free-eliminated vars (each ×2)
 /// must be a subset of the vars Arjun removed. BCP and Shannon-fixing preserve
 /// `num_vars`, so Arjun is the only place it moves; this local inequality at
 /// every re-Arjun is, by induction, the full per-path variable accounting.
@@ -390,7 +388,7 @@ fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize
 /// input-space name (`PreprocessRecord::reduced_to_original_dimacs`), which is
 /// the same channel the caller uses to name a reduction back.
 ///
-/// A path that cannot report the map at all reports NO names (empty, not
+/// A path that cannot report the map at all reports no names (empty, not
 /// `None`-filled) — there is nothing to check there rather than nothing added,
 /// so the guard stands down.
 fn check_arjun_accounting(
@@ -416,12 +414,7 @@ fn check_arjun_accounting(
     );
 }
 
-/// Max recovery depth (exclusive) at which each Shannon cofactor is re-Arjun'd
-/// before its sub-compile. 1 = depth-0 only: only the first split's children get
-/// projection cleanup.
-const SPLIT_ARJUN_MAX_DEPTH: u32 = 1;
-
-/// Log the recovery trigger and purge jemalloc pages.
+/// Log the recovery trigger under `tag` and purge jemalloc pages.
 ///
 /// Logs the recovery event to stderr, drops this thread's retained apply scratch
 /// (`Engine::clear_scratch` — the sparse workspace and level pools the unwind

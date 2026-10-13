@@ -128,14 +128,16 @@ fn a_re_reduced_cofactor_branches_on_its_own_most_frequent_variable() {
     assert!(reduced.num_vars() < f.num_vars(), "the fixture's first cofactor is re-reduced");
     let top = most_frequent_var(reduced, 0, |_| true).expect("the reduced cofactor has clauses");
     assert_eq!(top.idx(), 0, "the fixture numbers the reduced cofactor's top variable as the enclosing branch");
-    let children: Vec<CnfFormula> =
-        [Literal::pos(top), Literal::neg(top)].into_iter().filter_map(|unit| simplify_via_unit(reduced, unit)).collect();
+    let children: Vec<CnfFormula> = [Literal::pos(top), Literal::neg(top)]
+        .into_iter()
+        .filter_map(|unit| simplify_via_unit(reduced, unit))
+        .collect();
     assert_eq!(seen[1..=children.len()], children[..], "the reduced cofactor's split branches on its top variable");
 }
 
 /// The cascade honors the run's wall. With it already past, the count
 /// gives up (None) without ever invoking a compile — no Shannon split, no
-/// per-child re-Arjun, which can burn up to 300 s each.
+/// per-child re-Arjun.
 #[test]
 fn mc_recovery_honors_past_deadline_without_compiling() {
     let eng = &Engine::new();
