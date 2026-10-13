@@ -42,7 +42,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
 
-      - name: Check that the manifests, lockfiles, changelog, citation and tag name one version
+      - name: Check that the tag and every file naming the version name one
         run: python3 .github/scripts/check-versions.py ${TAG:+"$TAG"}
 
   linux:

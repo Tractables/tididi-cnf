@@ -25,9 +25,10 @@ bash scripts/verify.sh
 - The thorough tier adds the long tests:
   `cargo test --workspace -- --include-ignored`.
 
-CI runs this same script. It also checks that `Cargo.toml`, `Cargo.lock`,
-`CITATION.cff` and the changelog name one version, and compiles the workspace
-with the oldest supported Rust, the `rust-version` in `Cargo.toml`.
+CI runs this same script. It also checks that every file naming the release
+version names the same one (`.github/scripts/check-versions.py` lists them),
+and compiles the workspace with the oldest supported Rust, the `rust-version`
+in `Cargo.toml`.
 
 ## Worked examples
 
@@ -154,12 +155,15 @@ rule below is a form of it. Review a change against this list before it lands.
 
 ## Releasing
 
-Set the new version in `Cargo.toml`, `CITATION.cff` and the `Cargo.toml` of
-each binding under `bindings/`, whose packages report the library's version.
-`cargo update --workspace`, at the root and in each binding's directory,
-carries it into that `Cargo.lock`. Rename the `## Unreleased` heading in
-[`CHANGELOG.md`](CHANGELOG.md) to the version, and move the worked examples'
-`blob/v<version>/` program links to the new tag. Then publish a GitHub release
-with the tag `v<version>`: the release workflow checks that the tag and those
-files name one version, builds and runs the Linux binary, and attaches it to
-the release.
+Set the new version in `Cargo.toml`, in each binding's `Cargo.toml` under
+`bindings/` and in `CITATION.cff`, then run `cargo update --workspace` in the
+repository root and in each binding, so that every `Cargo.lock` follows.
+Rename the `## Unreleased` heading in [`CHANGELOG.md`](CHANGELOG.md) to the
+version, and move the worked examples' `blob/v<version>/` program links to the
+new tag. CI refuses a file that still names the old version.
+
+Then publish a GitHub release with the tag `v<version>`: the release workflow
+checks the tag against those files, builds and runs the Linux binary, and
+attaches it to the release with the licence texts it needs. Last, run the Docs
+workflow with `publish` ticked, so that the documentation and the browser page
+on GitHub Pages follow the release.
