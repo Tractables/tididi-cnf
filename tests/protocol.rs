@@ -5,12 +5,12 @@
 //! `tests/data/protocol/`. Between them the rows cover every counting mode
 //! (`--mode mc`, `wmc`, `pmc` and `pwmc`) and both integer-MC entries:
 //! `--mode mc` without `--vtree` runs the cascade, and with `--vtree` the
-//! streaming entry, `run_mc_streaming` in `src/driver/mod.rs`.
+//! streaming entry, `run_mc_streaming` in `src/stage/mc/mod.rs`.
 //!
 //! This is a transcript pin, not a correctness check. It says a refactor left
-//! the counts, the stage that answered and the candidate, the probe and node tallies and
-//! the diagnostics exactly as they were; `tests/correctness.rs` is what says
-//! the counts are right in the first place.
+//! the counts, the stage that answered and the candidate, the probe and node
+//! tallies and the diagnostics exactly as they were; `tests/correctness.rs`
+//! is what says the counts are right in the first place.
 //!
 //! Regenerate after an intended output change with
 //!
@@ -32,12 +32,14 @@ const TIME_LIMIT_MS: &str = "60000";
 /// The env var that rewrites the expected files instead of comparing them.
 const UPDATE_VAR: &str = "UPDATE_PROTOCOL";
 
-const REGENERATE: &str =
-    "UPDATE_PROTOCOL=1 cargo test --test protocol -- --include-ignored";
+/// The command that rewrites the expected files.
+fn regenerate() -> String {
+    format!("{UPDATE_VAR}=1 cargo test --test protocol -- --include-ignored")
+}
 
 /// Replace the wall-clock carriers in one line of output, and only those.
 ///
-/// Two things in this output move from run to run, all of them clock
+/// Two things in this output move from run to run, both of them clock
 /// readings; everything else — counts, sizes, stage and candidate names, probe
 /// and node tallies, preprocessing shapes — is compared literally.
 ///
@@ -227,8 +229,9 @@ fn check_row(row: &str, flags: &[&str], cnf: &str) {
     let expected = std::fs::read_to_string(&path).unwrap_or_else(|e| {
         panic!(
             "row {row}: no expected transcript at {} ({e}).\n\
-             Create it with:\n    {REGENERATE}",
-            path.display()
+             Create it with:\n    {}",
+            path.display(),
+            regenerate()
         )
     });
     if actual == expected {
@@ -241,8 +244,9 @@ fn check_row(row: &str, flags: &[&str], cnf: &str) {
          first difference at line {line_no}:\n\
          \x20 expected: {want}\n\
          \x20   actual: {got}\n\
-         If the change is intended, regenerate and read the diff:\n    {REGENERATE}",
-        path.display()
+         If the change is intended, regenerate and read the diff:\n    {}",
+        path.display(),
+        regenerate()
     );
 }
 
@@ -266,11 +270,11 @@ fn first_difference(expected: &str, actual: &str) -> (usize, String, String) {
 }
 
 /// One `#[test]` per row, so a failure names the row and cargo schedules the
-/// rows across cores. Every row but one costs under two seconds; the one that
-/// spends most of its time limit reaching the projected compile is
-/// `#[ignore]`d into the thorough tier that `CONTRIBUTING.md` describes.
-/// A row names its own `--time-limit-ms` only where the shared limit would
-/// make a clock-bounded stage stop at a machine-dependent point.
+/// rows across cores. Every row but one is quick; the one that spends most of
+/// its time limit reaching the projected compile is `#[ignore]`d into the
+/// thorough tier that `CONTRIBUTING.md` describes. A row names its own
+/// `--time-limit-ms` only where the shared limit would make a clock-bounded
+/// stage stop at a machine-dependent point.
 macro_rules! protocol_rows {
     ($( $( #[$attr:meta] )* $row:ident : [$($flag:literal),*], $cnf:literal; )*) => {
         $(
@@ -292,7 +296,9 @@ protocol_rows! {
     // stops could move with the machine. Under an hour the share is 6 s and
     // the walk runs to its own end every time.
     mc_sat_prune:         ["--mode", "mc", "--time-limit-ms", "3600000"], "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
-    mc_marg_split:        ["--mode", "mc"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
+    // SAT pruning removes too few of the nodes it checks and stops before
+    // the compile ends.
+    mc_sat_prune_backs_off: ["--mode", "mc"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
     wmc_tiny_sat:         ["--mode", "wmc"], "tests/data/wmc_header_tiny_sat.cnf";
     wmc_unsat:            ["--mode", "wmc"], "tests/data/wmc_unsat.cnf";
     pwmc_arjun_defined:   ["--mode", "pwmc"], "tests/data/pwmc_arjun_defined_weight.cnf";
@@ -311,7 +317,7 @@ protocol_rows! {
     stream_mc_s641:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/iscas89/s641.scan.cnf";
     stream_mc_all_backbone: ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf";
     stream_mc_sat_prune:  ["--mode", "mc", "--vtree", "portfolio", "--time-limit-ms", "3600000"], "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
-    stream_mc_marg_split: ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
+    stream_mc_sat_prune_backs_off: ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
     stream_mc_tiny:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/mc_header_tiny.cnf";
     stream_mc_onehot:     ["--mode", "mc", "--vtree", "portfolio"], "tests/data/onehot_free_residual.cnf";
 }
@@ -335,12 +341,12 @@ fn normalization_blanks_only_clock_readings() {
     );
 
     // Counts and exponent-form weights stay put.
-    for untouched in [
+    for input in [
         "[mc] arjun: reduced in 14ms — 81v/525c → 62v/418c, lift=2^0",
         r#"{"weighted_count":"8.587500000000007e1","weighted_count_log10":1.9338667500676072}"#,
     ] {
-        let blanked = blank_durations(untouched);
-        let expected = untouched.replace("14ms", "<t>");
-        assert_eq!(blanked, expected, "over-blanked: {untouched}");
+        let blanked = blank_durations(input);
+        let expected = input.replace("14ms", "<t>");
+        assert_eq!(blanked, expected, "over-blanked: {input}");
     }
 }
