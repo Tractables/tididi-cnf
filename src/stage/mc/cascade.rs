@@ -110,11 +110,12 @@ fn no_sbva_retry(
         RETRY_VTREE_SPEC,
         reserve.as_secs(),
     );
-    // Reduce budget: `budget::arjun_budget_ms`, capped at half this stage's
+    // Reduce budget: the front end's own Arjun budget for the run's time
+    // limit (`ArjunBudget::derived_duration`), capped at half this stage's
     // window so the reduce cannot consume the compile's share — on the class
     // this stage is for, the reduce is the smaller half of the route.
-    let reduce_budget_ms = crate::budget::arjun_budget_ms(run.config.time_limit_ms, 600_000)
-        .min(reserve.as_millis() as u64 / 2);
+    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms);
+    let reduce_budget_ms = (arjun_budget.as_millis() as u64).min(reserve.as_millis() as u64 / 2);
     let t_reduce = Instant::now();
     let budget = vitri::bundle::RetryBudget::new(
         stage_deadline,

@@ -75,15 +75,6 @@ pub(crate) fn clamped_to_deadline_ms(
     (allowed > 0).then_some(allowed)
 }
 
-/// Arjun-reduction budget: 1/6 of `--time-limit-ms` for walls up to 300 s and
-/// 1/4 above, clamped to `[5_000, 600_000]`; `abs_default_ms` when there is no
-/// time limit.
-pub(crate) fn arjun_budget_ms(time_limit_ms: Option<u64>, abs_default_ms: u64) -> u64 {
-    let short_window = time_limit_ms.is_some_and(|t| t <= 300_000);
-    let ratio = if short_window { 1.0 / 6.0 } else { 0.25 };
-    resolve_scaled(time_limit_ms, ratio, abs_default_ms, 5_000, 600_000)
-}
-
 /// The only place a program deadline is turned into a vtree-construction
 /// deadline, starting now. Every call site that knows the wall calls this
 /// rather than deriving a construction deadline of its own. The share is a

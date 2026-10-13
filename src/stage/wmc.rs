@@ -182,12 +182,14 @@ fn count_reduced(
     simplified_clauses: usize,
     compile_deadline: Option<Instant>,
 ) -> Option<WeightedCount<WeightValue>> {
-    // The reduce budget, cut to the window this attempt was given
-    // (`compile_deadline`: `ARJUN_SHARE` of what remains, the rest reserved
-    // for the simplified formula). Nothing left ⇒ the attempt declines, the
-    // "no usable reduction" path, and the simplified formula gets the time.
+    // The reduce budget, the front end's own Arjun budget for the run's time
+    // limit (`ArjunBudget::derived_duration`), cut to the window this attempt
+    // was given (`compile_deadline`: `ARJUN_SHARE` of what remains, the rest
+    // reserved for the simplified formula). Nothing left ⇒ the attempt
+    // declines, the "no usable reduction" path, and the simplified formula
+    // gets the time.
     let reduce_budget = crate::budget::clamped_to_deadline_ms(
-        crate::budget::arjun_budget_ms(run.config.time_limit_ms, 300_000),
+        vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).as_millis() as u64,
         compile_deadline,
         Instant::now(),
     )

@@ -27,33 +27,6 @@ fn a_window_never_ends_past_its_deadline() {
     assert_eq!(not_past(later, None), later);
 }
 
-/// A time limit up to 300 s gives Arjun a sixth of it, and never less than
-/// the floor.
-#[test]
-fn arjun_budget_120s_short_window_ratio() {
-    // 120s ≤ 300s window gate ⇒ wall/6 = 20_000ms, above the 5s floor.
-    assert_eq!(arjun_budget_ms(Some(120_000), 600_000), 20_000);
-    // A 12s wall's sixth is 2s ⇒ clamped up to the floor.
-    assert_eq!(arjun_budget_ms(Some(12_000), 600_000), 5_000);
-}
-
-/// A longer time limit gives Arjun a quarter of it, up to the cap.
-#[test]
-fn arjun_budget_1h_long_window_ratio_caps_at_600s() {
-    // 3600s > 300s window gate ⇒ wall/4 = 900_000ms, capped to the 600s max.
-    assert_eq!(arjun_budget_ms(Some(3_600_000), 600_000), 600_000);
-}
-
-/// Without a time limit Arjun gets the caller's default; with one, the
-/// share.
-#[test]
-fn arjun_budget_without_a_wall_is_the_default() {
-    assert_eq!(arjun_budget_ms(None, 600_000), 600_000);
-    // The weighted count's Arjun default is 300 s; with a wall the ratio wins.
-    assert_eq!(arjun_budget_ms(None, 300_000), 300_000);
-    assert_eq!(arjun_budget_ms(Some(120_000), 300_000), 20_000);
-}
-
 /// A run without a time limit gives the vtree construction no deadline.
 #[test]
 fn deadline_none_without_a_wall() {
