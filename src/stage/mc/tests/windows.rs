@@ -16,23 +16,6 @@ fn the_stall_rule_is_a_sixth_of_the_limit_on_steps_far_from_the_root() {
     assert_eq!(stall_rule(Some(3_600_000)).unwrap().wall, Duration::from_secs(600));
 }
 
-/// Which steps the rule bounds: the step at 0-based position `k` of `total`
-/// when `total - k >= 50`.
-#[test]
-fn the_stall_rule_bounds_steps_by_their_position() {
-    let rule = stall_rule(Some(120_000)).unwrap();
-    // A 100-step schedule: steps 0..=50 have at least 50 left, 51.. do not.
-    assert!(rule.bounds(0, 100));
-    assert!(rule.bounds(50, 100));
-    assert!(!rule.bounds(51, 100));
-    assert!(!rule.bounds(99, 100));
-    // A schedule of exactly 50 bounds its first step only.
-    assert!(rule.bounds(0, 50));
-    assert!(!rule.bounds(1, 50));
-    // A shorter schedule bounds none of its steps.
-    assert!((0..49).all(|k| !rule.bounds(k, 49)));
-}
-
 #[test]
 fn no_retry_without_a_deadline_or_below_the_floor() {
     assert_eq!(support_enum_arjun_retry_ms(None), None);

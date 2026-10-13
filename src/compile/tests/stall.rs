@@ -53,6 +53,23 @@ fn run_watched(eng: &Engine, rule: StallRule) -> (Result<BigUint, GiveUp>, Optio
     (count, watch.stall())
 }
 
+/// Which steps a rule bounds: the step at 0-based position `k` of `total`
+/// when `total - k >= min_left`.
+#[test]
+fn a_rule_bounds_steps_by_their_position() {
+    let rule = StallRule { wall: Duration::from_secs(20), min_left: 50 };
+    // A 100-step schedule: steps 0..=50 have at least 50 left, 51.. do not.
+    assert!(rule.bounds(0, 100));
+    assert!(rule.bounds(50, 100));
+    assert!(!rule.bounds(51, 100));
+    assert!(!rule.bounds(99, 100));
+    // A schedule of exactly 50 bounds its first step only.
+    assert!(rule.bounds(0, 50));
+    assert!(!rule.bounds(1, 50));
+    // A shorter schedule bounds none of its steps.
+    assert!((0..49).all(|k| !rule.bounds(k, 49)));
+}
+
 /// A step under a wall that has already passed stops, and the watch names
 /// it: the only step the rule bounds here is the first.
 #[test]

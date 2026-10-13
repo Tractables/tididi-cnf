@@ -33,26 +33,19 @@ fn no_cofactor(_: &Run<'_>, _: &CnfFormula) -> Option<Counted> {
     unreachable!("no cofactor is compiled here")
 }
 
-#[test]
-fn recovery_passes_through_when_compile_succeeds() {
-    let eng = &Engine::new();
-    let config = fixtures::minimal_config();
-    let f = fixtures::formula(2, vec![clause(&[1])]);
-    let first = || Some(((BigUint::from(42u32), 1024usize), AnsweredBy::Compile));
-    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
-    assert_eq!((got.count, got.peak_pairs, got.answered_by), (BigUint::from(42u32), 1024, AnsweredBy::Compile));
-}
-
-/// The first call names the stage that answered it, a stage of the caller's
-/// behind the first compile included.
+/// The first call's count and peak pass through, and it names the stage that
+/// answered it, a stage of the caller's behind the first compile included.
 #[test]
 fn recovery_names_the_stage_the_first_call_ran() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = fixtures::formula(2, vec![clause(&[1])]);
-    let first = || Some(((BigUint::from(2u32), 0usize), AnsweredBy::StallRecompile));
+    let first = || Some(((BigUint::from(2u32), 1024usize), AnsweredBy::StallRecompile));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
-    assert_eq!((got.count, got.answered_by), (BigUint::from(2u32), AnsweredBy::StallRecompile));
+    assert_eq!(
+        (got.count, got.peak_pairs, got.answered_by),
+        (BigUint::from(2u32), 1024, AnsweredBy::StallRecompile)
+    );
 }
 
 /// A count a fallback produced is the fallback's.
