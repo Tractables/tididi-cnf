@@ -106,16 +106,12 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
         crate::frontend::compile_frontend(formula, config, program_deadline)
             .map_err(Error::stage_failed("compile preprocessing"))?;
     let preprocessing = PreprocessReport::of(&telemetry);
-    // The portfolio's winner, `None` when no portfolio ran.
-    let pick = config.portfolio_history.last_winning_spec();
 
     let (tdd, peak, compile_ms, answered_by) = match vtree {
         crate::frontend::FrontendVtree::Built(built) => {
             let built = built.bind(eng);
-            match &pick {
-                Some(pick) => eprintln!("[vtree] {}: {pick}", config.vtree_spec()),
-                None => eprintln!("[vtree] {}", config.vtree_spec()),
-            }
+            // The portfolio's winner, `None` when no portfolio ran.
+            let pick = run.announce_tree(&format!("[vtree] {}", config.vtree_spec()), ": ");
             eprintln!("[compile] start");
             let clock = crate::budget::CompileClock::start(&config.vtree_time);
             let (compiled, answered_by) = compile_with_retry(run, &reduced, built, pick.as_deref())?;
@@ -167,15 +163,14 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
 /// answer, so there is no cheaper stage to fall back to.
 ///
 /// Returns the compile that answered, over `reduced`'s variables, and which
-/// one it was. Each compile names its tree in the run's `started_on` as it
-/// starts.
+/// one it was. The caller has named the first compile's tree in the run's
+/// `started_on`; the retry names its own as it starts.
 fn compile_with_retry(
     run: &Run<'_>,
     reduced: &CnfFormula,
     built: VtreeBuild,
     pick: Option<&str>,
 ) -> Result<(Compiled, AnsweredBy), Error> {
-    run.config.started_on.replace(pick.map(str::to_owned));
     let give_up = match compile_on(run, reduced, built) {
         Ok(compiled) => return Ok((compiled, AnsweredBy::Compile)),
         Err(give_up) => give_up,
@@ -204,7 +199,7 @@ fn compile_with_retry(
         (released.before.mapped + released.before.retained) / MIB,
         (released.after.mapped + released.after.retained) / MIB,
     );
-    run.config.started_on.replace(Some(RETRY_VTREE_SPEC.to_owned()));
+    run.started_on.replace(Some(RETRY_VTREE_SPEC.to_owned()));
     compile_on_bisection(run, reduced).map(|compiled| (compiled, AnsweredBy::BisectRetry)).map_err(gave_up)
 }
 
@@ -317,6 +312,9 @@ fn solve_on(
     // The run's SAT-pruning pass, handed to every compile when the run keeps it
     // on; the tallies it gathers close the record.
     let sat_prune = SatPrune::new(config.time_limit_ms);
+    // The tree the run's main compile last started on (`Run::started_on`),
+    // which closes the record of a run that gives up.
+    let started_on = std::cell::RefCell::new(None);
 
     // One engine scope covers the whole mode, including expansion and final
     // count readout. Child attempts may tighten it but cannot extend it. Each
@@ -332,6 +330,7 @@ fn solve_on(
             config,
             deadline: program_deadline,
             compile: CompileRun { sat_prune: config.sat_prune.then_some(&sat_prune), ..CompileRun::default() },
+            started_on: &started_on,
         };
         let stats = &mut stats;
         Ok(match config.mode {
@@ -350,8 +349,13 @@ fn solve_on(
             Mode::Compile => record_compile(stats, run_function_compile(run, &formula)?),
         })
     });
-    let started_on = config.started_on.take();
-    crate::output::close_record(&mut stats, &verdict, config.vtree_time.total(), started_on, sat_prune.into_stats());
+    crate::output::close_record(
+        &mut stats,
+        &verdict,
+        config.vtree_time.total(),
+        started_on.into_inner(),
+        sat_prune.into_stats(),
+    );
     match verdict {
         Ok(Verdict { satisfiable, count, diagram }) => {
             Ok(Answer { mode: config.mode, satisfiable, count, diagram, stats })

@@ -52,6 +52,6 @@ fn a_stalled_primary_is_answered_by_the_stall_recompile() {
     let forced = StallRule { wall: Duration::ZERO, min_left: 0 };
     let stalled = super::super::count_mc(&run, &formula, Some(forced)).expect("the stall recompile answers");
     assert_eq!((stalled.count, stalled.answered_by), (want, AnsweredBy::StallRecompile));
-    let tree = config.started_on.borrow().clone().expect("the recompile named its tree");
-    assert_eq!(tree.split(':').next(), Some("goatd-primal"), "the run names {tree}");
+    let tree = run.started_on.borrow().clone().expect("the recompile named its tree");
+    assert_eq!(crate::vtree::spec_family(&tree), "goatd-primal", "the run names {tree}");
 }

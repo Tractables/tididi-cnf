@@ -15,6 +15,7 @@
 //! `compile`, `vtree` and `enumeration`; nothing below them calls back up
 //! here.
 
+use std::cell::RefCell;
 use std::time::Instant;
 
 use num_bigint::BigUint;
@@ -59,8 +60,9 @@ const PORTFOLIO_VTREE_SPEC: &str = "portfolio";
 pub(crate) const RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
 
 /// What every stage of one run reads: the engine it compiles on, the resolved
-/// configuration, the run's wall, and what the run sets for each compile. The
-/// driver builds it once; a stage that needs more is handed it beside the run.
+/// configuration, the run's wall, and what the run sets for each compile, and
+/// where it names the tree its main compile starts on. The driver builds it
+/// once; a stage that needs more is handed it beside the run.
 #[derive(Clone, Copy)]
 pub(crate) struct Run<'a> {
     pub(crate) eng: &'a Engine,
@@ -68,6 +70,30 @@ pub(crate) struct Run<'a> {
     /// The run's wall, `None` when it has none.
     pub(crate) deadline: Option<Instant>,
     pub(crate) compile: CompileRun<'a>,
+    /// The vtree construction the run's main compile last started on, by its
+    /// spec: the plain compile's portfolio winner, or its retry's
+    /// construction once the retry starts, and the model count's winner as
+    /// its primary compile starts, then the stall recompile's tree as that
+    /// starts. The driver owns it and records it as `vtree_candidate` when no
+    /// answer named one, so a run that gives up still says which tree it was
+    /// on.
+    pub(crate) started_on: &'a RefCell<Option<String>>,
+}
+
+impl Run<'_> {
+    /// Name the portfolio's last winner as the tree the run's main compile
+    /// starts on: on stderr, `line` followed by `joiner` and the winner's
+    /// spec, or `line` alone when no portfolio ran, and in
+    /// [`Run::started_on`]. Returns the winner.
+    pub(crate) fn announce_tree(&self, line: &str, joiner: &str) -> Option<String> {
+        let tree = self.config.portfolio_history.last_winning_spec();
+        match &tree {
+            Some(tree) => eprintln!("{line}{joiner}{tree}"),
+            None => eprintln!("{line}"),
+        }
+        self.started_on.replace(tree.clone());
+        tree
+    }
 }
 
 /// Count `formula` by the streaming compile over its components, as

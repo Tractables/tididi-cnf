@@ -205,12 +205,7 @@ fn stall_recompile(run: &Run<'_>, ar: &crate::frontend::record::ArjunReduction) 
     release_failed_compile(run.eng);
     let attempt = portfolio_attempt(run, &ar.formula, run.deadline, Some(STALL_RECOMPILE_ENTRY));
     let counted = attempt.and_then(|attempt| {
-        let tree = run.config.portfolio_history.last_winning_spec();
-        match &tree {
-            Some(tree) => eprintln!("[mc] stall-recompile: compiling the reduction on {tree}"),
-            None => eprintln!("[mc] stall-recompile: compiling the reduction"),
-        }
-        run.config.started_on.replace(tree);
+        run.announce_tree("[mc] stall-recompile: compiling the reduction", " on ");
         count_attempt(run, CompileAttempt { lift_pow2: ar.lift_pow2, ..attempt }, run.deadline)
     });
     if counted.is_none() {
@@ -394,15 +389,9 @@ pub(super) fn count_primary(
                     .map(|counted| (counted, AnsweredBy::UnreducedRetry))
             })
     };
-    // The tree is named on stderr and in the run's `started_on` before the
-    // compile starts, as the plain compile does, so a run that gives up still
-    // says which tree it was on.
-    let tree = run.config.portfolio_history.last_winning_spec();
-    match &tree {
-        Some(tree) => eprintln!("[mc] compile: start on {tree}"),
-        None => eprintln!("[mc] compile: start"),
-    }
-    run.config.started_on.replace(tree);
+    // The tree is named before the compile starts, as the plain compile does,
+    // so a run that gives up still says which tree it was on.
+    run.announce_tree("[mc] compile: start", " on ");
     count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
 }
 

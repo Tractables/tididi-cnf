@@ -148,8 +148,8 @@ impl Settings {
 
 /// The run's settings: what the caller asked for, the mode the instance
 /// resolved, `source_structure_profile`, which the driver measures on the
-/// instance, what the run's vtree constructions share, `portfolio_history`
-/// and `vtree_time`, and the tree its main compile started on, `started_on`.
+/// instance, and what the run's vtree constructions share,
+/// `portfolio_history` and `vtree_time`.
 pub(crate) struct Config {
     /// `--vtree`, when the caller gave it. Without it the model and weighted
     /// counts run their cascades; with it the model count compiles on it
@@ -161,14 +161,6 @@ pub(crate) struct Config {
     /// The time the run's vtree constructions take, which every stage that
     /// builds one adds to and the record reports as `vtree_ms`.
     pub(crate) vtree_time: crate::budget::VtreeTime,
-    /// The vtree construction the run's main compile last started on, by its
-    /// spec: the plain compile's portfolio winner, or its retry's
-    /// construction once the retry starts, and the model count's winner as
-    /// its primary compile starts, then the stall recompile's tree as that
-    /// starts. The record names it as `vtree_candidate`
-    /// when no answer named one, so a run that gives up still says which
-    /// tree it was on.
-    pub(crate) started_on: std::cell::RefCell<Option<String>>,
     /// vitri's structure profile of the source formula before preprocessing,
     /// measured once by the driver and copied into every vtree-selection
     /// request of the run.
@@ -202,7 +194,6 @@ impl Config {
             vtree: settings.vtree.clone(),
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             vtree_time: crate::budget::VtreeTime::default(),
-            started_on: std::cell::RefCell::default(),
             source_structure_profile: None,
             preprocess_level: settings.preprocess.unwrap_or(PreprocessLevel::Full),
             mode,
