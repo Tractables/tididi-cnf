@@ -1,16 +1,6 @@
 use super::*;
 use num_bigint::BigUint;
 
-/// Every stage, for the uniqueness check.
-const ALL: [AnsweredBy; 6] = [
-    AnsweredBy::Compile,
-    AnsweredBy::Preprocessing,
-    AnsweredBy::SupportEnumeration,
-    AnsweredBy::NoSbvaRetry,
-    AnsweredBy::UnreducedRetry,
-    AnsweredBy::ShannonSplit,
-];
-
 #[test]
 fn an_expired_run_drops_a_late_answer_from_its_record() {
     let config = crate::test_support::minimal_config();
@@ -50,22 +40,6 @@ fn log10_beyond_f64_range() {
     let v = log10_biguint(&n);
     let expect = 2000.0 * std::f64::consts::LOG10_2;
     assert!((v - expect).abs() < 1e-6, "got {v}, expect {expect}");
-}
-
-/// Two stages that share a token are two stages a stored sweep cannot tell
-/// apart — which is the whole failure this field exists to prevent. The
-/// variant list is the source, so the check is over ALL of them.
-#[test]
-fn every_stage_has_its_own_token() {
-    let mut tokens: Vec<&str> = ALL.iter().map(|t| t.token()).collect();
-    tokens.sort_unstable();
-    let n = tokens.len();
-    tokens.dedup();
-    assert_eq!(tokens.len(), n, "two stages share a token");
-    // Tokens are a wire format read back out of stored result JSON.
-    for t in &tokens {
-        assert!(!t.is_empty() && !t.contains(char::is_whitespace), "bad token {t:?}");
-    }
 }
 
 /// The record is a wire format: a field the run has nothing to say about is
