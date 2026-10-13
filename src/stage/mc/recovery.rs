@@ -143,7 +143,7 @@ pub(super) fn count_with_recovery(
     {
         // Purge the failed compile's pages so the fallbacks start from a
         // clean allocator state.
-        log_and_purge_recovery(run.eng, formula, 0, &format!("the fallbacks first, after: {trigger}"));
+        log_and_purge_recovery(run.eng, "[mc] recovery", formula, 0, &format!("the fallbacks first, after: {trigger}"));
         if let Ok(Some((counted, answered_by))) = panic::catch_unwind(panic::AssertUnwindSafe(fallbacks)) {
             return answered(counted, answered_by);
         }
@@ -218,7 +218,7 @@ where
     F: Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
 {
     // Log trigger + purge jemalloc pages from the just-failed compile.
-    log_and_purge_recovery(run.eng, formula, depth, &format!("split, after: {trigger}"));
+    log_and_purge_recovery(run.eng, "[mc] shannon-split", formula, depth, &format!("split, after: {trigger}"));
 
     // Branch on the most frequent variable no enclosing split fixed, lowest
     // index on a tie, so every recovery level strictly shrinks the
@@ -434,19 +434,18 @@ const SPLIT_ARJUN_MAX_DEPTH: u32 = 1;
 /// `allocated ≈ mapped` means live data the purge cannot reclaim, while
 /// `allocated ≪ mapped + retained` means address space jemalloc holds, which
 /// the purge gives back (under `retain:false` purged extents are unmapped).
-fn log_and_purge_recovery(eng: &tididi::Engine, formula: &CnfFormula, depth: u32, what: &str) {
+fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula, depth: u32, what: &str) {
+    const MIB: u64 = 1024 * 1024;
     let mapped = mapped_bytes();
     let limit = rlimit_as_bytes();
     eprintln!(
-        "[mc] shannon-split: {what} at depth {} ({} vars, {} clauses) \
-                 [mapped+retained={} MiB, rlimit_as={}]",
+        "{tag}: {what} at depth {} ({} vars, {} clauses) \
+         [mapped+retained={} MiB, rlimit_as={}]",
         depth,
         formula.num_vars(),
         formula.clauses().len(),
-        mapped / (1024 * 1024),
-        limit
-            .map(|b| format!("{} MiB", b / (1024 * 1024)))
-            .unwrap_or_else(|| "unlimited".to_string()),
+        mapped / MIB,
+        limit.map_or_else(|| "unlimited".to_string(), |b| format!("{} MiB", b / MIB)),
     );
     // The heap counters, split, before → after the scratch
     // drop + purge, so the log keeps measuring the per-level pin (the before-
@@ -466,10 +465,9 @@ fn log_and_purge_recovery(eng: &tididi::Engine, formula: &CnfFormula, depth: u32
         Ok(()) => "Ok".to_string(),
         Err(e) => e.to_string(),
     };
-    const MIB: u64 = 1024 * 1024;
     eprintln!(
-        "[mc] shannon-split: purge: rc={rc} allocated {}→{} MiB, mapped {}→{} MiB, \
-                 retained {}→{} MiB (mapped+retained {}→{})",
+        "{tag}: purge: rc={rc} allocated {}→{} MiB, mapped {}→{} MiB, \
+         retained {}→{} MiB (mapped+retained {}→{})",
         before.allocated / MIB,
         after.allocated / MIB,
         before.mapped / MIB,
