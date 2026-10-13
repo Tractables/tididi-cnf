@@ -24,9 +24,11 @@ use super::stats::{PruneStop, SatPruneStats};
 pub(crate) struct PruneLimits {
     /// The pair count at which a just-built diagram first triggers a pass.
     pub(super) threshold: usize,
-    /// The pair count above which no pass fires: the encoding would run to
-    /// millions of clauses, and the solver state it leaves behind would
-    /// crowd the compile's own memory.
+    /// The pair count above which no pass fires: [`PAIRS_PER_PASS_MS`] per
+    /// millisecond of the pass budget, `spend_cap_ms`, at most
+    /// [`MAX_PASS_PAIRS`]. The encoding and the first solve on a diagram run
+    /// before the walk and grow with it, and past this they fill the pass
+    /// budget on their own, so the pass would probe almost nothing.
     pub(super) max_pairs: usize,
     /// How much a diagram must grow past the size the last pass fired at
     /// before the next one fires, which keeps the passes of one compile
@@ -72,14 +74,26 @@ pub(crate) struct PruneLimits {
     pub(super) reset_drop_pct: u64,
 }
 
+/// The pairs a pass may fire on per millisecond of its budget: the encoding
+/// and the first solve on a diagram much past this fill the pass budget
+/// before the walk starts.
+const PAIRS_PER_PASS_MS: usize = 300;
+
+/// The pairs above which no pass fires whatever its budget: the encoding
+/// would run to millions of clauses, and the solver state it leaves behind
+/// would crowd the compile's own memory.
+const MAX_PASS_PAIRS: usize = 2_000_000;
+
 impl PruneLimits {
     /// The limits for a run whose time limit is `wall_ms`, `None` when it has
-    /// none. The encoding's time and the spend cap scale with the time limit,
-    /// each never below its value for a run with none; the rest are fixed.
+    /// none. The encoding's time and the spend cap, with the size ceiling
+    /// that follows it, scale with the time limit, each never below its value
+    /// for a run with none; the rest are fixed.
     pub(crate) fn for_wall(wall_ms: Option<u64>) -> Self {
+        let spend_cap_ms = resolve_scaled(wall_ms, 1.0 / 120.0, 1_000, 1_000, 30_000);
         PruneLimits {
             threshold: 10_000,
-            max_pairs: 2_000_000,
+            max_pairs: (spend_cap_ms as usize).saturating_mul(PAIRS_PER_PASS_MS).min(MAX_PASS_PAIRS),
             growth_factor: 1.1,
             max_consec_zero_passes: 2,
             min_kill_rate: 0.05,
@@ -91,7 +105,7 @@ impl PruneLimits {
             solve_overrun_ms: 200,
             max_encode_ms: resolve_scaled(wall_ms, 1.0 / 60.0, 2_000, 2_000, 60_000),
             max_encode_levels: usize::MAX,
-            spend_cap_ms: resolve_scaled(wall_ms, 1.0 / 120.0, 1_000, 1_000, 30_000),
+            spend_cap_ms,
             reset_drop_pct: 50,
         }
     }

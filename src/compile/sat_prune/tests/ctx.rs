@@ -250,3 +250,18 @@ fn running_rate_keeps_probing_when_kill_rate_clears_threshold() {
         "kills must reach the rewrite; got {outcome:?}"
     );
 }
+
+/// A pass fires up to the size ceiling its budget allows, 300,000 pairs for a
+/// 1 s pass, and not past it: the encoding and the first solve on a larger
+/// diagram would leave the walk no time to probe. A one-hour run keeps the
+/// fixed ceiling.
+#[test]
+fn no_pass_fires_past_the_size_its_budget_allows() {
+    let ctx = sat_prune_ctx(&formula(2, vec![clause(&[1, 2])]));
+    assert_eq!(ctx.limits.spend_cap_ms, 1_000);
+    assert_eq!(ctx.limits.max_pairs, 300_000);
+    assert!(ctx.should_fire(300_000));
+    assert!(!ctx.should_fire(300_001));
+    assert_eq!(crate::compile::sat_prune::PruneLimits::for_wall(Some(120_000)).max_pairs, 300_000);
+    assert_eq!(crate::compile::sat_prune::PruneLimits::for_wall(Some(3_600_000)).max_pairs, 2_000_000);
+}

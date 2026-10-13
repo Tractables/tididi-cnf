@@ -1,7 +1,8 @@
 # SAT-based TDD pruning
 
 Mid-compile pruning of intermediate diagram nodes that no model of the original
-CNF Φ passes through. Once a partial diagram passes the size trigger, reachable
+CNF Φ passes through. Once a partial diagram passes the size trigger, and
+while it stays under the size ceiling its pass budget allows, reachable
 internal nodes are probed for `f_n ∧ Φ` satisfiability against a long-lived
 CaDiCaL instance that holds Φ, up to a fixed number per pass. An UNSAT
 node's pairs are dropped and the diagram is re-minimized. CNF preprocessing
