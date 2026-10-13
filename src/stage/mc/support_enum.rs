@@ -34,7 +34,7 @@ use super::windows::{shannon_split_reserve_ms, support_enum_arjun_retry_ms};
 const MAX_SUPPORT: usize = crate::enumeration::MAX_ENUM_SHOW;
 
 /// Model cap handed to the projected-AllSAT enumerator. Larger than the
-/// projected count's shipped 200k default because this stage runs only after a
+/// projected count's default cap because this stage runs only after a
 /// compile failure: there is no compile path left to starve, so the only cost of
 /// a higher cap is enumeration wall the cascade would otherwise spend
 /// Shannon-splitting a formula that already blew up. Either cap (models or wall)
@@ -60,22 +60,22 @@ const PROBE_WALL_MS: u64 = 180_000;
 const COMMIT_MAX_MODELS: f64 = 1_000_000.0;
 
 /// Random paths walked by the estimator, and the wall on each. One path costs one
-/// assumption-solve per support var, so 8 × 10 s bounds the whole estimate at ~80 s
-/// of the enumeration window in the worst case and typically costs a few seconds.
+/// assumption-solve per support var, so their product bounds the share of the
+/// enumeration window the whole estimate can take.
 const ESTIMATOR_SAMPLES: u32 = 8;
 const ESTIMATOR_SAMPLE_WALL_MS: u64 = 10_000;
 
 /// Give up estimating after this many cut paths in total. An instance whose
-/// single paths already outrun the 10 s path wall is one the enumeration cannot
+/// single paths already outrun the path wall is one the enumeration cannot
 /// finish either, so there is no point paying for the remaining samples.
 const ESTIMATOR_MAX_TRUNCATED: u32 = 2;
 
 /// Tally past which a committed enumeration stops, no matter what the estimator
 /// said. Admission means the count is at most [`COMMIT_MAX_MODELS`], so a tally
 /// beyond that disproves the admission; the 5% headroom lets a count sitting
-/// exactly at the gate finish. No bound is derived from N̂: the estimator
-/// under-reads the count a committed run reaches by up to two orders of
-/// magnitude, and the error does not track the run's size.
+/// exactly at the gate finish. No bound is derived from N̂: the estimator can
+/// under-read the count a committed run reaches by far, and the error does not
+/// track the run's size.
 const TALLY_CEILING: u64 = (COMMIT_MAX_MODELS * 1.05) as u64;
 const _: () = assert!(TALLY_CEILING as f64 >= COMMIT_MAX_MODELS);
 
@@ -126,7 +126,7 @@ fn estimate_projected_count(
     let mut acc = PathEstimate::default();
     // Drawn one path at a time so the truncation cut-off costs at most one extra
     // path: an instance whose paths already outrun the path wall gets out after
-    // ~2 samples instead of paying for all 8.
+    // `ESTIMATOR_MAX_TRUNCATED` cut paths instead of paying for every sample.
     let drawn =
         |a: &PathEstimate| a.weights.len() as u32 + a.truncated;
     while drawn(&acc) < ESTIMATOR_SAMPLES && acc.truncated < ESTIMATOR_MAX_TRUNCATED {
@@ -259,9 +259,7 @@ fn run_support_enum(
         committed = true;
         let rho = models as f64 / elapsed.as_secs_f64().max(1e-3);
         let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
-        // The same estimate the entry gate admitted on — the probe cannot
-        // inform it, so re-drawing it would only add sampling noise to a
-        // decision already taken on this number.
+        // The same estimate the entry gate admitted on.
         let verdict = commit_decision(&est, available_ms, models);
         eprintln!(
             "[mc] support-enumeration: probe: {models} models in {:.1}s ({rho:.0}/s) — \

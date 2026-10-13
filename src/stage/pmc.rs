@@ -60,7 +60,7 @@ fn small_show_gate(formula: &CnfFormula, show: &ShowSet) -> bool {
     }
 }
 
-/// Stage: separator-aware structured projected count (default-on, no opt-out).
+/// Stage: separator-aware structured projected count.
 ///
 /// Some near-uniform instances do not compress to a single fixed vtree — the
 /// separator must sit above every component, so cross-component clauses force
@@ -81,19 +81,14 @@ fn structured_shatter(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unwe
         return Step::Decline;
     };
     let formula = &problem.formula;
-    // Selectivity gates: fire only on a >=3-way shatter into uniformly small
-    // components (<= max_comp_vars). That excludes shatters leaving one large
-    // residual, and the 2-way peel that leaves a residual about as large as the
-    // formula it came from.
     let cfg = ShatterCfg {
         max_k: 24,
         min_components: 3,
         max_comp_frac: 0.5,
         max_comp_vars: 256,
     };
-    let t0 = std::time::Instant::now();
-    let Some(plan) = detect_shatter(formula, show, &cfg)
-    else {
+    let t0 = Instant::now();
+    let Some(plan) = detect_shatter(formula, show, &cfg) else {
         eprintln!(
             "[pmc] shatter: no useful shatter (detect {}ms)",
             t0.elapsed().as_millis(),
@@ -279,7 +274,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     let work = &problem.formula;
 
     let vtree_started = Instant::now();
-    let Some(CountVtree { vtree, component_vtrees, projected: projected_in_vtree, .. }) =
+    let Some(CountVtree { vtree, component_vtrees, projected: projected_in_vtree }) =
         counting_vtree(run, work, problem.show.as_ref())
     else {
         return Step::Decline;
@@ -288,12 +283,6 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 
     // The compile ∃-forgets each projected var as its vtree level is summed out, so
     // the full Boolean diagram never materializes.
-    //
-    // Soundness: a scoped leaf→root regroup would dedupe marginal
-    // count-aggregates that must be summed. The sibling shield
-    // (compile/marginalize.rs `forget_shield`) keeps each
-    // un-forgotten projected var's path-sibling subtrees explicit until the var
-    // is ∃-forgotten, preserving mutex at forget time.
     //
     // The projected vars to ∃-forget; the high-fanout show-defined ones are
     // marginalized instead (`classify_and_split_defined`).
@@ -361,7 +350,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 /// Projected model counting (PMC). Counts the number of
 /// distinct assignments to the show set that extend to a model of the formula.
 ///
-/// The production path preserves a checkpoint between projection-minimizing
+/// The stages preserve a checkpoint between projection-minimizing
 /// Arjun and Vitri's strengthening/BVE tail so the exact small-show enumerator
 /// can answer before more preprocessing. It then compiles the reduced formula
 /// while existentially forgetting hidden variables. After a real ∃, each
@@ -394,8 +383,6 @@ pub(crate) fn run_pmc_count(
     let enumerate = |problem: &Problem<Unweighted>, _: &Trace| enumerate(run, problem, small_show);
     let strengthen = |problem: &Problem<Unweighted>, _: &Trace| strengthen_and_eliminate(run, problem);
     let stages: [Stage<'_, Unweighted>; 7] = [&shatter, &minimize, &trivial, &enumerate, &strengthen, &trivial, &compile];
-    // Every stage that answers answers in its own problem's space; the seam
-    // folds the lift.
     run_stages(problem, &stages, run.deadline, &run.config.vtree_time)
 }
 

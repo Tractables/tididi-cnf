@@ -17,6 +17,7 @@
 //! handed — the correction invariant. A step that counts a reduction of that
 //! formula folds the reduction's `2^k` lift into its count before it
 //! returns, and no caller folds it again.
+
 use vitri::cnf::CnfFormula;
 use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reduction};
 use crate::stage::Run;
@@ -208,7 +209,7 @@ fn reduction(outcome: Option<&vitri::bundle::StageOutcome>) -> Option<Reduction>
     }
 }
 
-/// The arjun path's driver entry: count through [`count_mc`] and hand back
+/// The cascade's driver entry: count through [`count_mc`] and hand back
 /// what it answered. The compile clock starts here, so `compile_ms` leaves out
 /// the preprocessing and Arjun that [`count_mc`] runs first.
 pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnswer, crate::Error> {

@@ -2,7 +2,7 @@
 //!
 //! The weighted count starts from the parsed formula. Vitri owns the
 //! simplified formula's weighted simplify/DVE record, exact lift, reduced
-//! weights and portfolio vtree; TiDiDi owns only the order — Arjun's
+//! weights and portfolio vtree; this crate owns only the order — Arjun's
 //! reduction first, then the simplified formula — and the compiles.
 
 use std::time::Instant;
@@ -155,8 +155,7 @@ pub(crate) fn run_wmc_count(
     // The reduced attempt on its share of the time, then the simplified
     // formula on all of it when the reduced attempt declined or gave up.
     let simplified_clauses = simplified_problem.formula.clauses().len();
-    let value = count_reduced(run, formula, &orig_table, simplified_clauses, primary_deadline)
-    .or_else(|| {
+    let value = count_reduced(run, formula, &orig_table, simplified_clauses, primary_deadline).or_else(|| {
         eprintln!("[wmc] arjun: no answer; compiling the simplified formula on the reserved time");
         count_simplified(program_deadline)
     });
@@ -172,8 +171,9 @@ pub(crate) fn run_wmc_count(
 
 /// The reduced attempt: Arjun runs through Vitri on the original formula and
 /// original weights. It never touches the DVE-reduced simplified formula, whose
-/// clause count is `simplified_clauses`; Vitri owns the weighted-usability and caller-baseline
-/// gates, and its exact rational lift alone maps the reduced WMC back to the
+/// clause count is `simplified_clauses`; Vitri owns the weighted-usability and
+/// caller-baseline gates, so only a reduction its Arjun stage kept is compiled
+/// here, and its exact rational lift alone maps the reduced WMC back to the
 /// original formula.
 fn count_reduced(
     run: &Run<'_>,
@@ -192,8 +192,6 @@ fn count_reduced(
         Instant::now(),
     )
     .map(std::time::Duration::from_millis)?;
-    // Vitri owns the weighted-usability and caller-baseline gates; only
-    // a reduction its Arjun stage kept is compiled here.
     let arjun_config = crate::frontend::request::arjun_stage(
         run.config,
         vitri::cnf::Mode::Wmc,

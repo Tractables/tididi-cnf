@@ -1,4 +1,5 @@
 //! The projected weighted model count.
+//!
 //! The stages of [`run_pwmc_count`], the independent-component decomposition
 //! two of them share (`pwmc_decompose`), and the weighted compile-evaluate
 //! they end in. The integer sibling is `pmc.rs`.
@@ -61,10 +62,11 @@ struct PwmcCase<'a> {
 /// there is no show set.
 ///
 /// `allsat_wall_ms` replaces the AllSAT wall of half the run's time limit,
-/// and `model_budget_override` the model cap. The component decomposition passes a tight wall, so a component
-/// with many feasible projections does not spend its share of the run
-/// enumerating before it compiles, and raises the model cap to 2^show for a
-/// small-show component, so AllSAT ends by exhausting the projections.
+/// and `model_budget_override` the model cap. The component decomposition
+/// passes a tight wall, so a component with many feasible projections does not
+/// spend its share of the run enumerating before it compiles, and raises the
+/// model cap to 2^show for a small-show component, so AllSAT ends by
+/// exhausting the projections.
 /// Neither enumeration runs past `run`'s wall.
 fn pwmc_show_enum_fastpath(
     run: &Run<'_>,
@@ -79,7 +81,6 @@ fn pwmc_show_enum_fastpath(
     if weights.iter().all(|(negative, positive)| negative == positive) {
         return None;
     }
-    // Unlike PMC's, this AllSAT has no near-full feasibility skip.
     let limits = EnumLimits {
         allsat_wall_ms: allsat_wall_ms
             .unwrap_or_else(|| allsat_share_ms(run.config.time_limit_ms, 0.5)),
@@ -94,9 +95,9 @@ fn pwmc_show_enum_fastpath(
 /// (projection-aware) vtree, compiles the whole formula once on the full
 /// budget, folds the diagram under the rational weights, and returns the PWMC
 /// value in `work`'s own space, or `None` if the compile gave up
-/// (deadline/OOM). Returning the value (rather than
-/// printing) lets the independent-component decomposition multiply
-/// per-component results, and leaves the lift to the one seam. The verdict is
+/// (deadline/OOM). The value is returned, so the independent-component
+/// decomposition can multiply per-component results, and the lift is left to
+/// the one seam. The verdict is
 /// the diagram's: the fold cannot tell a satisfiable formula that weighs zero
 /// from an unsatisfiable one.
 fn pwmc_compile_evaluate(
@@ -109,14 +110,11 @@ fn pwmc_compile_evaluate(
     let PwmcCase { show, weights } = case;
     use num_bigint::BigInt;
 
-    // During-compile ∃-forget lever: forget the projected-out (weight-1) vars
-    // during the bottom-up compile, instead of
-    // compiling the full Boolean diagram over all vars and projecting post-hoc.
-    // A projected instance is mostly projected-out vars, so the post-hoc path
-    // materializes a diagram far wider than the show-projected result needs.
-    // Pairs with the projection-aware vtree (projected vars placed deep so the
-    // forget fires before the top-of-vtree show-cone combine). On for any PWMC
-    // with a show set.
+    // The projection-aware vtree places the projected-out (weight-1) vars deep,
+    // so the compile forgets them before the show-cone combine at the top of
+    // the vtree. A projected instance is mostly projected-out vars, and
+    // projecting after the compile would materialize a diagram far wider than
+    // the show-projected result needs.
     let vtree_started = Instant::now();
     let CountVtree {
         vtree,
@@ -398,8 +396,8 @@ fn problem_weight_tables(
 /// every component is small enough to enumerate. Each component is only
 /// enumerated, never compiled, and a component with more than 80 show vars
 /// declines the stage: that one is left to preprocessing and the compile,
-/// with the whole budget. Any miss falls through to Vitri preprocessing with the budget
-/// intact.
+/// with the whole budget. Any miss falls through to Vitri preprocessing with
+/// the budget intact.
 fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted> {
     let decomposed = pwmc_decompose(
         problem,
@@ -440,9 +438,6 @@ fn preprocess(
 /// feasibility skip and never takes the widened wall.
 fn enumerate(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted> {
     let weights = problem_weight_tables(problem);
-    // Symmetric weights (w_pos == w_neg for every var) collapse PWMC to a
-    // scaled integer (projected) count, which the subsumption stage below
-    // streams; the enumeration declines on them.
     let case = PwmcCase { show: problem.show.as_ref(), weights: &weights };
     pwmc_show_enum_fastpath(run, &problem.formula, case, None, None)
         .map_or(Step::Decline, Step::Answer)
@@ -586,8 +581,6 @@ pub(crate) fn run_pwmc_count(
     let decompose_reduced = |problem: &Problem<Weighted>, _: &Trace| decompose_reduced(run, problem);
     let stages: [Stage<'_, Weighted>; 7] =
         [&decompose_input, &preprocess, &enumerate, &trivial, &decompose_reduced, &symmetric, &compile];
-    // Every stage that answers answers in its own problem's space; the seam
-    // folds the lift.
     run_stages(problem, &stages, run.deadline, &run.config.vtree_time)
 }
 

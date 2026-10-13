@@ -154,11 +154,12 @@ pub(super) struct ShatterPlan {
     pub(super) components: Vec<ShatterComponent>,
 }
 
-/// Gates for `detect_shatter`. The default-on safety story lives here: structured
-/// count only wins when the formula shatters into many uniformly small components
-/// (each compiles trivially); it loses (slower / OOM) when one large residual
-/// component survives. So `max_comp_vars` (absolute), not a fraction, is the
-/// discriminator, and `min_components >= 3` excludes 2-way "peel" shatters,
+/// Gates for `detect_shatter`. Structured count only wins when the formula
+/// shatters into many uniformly small components (each compiles trivially); it
+/// loses (slower / OOM) when one large residual component survives. So
+/// `max_comp_vars` (absolute), not a fraction, is the discriminator (small
+/// formulas defeat a pure fraction; the fraction is a secondary bound for large
+/// formulas), and `min_components >= 3` excludes 2-way "peel" shatters,
 /// which leave a residual about as large as the formula they came from.
 pub(super) struct ShatterCfg {
     /// Largest separator tried; detection never goes past [`MAX_SEPARATOR`].
@@ -240,10 +241,8 @@ pub(super) fn detect_shatter(
             continue;
         }
 
-        // Build the components; reject if any mixed component is too large.
-        // The absolute `max_comp_vars` cap is the load-bearing selectivity gate
-        // (small formulas defeat a pure fraction); the fraction is a secondary
-        // bound for large formulas.
+        // Build the components; reject if any mixed component is too large
+        // (`ShatterCfg`).
         let max_vars = (((nv as f64) * max_comp_frac).ceil() as usize).min(max_comp_vars);
         let sep_bit: std::collections::HashMap<VarId, usize> =
             sep.iter().enumerate().map(|(b, &v)| (v, b)).collect();
@@ -327,7 +326,7 @@ pub(super) fn structured_count_with(
     // inputs ⇒ identical w. So memoize by that key and compute each distinct
     // component once. Isomorphic gadgets extract congruently, so N copies cost
     // one compute and N cache hits, and the total is bounded by
-    // 2^|S| × distinct-components (the default-on safety lever).
+    // 2^|S| × distinct-components.
     // Always sound: a key miss just recomputes, never a wrong reuse. The global
     // separator alignment lives in each component's `boundary_bit` (applied in
     // the combine), not in w, so components sharing w but touching different

@@ -28,17 +28,13 @@ use super::support_enum::support_enum_stage;
 /// wall bounds the vtree builds and the compile alike. A vtree that cannot be
 /// built gives up with `None` before the compile, as a compile that gives up
 /// does.
-///
-/// The up-front build is the one the primary cascade has always used. Building
-/// each component's tree only as the compile reaches it, on one shared
-/// construction wall, cost one more split on a recovery instance.
 pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
     // Effective support: the vars that occur in some clause.
     let eff_support = crate::formula::occurrence_counts(form, 0).iter().filter(|&&n| n > 0).count();
     eprintln!(
         "[mc] shannon-split: compiling a cofactor on {} \
          ({} vars, eff support {}/{}, {} clauses)",
-        crate::stage::PORTFOLIO_VTREE_SPEC,
+        PORTFOLIO_VTREE_SPEC,
         form.num_vars(),
         eff_support,
         form.num_vars(),
