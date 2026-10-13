@@ -119,8 +119,8 @@ pub(super) fn run_stages<D: Domain>(
 
 /// Count `show`'s feasible assignments by enumeration
 /// ([`show_enum_fastpath`]) under `limits`, adding them up with `tally`, and
-/// print what answered under the mode's `tag`. `None` when the enumeration
-/// declined.
+/// print under the mode's `tag` what answered, or why nothing did. `None` when
+/// the enumeration gave no count.
 pub(super) fn enumerate_show<T: Tally + Clone>(
     tag: &str,
     formula: &CnfFormula,
@@ -128,15 +128,20 @@ pub(super) fn enumerate_show<T: Tally + Clone>(
     tally: T,
     limits: EnumLimits,
 ) -> Option<T::Value> {
-    let (value, method, elapsed_ms) =
-        show_enum_fastpath(formula, show, tally, limits, &mut AllsatCtl::default())?;
+    let mut ctl = AllsatCtl::default();
+    let started = Instant::now();
+    let Some((value, method, elapsed_ms)) = show_enum_fastpath(formula, show, tally, limits, &mut ctl) else {
+        ctl.report_no_count(&format!("{tag} enumerate-show"), started.elapsed().as_millis());
+        return None;
+    };
     eprintln!("{tag} enumerate-show: {method} ({} show vars, {elapsed_ms}ms)", show.len());
     Some(value)
 }
 
 /// One vitri preprocessing stage on `problem`, as a pipeline step: UNSAT is
-/// the answer zero, a reduction is a rewrite, and an error prints
-/// `{tag}: {error} — keeping {kept}` and declines. `tag` is `[<mode>] <stage>`.
+/// the answer zero, a reduction is a rewrite that prints what it kept and its
+/// wall, and an error prints `{tag}: {error} — keeping {kept}` and declines.
+/// `tag` is `[<mode>] <stage>`.
 pub(super) fn projection_step<D: Domain>(
     problem: &Problem<D>,
     weights: Option<&vitri::cnf::WeightTable>,
@@ -144,6 +149,7 @@ pub(super) fn projection_step<D: Domain>(
     tag: &str,
     kept: &str,
 ) -> Step<D> {
+    let started = Instant::now();
     match crate::frontend::record::preprocess_problem::<D>(
         &problem.formula,
         problem.show.as_ref(),
@@ -151,7 +157,19 @@ pub(super) fn projection_step<D: Domain>(
         config,
     ) {
         Ok((crate::frontend::record::Outcome::Unsat, _)) => Step::Answer(D::zero()),
-        Ok((crate::frontend::record::Outcome::Reduced(reduced), _)) => Step::Rewrite(reduced),
+        Ok((crate::frontend::record::Outcome::Reduced(reduced), _)) => {
+            eprintln!(
+                "{tag}: show {}→{}, vars {}→{}, clauses {}→{} ({}ms)",
+                problem.show_len(),
+                reduced.show_len(),
+                problem.formula.num_vars(),
+                reduced.formula.num_vars(),
+                problem.formula.clauses().len(),
+                reduced.formula.clauses().len(),
+                started.elapsed().as_millis(),
+            );
+            Step::Rewrite(reduced)
+        }
         Err(error) => {
             eprintln!("{tag}: {error} — keeping {kept}");
             Step::Decline

@@ -312,14 +312,11 @@ fn run_support_enum(
             eprintln!(
                 "[mc] support-enumeration: enumeration stopped: {} ({} models tallied)",
                 match ctl.bust {
-                    Some(AllsatStop::Wall) => "wall budget spent between solves".to_string(),
-                    Some(AllsatStop::Terminated) => "wall budget cut a solve in flight".to_string(),
-                    Some(AllsatStop::ModelCap) => "model cap".to_string(),
                     Some(AllsatStop::TallyCeiling) => format!(
-                        "gate ceiling exceeded (tally > {TALLY_CEILING}, the count the \
-                         entry gate admits)"
+                        "{} (tally > {TALLY_CEILING}, the count the entry gate admits)",
+                        ctl.stop_reason()
                     ),
-                    None => "declined before enumerating".to_string(),
+                    _ => ctl.stop_reason().to_string(),
                 },
                 ctl.models,
             );

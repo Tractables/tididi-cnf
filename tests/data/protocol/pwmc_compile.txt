@@ -7,4 +7,6 @@ projected weighted count: 681531237044276352621452662871553142592375345296928084
 [input] reading tests/data/pwmc_banded.cnf
 [input] 1210 variables, 3025 clauses
 [pwmc] arithmetic: exact rational
+[pwmc] preprocessing: show 1100→1090, vars 1210→1135, clauses 3025→2663 (<t>)
+[pwmc] enumerate-show: no count: declined before enumerating (<t>)
 [pwmc] compile: preprocessing <t> (3025c→2663c), vtree <t>, compile <t> (45 projected variables forgotten in the diagram), show 1090, vars 1210

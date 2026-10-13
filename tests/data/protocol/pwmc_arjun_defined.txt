@@ -7,4 +7,5 @@ projected weighted count: 91/125
 [input] reading tests/data/pwmc_arjun_defined_weight.cnf
 [input] 3 variables, 3 clauses
 [pwmc] arithmetic: exact rational
+[pwmc] preprocessing: show 3→3, vars 3→3, clauses 3→3 (<t>)
 [pwmc] enumerate-show: small-show enumeration (3 show vars, <t>)

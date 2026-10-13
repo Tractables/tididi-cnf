@@ -7,6 +7,7 @@ projected weighted count: 49/1
 [input] reading tests/data/pwmc_two_components.cnf
 [input] 8 variables, 8 clauses
 [pwmc] arithmetic: exact rational
+[pwmc] preprocessing: show 6→6, vars 8→6, clauses 8→2 (<t>)
 [pwmc] compile: preprocessing <t> (1c→1c), vtree <t>, compile <t> (0 projected variables forgotten in the diagram), show 3, vars 3
 [pwmc] compile: preprocessing <t> (1c→1c), vtree <t>, compile <t> (0 projected variables forgotten in the diagram), show 3, vars 3
 [pwmc] decompose-reduced: 2 substantial components, show 6, vars 6

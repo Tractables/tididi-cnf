@@ -297,6 +297,37 @@ pub(crate) struct AllsatCtl<'a> {
     pub(crate) models: u64,
 }
 
+impl AllsatCtl<'_> {
+    /// Why the enumeration under this control gave no count, in the words the
+    /// stage lines print. A [`AllsatStop::TallyCeiling`] caller states its own
+    /// ceiling alongside.
+    pub(crate) fn stop_reason(&self) -> &'static str {
+        match self.bust {
+            Some(AllsatStop::Wall) => "wall budget spent between solves",
+            Some(AllsatStop::Terminated) => "wall budget cut a solve in flight",
+            Some(AllsatStop::ModelCap) => "model cap",
+            Some(AllsatStop::TallyCeiling) => "gate ceiling exceeded",
+            None => "declined before enumerating",
+        }
+    }
+
+    /// Print `{tag}: no count: {reason} (…)` for an enumeration stage that
+    /// gave no count after `elapsed_ms`. The tally is printed only when the
+    /// stop is not a wall: under a wall it measures the machine's speed.
+    pub(crate) fn report_no_count(&self, tag: &str, elapsed_ms: u128) {
+        match self.bust {
+            Some(AllsatStop::Wall | AllsatStop::Terminated) | None => {
+                eprintln!("{tag}: no count: {} ({elapsed_ms}ms)", self.stop_reason());
+            }
+            Some(AllsatStop::ModelCap | AllsatStop::TallyCeiling) => eprintln!(
+                "{tag}: no count: {} ({} projections tallied, {elapsed_ms}ms)",
+                self.stop_reason(),
+                self.models,
+            ),
+        }
+    }
+}
+
 /// Projected AllSAT: enumerate the feasible constrained-show projections via
 /// blocking clauses, rather than sweeping all 2^|constrained| assignments,
 /// adding each to `tally`. Does ≤ (#feasible + 1) solves, so it subsumes

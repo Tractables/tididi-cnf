@@ -7,4 +7,5 @@ projected weighted count: 1/1
 [input] reading tests/data/pwmc_projected_var_weight.cnf
 [input] 2 variables, 2 clauses
 [pwmc] arithmetic: exact rational
+[pwmc] preprocessing: show 1→0, vars 2→0, clauses 2→0 (<t>)
 [pwmc] trivial: no variables left (preprocessing <t>, 2c→0c), show 0, vars 2
