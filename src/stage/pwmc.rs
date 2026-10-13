@@ -175,22 +175,32 @@ fn pwmc_solve_component(
     local_show: &ShowSet,
     weights: &[(BigRational, BigRational)],
 ) -> Option<WeightedCount<BigRational>> {
+    /// The most show vars a component may have for AllSAT to exhaust its
+    /// projections.
+    const EXHAUSTIBLE_SHOW_MAX: u32 = 21;
+    /// The wall an exhausting AllSAT leaves the component's compile.
+    const COMPILE_RESERVE_MS: u64 = 15_000;
+    /// The wall an exhausting AllSAT counts from when the run has none.
+    const NO_WALL_MS: u64 = 120_000;
+    /// The probe of a component AllSAT cannot exhaust, and the floor of one it
+    /// can.
+    const TIGHT_ALLSAT_MS: u64 = 4000;
     // The AllSAT budget depends on the component's show count. A component
-    // with 1 to 21 show vars has at most 2^show feasible projections, which
-    // AllSAT can exhaust: it gets the remaining wall less a 15 s reserve for
-    // the compile, and a model cap of 2^show (under the default cap it would
-    // decline, and its projected-var compile then runs out of memory, as on
-    // an 18-show component seen in the corpus). A larger component cannot be enumerated, so its
-    // probe stops after 4 s and the compile answers it. The components come
+    // with 1 to `EXHAUSTIBLE_SHOW_MAX` show vars has at most 2^show feasible
+    // projections, which AllSAT can exhaust: it gets the remaining wall less
+    // `COMPILE_RESERVE_MS`, or `NO_WALL_MS` less it when the run has no wall,
+    // and a model cap of 2^show (under the default cap it would decline, and
+    // its projected-var compile can then run out of memory). A larger
+    // component cannot be enumerated, so its probe stops after
+    // `TIGHT_ALLSAT_MS` and the compile answers it. The components come
     // cheapest first, so the wall is still close to full when the one hard
     // component is reached. An empty local show still enumerates: the
     // component is then a feasibility factor, 1 if SAT and 0 if UNSAT. Both
-    // budgets, the 4 s floor included, stop at the run's wall.
-    const TIGHT_ALLSAT_MS: u64 = 4000;
+    // budgets, the floor included, stop at the run's wall.
     let show_ct = local_show.len() as u32;
-    let (allsat_ms, model_override) = if (1..=21).contains(&show_ct) {
-        let remaining_ms = crate::budget::left_ms(run.deadline).unwrap_or(120_000);
-        (remaining_ms.saturating_sub(15_000).max(TIGHT_ALLSAT_MS), Some(1u64 << show_ct))
+    let (allsat_ms, model_override) = if (1..=EXHAUSTIBLE_SHOW_MAX).contains(&show_ct) {
+        let remaining_ms = crate::budget::left_ms(run.deadline).unwrap_or(NO_WALL_MS);
+        (remaining_ms.saturating_sub(COMPILE_RESERVE_MS).max(TIGHT_ALLSAT_MS), Some(1u64 << show_ct))
     } else {
         (TIGHT_ALLSAT_MS, None)
     };
