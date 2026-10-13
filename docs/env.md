@@ -12,8 +12,7 @@ the binary, including the refusals below. Every `count` reads them afresh
 when it starts, so a setting changed between two calls takes effect, or is
 refused, in the second. Preprocessing controls hold for the whole run;
 construction controls are read by each construction, `vtree::build_vtree`'s
-included.
-The library takes its time limit from `Limits`, while
+included. The library takes its time limit from `Limits`, while
 `TIDIDI_TIME_LIMIT_MS` is a command-line default. `TIDIDI_SAT_PRUNE` is read
 by the binary alone; the library's `count` always prunes.
 

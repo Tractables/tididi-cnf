@@ -11,25 +11,22 @@ The environment variable `TIDIDI_TIME_LIMIT_MS` sets the same limit when
 the flag is absent; with both, the flag wins, but an unreadable value in the
 variable is still refused ([`env.md`](env.md)).
 
-- **The limit covers the whole run, in every mode.** Every stage takes its
-  budget as a share of it: preprocessing, vtree construction, the compile,
-  and, in the counting modes, the stages that take over when a compile gives
-  up, diagram expansion, and final count readout. Nested compile budgets can
-  shorten the enclosing deadline but cannot extend or clear it. A `compile`
-  run has no fallback stages: a compile that reaches the limit gives up the
-  run. A zero limit is already expired; even a shortcut answer gives up.
+- **The limit covers the whole run, in every mode.** Preprocessing, vtree
+  construction and the compile each take a share of it, and so, in the
+  counting modes, do the stages that take over when a compile gives up, up to
+  the reading of the final count. A `compile` run has no fallback stages: a
+  compile that reaches the limit gives up the run. A zero limit is already
+  expired; even a shortcut answer gives up.
 - **Without a time limit a run has none.** Each stage then keeps a fixed
   budget of its own, and a hard formula can run for as long as it takes. Set a
   limit for any run you do not watch.
 
 The limit is cooperative: stages check it as they go, and the driver checks
-again before accepting an answer. A native step or a protected diagram
-reduction already in progress can finish after the deadline; its result is
-then discarded and the run gives up. The library returns `Error::Incomplete`
-for this expiry, including a refusal during expansion or count readout.
-Where the
-limit must be hard, wrap the run in `timeout` with some slack; a process
-killed from outside writes no `--stats` record.
+again before accepting an answer. A step already in progress inside vitri or
+the diagram library can finish after the deadline; its result is discarded
+and the run gives up, and the library's `count` returns `Error::Incomplete`.
+Where the limit must be hard, wrap the run in `timeout` with some slack; a
+process killed from outside writes no `--stats` record.
 
 ## Memory
 
@@ -49,10 +46,11 @@ is 30000 MiB**, and it applies without the flag.
   limit: when an `mc` compile nears it, the run splits the formula on a
   variable and counts the two halves, rather than growing until an allocation
   fails. The other modes have no such split: they give up, or end on the
-  failed allocation. A limit imposed from outside that the process cannot see, such as a
-  container's or a batch scheduler's, does not start that split; the process
-  is killed instead. Passing that same value as `--mem-limit-mb` lets the run
-  see it. With `--mem-limit-mb 0` and no `ulimit -v`, nothing does.
+  failed allocation. A limit imposed from outside that the process cannot
+  see, such as a container's or a batch scheduler's, does not start that
+  split; the process is killed instead. Passing that same value as
+  `--mem-limit-mb` lets the run see it. With `--mem-limit-mb 0` and no
+  `ulimit -v`, nothing does.
 - **Runs side by side each have their own limit.** Choose it so that the runs
   together fit in the machine's memory.
 
