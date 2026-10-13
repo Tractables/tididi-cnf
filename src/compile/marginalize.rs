@@ -95,10 +95,10 @@ pub(crate) fn summable<'a>(
 
 // ── `build_marginalize_targets` ───────────────────────────────────────────────
 
-/// The vtree nodes newly-saveable at step `t` — `marginalize_schedule[t.idx()]`
-/// minus the projection shield — in the schedule's order, children before
-/// parents. Returns `None` if the pass sums nothing out or nothing is saveable
-/// at this step.
+/// The nodes step `t` may sum out — `marginalize_schedule[t.idx()]` minus
+/// the projection shield — in the schedule's order, children before parents.
+/// Returns `None` if the pass sums nothing out or there is nothing to sum
+/// out at this step.
 ///
 /// The projection shield ([`forget_shield`]) is left out,
 /// so the levels a pending ∃-forget needs stay explicit; they remain in the
@@ -118,13 +118,12 @@ pub(crate) fn build_marginalize_targets<'a>(
 
 // ── `run_marginalize_at` ──────────────────────────────────────────────────────
 
-/// What step `t` leaves for after its fold:
+/// What step `t` does after its fold:
 /// - ∃-forget each projected variable whose leaf is scheduled at `t`.
 /// - Marginalize every scheduled level the fold did not sum out. A level that
 ///   is already marginal, empty or a leaf is left as it is, so where the fold
 ///   summed everything out this does nothing; it is not an assertion because a
-///   SAT pruning pass can leave a scheduled level explicit. The marginalization
-///   runs its own fusion sweep at the parents of the levels it collapses.
+///   SAT pruning pass can leave a scheduled level explicit.
 pub(crate) fn run_marginalize_at(
     eng: &Engine,
     t: VtreeIdx,
@@ -198,15 +197,11 @@ pub(crate) fn run_marginalize_at(
         // forgotten vars themselves are marginalized here (their leaf level is
         // now a One — ×2, corrected by the 2^k divisor). Without projection
         // the schedule is borrowed as it is.
-        let batch = unshielded(&schedule[t.idx()], current_vtree, output.forget(), forgotten);
+        let targets = unshielded(&schedule[t.idx()], current_vtree, output.forget(), forgotten);
         // A weighted compile marginalizes into the WeightStore.
-        //
-        // `marginalize` restores its own invariants: the fusion sweep at the
-        // parents of the batch and the slot prune are its epilogue, including
-        // the log-domain rule that skips the sweep. It passes through a
-        // `Stopped` cut inside the batch, which the step aborts on like a cut
-        // inside the apply before it.
-        eng.marginalize_levels(tdd, &summable(current_vtree, &batch, output.forget().is_some()))?;
+        // `marginalize_levels` passes a `Stopped` cut through, which the step
+        // aborts on like a cut inside the apply before it.
+        eng.marginalize_levels(tdd, &summable(current_vtree, &targets, output.forget().is_some()))?;
     }
     Ok(())
 }
