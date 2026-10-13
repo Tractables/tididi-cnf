@@ -79,7 +79,7 @@ everything below is called, and nothing below calls back up. Below the stages,
 | `src/config.rs` | The mode, the limits, the command line's other settings and the one check that refuses a setting the mode would ignore, and the run's configuration record. |
 | `src/budget.rs`, `src/mem.rs` | The time-limit policy and each stage's share of the run's time limit, the clocks behind the record's phase times, and the allocator hooks. |
 | `src/mem_wasm.rs` | `mem` on WebAssembly: the same functions, inert, with no jemalloc and no address-space limit; it refuses a memory limit. |
-| `src/guide.rs` | The guide in the crate documentation: the worked examples, `docs/examples/`, and this page. |
+| `src/guide.rs` | The guide in the crate documentation: the worked examples, `docs/examples/`, the library page, `docs/library-integration.md`, and this page. |
 
 ### Inside the compiler
 

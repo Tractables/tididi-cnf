@@ -1,7 +1,8 @@
 //! The [worked examples](examples) put the crate to work on applications, from
 //! counting a product's configurations to the distinct outputs of a circuit.
-//! The [architecture reference](architecture) maps the source for
-//! contributors. The binary, the input format and the run record are in the
+//! [Using diagrams from the compiler](library_integration) runs a bounded
+//! compile from Rust and queries its diagram. The [architecture
+//! reference](architecture) maps the source for contributors. The binary, the input format and the run record are in the
 //! [command-line guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md).
 
 // Keep the index, sidebar and module declarations in one reading order.
@@ -40,6 +41,9 @@ walkthroughs! {
     circuits => ("Distinct outputs", "Encode a multiplier as clauses and count the products it outputs."),
     vtree_choice => ("Choosing a vtree", "Compile one formula on several vtrees and compare the circuits."),
 }
+
+#[doc = include_str!("../docs/library-integration.md")]
+pub mod library_integration {}
 
 #[doc = include_str!("../docs/architecture.md")]
 pub mod architecture {}
