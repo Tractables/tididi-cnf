@@ -193,9 +193,10 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--preprocess", "full", shown.path()], &[], vec!["--preprocess", "c p show", "pmc"]),
         (2, vec!["--preprocess", "full", "--mode", "pwmc", TINY], &[], vec!["--preprocess", "pwmc"]),
         // The weighted count has one construction, whether `--mode` or the
-        // header asked for it.
-        (2, vec!["--mode", "wmc", "--vtree", "portfolio", TINY], &[], vec!["--vtree", "--mode wmc"]),
-        (2, vec!["--vtree", "portfolio", weighted.path()], &[], vec!["--vtree", "c t wmc"]),
+        // header asked for it, so `--vtree` is refused, and before
+        // preprocessing, which would refute this formula and answer.
+        (2, vec!["--mode", "wmc", "--vtree", "portfolio", "tests/data/wmc_unsat.cnf"], &[], vec!["--vtree", "--mode wmc"]),
+        (2, vec!["--vtree", "portfolio", "tests/data/wmc_unsat.cnf"], &[], vec!["--vtree", "c t wmc"]),
         (2, vec![TINY, "--mode", "mc"], skip, vec!["VITRI_PORTFOLIO_SKIP"]),
         (2, vec![weighted.path()], skip, vec!["VITRI_PORTFOLIO_SKIP"]),
         (2, vec![unit.path(), "--mode", "mc"], score, vec!["VITRI_SCORE_AGG"]),
@@ -374,25 +375,6 @@ fn arjun_settings_reach_the_weighted_reduction() {
     assert_eq!(count, count_without_sbva);
 }
 
-/// A weighted count refuses `--vtree` before preprocessing, whether `--mode`
-/// or the header asks for the count: it has one construction.
-#[test]
-fn weighted_counts_refuse_vtree_before_preprocessing() {
-    for args in [
-        vec!["--mode", "wmc", "--vtree", "balanced", "tests/data/wmc_unsat.cnf"],
-        vec!["--vtree", "balanced", "tests/data/wmc_unsat.cnf"],
-    ] {
-        let out = run(&args, &[]);
-        assert_eq!(out.code, Some(2), "{args:?}: {}", out.stderr);
-        assert!(out.stderr.contains("--vtree applies to") && out.stderr.contains("mode wmc"), "{args:?}: {}", out.stderr);
-        assert!(
-            !out.stderr.to_ascii_lowercase().contains("preprocess"),
-            "{args:?} must fail before preprocessing: {}",
-            out.stderr
-        );
-    }
-}
-
 /// A projected count compiles on an explicit `--vtree`, and on `portfolio`
 /// without one, whether `--mode` or the header asks for it; the count does
 /// not change.
@@ -458,8 +440,6 @@ fn save_tdd_writes_the_diagram() {
 /// Without `--vtree`, a model or weighted count runs its cascade, whether
 /// `--mode` or a header asked for the count; the record names the vtree the
 /// cascade compiles on, and a model count's cascade records its Arjun time.
-/// With `--vtree`, a model count compiles on it without the cascade, and
-/// without Arjun.
 #[test]
 fn counts_run_the_cascade_without_vtree() {
     let (out, record) = run_with_record(&["tests/data/wmc_header_tiny_sat.cnf"]);
@@ -482,17 +462,12 @@ fn counts_run_the_cascade_without_vtree() {
     assert!(out.ok(), "{}", out.stderr);
     assert!(out.prints("model count: 48"), "{}", out.stdout);
     assert!(record.get("arjun_ms").is_some(), "{record}");
-
-    let (out, record) = run_with_record(&["--mode", "mc", "--vtree", "portfolio", TINY]);
-    assert!(out.ok(), "{}", out.stderr);
-    assert!(out.prints("model count: 48"), "{}", out.stdout);
-    assert_eq!(record["answered_by"], "compile", "{record}");
-    assert!(record.get("arjun_ms").is_none() && record.get("reduction").is_none(), "{record}");
 }
 
 /// `--mode mc --vtree portfolio` streams through Vitri's simplify-only
-/// preprocessing, and an instance that preprocessing refutes returns before
-/// any vtree is built, answered by preprocessing.
+/// preprocessing, without the cascade and without Arjun, and an instance that
+/// preprocessing refutes returns before any vtree is built, answered by
+/// preprocessing.
 #[test]
 fn streaming_mc_runs_the_simplify_only_frontend() {
     for (cnf, answer, builds_a_vtree, answered_by) in [
@@ -504,6 +479,7 @@ fn streaming_mc_runs_the_simplify_only_frontend() {
         assert!(out.prints(answer), "{cnf}: {}", out.stdout);
         assert_eq!(record["answered_by"], answered_by, "{cnf}: {record}");
         assert!(out.stderr.contains("[mc] preprocessing:"), "{cnf}: {}", out.stderr);
+        assert!(record.get("arjun_ms").is_none() && record.get("reduction").is_none(), "{cnf}: {record}");
         if !builds_a_vtree {
             assert!(!out.stderr.contains("[vtree]") && !out.stderr.contains("compile: start"), "{cnf}: {}", out.stderr);
         }
