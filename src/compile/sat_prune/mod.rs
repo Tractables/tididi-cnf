@@ -31,6 +31,14 @@
 //! [`PruneLimits`] holds every limit a pass runs under. Two of them scale
 //! with the run's time limit (`--time-limit-ms`, or `TIDIDI_TIME_LIMIT_MS`
 //! without the flag), which [`SatPrune`] carries.
+//!
+//! **Spend caps.** A context's unproductive spend, its spend since its last
+//! productive rewrite, is capped at `PruneLimits::spend_cap_ms`. A compile
+//! builds one context per component, and its contexts also share a cap,
+//! `PruneLimits::compile_spend_cap_ms`: each context starts from the
+//! unproductive spend of the ones before it, the compile hands that total on
+//! as a context closes, and no pass gets more of a budget than the compile's
+//! cap has left.
 
 mod ctx;
 mod probe;
@@ -67,10 +75,16 @@ impl SatPrune {
         SatPrune { limits: PruneLimits::for_wall(wall_ms), tally: RefCell::default() }
     }
 
-    /// The pruning context for one compile of `formula`, or `None` when no
-    /// solver could be built.
-    pub(crate) fn context(&self, formula: &CnfFormula, skip_content_twins: bool) -> Option<SatPruneCtx> {
-        SatPruneCtx::new(formula, self.limits, skip_content_twins)
+    /// The pruning context for one component of a compile, `formula`, or
+    /// `None` when no solver could be built; `compile_spent_us` is the
+    /// unproductive spend of the compile's earlier contexts.
+    pub(crate) fn context(
+        &self,
+        formula: &CnfFormula,
+        skip_content_twins: bool,
+        compile_spent_us: u64,
+    ) -> Option<SatPruneCtx> {
+        SatPruneCtx::new(formula, self.limits, skip_content_twins, compile_spent_us)
     }
 
     /// Add what one pass did to the run's tallies.

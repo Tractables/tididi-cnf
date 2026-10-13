@@ -19,6 +19,21 @@ it into `Settings::sat_prune`, `Config::new` sets `Config::sat_prune` from
 it, the driver then hands the run's compiles no `SatPrune` pass, and
 `compile_component` builds no solver.
 
+One of those reasons is time. The spend counted is the pruning's
+unproductive time: solving, encoding, rewriting and counting since the last
+rewrite that removed at least half of the diagram. Each component of a split
+compile has its own pruning context with its own cap on that spend
+(`PruneLimits::spend_cap_ms`, scaled from the run's time limit), and the
+contexts of one compile also share a cap three times as large
+(`PruneLimits::compile_spend_cap_ms`). A context hands its unproductive spend
+on to the compile's next context when it closes, and no pass gets more of a
+budget than the compile's cap has left. Without the shared cap, a compile
+split into many components paid a cap for each, mostly on passes that removed
+nothing. A context alone ends at about twice its own cap, since the cap admits
+a pass just under it and gives that pass a whole budget; at three times, a
+compile of one component stops on its own cap first, and prunes as it would
+without the shared cap.
+
 Where each part is documented:
 
 - the mechanism and its soundness: the `src/compile/sat_prune/` module doc;

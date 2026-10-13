@@ -265,3 +265,28 @@ fn no_pass_fires_past_the_size_its_budget_allows() {
     assert_eq!(crate::compile::sat_prune::PruneLimits::for_wall(Some(120_000)).max_pairs, 300_000);
     assert_eq!(crate::compile::sat_prune::PruneLimits::for_wall(Some(3_600_000)).max_pairs, 2_000_000);
 }
+
+/// A pass's budget is the spend cap, or what is left of the compile's cap
+/// when that is less; a context's own spend alone never shortens it.
+#[test]
+fn a_pass_budget_is_what_the_compile_cap_has_left() {
+    use std::time::Duration;
+    let f = formula(2, vec![clause(&[1, 2])]);
+    let mut ctx = sat_prune_ctx(&f);
+    let cap = Duration::from_millis(ctx.limits.spend_cap_ms);
+    assert_eq!(ctx.pass_budget(), cap);
+    // Its own unproductive spend just under its cap: the cap admits the pass,
+    // and the pass gets a whole budget.
+    ctx.stats.probe_us = ctx.limits.spend_cap_ms * 1000 - 1;
+    assert!(!ctx.spend_cap_reached());
+    assert_eq!(ctx.pass_budget(), cap);
+    // The compile's earlier contexts left its cap 10 ms short.
+    ctx.stats.probe_us = 0;
+    ctx.compile_spent_before_us = ctx.limits.compile_spend_cap_ms * 1000 - 10_000;
+    assert!(!ctx.spend_cap_reached());
+    assert_eq!(ctx.pass_budget(), Duration::from_millis(10));
+    // Spending those 10 ms reaches it.
+    ctx.stats.probe_us = 10_000;
+    assert!(ctx.spend_cap_reached());
+    assert_eq!(ctx.pass_budget(), Duration::ZERO);
+}

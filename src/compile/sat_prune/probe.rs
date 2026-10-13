@@ -115,11 +115,11 @@ impl SatPruneCtx {
         self.stats.pairs_inspected += tdd_size as u64;
         self.last_trigger_size = tdd_size;
 
-        // The spend cap on the work since the last productive rewrite (see
-        // `spend_exempt_us`). Once it is reached, pruning stops for the rest
-        // of this compile so the compiler keeps its remaining time.
-        let unproductive_us = self.stats.spend_us().saturating_sub(self.spend_exempt_us);
-        if unproductive_us >= self.limits.spend_cap_ms * 1000 {
+        // The spend caps on the work since the last productive rewrite (see
+        // `spend_exempt_us`): this context's, and its compile's over all of
+        // the compile's contexts. Once either is reached, pruning stops for
+        // the rest of this compile so the compiler keeps its remaining time.
+        if self.spend_cap_reached() {
             self.stats.disabled_by = Some(PruneStop::TimeShare);
             self.record_empty_pass();
             return PruneOutcome::NoOp;

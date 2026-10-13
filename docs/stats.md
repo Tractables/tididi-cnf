@@ -65,7 +65,7 @@ The last column says in which modes a key can appear.
 | `backbone_probes` | integer | SAT calls the backbone search made. | `compile`, `mc` |
 | `show_vars` | integer | Variables in the show set of the formula the count was answered on, after preprocessing. | `pmc`, `pwmc`, with a show set |
 | `sat_prune` | string | `off` when `TIDIDI_SAT_PRUNE=off` turned SAT pruning off for the run, a diagnostic for paired measurements ([`env.md`](env.md#tididi_sat_prune)); no `sat_prune_…` key appears then. Absent when pruning is on, the default. | `compile`, `mc`, `pmc`, `pwmc` |
-| `sat_prune_disabled_by` | string | Why SAT pruning stopped before the compile ended: `empty-passes`, after consecutive passes removed nothing; `low-kill-rate`, when it removed too few of the nodes it checked; `time-share`, when it spent too much of the time limit. | all but `wmc` |
+| `sat_prune_disabled_by` | string | Why SAT pruning stopped before the compile ended: `empty-passes`, after consecutive passes removed nothing; `low-kill-rate`, when it removed too few of the nodes it checked; `time-share`, when it spent too much of the time limit, in one component or over all of a compile's components together. | all but `wmc` |
 
 ## SAT pruning tallies
 

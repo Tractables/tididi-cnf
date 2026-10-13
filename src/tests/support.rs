@@ -108,10 +108,10 @@ pub(crate) fn run<'a>(eng: &'a tididi::Engine, config: &'a Config) -> crate::sta
     crate::stage::Run { eng, config, deadline: None, compile: Default::default() }
 }
 
-/// A SAT pruning context for `formula`, under the limits of a run with no
-/// time limit.
+/// A SAT pruning context for `formula`, the first of its compile, under the
+/// limits of a run with no time limit.
 pub(crate) fn sat_prune_ctx(formula: &CnfFormula) -> crate::compile::sat_prune::SatPruneCtx {
     crate::compile::sat_prune::SatPrune::default()
-        .context(formula, false)
+        .context(formula, false, 0)
         .expect("CaDiCaL builds a solver")
 }

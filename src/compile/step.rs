@@ -153,7 +153,9 @@ pub(crate) fn compile_component(
     // weights, and the per-node counts a pass orders its probes by are
     // refused for them.
     let sat_prune = match job.run.sat_prune {
-        Some(run_pass) if job.output.weights().is_none() => run_pass.context(formula, job.run.cofactor),
+        Some(run_pass) if job.output.weights().is_none() => {
+            run_pass.context(formula, job.run.cofactor, job.prune_spent_us.get())
+        }
         _ => None,
     };
     let mut state = PassState { sat_prune, ..PassState::default() };
@@ -239,7 +241,11 @@ pub(crate) fn compile_component(
         propagate_vtree_arc(&mut tdds, &mut current_vtree, t);
     }
 
+    // The context's unproductive spend joins the compile's, which the next
+    // component's context starts from. Every other exit of the pass ends the
+    // compile, so no later context could read it.
     if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
+        job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
 

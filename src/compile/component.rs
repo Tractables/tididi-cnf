@@ -33,6 +33,11 @@ pub(crate) struct CompileJob<'a> {
     pub(crate) output: PassOutput<'a>,
     /// What the run sets for the compile.
     pub(crate) run: super::CompileRun<'a>,
+    /// The unproductive SAT pruning spend, in microseconds, of the components
+    /// the compile has finished, on which its pruning contexts share a cap
+    /// (`PruneLimits::compile_spend_cap_ms`). The compile owns it, so each
+    /// compile starts from zero.
+    pub(crate) prune_spent_us: &'a std::cell::Cell<u64>,
 }
 
 /// [`super::Output`] as one pass reads it: the forgotten variables as a set

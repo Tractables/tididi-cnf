@@ -29,6 +29,7 @@ mod schedule;
 mod scope;
 mod step;
 
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
@@ -368,7 +369,8 @@ pub(crate) fn compile_with(
             PassOutput::ProjectedFunction(&forget)
         }
     };
-    let job = CompileJob { deadline, output, run };
+    let prune_spent_us = Cell::new(0);
+    let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
     component::check_vtree(formula, vtree)?;
 
     if formula.clauses().is_empty() {
@@ -499,6 +501,7 @@ where
     // Restored when the count returns, on every path.
     let _apply_deadline_guard = deadline_scope(eng, deadline);
 
+    let prune_spent_us = Cell::new(0);
     let mut total = BigUint::from(1u32);
     let mut peak = 0usize;
     for comp in components {
@@ -518,8 +521,8 @@ where
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
         let (sub_count, sub_peak) = {
             let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
-            let compiled =
-                settle(compile_component(eng, sub_formula, &sub_vtree, CompileJob { deadline, output, run }))?;
+            let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
+            let compiled = settle(compile_component(eng, sub_formula, &sub_vtree, job))?;
             (compiled.projected_count(eng).ok()?, compiled.peak_pairs)
         };
         peak = peak.max(sub_peak);

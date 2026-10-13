@@ -251,6 +251,34 @@ fn the_spend_cap_stops_unproductive_pruning() {
     assert_eq!(ctx.stats.disabled_by, Some(PruneStop::TimeShare));
 }
 
+/// The contexts of one compile, one per component, share a cap on their
+/// unproductive spend: a context that closes with the compile's spend past
+/// that cap leaves nothing to the next context of the compile, which declines
+/// its first pass though its own spend is zero, while the context of a new
+/// compile starts from zero. Without the shared cap, a compile split into
+/// many components spent a cap on each.
+#[test]
+fn the_compile_spend_cap_spans_its_contexts() {
+    let eng = &Engine::new();
+    let (f, tdd, _) = inline_marg_fixture();
+    let size = tdd.pair_count();
+    let mut first = sat_prune_ctx(&f);
+    first.stats.probe_us = 10 * first.limits.spend_cap_ms * 1000;
+    let spent = first.compile_spent_us();
+    let mut second = crate::compile::sat_prune::SatPrune::default()
+        .context(&f, false, spent)
+        .expect("CaDiCaL builds a solver");
+    assert!(
+        matches!(second.probe_tdd(eng, &tdd, size), PruneOutcome::NoOp),
+        "the compile's cap must decline its next context's pass"
+    );
+    assert_eq!(second.stats.disabled_by, Some(PruneStop::TimeShare));
+    let mut fresh = sat_prune_ctx(&f);
+    assert!(
+        matches!(fresh.probe_tdd(eng, &tdd, size), PruneOutcome::Rewritten(_)),
+        "a new compile's context must start from no spend"
+    );
+}
 
 /// The spend cap counts only unproductive spend: spend recorded in
 /// `spend_exempt_us` does not count, so the same 10 ms that stops pruning

@@ -67,8 +67,18 @@ pub(crate) struct PruneLimits {
     pub(super) max_encode_levels: usize,
     /// The spend, in milliseconds, of solving, encoding, rewriting and
     /// counting since the last productive rewrite at which pruning stops for
-    /// the compile; also the budget of one pass.
+    /// the compile; also the budget of one pass, less when
+    /// `compile_spend_cap_ms` has less left.
     pub(super) spend_cap_ms: u64,
+    /// The same cap on the unproductive spend of all the contexts of one
+    /// compile together, in milliseconds: three times `spend_cap_ms`. A
+    /// compile builds one context per component, so without it a compile
+    /// split into many components spends a cap on each, mostly on passes
+    /// that remove nothing. A context alone ends at about twice its own cap,
+    /// since the cap admits a pass just under it and gives that pass a whole
+    /// budget; at three times, a compile of one component stops on its own
+    /// cap first and prunes as it would without this one.
+    pub(super) compile_spend_cap_ms: u64,
     /// The share of the diagram, in percent, a rewrite must remove to count
     /// as productive and reset the spend the cap is measured from.
     pub(super) reset_drop_pct: u64,
@@ -106,6 +116,7 @@ impl PruneLimits {
             max_encode_ms: resolve_scaled(wall_ms, 1.0 / 60.0, 2_000, 2_000, 60_000),
             max_encode_levels: usize::MAX,
             spend_cap_ms,
+            compile_spend_cap_ms: spend_cap_ms.saturating_mul(3),
             reset_drop_pct: 50,
         }
     }
@@ -138,6 +149,10 @@ pub(crate) struct SatPruneCtx {
     /// unproductive work, not total work: the most productive passes are
     /// also the most expensive ones.
     pub(super) spend_exempt_us: u64,
+    /// The unproductive spend, in microseconds, of the contexts the compile
+    /// closed before this one was built; with this context's own, what
+    /// `compile_spend_cap_ms` caps.
+    pub(super) compile_spent_before_us: u64,
     /// The tallies this context has accumulated so far, and why pruning
     /// stopped, once it has: `should_fire` returns false from then on.
     pub(super) stats: SatPruneStats,
@@ -150,12 +165,19 @@ pub(crate) struct SatPruneCtx {
 impl SatPruneCtx {
     /// Build the context: a fresh CaDiCaL instance loaded with `formula`'s
     /// clauses, not yet solved, whose passes run under `limits`;
-    /// `skip_content_twins` is the compile's reduction policy.
+    /// `skip_content_twins` is the compile's reduction policy, and
+    /// `compile_spent_us` the unproductive spend of the compile's earlier
+    /// contexts.
     ///
     /// `None` when no solver could be built: there is nothing to prune with,
     /// and the caller compiles without pruning, which only ever shrinks the
     /// diagram, never changes the count.
-    pub(crate) fn new(formula: &CnfFormula, limits: PruneLimits, skip_content_twins: bool) -> Option<Self> {
+    pub(crate) fn new(
+        formula: &CnfFormula,
+        limits: PruneLimits,
+        skip_content_twins: bool,
+        compile_spent_us: u64,
+    ) -> Option<Self> {
         let start = Instant::now();
 
         let mut solver = CaDiCal::new()?;
@@ -181,6 +203,7 @@ impl SatPruneCtx {
             last_trigger_size: 0,
             consec_zero_passes: 0,
             spend_exempt_us: 0,
+            compile_spent_before_us: compile_spent_us,
             stats: SatPruneStats {
                 solver_setup_us,
                 ..SatPruneStats::default()
@@ -192,6 +215,37 @@ impl SatPruneCtx {
     /// Whether the current pass has spent its budget.
     fn pass_over(&self) -> bool {
         Instant::now() >= self.pass_end
+    }
+
+    /// This context's spend since its last productive rewrite, in
+    /// microseconds: what `spend_cap_ms` caps.
+    fn unproductive_us(&self) -> u64 {
+        self.stats.spend_us().saturating_sub(self.spend_exempt_us)
+    }
+
+    /// The compile's unproductive spend, in microseconds: that of the
+    /// contexts it closed before this one, and this one's own. The compile
+    /// hands it to its next context when this one closes.
+    pub(crate) fn compile_spent_us(&self) -> u64 {
+        self.compile_spent_before_us.saturating_add(self.unproductive_us())
+    }
+
+    /// Whether the unproductive spend has reached a cap: this context's
+    /// own, `spend_cap_ms`, or its compile's, `compile_spend_cap_ms`.
+    pub(super) fn spend_cap_reached(&self) -> bool {
+        self.unproductive_us() >= self.limits.spend_cap_ms.saturating_mul(1000)
+            || self.compile_spent_us() >= self.limits.compile_spend_cap_ms.saturating_mul(1000)
+    }
+
+    /// The budget of a pass opening now: `spend_cap_ms`, or what is left of
+    /// `compile_spend_cap_ms` when that is less. A context's own spend never
+    /// shortens it: its cap admits a pass just under the cap and gives it a
+    /// whole budget, as the cap was set, while the compile's cap is a ceiling
+    /// no pass carries the compile past.
+    pub(super) fn pass_budget(&self) -> Duration {
+        let compile_left_us =
+            self.limits.compile_spend_cap_ms.saturating_mul(1000).saturating_sub(self.compile_spent_us());
+        Duration::from_micros(compile_left_us.min(self.limits.spend_cap_ms.saturating_mul(1000)))
     }
 
     /// Whether a pass fires on a diagram of `current_size` pairs: pruning
@@ -441,9 +495,10 @@ impl ProbePolicy for PassSolver<'_> {
     fn poll(&mut self, at: ProbePoint, stats: &ProbeStats) -> ControlFlow<()> {
         let stop = match at {
             // One pass may spend the whole spend cap, and no more, before the
-            // kill-rate gate gets to fire between passes.
+            // kill-rate gate gets to fire between passes; less when the
+            // compile's cap has less left (see `pass_budget`).
             ProbePoint::Begin => {
-                self.ctx.pass_end = Instant::now() + Duration::from_millis(self.ctx.limits.spend_cap_ms);
+                self.ctx.pass_end = Instant::now() + self.ctx.pass_budget();
                 false
             }
             // Shares the pass budget so the enumeration cannot starve the walk.
