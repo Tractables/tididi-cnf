@@ -20,10 +20,9 @@
 //!
 //! The sweep and the enumeration add up a [`Tally`]: [`Models`] counts the
 //! feasible assignments, [`WeightedModels`] sums their weight for PWMC. CaDiCaL
-//! only decides whether each show assignment extends to a model; the counting
-//! is done here. Each SAT answer means "this show assignment extends to a model" (projected
-//! variables are free in the solve), so both counts are exact; the two
-//! estimates only route.
+//! only decides whether each show assignment extends to a model, with the
+//! projected variables free in the solve; the counting is done here, so both
+//! counts are exact. The two estimates only route.
 
 use std::time::{Duration, Instant};
 
@@ -309,9 +308,9 @@ pub(crate) struct AllsatCtl<'a> {
 /// and its true extension, if feasible, is found in a later round).
 ///
 /// Returns `None` (fall through to compile) when the feasible count exceeds
-/// `model_budget`, when the time budget is hit, or on an unknown result — never a wrong
-/// answer. Soundness is the same as the sweep: the tally, scaled by the free
-/// show vars, is exact.
+/// `model_budget`, when the time budget is hit, or on an unknown result, never
+/// a wrong answer. Soundness is the same as the sweep: the tally, scaled by
+/// the free show vars, is exact.
 ///
 /// `ctl` is the caller's control and observation — see [`AllsatCtl`].
 fn allsat<T: Tally>(

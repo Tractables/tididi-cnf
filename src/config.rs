@@ -161,9 +161,9 @@ pub(crate) struct Config {
     /// The time the run's vtree constructions take, which every stage that
     /// builds one adds to and the record reports as `vtree_ms`.
     pub(crate) vtree_time: crate::budget::VtreeTime,
-    /// vitri's structure profile of the source formula before preprocessing. Measured
-    /// once by the driver and copied into every vtree-selection request derived
-    /// from this run.
+    /// vitri's structure profile of the source formula before preprocessing,
+    /// measured once by the driver and copied into every vtree-selection
+    /// request of the run.
     pub(crate) source_structure_profile: Option<vitri::score::StructureProfile>,
     /// Whether the parent cascade should retry a coloring-like input with
     /// vitri's SBVA policy forced off after the primary compile fails.

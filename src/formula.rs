@@ -81,10 +81,10 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 ///
 /// [`Error::Input`](crate::Error::Input) for a clause literal, shown variable
 /// or weight literal that names no variable, such as `0`, or a variable past
-/// `num_vars`, and for a clause that names a variable twice. The DIMACS reader merges a
-/// repeated literal and drops a clause holding both literals of a variable;
-/// clauses given as data are taken as they are, so they hold each variable
-/// once.
+/// `num_vars`, and for a clause that names a variable twice. The DIMACS reader
+/// merges a repeated literal and drops a clause holding both literals of a
+/// variable; clauses given as data are taken as they are, so they hold each
+/// variable once.
 pub fn formula_from_clauses<C: AsRef<[i32]>>(
     num_vars: u32,
     clauses: impl IntoIterator<Item = C>,

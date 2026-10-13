@@ -41,8 +41,8 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 /// jemalloc startup config: `retain:false` + decay disabled (lazy mode).
 ///
 /// **`retain:false`** — freed chunks are munmap'd instead of parked in the
-/// retained pool. Under `ulimit -v` (set by the bench harness and the MCC
-/// competition runner), retained chunks count against VSZ but cannot be
+/// retained pool. Under `ulimit -v` (set by `--mem-limit-mb`, or by whatever
+/// starts the process), retained chunks count against VSZ but cannot be
 /// reused for fresh allocations that exceed jemalloc's per-arena
 /// fragmentation pattern. Without this, a failed compile's freed memory stays
 /// in the address-space budget until process exit, leaving the recovery
@@ -123,8 +123,9 @@ const LAZY_POLL_CHARGE: u64 = LAZY_CHECK_STEP / LAZY_POLLS_PER_CHECK;
 ///   the needle on its own: always due, accumulator untouched (the request is
 ///   not "growth since the last read", it is the read's reason to happen).
 /// * `request_bytes == 0` — a heartbeat poll, which the library makes once per
-///   top-level apply through the reclaim hook `driver::solve_on` installs: charged `LAZY_POLL_CHARGE`, so at most
-///   `LAZY_POLLS_PER_CHECK` consecutive polls can pass without a real read.
+///   top-level apply through the reclaim hook `driver::solve_on` installs:
+///   charged `LAZY_POLL_CHARGE`, so at most `LAZY_POLLS_PER_CHECK`
+///   consecutive polls can pass without a real read.
 ///   They must not bypass the throttle: on a workload of many tiny applies the
 ///   polls alone cost a measurable slice of the window.
 /// * otherwise — charged its own byte count.
@@ -332,9 +333,10 @@ fn retained_handle() -> retained_mib {
 ///
 /// **Why mapped + retained, not just mapped.** `stats.mapped` alone can read
 /// well under the limit at the moment the OS refuses a multi-GiB allocation.
-/// jemalloc's mapped counter covers extents in *active* use; retained extents (decommitted via
-/// `madvise(MADV_DONTNEED)` and held for reuse) are tracked separately,
-/// even though they still occupy address space and count against RLIMIT_AS.
+/// jemalloc's mapped counter covers extents in *active* use; retained extents
+/// (decommitted via `madvise(MADV_DONTNEED)` and held for reuse) are tracked
+/// separately, even though they still occupy address space and count against
+/// RLIMIT_AS.
 /// Their sum reproduces VmSize closely enough for the budget check.
 #[inline]
 pub(crate) fn mapped_bytes() -> u64 {
@@ -432,17 +434,16 @@ pub(crate) fn limit_address_space(mb: u64) -> Result<AddressSpaceLimit, crate::E
 
 /// Lower this process's `RLIMIT_AS` (address-space) soft limit to `limit` bytes.
 ///
-/// This is the binary-internal equivalent of `ulimit -v` or a benchmark
-/// harness's `setrlimit`. Its purpose is to make a
+/// This is the run's own equivalent of `ulimit -v`. Its purpose is to make a
 /// memory ceiling *visible* to the solver's memory-adaptive machinery, all of
 /// which keys off [`rlimit_as_bytes`] (a `getrlimit` syscall): the lazy→eager
 /// arena-decay flip in this module, the library's growth-mode headroom check
-/// (installed as a memory hook in `driver::solve_on`), and the bail projection in
-/// `stage/mc/recovery.rs`. Under a competition cgroup the real cap is enforced
-/// out-of-band and is *invisible* to `getrlimit`, so without this call those
-/// mechanisms stay inert and a bloating compile drives the whole process into
-/// an OOM-kill instead of Shannon-splitting. Mirroring the cgroup value here
-/// arms them.
+/// (installed as a memory hook in `driver::solve_on`), and the bail projection
+/// in `stage/mc/recovery.rs`. Under a cgroup memory limit the real cap is
+/// enforced out-of-band and is *invisible* to `getrlimit`, so without this
+/// call those mechanisms stay inert and a bloating compile drives the whole
+/// process into an OOM-kill instead of Shannon-splitting. Mirroring the cgroup
+/// value here arms them.
 ///
 /// Semantics: **only ever lowers** the soft limit, never raises it — a process
 /// may always lower its own soft limit unprivileged, but cannot raise it above

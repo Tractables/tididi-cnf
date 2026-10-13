@@ -104,7 +104,8 @@ pub struct VtreeBuild {
     pub root: Arc<Vtree>,
     /// One tree per independent component, when the spec reads the formula's
     /// structure and the formula has two or more components; `None` when the
-    /// build did not split. [`ComponentPlan::from_components`](crate::compile::ComponentPlan::from_components)
+    /// build did not split.
+    /// [`ComponentPlan::from_components`](crate::compile::ComponentPlan::from_components)
     /// turns it into the plan [`compile_cnf`](crate::compile::compile_cnf)
     /// takes.
     pub components: Option<Vec<ComponentVtree>>,

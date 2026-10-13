@@ -2,9 +2,8 @@
 //!
 //! The `VITRI_*` controls in `vitri::RunConfig` are read when a run starts, by
 //! [`resolve_env_config`], into the run's `Config::vitri`; the vtree-selection
-//! controls are read on each build, by
-//! [`resolve_vitri_selection_ctx`],
-//! and checked when the run starts. A run's frontend ([`frontend_config`])
+//! controls are read on each build, by [`resolve_vitri_selection_ctx`], and
+//! checked when the run starts. A run's frontend ([`frontend_config`])
 //! starts from the run's settings and sets only what the compiler owns: its
 //! wall, its simplify level, whether Arjun runs and the vtree spelling. A stage
 //! a runner asks for later ([`arjun_stage`], [`projection_stage`]) starts from
@@ -51,13 +50,13 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
     Ok(config)
 }
 
-/// The run's frontend: the run's vitri settings under its wall,
-/// the parent's simplify level, and a portfolio vtree paired with the reduced
-/// formula. `arjun` keeps vitri's Arjun stage as the run's vitri settings have
-/// it (retaining its input checkpoint for a counting run, whose cascade may
-/// retry from it) or switches it off. Function compilation asks for the parent's own
-/// vtree spelling, which vitri validates when the run starts; every counting
-/// mode asks for the portfolio.
+/// The run's frontend: the run's vitri settings under its wall, the parent's
+/// simplify level, and a portfolio vtree paired with the reduced formula.
+/// `arjun` keeps vitri's Arjun stage as the run's vitri settings have it
+/// (retaining its input checkpoint for a counting run, whose cascade may retry
+/// from it) or switches it off. Function compilation asks for the parent's
+/// own vtree spelling, which vitri validates when the run starts; every
+/// counting mode asks for the portfolio.
 pub(crate) fn frontend_config(
     parent: &Config,
     mode: vitri::cnf::Mode,
