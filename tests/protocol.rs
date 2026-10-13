@@ -15,7 +15,7 @@
 //! Regenerate after an intended output change with
 //!
 //! ```text
-//! UPDATE_PROTOCOL=1 cargo test --test protocol -- --include-ignored
+//! UPDATE_PROTOCOL=1 cargo test --test protocol
 //! ```
 //!
 //! and read the diff before committing it.
@@ -34,7 +34,7 @@ const UPDATE_VAR: &str = "UPDATE_PROTOCOL";
 
 /// The command that rewrites the expected files.
 fn regenerate() -> String {
-    format!("{UPDATE_VAR}=1 cargo test --test protocol -- --include-ignored")
+    format!("{UPDATE_VAR}=1 cargo test --test protocol")
 }
 
 /// Replace the wall-clock carriers in one line of output, and only those.

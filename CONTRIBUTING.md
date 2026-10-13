@@ -55,7 +55,7 @@ intended change, regenerate the transcripts and read the diff before
 committing them with the change:
 
 ```sh
-UPDATE_PROTOCOL=1 cargo test --test protocol -- --include-ignored
+UPDATE_PROTOCOL=1 cargo test --test protocol
 ```
 
 ## Code
