@@ -18,7 +18,7 @@ use tididi::Tdd;
 use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
-use crate::compile::{CompileOptions, CompileRun, ComponentPlan, compile_with};
+use crate::compile::{CompileOptions, CompileRun, ComponentPlan, GiveUp, compile_with};
 use crate::compile::sat_prune::SatPrune;
 use crate::config::{Config, Limits, Mode, Settings};
 use crate::output::Stats;
@@ -146,10 +146,7 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
             // the run's give-up. There is nothing to fall back to: the circuit
             // is the answer.
             let options = CompileOptions { plan, deadline: program_deadline, ..CompileOptions::default() };
-            let compiled = compile_with(eng, &reduced, &compile_vtree, options, run.compile).map_err(|give_up| {
-                give_up.report();
-                Error::from(give_up)
-            })?;
+            let compiled = compile_with(eng, &reduced, &compile_vtree, options, run.compile).map_err(gave_up)?;
             let tdd = compiled.diagram;
             let compile_ms = clock.compile_ms(0);
             let tdd = crate::frontend::expand::expand_to_originals(eng, &tdd, &expansion)
@@ -177,10 +174,17 @@ fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAn
     };
     // Function compilation expands every original variable back into the TDD,
     // so its intrinsic model count is already in the input formula's space.
-    let count = eng
-        .model_count(&tdd)
-        .map_err(|error| Error::Artifact(format!("model count readout failed: {error}")))?;
+    // The readout runs under the same limits as the compile, and a refusal
+    // ends the run as the compile's would.
+    let count = eng.model_count(&tdd).map_err(|error| gave_up(GiveUp::from_operation(eng, error)))?;
     Ok(CompileAnswer { tdd, count, peak_pairs: peak, preprocessing, compile_ms })
+}
+
+/// A give-up of the plain compile route, which has nothing to fall back to:
+/// reported, and the end of the run.
+fn gave_up(give_up: GiveUp) -> Error {
+    give_up.report();
+    Error::from(give_up)
 }
 
 /// A run that stopped without an answer: why, and the run's record when it

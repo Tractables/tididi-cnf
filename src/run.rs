@@ -194,11 +194,11 @@ impl Answer {
 ///   `c p weight` lines, which that count would ignore.
 /// - [`Error::Environment`]: a vitri setting in the environment is invalid.
 ///   Each call reads the environment as it is when the call starts.
-/// - [`Error::Stage`], [`Error::VtreeSpec`], [`Error::Artifact`]:
-///   preprocessing, vtree construction or reading the count off the diagram
-///   failed.
+/// - [`Error::Stage`], [`Error::VtreeSpec`]: preprocessing or vtree
+///   construction failed.
 /// - [`Error::Incomplete`]: the run ended without a count: at the time limit,
-///   on a refused allocation, or when every stage gave up.
+///   on a refused allocation (reading the count off the diagram included), or
+///   when every stage gave up.
 ///
 /// # Example
 ///
