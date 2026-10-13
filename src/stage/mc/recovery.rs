@@ -149,7 +149,7 @@ pub(super) fn count_with_recovery(
         }
     }
     let cofactor_run = Run { compile: CompileRun { cofactor: true, ..run.compile }, ..*run };
-    let counted = split(&cofactor_run, formula, &[], &cofactor, &trigger)?;
+    let counted = split(&cofactor_run, formula, 0, &[], &cofactor, &trigger)?;
     answered(counted, AnsweredBy::ShannonSplit)
 }
 
@@ -165,20 +165,32 @@ fn failure(run: &Run<'_>, compile: impl FnOnce() -> Option<Counted>) -> Result<C
     }
 }
 
-/// Outcome of preparing a post-BCP Shannon cofactor for (possibly) compiling it.
+/// A post-BCP Shannon cofactor, prepared for its count.
 enum Cofactor {
-    /// The cofactor was fully resolved without compiling (the re-Arjun left
-    /// 0 variables ⇒ count is exactly `2^mult`); use this count directly.
-    Resolved(BigUint),
-    /// Compile this (possibly reduced) formula, then scale the result by `2^exp`.
-    Compile(CnfFormula, u32),
+    /// The re-reduction resolved every variable: the count is `2^lift_pow2`,
+    /// with nothing to compile.
+    Resolved { lift_pow2: u32 },
+    /// The re-reduction's formula, numbered afresh, whose count lifts by
+    /// `2^lift_pow2`.
+    Reduced { formula: CnfFormula, lift_pow2: u32 },
+    /// The cofactor as BCP left it, in the numbering of the formula it came
+    /// from.
+    Unreduced(CnfFormula),
 }
 
-/// One cofactor counted: by `cofactor`, and on its failure split again.
+/// One cofactor at recovery `depth` counted: by `cofactor`, and on its
+/// failure split again.
 ///
-/// `branched` holds the variables the enclosing splits fixed, one per level,
-/// so its length is the recovery depth.
-fn count_cofactor<F>(run: &Run<'_>, formula: &CnfFormula, branched: &[VarId], cofactor: &F) -> Option<Counted>
+/// `branched` holds the variables the enclosing splits fixed since this
+/// formula's numbering began: the whole formula's, or the re-reduction that
+/// renumbered it.
+fn count_cofactor<F>(
+    run: &Run<'_>,
+    formula: &CnfFormula,
+    depth: u32,
+    branched: &[VarId],
+    cofactor: &F,
+) -> Option<Counted>
 where
     F: Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
 {
@@ -188,28 +200,32 @@ where
     }
     match failure(run, || cofactor(run, formula)) {
         Ok(counted) => Some(counted),
-        Err(trigger) => split(run, formula, branched, cofactor, &trigger?),
+        Err(trigger) => split(run, formula, depth, branched, cofactor, &trigger?),
     }
 }
 
 /// The split itself: branch on one variable, BCP-close both cofactors, re-Arjun
 /// each at shallow depth, count each, and sum.
-fn split<F>(run: &Run<'_>, formula: &CnfFormula, branched: &[VarId], cofactor: &F, trigger: &str) -> Option<Counted>
+fn split<F>(
+    run: &Run<'_>,
+    formula: &CnfFormula,
+    depth: u32,
+    branched: &[VarId],
+    cofactor: &F,
+    trigger: &str,
+) -> Option<Counted>
 where
     F: Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
 {
-    let depth = branched.len() as u32;
     // Log trigger + purge jemalloc pages from the just-failed compile.
     log_and_purge_recovery(run.eng, formula, depth, &format!("split, after: {trigger}"));
 
-    // Branch on the most frequent variable no ancestor fixed, lowest index on a
-    // tie, so every recovery level strictly shrinks the unassigned-variable
-    // space.
+    // Branch on the most frequent variable no enclosing split fixed, lowest
+    // index on a tie, so every recovery level strictly shrinks the
+    // unassigned-variable space.
     let mut ancestor = vec![false; formula.num_vars() as usize];
     for v in branched {
-        if let Some(fixed) = ancestor.get_mut(v.idx()) {
-            *fixed = true;
-        }
+        ancestor[v.idx()] = true;
     }
     let Some(var) = most_frequent_var(formula, 0, |idx| !ancestor[idx]) else {
         eprintln!("[mc] shannon-split: no variable left to branch on; giving up");
@@ -239,19 +255,22 @@ where
             continue;
         };
 
-        let child_val = match prepare_cofactor(run, sub, depth, child_idx) {
-            Cofactor::Resolved(count) => (count, 0),
-            Cofactor::Compile(sub_final, sub_mult) => {
-                let (count, peak) = count_cofactor(run, &sub_final, &child_branched, cofactor)?;
-                // Purge between siblings so the next cofactor doesn't inherit
-                // this one's retained extents.
-                let _ = purge_all_arenas();
-                (count << sub_mult, peak)
+        let (count, peak) = match prepare_cofactor(run, sub, depth, child_idx) {
+            Cofactor::Resolved { lift_pow2 } => (BigUint::from(1u32) << lift_pow2, 0),
+            // A reduction renumbers the cofactor, and the variables the
+            // enclosing splits fixed are gone from it, so none is excluded.
+            Cofactor::Reduced { formula, lift_pow2 } => {
+                let (count, peak) = count_cofactor(run, &formula, depth + 1, &[], cofactor)?;
+                (count << lift_pow2, peak)
             }
+            Cofactor::Unreduced(formula) => count_cofactor(run, &formula, depth + 1, &child_branched, cofactor)?,
         };
+        // Purge between siblings so the next cofactor doesn't inherit this
+        // one's retained extents.
+        let _ = purge_all_arenas();
 
-        acc.0 += child_val.0;
-        acc.1 = acc.1.max(child_val.1);
+        acc.0 += count;
+        acc.1 = acc.1.max(peak);
     }
     Some(acc)
 }
@@ -286,79 +305,73 @@ fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize
             )
         })
         .flatten();
-    let (sub_final, sub_mult): (CnfFormula, u32) = if let Some(budget_ms) = budget_ms {
-        eprintln!(
-            "[mc] shannon-split: child {}/2: re-Arjun budget {}ms on {}v/{}c",
-            child_idx + 1,
-            budget_ms,
-            sub.num_vars(),
-            sub.clauses().len(),
-        );
-        // `budget_ms` is already the recovery allowance, cut to the run's
-        // wall: Vitri takes it as given, and stops there.
-        let budget = std::time::Duration::from_millis(budget_ms);
-        let reduce_config = arjun_stage(
-            run.config,
-            vitri::cnf::Mode::Mc,
-            Some(not_past(now + budget, deadline)),
-            budget,
-            vitri::config::ArjunClauseGrowth::default(),
-        );
-        match vitri::bundle::preprocess(
-            &sub,
-            &vitri::cnf::CnfMeta::default(),
-            &reduce_config,
-        ) {
-            // Only a kept Arjun reduction changes the post-BCP cofactor;
-            // every other outcome, a preprocessing error included, keeps
-            // the raw cofactor.
-            Ok(ar) if matches!(ar.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) => {
-                let arjun_pow2 = ar.count_lift.arjun_pow2;
+    let Some(budget_ms) = budget_ms else {
+        return Cofactor::Unreduced(sub);
+    };
+    eprintln!(
+        "[mc] shannon-split: child {}/2: re-Arjun budget {}ms on {}v/{}c",
+        child_idx + 1,
+        budget_ms,
+        sub.num_vars(),
+        sub.clauses().len(),
+    );
+    // `budget_ms` is already the recovery allowance, cut to the run's
+    // wall: Vitri takes it as given, and stops there.
+    let budget = std::time::Duration::from_millis(budget_ms);
+    let reduce_config = arjun_stage(
+        run.config,
+        vitri::cnf::Mode::Mc,
+        Some(not_past(now + budget, deadline)),
+        budget,
+        vitri::config::ArjunClauseGrowth::default(),
+    );
+    match vitri::bundle::preprocess(
+        &sub,
+        &vitri::cnf::CnfMeta::default(),
+        &reduce_config,
+    ) {
+        // Only a kept Arjun reduction changes the post-BCP cofactor;
+        // every other outcome, a preprocessing error included, keeps
+        // the raw cofactor.
+        Ok(ar) if matches!(ar.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) => {
+            let arjun_pow2 = ar.count_lift.arjun_pow2;
+            eprintln!(
+                "[mc] shannon-split: child {}/2: arjun {}v/{}c → {}v/{}c, lift=2^{}",
+                child_idx + 1,
+                sub.num_vars(),
+                sub.clauses().len(),
+                ar.reduced.num_vars(),
+                ar.reduced.clauses().len(),
+                arjun_pow2,
+            );
+            check_arjun_accounting(&sub, &ar, depth, child_idx);
+            if ar.reduced.num_vars() == 0 {
                 eprintln!(
-                    "[mc] shannon-split: child {}/2: arjun {}v/{}c → {}v/{}c, lift=2^{}",
+                    "[mc] shannon-split: child {}/2: arjun resolved every variable — count = 2^{}",
                     child_idx + 1,
-                    sub.num_vars(),
-                    sub.clauses().len(),
-                    ar.reduced.num_vars(),
-                    ar.reduced.clauses().len(),
                     arjun_pow2,
                 );
-                check_arjun_accounting(&sub, &ar, depth, child_idx);
-                (ar.reduced, arjun_pow2)
+                return Cofactor::Resolved { lift_pow2: arjun_pow2 };
             }
-            Ok(ar) => {
-                eprintln!(
-                    "[mc] shannon-split: child {}/2: arjun did not yield a kept reduction ({:?}) — \
-                     using post-BCP sub-formula",
-                    child_idx + 1,
-                    ar.stages.arjun,
-                );
-                (sub, 0)
-            }
-            Err(error) => {
-                eprintln!(
-                    "[mc] shannon-split: child {}/2: preprocessing failed ({error}) — \
-                     using post-BCP sub-formula",
-                    child_idx + 1,
-                );
-                (sub, 0)
-            }
+            Cofactor::Reduced { formula: ar.reduced, lift_pow2: arjun_pow2 }
         }
-    } else {
-        (sub, 0)
-    };
-
-    // If Arjun fully resolved the sub-formula (0 vars left), the model count
-    // is exactly 2^sub_mult — skip the compile.
-    if sub_final.num_vars() == 0 {
-        eprintln!(
-            "[mc] shannon-split: child {}/2: arjun resolved every variable — count = 2^{}",
-            child_idx + 1,
-            sub_mult,
-        );
-        Cofactor::Resolved(BigUint::from(2u32).pow(sub_mult))
-    } else {
-        Cofactor::Compile(sub_final, sub_mult)
+        Ok(ar) => {
+            eprintln!(
+                "[mc] shannon-split: child {}/2: arjun did not yield a kept reduction ({:?}) — \
+                 using post-BCP sub-formula",
+                child_idx + 1,
+                ar.stages.arjun,
+            );
+            Cofactor::Unreduced(sub)
+        }
+        Err(error) => {
+            eprintln!(
+                "[mc] shannon-split: child {}/2: preprocessing failed ({error}) — \
+                 using post-BCP sub-formula",
+                child_idx + 1,
+            );
+            Cofactor::Unreduced(sub)
+        }
     }
 }
 
