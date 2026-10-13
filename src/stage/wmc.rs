@@ -53,7 +53,7 @@ fn compile_weighted(
                     super::PORTFOLIO_VTREE_SPEC,
                     &VtreeOptions::default()
                         .with_deadline(crate::budget::vtree_deadline(deadline))
-                        .with_portfolio_history(run.config.portfolio_history.clone()),
+                        .with_run_policy(run.config),
                 )
             }))?
             .bind(eng),

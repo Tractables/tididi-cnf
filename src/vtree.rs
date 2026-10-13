@@ -78,15 +78,6 @@ impl VtreeOptions {
         self
     }
 
-    #[must_use]
-    pub(crate) fn with_portfolio_history(
-        mut self,
-        history: vitri::decompose::PortfolioBuildHistory,
-    ) -> Self {
-        self.portfolio_history = history;
-        self
-    }
-
     /// The run's portfolio history and the structure profile of its input.
     #[must_use]
     pub(crate) fn with_run_policy(mut self, config: &Config) -> Self {
