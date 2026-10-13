@@ -1,5 +1,6 @@
 """tididi_bonsai counts what `tididi --mode MODE` counts, on the instances
-bindings/parity.txt lists. Runs when pytest is given --tididi-cli."""
+bindings/parity.txt lists, and reports the version `tididi --version` prints.
+Runs when pytest is given --tididi-cli."""
 
 import math
 import subprocess
@@ -34,6 +35,13 @@ def same_count(count, text):
     if isinstance(count, Fraction):
         return f"{count.numerator}/{count.denominator}" == text
     return str(count) == text
+
+
+def test_the_version_is_the_command_lines(tididi_cli):
+    printed = subprocess.run(
+        [str(tididi_cli), "--version"], capture_output=True, text=True, check=True, timeout=60
+    ).stdout
+    assert printed == f"tididi {tididi_bonsai.__version__}\n"
 
 
 def test_the_list_names_instances_that_exist():

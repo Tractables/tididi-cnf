@@ -215,10 +215,27 @@ static int run_tididi(const char *executable, const char *path, const char *mode
   return pclose(output) == 0 && found == 3 ? 0 : -1;
 }
 
-static void test_versions(void) {
+/* The library reports the version of tididi-bonsai it was built from, which
+ * the executable built from the same source prints for --version. */
+static void test_versions(const char *executable) {
+  char command[2 * LINE_SIZE];
+  char expected[LINE_SIZE];
+  char printed[LINE_SIZE] = "";
+  FILE *output;
+
   CHECK(tididi_bonsai_abi_version() == TIDIDI_BONSAI_ABI_VERSION, "ABI version %u, header %u",
         tididi_bonsai_abi_version(), TIDIDI_BONSAI_ABI_VERSION);
-  CHECK(strlen(tididi_bonsai_version()) > 0, "the version is empty");
+  snprintf(expected, sizeof expected, "tididi %s\n", tididi_bonsai_version());
+  if (snprintf(command, sizeof command, "'%s' --version", executable) >= (int)sizeof command)
+    output = NULL;
+  else
+    output = popen(command, "r");
+  CHECK(output != NULL, "cannot run %s --version", executable);
+  if (output == NULL) return;
+  if (fgets(printed, sizeof printed, output) == NULL) printed[0] = '\0';
+  CHECK(pclose(output) == 0, "%s --version failed", executable);
+  CHECK(strcmp(printed, expected) == 0, "the library is version %s, the executable prints %s",
+        tididi_bonsai_version(), printed);
 }
 
 /* Each listed instance, read from its file, from its text and as clauses,
@@ -498,7 +515,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "usage: %s TIDIDI_EXECUTABLE REPOSITORY_ROOT\n", argv[0]);
     return 2;
   }
-  test_versions();
+  test_versions(argv[1]);
   test_counts_match_the_executable(argv[1], argv[2]);
   test_counts();
   test_clauses();

@@ -155,8 +155,10 @@ rule below is a form of it. Review a change against this list before it lands.
 
 ## Releasing
 
-Set the new version in `Cargo.toml` and `CITATION.cff` (a build carries it
-into `Cargo.lock`), rename the `## Unreleased` heading in
+Set the new version in `Cargo.toml`, `CITATION.cff` and the `Cargo.toml` of
+each binding under `bindings/`, whose packages report the library's version.
+`cargo update --workspace`, at the root and in each binding's directory,
+carries it into that `Cargo.lock`. Rename the `## Unreleased` heading in
 [`CHANGELOG.md`](CHANGELOG.md) to the version, and move the worked examples'
 `blob/v<version>/` program links to the new tag. Then publish a GitHub release
 with the tag `v<version>`: the release workflow checks that the tag and those

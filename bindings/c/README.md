@@ -7,8 +7,8 @@ as JSON. Each call is the run the `tididi` binary makes on the same formula and
 mode, without its printing.
 
 This is a separate crate with its own `Cargo.toml`. It builds the library in
-the repository above it; `tididi_bonsai_version()` reports this crate's
-version.
+the repository above it, and `tididi_bonsai_version()` reports the version of
+that library.
 
 ## Building
 

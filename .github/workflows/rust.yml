@@ -18,7 +18,7 @@ jobs:
       with:
         submodules: recursive
 
-    # The manifest, lockfile, citation and changelog name one version; the
+    # The manifests, lockfiles, citation and changelog name one version; the
     # release workflow makes the same check against the tag.
     - name: Check versions
       run: python3 .github/scripts/check-versions.py

@@ -21,7 +21,8 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 # The checkout this crate sits in, so a change to the library is built and
 # tested through the bindings. `tididi_bonsai_version()` reports this
-# package's version, which follows the library's.
+# package's version, which .github/scripts/check-versions.py keeps equal to
+# the library's.
 tididi-bonsai = { path = "../.." }
 # The answer's stats record is serialized with it, as the binary does.
 serde_json = "1"

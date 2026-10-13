@@ -21,7 +21,7 @@ crate-type = ["cdylib"]
 [dependencies]
 # The checkout this crate sits in, so a change to the library is built and
 # tested through the bindings. `__version__` is this package's version, which
-# follows the library's.
+# .github/scripts/check-versions.py keeps equal to the library's.
 tididi-bonsai = { path = "../.." }
 # `extension-module` links against the interpreter that loads the wheel rather
 # than a libpython. `abi3-py310` builds against the stable ABI, so one wheel

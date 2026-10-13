@@ -207,8 +207,7 @@ def test_wrong_argument_types_raise_type_error():
         tididi_bonsai.count(TWO_MODELS, time_limit_ms=-1)
 
 
-def test_the_version_is_the_packages():
-    assert tididi_bonsai.__version__
+def test_an_answer_reprs_its_mode_and_count():
     assert repr(tididi_bonsai.count(TWO_MODELS, mode="mc")) == "<tididi_bonsai.Answer: mc, 2>"
 
 
