@@ -86,12 +86,12 @@ impl<'a> ComponentPlan<'a> {
 // ── What the run sets for each compile ──────────────────────────────────────
 
 /// What a run sets for one compile, beyond what the compile is asked to
-/// produce: the run's SAT-prune pass, and whether the compile is a Shannon
+/// produce: the run's SAT pruning, and whether the compile is a Shannon
 /// cofactor's.
 #[derive(Clone, Copy, Default)]
 pub(crate) struct CompileRun<'a> {
-    /// The run's SAT-prune pass, which a pass that runs to its end adds its
-    /// tallies to; `None` runs no pass.
+    /// The run's SAT pruning, which a compile that runs to its end adds its
+    /// tallies to; `None` prunes nothing.
     pub(crate) sat_prune: Option<&'a sat_prune::SatPrune>,
     /// A recovery cofactor's compile, which skips the content-twin scan: the
     /// cascade recompiles cofactors under memory pressure, and scanning a
@@ -327,8 +327,7 @@ pub fn compile_cnf(
     compile_with(eng, formula, vtree, opts, CompileRun { sat_prune: Some(&sat_prune), cofactor: false })
 }
 
-/// [`compile_cnf`] under what the run sets for it: the run's SAT-prune pass,
-/// or none.
+/// [`compile_cnf`] under what the run sets for it (`run`).
 pub(crate) fn compile_with(
     eng: &Engine,
     formula: &CnfFormula,

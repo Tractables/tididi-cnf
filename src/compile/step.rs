@@ -54,8 +54,7 @@ pub(crate) struct PassState {
     /// Each is forgotten once: at the step its leaf is scheduled at, or at the
     /// root.
     pub(crate) forgotten: HashSet<VarId>,
-    /// The SAT-prune pass's solver and trigger; `None` when the pass does not
-    /// run.
+    /// The SAT pruning context; `None` when the compile does not prune.
     pub(crate) sat_prune: Option<SatPruneCtx>,
     /// The batch builder's spine-marking scratch, one flag per vtree node,
     /// grown on first use and all false between batches, so the zeroing is
@@ -154,18 +153,9 @@ pub(crate) fn compile_component(
     // every live Tdd in `tdds` to share the same Arc, so we propagate.
     let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
 
-    // SAT-prune scaffold: build a long-lived CaDiCaL handle when enabled, kept
-    // in the pass state for the whole bottom-up pass.
-    //
-    // Weighted (`--weighted`) compiles carry no integer per-node counts
-    // (values live in the WeightStore), so the sat-prune probe — which reads
-    // `marginal_counts` via `node_counts` — would panic. The probe
-    // is an in-compile size optimization; skipping it only enlarges the
-    // diagram, never changes the value. Gate it off in weighted mode.
-    //
-    // A run under `TIDIDI_SAT_PRUNE=off` hands no pass: a diagnostic
-    // off-switch for paired pruning on/off measurements. No solver is built
-    // and no pass runs; the compile is otherwise the same.
+    // A weighted compile builds no pruning context: its marginal levels hold
+    // weights, and the per-node counts a pass orders its probes by are
+    // refused for them.
     let sat_prune = match job.run.sat_prune {
         Some(run_pass) if job.output.weights().is_none() => run_pass.context(formula, job.run.cofactor),
         _ => None,
@@ -251,8 +241,8 @@ pub(crate) fn compile_component(
         propagate_vtree_arc(&mut tdds, &mut current_vtree, t);
     }
 
-    if let (Some(prune), Some(run_pass)) = (state.sat_prune.as_ref(), job.run.sat_prune) {
-        run_pass.absorb(prune.stats_snapshot());
+    if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
+        run_pass.absorb(prune.into_stats());
     }
 
     let diagram = tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
@@ -309,9 +299,9 @@ fn fold_step(
 }
 
 /// Process a single internal vtree node: conjoin children, fold its clauses,
-/// then run the SAT-prune trigger. Returns the pair count of the node's
-/// diagram, measured once by the fold and again only if the prune replaced
-/// it. `Err(Stopped)` on deadline.
+/// then prune the node's diagram when a pass fires. Returns the pair count of
+/// the node's diagram, measured once by the fold and again only if the
+/// pruning replaced it. `Err(Stopped)` on deadline.
 fn run_internal_step(
     eng: &Engine,
     t: VtreeIdx,
@@ -353,13 +343,7 @@ fn run_internal_step(
         (None, None) => None,
     };
     let mut pairs = fold_step(eng, t, ctx, tdds, state, current_vtree, children_tdd)?;
-    // ── SAT-prune trigger ────────────────────────────────────────────────
-    // When the just-built subcircuit's pair count meets the threshold,
-    // Tseitin-encode the partial TDD into the long-lived CaDiCaL solver and
-    // probe each reachable internal node for liveness under Φ. UNSAT
-    // probes feed bottom-up propagation; the rewrite step filters dead pair
-    // components out of every surviving node and re-minimizes. If the root
-    // ends up dead, the slot becomes ⊥.
+    // Prune the node's diagram when the pass's trigger fires.
     if let Some(prune) = state.sat_prune.as_mut()
         && let Some(tdd) = tdds[t.idx()].as_ref()
         && prune.should_fire(pairs)

@@ -1,5 +1,27 @@
-//! The tallies of a run's sat-prune passes, as the `--stats` record reports
-//! them.
+//! The tallies of a run's SAT pruning passes, and why pruning stopped, as
+//! the `--stats` record reports them.
+
+/// Why SAT pruning stopped for the rest of a compile.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum PruneStop {
+    /// Passes in a row removed nothing.
+    EmptyPasses,
+    /// The probes proved too few of the nodes they checked dead.
+    LowKillRate,
+    /// Pruning spent its time cap without a rewrite that paid for it.
+    TimeShare,
+}
+
+impl PruneStop {
+    /// The reason as the `--stats` record's `sat_prune_disabled_by` spells it.
+    pub(crate) fn key(self) -> &'static str {
+        match self {
+            PruneStop::EmptyPasses => "empty-passes",
+            PruneStop::LowKillRate => "low-kill-rate",
+            PruneStop::TimeShare => "time-share",
+        }
+    }
+}
 
 /// Declares [`SatPruneStats`]: each `u64` tally, with its doc comment, once.
 /// From that one list come the struct, the sum [`SatPruneStats::absorb`]
@@ -7,17 +29,12 @@
 /// counter cannot be left out of either.
 macro_rules! sat_prune_stats {
     ($($(#[$doc:meta])* $field:ident,)*) => {
-        /// What one run's sat-prune passes did, as the `--stats` record reports it.
+        /// What one run's SAT pruning passes did, as the `--stats` record reports it.
         #[derive(Default, Clone, Debug)]
         pub(crate) struct SatPruneStats {
             $($(#[$doc])* pub(crate) $field: u64,)*
-            /// Reason SAT-prune was disabled mid-compile, or `""` if it was never
-            /// disabled (or is still active at collection time).
-            /// - `"empty-passes"`: `MAX_CONSEC_ZERO_PASSES` consecutive zero-kill
-            ///   passes triggered the adaptive gate.
-            /// - `"low-kill-rate"`: the cumulative kill-rate fell below the threshold.
-            /// - `"time-share"`: unproductive sat-prune spend reached the wall.
-            pub(crate) disabled_by: &'static str,
+            /// Why pruning stopped before the compile ended; `None` while it runs.
+            pub(crate) disabled_by: Option<PruneStop>,
         }
 
         impl SatPruneStats {
@@ -25,9 +42,7 @@ macro_rules! sat_prune_stats {
             /// reason when it has one.
             pub(crate) fn absorb(&mut self, other: SatPruneStats) {
                 $(self.$field += other.$field;)*
-                if !other.disabled_by.is_empty() {
-                    self.disabled_by = other.disabled_by;
-                }
+                self.disabled_by = other.disabled_by.or(self.disabled_by);
             }
 
             /// Each tally under its `--stats` key, `sat_prune_` and the field's name.
@@ -142,7 +157,7 @@ sat_prune_stats! {
 
 impl SatPruneStats {
     /// Microseconds spent solving, encoding, rewriting and counting: the
-    /// spend the sat-prune wall caps.
+    /// spend `PruneLimits::spend_cap_ms` caps.
     pub(super) fn spend_us(&self) -> u64 {
         self.probe_us + self.encode_us + self.rewrite_us + self.count_order_us
     }

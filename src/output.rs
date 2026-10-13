@@ -286,9 +286,7 @@ pub(crate) fn close_record(
     // happened" signal. None is there when no pass ran to its end.
     if let Some(prune) = sat_prune {
         stats.sat_prune = prune.tallies().filter(|(_, v)| *v > 0).collect();
-        if !prune.disabled_by.is_empty() {
-            stats.sat_prune_disabled_by = Some(prune.disabled_by);
-        }
+        stats.sat_prune_disabled_by = prune.disabled_by.map(crate::compile::sat_prune::PruneStop::key);
     }
 }
 

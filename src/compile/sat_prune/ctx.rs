@@ -1,59 +1,109 @@
-//! The sat-prune pass's solver context: the incremental CaDiCaL instance, its
-//! clause seeding, and the solver one pass's encoding and probe run on, with
-//! the bounded solve every probe goes through and the rules that stop a probe.
+//! The SAT pruning context: the incremental CaDiCaL instance and its clause
+//! seeding, the limits a compile's passes run under, and the solver one
+//! pass's encoding and probe run on, with the bounded solve every probe goes
+//! through and the rules that stop a probe.
 
 use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
 
 use tididi::cnf::{
-    ClauseSink, CnfEncoding, CnfScheme, EncodePoint, ProbePoint, ProbePolicy, ProbeStats,
-    SatOracle, SolveCall, SolveStatus,
+    ClauseSink, CnfEncoding, CnfScheme, EncodePoint, ProbePoint, ProbePolicy, ProbeStats, SatOracle, SolveCall,
+    SolveStatus,
 };
 use tididi::diagram::Tdd;
 use tididi::vtree::VarId;
-use vitri::sat::{Bounded, CaDiCal, Status, WallClockTerminator};
-
 use vitri::cnf::CnfFormula;
+use vitri::sat::{Bounded, CaDiCal, Status, WallClockTerminator};
 
 use crate::budget::resolve_scaled;
 
-use super::stats::SatPruneStats;
+use super::stats::{PruneStop, SatPruneStats};
 
-/// The pair count at which a just-built diagram first triggers a pass.
-const SAT_PRUNE_THRESHOLD: usize = 10000;
+/// The limits a compile's SAT pruning passes run under.
+/// [`PruneLimits::for_wall`] sets every one of them.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct PruneLimits {
+    /// The pair count at which a just-built diagram first triggers a pass.
+    pub(super) threshold: usize,
+    /// The pair count above which no pass fires: the encoding would run to
+    /// millions of clauses, and the solver state it leaves behind would
+    /// crowd the compile's own memory.
+    pub(super) max_pairs: usize,
+    /// How much a diagram must grow past the size the last pass fired at
+    /// before the next one fires, which keeps the passes of one compile
+    /// logarithmic in its peak size.
+    pub(super) growth_factor: f32,
+    /// How many passes in a row may remove nothing before pruning stops for
+    /// the compile.
+    pub(super) max_consec_zero_passes: u32,
+    /// The share of probes that prove their node dead below which pruning
+    /// stops for the compile. Passes that each remove a little keep firing,
+    /// which the empty-pass rule does not catch.
+    pub(super) min_kill_rate: f32,
+    /// How many probes the kill rate is first judged after, and then judged
+    /// again every time as many more have run, so a hopeless walk stops at
+    /// its first judgement.
+    pub(super) min_probes_for_rate_check: u64,
+    /// The most probes one pass issues.
+    pub(super) max_probes_per_pass: u64,
+    /// The conflict budget of one probe's solve.
+    pub(super) probe_conflict_budget: i32,
+    /// The conflict budget of one enumeration round's solve.
+    pub(super) round_conflict_budget: i32,
+    /// The enumeration rounds before the probe walk, none at 0. With rounds,
+    /// every SAT probe's model also certifies the nodes it makes true alive.
+    pub(super) allsat_k: u32,
+    /// How far past the pass budget one solve may run before the terminator
+    /// stops it, in milliseconds.
+    pub(super) solve_overrun_ms: u64,
+    /// How long one pass's encoding may take, in milliseconds: on some
+    /// formulas the encoding alone would spend the compile's time. A pass
+    /// that runs out probes the bottom-up prefix it encoded, or retires when
+    /// it encoded nothing.
+    pub(super) max_encode_ms: u64,
+    /// The most internal levels one pass's encoding defines, under the same
+    /// rule as `max_encode_ms`.
+    pub(super) max_encode_levels: usize,
+    /// The spend, in milliseconds, of solving, encoding, rewriting and
+    /// counting since the last productive rewrite at which pruning stops for
+    /// the compile; also the budget of one pass.
+    pub(super) spend_cap_ms: u64,
+    /// The share of the diagram, in percent, a rewrite must remove to count
+    /// as productive and reset the spend the cap is measured from.
+    pub(super) reset_drop_pct: u64,
+}
 
-/// Conflict budget per AllSAT prelude solve.
-pub(super) const ALLSAT_CONFLICT_BUDGET: i32 = 50;
+impl PruneLimits {
+    /// The limits for a run whose time limit is `wall_ms`, `None` when it has
+    /// none. The encoding's time and the spend cap scale with the time limit,
+    /// each never below its value for a run with none; the rest are fixed.
+    pub(crate) fn for_wall(wall_ms: Option<u64>) -> Self {
+        PruneLimits {
+            threshold: 10_000,
+            max_pairs: 2_000_000,
+            growth_factor: 1.1,
+            max_consec_zero_passes: 2,
+            min_kill_rate: 0.05,
+            min_probes_for_rate_check: 30,
+            max_probes_per_pass: 2_000,
+            probe_conflict_budget: 5_000,
+            round_conflict_budget: 50,
+            allsat_k: 4,
+            solve_overrun_ms: 200,
+            max_encode_ms: resolve_scaled(wall_ms, 1.0 / 60.0, 2_000, 2_000, 60_000),
+            max_encode_levels: usize::MAX,
+            spend_cap_ms: resolve_scaled(wall_ms, 1.0 / 120.0, 1_000, 1_000, 30_000),
+            reset_drop_pct: 50,
+        }
+    }
+}
 
-/// Hard cap on probes per trigger pass.
-pub(super) const MAX_PROBES_PER_PASS: u64 = 2_000;
-
-/// Hard upper bound on partial-TDD size at which we even attempt
-/// a probe pass. Above this, the Tseitin encoding alone is
-/// prohibitive (millions of clauses per pass) and the CaDiCaL
-/// state accumulates across passes, crowding the apply arenas.
-pub(super) const MAX_NODES: usize = 2_000_000;
-
-/// Growth multiplier above which the next pass is allowed to fire.
-/// `next_allowed_size = max(threshold, last_trigger_size * GROWTH_FACTOR)`.
-pub(super) const GROWTH_FACTOR: f32 = 1.1;
-
-/// Threshold for the consecutive-zero-pass disable.
-pub(super) const MAX_CONSEC_ZERO_PASSES: u32 = 2;
-
-/// Minimum cumulative kill rate (probes_unsat / probes_attempted) below
-/// which pruning is disabled. Only checked once `probes_attempted` meets
-/// `MIN_PROBES_FOR_RATE_CHECK`.
-pub(super) const MIN_RUNNING_KILL_RATE: f32 = 0.05;
-
-/// Probe-count threshold for the running-rate gate. Below this, the gate
-/// is skipped (not enough data to make a decision).
-pub(super) const MIN_PROBES_FOR_RATE_CHECK: u64 = 30;
-
-/// Long-lived SAT-pruning context: one incremental CaDiCaL solver loaded
-/// with the full original CNF, plus prune statistics.
+/// Long-lived SAT pruning context: one incremental CaDiCaL solver loaded
+/// with the full original CNF, the limits its passes run under, and what
+/// they have done so far.
 pub(crate) struct SatPruneCtx {
     pub(super) solver: CaDiCal,
+    pub(super) limits: PruneLimits,
     /// When the current pass's budget runs out, set at pass start before any
     /// solve.
     ///
@@ -65,81 +115,34 @@ pub(crate) struct SatPruneCtx {
     /// uses 1..=num_vars; Tseitin auxiliaries grow above this and are
     /// retired (via activation-literal disable) at end-of-pass.
     pub(super) next_var: i32,
-    /// Conflict budget per node probe (CaDiCaL `limit("conflicts", N)`).
-    pub(super) probe_conflict_budget: i32,
-    /// How far past the pass budget one in-flight solve may run before the
-    /// pass terminator stops it (milliseconds).
-    pub(super) solve_overrun_ms: u64,
-    /// Wall-time cap for the Tseitin encoding phase itself (milliseconds).
-    /// Pathological CNFs can spend the whole
-    /// per-CNF compile budget building the encoding before any probing
-    /// happens. When the encode loop exceeds this cap, the fully-encoded
-    /// bottom-up prefix is probed, or, when nothing was encoded, the pass is
-    /// retired. 1/60 of the run wall clamped to [2 s, 60 s]; 2 s when the run
-    /// has no wall.
-    pub(super) max_encode_ms: u64,
-    /// Deterministic encode cut for tests: stop emitting after this many
-    /// internal levels (checked alongside `max_encode_ms`). `usize::MAX` in
-    /// production.
-    pub(super) max_encode_levels: usize,
     /// Size at which we last fired a probe pass (see `should_fire`).
     pub(super) last_trigger_size: usize,
-    /// Adaptive-disable signal: count of consecutive `probe_tdd` passes that
-    /// produced zero kills (no SAT-UNSAT and no transitively-dead nodes). Once
-    /// this hits `MAX_CONSEC_ZERO_PASSES`, pruning is disabled for the rest
-    /// of this compile — `should_fire` returns false thereafter. Reset to 0
-    /// every time a pass produces at least one kill.
+    /// Passes in a row that removed nothing; [`SatPruneCtx::record_empty_pass`]
+    /// counts them, and a pass that removes a node resets it.
     pub(super) consec_zero_passes: u32,
-    /// Why pruning is off for the rest of this compile, once the wall
-    /// (`"time-share"`) or the running-rate gate (`"low-kill-rate"`)
-    /// turns it off. `should_fire` returns false while it is set.
-    pub(super) disabled_by: Option<&'static str>,
-    /// AllSAT-style enumeration. When > 0, before the main probe
-    /// loop, issue up to `allsat_k` unconditioned global solves under
-    /// `assume={a, a_block}` (no `y_n` target). Each SAT model harvests
-    /// aliveness witnesses for every reachable internal y-literal; a blocking
-    /// clause `¬a_block ∨ ¬y_{w1} ∨ ¬y_{w2} ∨ …` forces the next model to
-    /// differ on at least one witnessed literal, and `a_block` is retired
-    /// before the probes. If a round returns UNSAT, all distinct
-    /// alive-signatures have been enumerated → every unwitnessed reachable
-    /// internal node is **definitively dead**. With it on, every
-    /// SAT probe's model also certifies the nodes it makes true alive for the
-    /// rest of the pass. `0` = disabled (tests only).
-    pub(super) allsat_k: u32,
-    /// Wall-clock ceiling on unproductive sat-prune work (probe + encode +
-    /// rewrite + model counts since the last productive rewrite), in
-    /// milliseconds, and the budget of one pass. Once reached, pruning
-    /// sticky-disables for the compile. 1/120 of the run wall clamped to
-    /// [1 s, 30 s]; 1 s when the run has no wall.
-    pub(super) wall_ms: u64,
-    /// Spend-meter snapshot (probe+encode+rewrite+count µs) taken at
-    /// the last productive rewrite (drop fraction ≥ `wall_reset_drop_pct`).
-    /// The wall compares spend since this snapshot, so the ceiling caps
-    /// consecutive unproductive work, not total work. Without it, the wall
-    /// sticky-disables right after the most productive passes, which are
+    /// The spend, as [`SatPruneStats::spend_us`] measures it, at the last
+    /// productive rewrite. The spend cap is measured from here, so it caps
+    /// unproductive work, not total work: the most productive passes are
     /// also the most expensive ones.
-    pub(super) wall_exempt_us: u64,
-    /// Minimum drop percentage — pairs_dropped / (pairs_dropped + post-
-    /// rewrite size) × 100 — for a rewrite to reset the wall meter.
-    pub(super) wall_reset_drop_pct: u64,
-
-    /// The tallies this context has accumulated so far.
+    pub(super) spend_exempt_us: u64,
+    /// The tallies this context has accumulated so far, and why pruning
+    /// stopped, once it has: `should_fire` returns false from then on.
     pub(super) stats: SatPruneStats,
     /// Whether the full reduction after a rewrite skips the content-twin
-    /// scan, as a recovery cofactor's compile does.
+    /// scan; [`CompileRun::cofactor`](crate::compile::CompileRun::cofactor)
+    /// says when.
     pub(super) skip_content_twins: bool,
 }
 
 impl SatPruneCtx {
     /// Build the context: a fresh CaDiCaL instance loaded with `formula`'s
-    /// clauses, not yet solved. `wall_ms` is the run's wall, which the time
-    /// knobs scale with; `skip_content_twins` is the compile's reduction
-    /// policy.
+    /// clauses, not yet solved, whose passes run under `limits`;
+    /// `skip_content_twins` is the compile's reduction policy.
     ///
     /// `None` when no solver could be built: there is nothing to prune with,
-    /// and the caller compiles without the SAT-prune probe (which only ever
-    /// shrinks the diagram, never changes the count).
-    pub(crate) fn new(formula: &CnfFormula, wall_ms: Option<u64>, skip_content_twins: bool) -> Option<Self> {
+    /// and the caller compiles without pruning, which only ever shrinks the
+    /// diagram, never changes the count.
+    pub(crate) fn new(formula: &CnfFormula, limits: PruneLimits, skip_content_twins: bool) -> Option<Self> {
         let start = Instant::now();
 
         let mut solver = CaDiCal::new()?;
@@ -157,28 +160,14 @@ impl SatPruneCtx {
         let next_var = num_orig_vars as i32 + 1;
         let solver_setup_us = start.elapsed().as_micros() as u64;
 
-        // Time knobs scale with the run wall (see the field docs). Each ratio
-        // gives the knob's fixed value at a 120 s wall, where the defaults
-        // were calibrated, and that value is also its floor, so only longer
-        // runs get larger caps.
-        let max_encode_ms = resolve_scaled(wall_ms, 1.0 / 60.0, 2000, 2_000, 60_000);
-        let wall_ms = resolve_scaled(wall_ms, 1.0 / 120.0, 1_000, 1_000, 30_000);
-
         Some(SatPruneCtx {
             solver,
+            limits,
             pass_end: start,
             next_var,
-            probe_conflict_budget: 5_000,
-            solve_overrun_ms: 200,
-            max_encode_ms,
-            max_encode_levels: usize::MAX,
             last_trigger_size: 0,
             consec_zero_passes: 0,
-            disabled_by: None,
-            allsat_k: 4,
-            wall_ms,
-            wall_exempt_us: 0,
-            wall_reset_drop_pct: 50,
+            spend_exempt_us: 0,
             stats: SatPruneStats {
                 solver_setup_us,
                 ..SatPruneStats::default()
@@ -192,77 +181,53 @@ impl SatPruneCtx {
         Instant::now() >= self.pass_end
     }
 
-    /// Check whether the size threshold (`SAT_PRUNE_THRESHOLD`) + exponential
-    /// gate allow a probe pass to fire now. Caller passes the current
-    /// partial-TDD size; if this returns true, the caller should proceed to
-    /// `probe_tdd`. Otherwise the pass is suppressed (no SAT cost).
-    ///
-    /// The exponential gate ensures that after a pass at size `s`, the next
-    /// pass doesn't fire until the partial TDD reaches `s * growth_factor`.
-    /// This caps the per-compile pass count at `O(log_growth(peak /
-    /// threshold))`. Without the gate, the trigger fires on every post-batch
-    /// step whose size exceeds the threshold (potentially hundreds of times
-    /// per compile), which dominates compile time even on a fast probe loop.
-    ///
-    /// Pruning also stops for the compile after `MAX_CONSEC_ZERO_PASSES`
-    /// passes in a row that killed nothing.
+    /// Whether a pass fires on a diagram of `current_size` pairs: pruning
+    /// has not stopped, the diagram is at least `threshold` and at most
+    /// `max_pairs` pairs, and it has grown by `growth_factor` since the last
+    /// pass. The caller runs [`SatPruneCtx::probe_tdd`] when it does.
     pub(crate) fn should_fire(&self, current_size: usize) -> bool {
-        if self.disabled_by.is_some() || self.consec_zero_passes >= MAX_CONSEC_ZERO_PASSES {
+        let limits = &self.limits;
+        if self.stats.disabled_by.is_some() || current_size > limits.max_pairs {
             return false;
         }
-        // Skip when the partial TDD is already too large for the
-        // Tseitin encoding to be cost-effective. The encoded clause
-        // count scales with reachable internal pairs; above
-        // `MAX_NODES` the encode-time budget would always fire and
-        // the accumulated CaDiCaL state would crowd apply memory.
-        if current_size > MAX_NODES {
-            return false;
-        }
-        let min_size_for_next = (self.last_trigger_size as f32 * GROWTH_FACTOR) as usize;
-        current_size >= min_size_for_next.max(SAT_PRUNE_THRESHOLD)
+        let min_size_for_next = (self.last_trigger_size as f32 * limits.growth_factor) as usize;
+        current_size >= min_size_for_next.max(limits.threshold)
     }
 
-    /// Cumulative-kill-rate gate. If we've issued at least
-    /// `MIN_PROBES_FOR_RATE_CHECK` probes and the cumulative `unsat / attempts`
-    /// rate is below `MIN_RUNNING_KILL_RATE`, sticky-disable for the rest of
-    /// this compile. Returns whether pruning is disabled after the check.
+    /// Count a pass that removed nothing. Once `max_consec_zero_passes` come
+    /// in a row, pruning stops for the compile, unless it already has.
+    pub(super) fn record_empty_pass(&mut self) {
+        self.consec_zero_passes += 1;
+        if self.consec_zero_passes >= self.limits.max_consec_zero_passes {
+            self.stats.disabled_by.get_or_insert(PruneStop::EmptyPasses);
+        }
+    }
+
+    /// The kill-rate gate: once `min_probes_for_rate_check` probes have run
+    /// and fewer than `min_kill_rate` of them proved their node dead, pruning
+    /// stops for the compile. Returns whether pruning has stopped.
     ///
-    /// Why this matters: consec-zero only catches passes with *no* kills;
-    /// CNFs with one kill per pass keep
-    /// triggering passes and paying SAT cost for negligible benefit. This gate
-    /// catches the steady-but-low-yield case.
-    ///
-    /// Evaluation schedule: every `MIN_PROBES_FOR_RATE_CHECK` probes *inside*
-    /// the walk (the probe's `Probed` point, see `PassSolver`) and once more
-    /// at the end of every non-fast-path `probe_tdd` exit. The probe minimum is an evidence floor,
-    /// not a check schedule — a walk whose kill rate is already hopeless exits
-    /// at its first decision point instead of burning the rest of the pass
-    /// budget to reach the same verdict.
+    /// The walk calls it every `min_probes_for_rate_check` probes (the
+    /// probe's `Probed` point, see `PassSolver`), and [`SatPruneCtx::probe_tdd`]
+    /// once more after a walk.
     pub(super) fn maybe_disable_by_running_rate(&mut self) -> bool {
-        if self.disabled_by.is_some() {
+        if self.stats.disabled_by.is_some() {
             return true;
         }
-        if self.stats.probes_attempted < MIN_PROBES_FOR_RATE_CHECK {
+        if self.stats.probes_attempted < self.limits.min_probes_for_rate_check {
             return false;
         }
         let rate = self.stats.probes_unsat as f32 / self.stats.probes_attempted as f32;
-        if rate < MIN_RUNNING_KILL_RATE {
-            self.disabled_by = Some("low-kill-rate");
+        if rate < self.limits.min_kill_rate {
+            self.stats.disabled_by = Some(PruneStop::LowKillRate);
         }
-        self.disabled_by.is_some()
+        self.stats.disabled_by.is_some()
     }
 
-    /// Return a snapshot of the current stats, including the derived
-    /// `disabled_by` field that captures *why* SAT-prune was disabled
-    /// (if at all). Intended for post-compile collection by the binary.
-    pub(crate) fn stats_snapshot(&self) -> SatPruneStats {
-        let disabled_by = self.disabled_by.unwrap_or(
-            if self.consec_zero_passes >= MAX_CONSEC_ZERO_PASSES { "empty-passes" } else { "" },
-        );
-        SatPruneStats {
-            disabled_by,
-            ..self.stats.clone()
-        }
+    /// The tallies of every pass this context ran, and why pruning stopped,
+    /// if it did.
+    pub(crate) fn into_stats(self) -> SatPruneStats {
+        self.stats
     }
 
     /// Allocate the next fresh DIMACS variable.
@@ -309,10 +274,8 @@ impl<'a> PassSolver<'a> {
     /// kept and the nodes above it have no literal. Returns `None` when it
     /// runs out before any node was defined, or when the library refuses the
     /// encoding; the activation literal is then retired (`¬a` unit added) so
-    /// every gated clause emitted so far is trivially satisfied,
-    /// `passes_aborted_encode_budget` is incremented, and
-    /// `consec_zero_passes` is bumped — the caller returns
-    /// `PruneOutcome::NoOp`.
+    /// every gated clause emitted so far is trivially satisfied, and the pass
+    /// counts as one that removed nothing.
     pub(super) fn encode(&mut self, tdd: &Tdd) -> Option<CnfEncoding> {
         let encoding = tdd.encode_cnf(CnfScheme::Equivalence, self.a, self);
         self.ctx.stats.encode_us += self.start.elapsed().as_micros() as u64;
@@ -339,7 +302,7 @@ impl<'a> PassSolver<'a> {
             _ => {
                 self.retire();
                 self.ctx.stats.passes_aborted_encode_budget += 1;
-                self.ctx.consec_zero_passes += 1;
+                self.ctx.record_empty_pass();
                 None
             }
         }
@@ -353,7 +316,7 @@ impl<'a> PassSolver<'a> {
     }
 
     /// Set the tallies the probe keeps to the pass's base plus `probe`'s
-    /// counts, so the running-rate gate reads every probe so far.
+    /// counts, so the kill-rate gate reads every probe so far.
     pub(super) fn record(&mut self, probe: &ProbeStats) {
         let (stats, base) = (&mut self.ctx.stats, &self.base);
         stats.probes_attempted = base.probes_attempted + probe.probes;
@@ -396,9 +359,9 @@ impl ClauseSink for PassSolver<'_> {
     /// before a level or every 1,024th node of one once `max_encode_ms` has
     /// passed: a single huge level can dominate the encode cost.
     fn poll(&mut self, at: EncodePoint) -> ControlFlow<()> {
-        let out_of_levels =
-            matches!(at, EncodePoint::Level { complete, .. } if complete >= self.ctx.max_encode_levels);
-        if out_of_levels || self.start.elapsed().as_millis() as u64 >= self.ctx.max_encode_ms {
+        let limits = &self.ctx.limits;
+        let out_of_levels = matches!(at, EncodePoint::Level { complete, .. } if complete >= limits.max_encode_levels);
+        if out_of_levels || self.start.elapsed().as_millis() as u64 >= limits.max_encode_ms {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -414,11 +377,12 @@ impl SatOracle for PassSolver<'_> {
         self.ctx.solver.add(0);
     }
 
-    /// One `solve()` under `assumptions` and a conflict limit, 50 for an
-    /// enumeration round and `probe_conflict_budget` for a probe, bounded by
-    /// the pass and counted in `sat_calls` and `probe_us` (a round also in
-    /// `allsat_us`). The one solve site for the whole prune context, so no probe
-    /// can outrun the pass wall or go unbilled.
+    /// One `solve()` under `assumptions` and a conflict limit,
+    /// `round_conflict_budget` for an enumeration round and
+    /// `probe_conflict_budget` for a probe, bounded by the pass and counted in
+    /// `sat_calls` and `probe_us` (a round also in `allsat_us`). The one solve
+    /// site for the whole pruning context, so no probe can outrun the pass
+    /// budget or go unbilled.
     ///
     /// The policy checks the budget between solves; the terminator stops one
     /// solve `solve_overrun_ms` past it. CaDiCaL polls it during search and
@@ -429,12 +393,13 @@ impl SatOracle for PassSolver<'_> {
     fn solve(&mut self, assumptions: &[i32], call: SolveCall) -> SolveStatus {
         let ctx = &mut *self.ctx;
         let round = matches!(call, SolveCall::Round { .. });
-        ctx.solver.limit(c"conflicts", if round { ALLSAT_CONFLICT_BUDGET } else { ctx.probe_conflict_budget });
+        let conflicts = if round { ctx.limits.round_conflict_budget } else { ctx.limits.probe_conflict_budget };
+        ctx.solver.limit(c"conflicts", conflicts);
         for &literal in assumptions {
             ctx.solver.assume(literal);
         }
         let terminator = WallClockTerminator::new(Duration::ZERO);
-        terminator.deadline_handle().set(ctx.pass_end + Duration::from_millis(ctx.solve_overrun_ms));
+        terminator.deadline_handle().set(ctx.pass_end + Duration::from_millis(ctx.limits.solve_overrun_ms));
         let start = Instant::now();
         let status = Bounded::new(&mut ctx.solver, terminator).solve();
         let us = start.elapsed().as_micros() as u64;
@@ -457,25 +422,25 @@ impl SatOracle for PassSolver<'_> {
 
 impl ProbePolicy for PassSolver<'_> {
     /// Set the pass budget before the first solve; stop the enumeration and
-    /// the walk once it is spent, and the walk at `MAX_PROBES_PER_PASS`
-    /// probes or when the running-rate gate fires. Kills recorded before a
-    /// stop still go through the rewrite.
+    /// the walk once it is spent, and the walk at `max_probes_per_pass`
+    /// probes or when the kill-rate gate fires. Kills recorded before a stop
+    /// still go through the rewrite.
     fn poll(&mut self, at: ProbePoint, stats: &ProbeStats) -> ControlFlow<()> {
         let stop = match at {
-            // One pass may spend the whole sat-prune wall, and no more,
-            // before the running-rate gate gets to fire between passes.
+            // One pass may spend the whole spend cap, and no more, before the
+            // kill-rate gate gets to fire between passes.
             ProbePoint::Begin => {
-                self.ctx.pass_end = Instant::now() + Duration::from_millis(self.ctx.wall_ms);
+                self.ctx.pass_end = Instant::now() + Duration::from_millis(self.ctx.limits.spend_cap_ms);
                 false
             }
             // Shares the pass budget so the enumeration cannot starve the walk.
             ProbePoint::Round { .. } => self.ctx.pass_over(),
-            ProbePoint::Solve { .. } => stats.probes >= MAX_PROBES_PER_PASS || self.ctx.pass_over(),
-            // The running-rate gate, on its schedule (see
+            ProbePoint::Solve { .. } => stats.probes >= self.ctx.limits.max_probes_per_pass || self.ctx.pass_over(),
+            // The kill-rate gate, on its schedule (see
             // `maybe_disable_by_running_rate`).
             ProbePoint::Probed { .. } => {
                 self.record(stats);
-                self.ctx.stats.probes_attempted.is_multiple_of(MIN_PROBES_FOR_RATE_CHECK)
+                self.ctx.stats.probes_attempted.is_multiple_of(self.ctx.limits.min_probes_for_rate_check)
                     && self.ctx.maybe_disable_by_running_rate()
             }
             _ => false,
@@ -483,3 +448,7 @@ impl ProbePolicy for PassSolver<'_> {
         if stop { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
     }
 }
+
+#[cfg(test)]
+#[path = "tests/ctx.rs"]
+mod tests;

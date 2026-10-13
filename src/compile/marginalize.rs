@@ -124,7 +124,7 @@ pub(crate) fn build_marginalize_targets<'a>(
 /// - Marginalize every scheduled level the fold did not sum out. A level that
 ///   is already marginal, empty or a leaf is left as it is, so where the fold
 ///   summed everything out this does nothing; it is not an assertion because a
-///   SAT-prune pass can leave a scheduled level explicit. The marginalization
+///   SAT pruning pass can leave a scheduled level explicit. The marginalization
 ///   runs its own fusion sweep at the parents of the levels it collapses.
 pub(crate) fn run_marginalize_at(
     eng: &Engine,

@@ -3,31 +3,30 @@
 //! dead nodes out of the diagram. The compile step calls
 //! [`SatPruneCtx::probe_tdd`].
 
-use tididi::Engine;
-use tididi::OperationError;
 use std::time::Instant;
 
-use super::ctx::{PassSolver, SatPruneCtx};
-use crate::compile::minimize::full_reduction;
 use tididi::apply::FilterOutcome;
 use tididi::cnf::{ProbeOrder, ProbeOutcome, Witness};
 use tididi::diagram::Tdd;
+use tididi::{Engine, OperationError};
 
-/// Outcome of a single triggered pruning pass.
-///
-/// `Rewritten` carries the diagram the caller swaps into the compile slot;
-/// the diagram probed is never modified.
+use super::ctx::{PassSolver, SatPruneCtx};
+use super::stats::PruneStop;
+use crate::compile::minimize::full_reduction;
+
+/// Outcome of a single triggered pruning pass. The diagram probed is never
+/// modified.
 #[derive(Debug)]
 pub(crate) enum PruneOutcome {
     /// Nothing to swap in: no node was proved dead, or the pass stopped
-    /// before a rewrite finished (the wall, a failed count or encode, a
+    /// before a rewrite finished (the spend cap, a failed count or encode, a
     /// rewrite over a limit).
     NoOp,
-    /// Bottom-up propagation reached the root: replace the slot with
-    /// `Tdd::zero(vtree)`.
+    /// No model of the formula reaches the root: the caller replaces the
+    /// diagram with the false one on its vtree.
     DeadRoot,
-    /// Some interior nodes were dead and the rewrite produced a new TDD.
-    /// Caller swaps `tdds[t.idx()] = Some(new_tdd)`.
+    /// Some interior nodes were dead, and this diagram, without them,
+    /// replaces the one probed.
     Rewritten(Tdd),
 }
 
@@ -38,11 +37,11 @@ impl SatPruneCtx {
     /// compiler's full reduction on what is left.
     ///
     /// With no node marked dead (every probe returned SAT or unknown) the
-    /// pass has nothing to act on: skip the rewrite and bump the consec-zero
-    /// counter (adaptive disable below).
+    /// pass has nothing to act on: it skips the rewrite and counts as one
+    /// that removed nothing.
     fn apply_rewrite_step(&mut self, eng: &Engine, tdd: &Tdd, probe: &ProbeOutcome) -> PruneOutcome {
         if probe.stats().dead == 0 {
-            self.consec_zero_passes += 1;
+            self.record_empty_pass();
             return PruneOutcome::NoOp;
         }
         self.consec_zero_passes = 0;
@@ -59,7 +58,7 @@ impl SatPruneCtx {
             // always rejects a node and `Unchanged` does not arise; it would
             // mean the original TDD is the answer, so it takes the same arm.
             Ok(FilterOutcome::Unchanged) | Err(_) => {
-                self.consec_zero_passes += 1;
+                self.record_empty_pass();
                 return PruneOutcome::NoOp;
             }
         };
@@ -69,18 +68,16 @@ impl SatPruneCtx {
         self.stats.rewrite_us += rewrite_start.elapsed().as_micros() as u64;
         self.stats.passes_rewritten += 1;
         if new_tdd.is_zero() {
-            // Rewrite collapsed everything (cascade caught what propagation
-            // missed in pathological orderings). Treat as DeadRoot.
+            // The filter's emptied nodes reached the root, which the probe's
+            // own propagation did not.
             self.stats.passes_dead_root += 1;
             return PruneOutcome::DeadRoot;
         }
-        // A rewrite that dropped at least `wall_reset_drop_pct`% of the
-        // diagram resets the wall meter (see `wall_exempt_us`).
+        // A rewrite that dropped at least `reset_drop_pct` percent of the
+        // diagram is productive (see `spend_exempt_us`).
         let post_size = new_tdd.pair_count() as u64;
-        if pairs_dropped * 100
-            >= self.wall_reset_drop_pct.saturating_mul(pairs_dropped + post_size)
-        {
-            self.wall_exempt_us = self.stats.spend_us();
+        if pairs_dropped * 100 >= self.limits.reset_drop_pct.saturating_mul(pairs_dropped + post_size) {
+            self.spend_exempt_us = self.stats.spend_us();
         }
         PruneOutcome::Rewritten(new_tdd)
     }
@@ -100,39 +97,13 @@ impl SatPruneCtx {
         counts
     }
 
-    /// Run one full sat-prune trigger pass on `tdd` (see module doc for the
-    /// SAT-based soundness model). Caller substitutes `Tdd::zero(vtree)` for
-    /// the slot when `DeadRoot` is returned.
-    ///
-    /// # Pass anatomy
-    ///
-    /// 1. **Cheap exits** — a zero root → `DeadRoot`; wall-time ceiling
-    ///    tripped → sticky-disable and bail.
-    /// 2. **Encode** — Tseitin-encode reachable internal nodes into the
-    ///    long-lived CaDiCaL instance behind an activation literal `a`. Per-pass
-    ///    clauses are gated so they can be deactivated at end-of-pass with a
-    ///    single unit add.
-    /// 3. **Probe** — the library's [`Tdd::probe_nodes`] marks the nodes of
-    ///    count 0 dead, runs up to `allsat_k` enumeration rounds, then walks
-    ///    the levels bottom-up and, for each reachable internal node `n` not
-    ///    yet decided, calls `assume(y_n) ∧ solve()` with a per-probe conflict
-    ///    budget. UNSAT marks `n` dead; unknown treats it as live (we never
-    ///    kill on uncertainty). Bottom-up propagation lets a dead child kill
-    ///    its parent without a fresh SAT call. `PassSolver` answers the
-    ///    solves and stops the probe at the pass budget, the probe cap or the
-    ///    running-rate gate.
-    /// 4. **End-of-pass** — gate `a` off so the per-pass Tseitin clauses don't
-    ///    accumulate across triggers; original CNF clauses stay active.
-    /// 5. **Rewrite** — if the root ended up dead, return
-    ///    [`PruneOutcome::DeadRoot`] (caller substitutes `Tdd::zero`).
-    ///    Otherwise filter the dead nodes and every pair that reaches one
-    ///    out of the diagram, then reduce it fully to canonicalize:
-    ///    [`PruneOutcome::Rewritten`] when any pair was dropped, else
-    ///    [`PruneOutcome::NoOp`].
-    ///
-    /// Updates all probe-related counters in `self.stats`.
+    /// Run one pass on `tdd`, a diagram of `tdd_size` pairs, as the module
+    /// doc describes, and say what replaces it. Adds what the pass did to
+    /// the context's tallies, and stops pruning for the compile when one of
+    /// its gates says so.
     pub(crate) fn probe_tdd(&mut self, eng: &Engine, tdd: &Tdd, tdd_size: usize) -> PruneOutcome {
-        // Zero sentinel: trivially dead — max success, reset adaptive gate.
+        // A conjunction may keep unreachable nodes (see `tididi::and`), so a
+        // false diagram can still be large enough to fire a pass.
         if tdd.is_zero() {
             self.stats.passes_dead_root += 1;
             self.consec_zero_passes = 0;
@@ -143,29 +114,25 @@ impl SatPruneCtx {
         self.stats.pairs_inspected += tdd_size as u64;
         self.last_trigger_size = tdd_size;
 
-        // Wall-time ceiling on the spend since the last productive rewrite
-        // (see `wall_exempt_us`). Once it is hit, pruning stops for the rest
-        // of this compile so the compiler keeps its remaining wall.
-        if self.disabled_by.is_none() {
-            let total_us = self.stats.spend_us();
-            let burn_us = total_us.saturating_sub(self.wall_exempt_us);
-            if burn_us >= self.wall_ms * 1000 {
-                self.disabled_by = Some("time-share");
-                self.consec_zero_passes += 1;
-                return PruneOutcome::NoOp;
-            }
+        // The spend cap on the work since the last productive rewrite (see
+        // `spend_exempt_us`). Once it is reached, pruning stops for the rest
+        // of this compile so the compiler keeps its remaining time.
+        let unproductive_us = self.stats.spend_us().saturating_sub(self.spend_exempt_us);
+        if unproductive_us >= self.limits.spend_cap_ms * 1000 {
+            self.stats.disabled_by = Some(PruneStop::TimeShare);
+            self.record_empty_pass();
+            return PruneOutcome::NoOp;
         }
 
-        // If every internal level is marginal, there are no nodes anywhere to
-        // probe — skip and bump consec_zero so the adaptive gate eventually
-        // disables this pass. Otherwise, fall through and run the partial
-        // encoding on the non-marginal upper levels.
+        // With every internal level marginal there is no node to probe, and
+        // the pass removes nothing. Otherwise the encoding covers the
+        // structural upper levels.
         let has_non_marginal_internal = tdd
             .vtree()
             .internal_bottomup()
             .any(|(t_int, _, _)| !tdd.levels()[t_int.idx()].is_marginal());
         if !has_non_marginal_internal {
-            self.consec_zero_passes += 1;
+            self.record_empty_pass();
             return PruneOutcome::NoOp;
         }
 
@@ -182,7 +149,7 @@ impl SatPruneCtx {
         // ── Encoding ──
         // `None`: the encode budget was exceeded with nothing encoded, or the
         // encoding was refused, and the activation literal is already retired.
-        let rounds = self.allsat_k;
+        let rounds = self.limits.allsat_k;
         let mut solver = PassSolver::open(self);
         let Some(enc) = solver.encode(tdd) else {
             return PruneOutcome::NoOp;
@@ -206,7 +173,7 @@ impl SatPruneCtx {
             return PruneOutcome::NoOp;
         };
 
-        // Running-rate gate for a walk that ended between two of its checks.
+        // The kill-rate gate, for a walk that ended between two of its checks.
         // The probe counters change only in the walk, so no other site needs it.
         self.maybe_disable_by_running_rate();
 
@@ -224,3 +191,7 @@ impl SatPruneCtx {
         self.apply_rewrite_step(eng, tdd, &probe)
     }
 }
+
+#[cfg(test)]
+#[path = "tests/probe.rs"]
+mod tests;

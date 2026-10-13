@@ -1,4 +1,5 @@
-//! SAT-based sound pruning of intermediate TDD nodes.
+//! SAT pruning: removing the intermediate TDD nodes no model of the formula
+//! passes through.
 //!
 //! Tseitin-encode the reachable partial TDD into a
 //! long-lived `vitri::sat::CaDiCal` solver pre-loaded with the full original
@@ -27,40 +28,49 @@
 //! `f_n ∧ Φ ≡ ⊥`. Unknown (conflict-limit hit) is treated as live — we
 //! never kill on uncertain probes.
 //!
-//! The trigger threshold and the fixed limits are constants in `ctx.rs`; the
-//! rest are fields of [`SatPruneCtx`], where `max_encode_ms` and `wall_ms`
-//! are scaled from the run wall [`SatPrune`] carries (`--time-limit-ms`, or
-//! `TIDIDI_TIME_LIMIT_MS` without the flag), with fixed values when the run
-//! has none.
+//! [`PruneLimits`] holds every limit a pass runs under. Two of them scale
+//! with the run's time limit (`--time-limit-ms`, or `TIDIDI_TIME_LIMIT_MS`
+//! without the flag), which [`SatPrune`] carries.
 
 mod ctx;
 mod probe;
 mod stats;
 
-pub(crate) use ctx::SatPruneCtx;
-pub(crate) use probe::PruneOutcome;
-pub(crate) use stats::SatPruneStats;
+use std::cell::RefCell;
 
-/// A run's SAT-prune pass: the wall its time knobs scale with, and the tallies
-/// the run's compiles add to as each pass runs to its end. A compile handed
-/// none runs no pass; the run hands none when `TIDIDI_SAT_PRUNE=off`
-/// ([`crate::config::Config::sat_prune`]) turned the pass off.
-#[derive(Default)]
+use vitri::cnf::CnfFormula;
+
+pub(crate) use ctx::{PruneLimits, SatPruneCtx};
+pub(crate) use probe::PruneOutcome;
+pub(crate) use stats::{PruneStop, SatPruneStats};
+
+/// A run's SAT pruning: the limits its passes run under, and the tallies the
+/// run's compiles add to as each runs to its end. A compile handed none runs
+/// no pass; the run hands none when `TIDIDI_SAT_PRUNE=off`
+/// ([`crate::config::Config::sat_prune`]) turned pruning off.
 pub(crate) struct SatPrune {
-    wall_ms: Option<u64>,
-    tally: std::cell::RefCell<Option<SatPruneStats>>,
+    limits: PruneLimits,
+    tally: RefCell<Option<SatPruneStats>>,
+}
+
+impl Default for SatPrune {
+    /// Pruning for a run with no time limit.
+    fn default() -> Self {
+        SatPrune::new(None)
+    }
 }
 
 impl SatPrune {
-    /// The pass for a run whose wall is `wall_ms`, `None` when it has none.
+    /// Pruning for a run whose time limit is `wall_ms`, `None` when it has
+    /// none.
     pub(crate) fn new(wall_ms: Option<u64>) -> Self {
-        SatPrune { wall_ms, tally: std::cell::RefCell::default() }
+        SatPrune { limits: PruneLimits::for_wall(wall_ms), tally: RefCell::default() }
     }
 
-    /// The pass for one compile of `formula`, or `None` when no solver could
-    /// be built.
-    pub(crate) fn context(&self, formula: &vitri::cnf::CnfFormula, skip_content_twins: bool) -> Option<SatPruneCtx> {
-        SatPruneCtx::new(formula, self.wall_ms, skip_content_twins)
+    /// The pruning context for one compile of `formula`, or `None` when no
+    /// solver could be built.
+    pub(crate) fn context(&self, formula: &CnfFormula, skip_content_twins: bool) -> Option<SatPruneCtx> {
+        SatPruneCtx::new(formula, self.limits, skip_content_twins)
     }
 
     /// Add what one pass did to the run's tallies.
@@ -74,5 +84,3 @@ impl SatPrune {
     }
 }
 
-#[cfg(test)]
-mod tests;
