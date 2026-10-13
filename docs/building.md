@@ -9,8 +9,10 @@ cargo build --release
 The binary is `target/release/tididi`. The diagram library (`tididi/`) and
 vitri (`vendor/vitri/`) are git submodules, and the build needs both; in a
 clone made without them, `git submodule update --init --recursive` fetches
-them. tididi-bonsai builds and runs on Linux only, the platform
-[vitri](https://github.com/Tractables/vitri) supports.
+them. The binary builds and runs on Linux only, as the native build of
+[vitri](https://github.com/Tractables/vitri) does, and
+[`bindings/wasm`](../bindings/wasm/README.md) builds the library for
+WebAssembly through Emscripten.
 
 ## Toolchain
 

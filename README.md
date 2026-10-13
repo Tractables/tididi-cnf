@@ -50,7 +50,9 @@ further constraints.
 
 ## Build
 
-Linux only. Besides Rust, the build needs a C++20 compiler, CMake,
+The binary builds and runs on Linux only, and
+[`bindings/wasm`](bindings/wasm/README.md) builds the library for
+WebAssembly. Besides Rust, the build needs a C++20 compiler, CMake,
 `pkg-config` and the GMP, MPFR and zlib development packages;
 [docs/building.md](docs/building.md) lists them. The diagram library and
 vitri are git submodules:
@@ -139,10 +141,10 @@ tididi-bonsai = { git = "https://github.com/Tractables/tididi-bonsai" }
 
 ## Bindings
 
-The same counts are available through [Python](bindings/python/README.md),
-[C](bindings/c/README.md) and [WebAssembly](bindings/wasm/README.md), from
-DIMACS text or from clauses held as data. The WebAssembly build runs
-[in the browser](https://tractables.github.io/tididi-bonsai/).
+The same counts are available through [Python](bindings/python/README.md)
+and [C](bindings/c/README.md), from DIMACS text or from clauses held as data,
+and through [WebAssembly](bindings/wasm/README.md) from DIMACS text. The
+WebAssembly build runs [in the browser](https://tractables.github.io/tididi-bonsai/).
 
 ## Documentation
 

@@ -9,9 +9,10 @@ The paper "A canonical generalization of OBDD" (by Capelli, Choi, Mengel, Muñoz
 `driver::solve` is the run, and the binary and the library's `count` both
 make it: `cli::run_cli`, the only entry the binary calls, parses argv, calls
 `solve` and prints what it answered, and `count` calls `solve` with the
-caller's mode and limits. The C and Python bindings under `bindings/`, crates
-of their own outside the workspace, call `count` and convert its arguments and
-answer; they hold no logic of their own. One run goes:
+caller's mode and limits. The C, Python and WebAssembly bindings under
+`bindings/`, crates of their own outside the workspace, call `count` and
+convert its arguments and answer; they hold no logic of their own. One run
+goes:
 
 1. **Arguments to `Config`.** `cli::parse_args` turns argv into a `Cli` — the
    `--mode` flag, the `Limits`, the `Settings` and where the answer goes.
