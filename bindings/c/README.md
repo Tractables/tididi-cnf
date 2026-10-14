@@ -78,7 +78,7 @@ reads. A weight is text, such as `0.3` or `3/10`, so it stays exact:
 ```c
 static const int32_t literals[] = {1, 2, 0, -1, 3, 0, -2, -3, 0};
 static const uint32_t show[] = {1, 2};
-const tididi_bonsai_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "0.5"}};
+const tididi_bonsai_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "0.4"}};
 tididi_bonsai_count_clauses(3, literals, 9, show, 2, weights, 3, "pwmc", 60000, 0, &answer);
 ```
 

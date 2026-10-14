@@ -195,15 +195,19 @@ fn run(
 ///   mapping from a literal to its weight; `c p weight` lines. A weight is an
 ///   `int`, a `fractions.Fraction`, a decimal or fraction string such as
 ///   `"0.3"` or `"3/10"`, which is read exactly, or a `float`, which stands
-///   for its shortest decimal: `0.1` weighs 1/10. A literal left out weighs 1.
+///   for its shortest decimal: `0.1` weighs 1/10. A literal left out weighs
+///   `1 - w` when the other literal of its variable has a weight `w` strictly
+///   between 0 and 1, and 1 when neither has one, as the competition's format
+///   reads its weight lines.
 ///
 /// Clauses carry no `c t` line, so give the mode: without one, a `show` set
 /// makes the count projected and anything else compiles. The other keywords
 /// are those of `count_file`.
 ///
 /// Raises `InputError` for text that is not DIMACS, a literal or variable
-/// outside the formula, a clause that names a variable twice, or a weight
-/// string that is not a number; `UsageError` for a clause keyword given with
+/// outside the formula, a clause that names a variable twice, a weight
+/// string that is not a number, or a literal given alone at a weight outside
+/// (0, 1), which leaves its partner none; `UsageError` for a clause keyword given with
 /// DIMACS text; and `TypeError` for a formula, clause or weight of another
 /// type.
 #[pyfunction]

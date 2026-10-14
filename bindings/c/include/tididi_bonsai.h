@@ -166,17 +166,21 @@ tididi_bonsai_code tididi_bonsai_count(const uint8_t *dimacs,
  * (`pmc`, `pwmc`) projects onto; null declares no show set, while a non-null
  * `show` with `show_len` 0 declares the empty one. `weights` points to
  * `weights_len` literal weights for a weighted count (`wmc`, `pwmc`), the
- * `c p weight` lines; a literal they leave out weighs 1, a literal given twice
- * takes its last weight, and `weights` may be null when `weights_len` is 0.
+ * `c p weight` lines, read as the competition's format reads them: a literal
+ * they leave out weighs `1 - w` when the other literal of its variable is given
+ * a `w` strictly between 0 and 1, and 1 when neither is given; a literal given
+ * twice takes its last weight, and `weights` may be null when `weights_len` is
+ * 0.
  * Clauses carry no `c t` line, so pass the mode: with a null `mode`, a show
  * set makes the count projected and anything else compiles.
  *
  * The other arguments and the result are those of
  * `tididi_bonsai_count_file`. A literal, shown variable or weight literal
  * that names no variable of the formula (0, `INT32_MIN`, or a variable above
- * `num_vars`), a clause that names a variable twice, and a weight that is not
- * a number return `TIDIDI_BONSAI_ERROR_INPUT`; `literals` not ending with 0
- * returns `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT`.
+ * `num_vars`), a clause that names a variable twice, a weight that is not a
+ * number, and a literal given alone at a weight outside (0, 1), which leaves
+ * its partner none, return `TIDIDI_BONSAI_ERROR_INPUT`; `literals` not ending
+ * with 0 returns `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT`.
  *
  * # Safety
  *
