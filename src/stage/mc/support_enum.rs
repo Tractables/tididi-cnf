@@ -114,7 +114,7 @@ fn plan_support_enum(
 /// left?", i.e. is N small. The estimator therefore has to be trustworthy in the
 /// direction that costs wall: it must not report "small" for a huge N. That is
 /// why it walks paths rather than random restrictions, which collapse to 0 on
-/// supports full of near-forced variables (see `estimate_count_by_random_paths`).
+/// supports full of near-forced variables (see `enumeration::random_path`).
 ///
 /// Everything is in raw feasible-projection units (the engine restricts itself to
 /// the constrained-show vars), which is the same unit as the model cap and the

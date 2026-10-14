@@ -10,8 +10,8 @@
 //! - the projected AllSAT enumeration ([`allsat`]) finds
 //!   only the feasible assignments, one blocking clause each, so it reaches
 //!   large constrained sets whose feasible count is small;
-//! - the path estimator ([`estimate_count_by_random_paths`], drawn path by
-//!   path through [`estimate_by_paths`]) estimates that feasible count, so the
+//! - the path estimator ([`estimate_by_paths`], drawing one [`random_path`]
+//!   at a time) estimates that feasible count, so the
 //!   support-enum stage can decide whether to enumerate and an enumeration
 //!   under [`AllsatCtl::forecast`] can stop once the count it is heading for
 //!   cannot fit its wall;
@@ -547,9 +547,11 @@ fn allsat<T: Tally>(
 }
 
 /// Estimate the feasible-projection count by drawing random paths one at a
-/// time through [`estimate_count_by_random_paths`], until `paths` are drawn,
-/// `max_cut` of them are cut, or, when `total` is given, that much wall is
-/// spent. Each path runs under `path_wall`, and under what is left of `total`.
+/// time with [`random_path`], until `paths` are drawn, `max_cut` of them are
+/// cut, or, when `total` is given, that much wall is spent. Each path runs
+/// under `path_wall`, and under what is left of `total`. A formula with no
+/// constrained show variable has no path to draw, and a solver that cannot be
+/// built draws none; either leaves the estimate unmeasured.
 ///
 /// One at a time so the cut-off costs at most one extra path: an instance
 /// whose paths outrun their wall gets out after `max_cut` of them instead of
@@ -566,6 +568,10 @@ pub(crate) fn estimate_by_paths(
 ) -> PathEstimate {
     let started = Instant::now();
     let mut acc = PathEstimate::default();
+    let constrained = split_show(formula, show_vars).constrained;
+    if constrained.is_empty() {
+        return acc;
+    }
     let drawn = |a: &PathEstimate| a.weights.len() as u32 + a.truncated;
     while drawn(&acc) < paths && acc.truncated < max_cut {
         let wall = match total {
@@ -578,13 +584,17 @@ pub(crate) fn estimate_by_paths(
             }
             None => path_wall,
         };
-        let est = estimate_count_by_random_paths(formula, show_vars, 1, wall, path_seed(drawn(&acc)));
-        if est.unsat {
-            acc.unsat = true;
+        let Some(mut solver) = load_solver(formula, &constrained) else {
             break;
+        };
+        match random_path(&mut solver, &constrained, wall, path_seed(drawn(&acc))) {
+            Path::Weight(weight) => acc.weights.push(weight),
+            Path::Cut => acc.truncated += 1,
+            Path::Unsatisfiable => {
+                acc.unsat = true;
+                break;
+            }
         }
-        acc.truncated += est.truncated;
-        acc.weights.extend(est.weights);
     }
     acc
 }
@@ -598,7 +608,7 @@ fn path_seed(k: u32) -> u64 {
     SEED.wrapping_add(2 * u64::from(k))
 }
 
-/// One random-path sample set from [`estimate_count_by_random_paths`].
+/// The paths [`estimate_by_paths`] drew.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct PathEstimate {
     /// One unbiased estimate of the feasible-projection count per completed
@@ -629,9 +639,21 @@ fn lcg_next(state: &mut u64) -> u64 {
     *state >> 33
 }
 
-/// Estimate the number of feasible constrained-show projections N by walking
-/// random paths down the projection tree: the answer to "will this
-/// enumeration finish?", asked before spending the wall on it.
+/// How one random path down the projection tree ended.
+enum Path {
+    /// The path reached a leaf: an unbiased estimate of the feasible-projection
+    /// count, a power of two.
+    Weight(f64),
+    /// A solve ran past the path's wall.
+    Cut,
+    /// The formula has no model.
+    Unsatisfiable,
+}
+
+/// Walk one random path down the projection tree of the `constrained` show
+/// variables, loaded into `solver`, and estimate the number N of feasible
+/// projections from it: the answer to "will this enumeration finish?", asked
+/// before spending the wall on it.
 ///
 /// Walk the constrained-show vars in order, maintaining a partial projection
 /// that is always satisfiable. At each var, one assumption-solve asks whether
@@ -642,8 +664,8 @@ fn lcg_next(state: &mut u64) -> u64 {
 ///
 /// The final weight is an unbiased estimator of N (a path reaches each of the
 /// N leaves with probability 1/weight), and the mean over several paths is
-/// too. Cost is one solve per show var per path — the model from the previous
-/// solve supplies the other branch for free.
+/// too. Cost is one solve per show var — the model from the previous solve
+/// supplies the other branch for free.
 ///
 /// Why not random restrictions: fixing j show vars to random polarities and
 /// scaling by 2^j is also unbiased, but its variance is fatal in exactly this
@@ -653,91 +675,58 @@ fn lcg_next(state: &mut u64) -> u64 {
 /// that: it never returns 0 on a satisfiable formula, and a forced var simply
 /// contributes a factor of 1.
 ///
-/// `per_sample` bounds each path as a whole: its first solve and every branch
-/// solve share one deadline, enforced by the same wall terminator the
-/// enumerator uses. A path cut mid-solve is reported as `truncated` rather
-/// than contributing a low weight, because a partial path witnesses nothing.
-///
-/// A cut path's partial product is not folded in: it covers only the solved
-/// prefix, so it would pull the mean further below the true count, which
-/// this estimator already under-reads (see `TALLY_CEILING` in
-/// `stage::mc::support_enum`).
-fn estimate_count_by_random_paths(
-    formula: &CnfFormula,
-    show_vars: &[VarId],
-    samples: u32,
-    per_sample: Duration,
-    seed: u64,
-) -> PathEstimate {
-    let mut out = PathEstimate::default();
-    let constrained = split_show(formula, show_vars).constrained;
-    if constrained.is_empty() {
-        return out;
-    }
-    // Deterministic, so the routing is reproducible.
+/// `wall` bounds the path as a whole: its first solve and every branch solve
+/// share one deadline, enforced by the same wall terminator the enumerator
+/// uses. A path cut mid-solve is [`Path::Cut`] rather than a low weight,
+/// because a partial path witnesses nothing: its partial product covers only
+/// the solved prefix, so it would pull the mean further below the true count,
+/// which this estimator already under-reads (see `TALLY_CEILING` in
+/// `stage::mc::support_enum`). `seed` starts the path's coin flips, so the
+/// path is reproducible.
+fn random_path(solver: &mut CaDiCal, constrained: &[i32], wall: Duration, seed: u64) -> Path {
     let mut state: u64 = seed | 1;
     let mut coin = move || lcg_next(&mut state) & 1 == 1;
-
     // Cloned into each solve's scoped `Bounded` guard.
-    let term = vitri::sat::WallClockTerminator::new(per_sample);
-    let deadline = term.deadline_handle();
-    let Some(mut solver) = load_solver(formula, &constrained) else {
-        return out;
-    };
-    for _ in 0..samples {
-        deadline.set(Instant::now() + per_sample);
-        // A model of the empty prefix: its show values are the first path.
-        match Bounded::new(&mut solver, term.clone()).solve() {
-            Status::Satisfiable => {}
-            Status::Unsatisfiable => {
-                out.unsat = true;
-                return out;
-            }
-            Status::Unknown => {
-                out.truncated += 1;
-                continue;
-            }
+    let term = vitri::sat::WallClockTerminator::new(wall);
+
+    // A model of the empty prefix: its show values are the first path.
+    match Bounded::new(solver, term.clone()).solve() {
+        Status::Satisfiable => {}
+        Status::Unsatisfiable => return Path::Unsatisfiable,
+        Status::Unknown => return Path::Cut,
+    }
+    let mut model = model_lits(solver, constrained);
+    let mut weight = 1.0f64;
+    let mut fixed: Vec<i32> = Vec::with_capacity(constrained.len());
+    for i in 0..constrained.len() {
+        let taken = model[i];
+        for &l in &fixed {
+            solver.assume(l);
         }
-        let mut model = model_lits(&mut solver, &constrained);
-        let mut weight = 1.0f64;
-        let mut fixed: Vec<i32> = Vec::with_capacity(constrained.len());
-        let mut cut = false;
-        for i in 0..constrained.len() {
-            let taken = model[i];
-            for &l in &fixed {
-                solver.assume(l);
-            }
-            solver.assume(-taken);
-            let branch_status = Bounded::new(&mut solver, term.clone()).solve();
-            match branch_status {
-                Status::Satisfiable => {
-                    weight *= 2.0;
-                    if coin() {
-                        // Follow the freshly proven branch; this solve's model
-                        // supplies feasible values for the vars still ahead.
-                        fixed.push(-taken);
-                        model[i + 1..].copy_from_slice(&model_lits(&mut solver, &constrained[i + 1..]));
-                    } else {
-                        // Stay on `taken`; the model in hand already agrees
-                        // with the whole remaining suffix.
-                        fixed.push(taken);
-                    }
-                }
-                // Forced: exactly one polarity survives, so no factor.
-                Status::Unsatisfiable => fixed.push(taken),
-                Status::Unknown => {
-                    cut = true;
-                    break;
+        solver.assume(-taken);
+        // Bound first, so the guard's borrow of the solver ends before an
+        // arm reads the model.
+        let status = Bounded::new(solver, term.clone()).solve();
+        match status {
+            Status::Satisfiable => {
+                weight *= 2.0;
+                if coin() {
+                    // Follow the freshly proven branch; this solve's model
+                    // supplies feasible values for the vars still ahead.
+                    fixed.push(-taken);
+                    model[i + 1..].copy_from_slice(&model_lits(solver, &constrained[i + 1..]));
+                } else {
+                    // Stay on `taken`; the model in hand already agrees
+                    // with the whole remaining suffix.
+                    fixed.push(taken);
                 }
             }
-        }
-        if cut {
-            out.truncated += 1;
-        } else {
-            out.weights.push(weight);
+            // Forced: exactly one polarity survives, so no factor.
+            Status::Unsatisfiable => fixed.push(taken),
+            Status::Unknown => return Path::Cut,
         }
     }
-    out
+    Path::Weight(weight)
 }
 
 /// The wall window an [`allsat`] enumeration runs in: its budget from the

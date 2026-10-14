@@ -8,7 +8,7 @@ use tididi::vtree::VarId;
 
 use super::{
     AllsatStop, AllsatCtl, Models, WallGrant, WeightedModels, allsat, constrained_show_count,
-    estimate_count_by_random_paths, forecast_exceeds_wall, path_seed, split_show, sweep,
+    estimate_by_paths, forecast_exceeds_wall, path_seed, split_show, sweep,
 };
 use crate::test_support::lit;
 
@@ -77,7 +77,7 @@ fn subcube_formula(forced: u32, free: u32) -> CnfFormula {
 fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
     let f = subcube_formula(18, 2);
     let show: Vec<VarId> = (1..=f.num_vars()).map(VarId).collect();
-    let est = estimate_count_by_random_paths(&f, &show, 6, Duration::from_secs(5), 7);
+    let est = estimate_by_paths(&f, &show, 6, 6, Duration::from_secs(5), None);
     assert!(!est.unsat);
     assert_eq!(est.truncated, 0);
     assert_eq!(est.weights.len(), 6);
@@ -110,7 +110,7 @@ fn random_path_weights_bracket_a_non_product_count() {
         Clause::new(vec![lit(1, true), lit(2, true)]),
     ]);
     let show = [VarId(1), VarId(2), VarId(3)];
-    let est = estimate_count_by_random_paths(&f, &show, 16, Duration::from_secs(5), 11);
+    let est = estimate_by_paths(&f, &show, 16, 16, Duration::from_secs(5), None);
     assert_eq!(est.weights.len(), 16);
     assert!(
         est.weights.iter().all(|&w| w == 2.0 || w == 4.0),
@@ -139,11 +139,24 @@ fn random_path_weights_bracket_a_non_product_count() {
 fn a_cut_path_reports_truncated_and_no_mean() {
     let f = pigeonhole(11);
     let show: Vec<VarId> = (1..=f.num_vars()).map(VarId).collect();
-    let est = estimate_count_by_random_paths(&f, &show, 3, Duration::from_millis(20), 3);
+    let est = estimate_by_paths(&f, &show, 3, 3, Duration::from_millis(20), None);
     assert!(est.weights.is_empty());
     assert_eq!(est.mean(), None);
     assert_eq!(est.truncated, 3);
     assert!(!est.unsat);
+}
+
+/// A show set that no clause constrains leaves no path to draw: with no wall
+/// over the whole draw, the estimate comes back unmeasured rather than drawing
+/// forever.
+#[test]
+fn an_unconstrained_show_set_leaves_the_estimate_unmeasured() {
+    let f = crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true)])]);
+    let est = estimate_by_paths(&f, &[VarId(2), VarId(3)], 4, 4, Duration::from_secs(1), None);
+    assert!(est.weights.is_empty());
+    assert_eq!(est.truncated, 0);
+    assert!(!est.unsat);
+    assert_eq!(est.mean(), None);
 }
 
 /// Under a wall callback the wall budget bounds even a single solve, not just
