@@ -67,14 +67,16 @@ vitri's `VITRI_*` variables tune its preprocessing and its vtree
 constructions, and
 [vitri's catalog](https://github.com/Tractables/vitri/blob/main/docs/env.md)
 lists them. `tididi` passes them through, and they reach every run that
-preprocesses or builds a vtree, in every mode, with two exceptions it refuses
-whenever they are set:
+preprocesses or builds a vtree, in every mode, with three exceptions it
+refuses whenever they are set:
 
 - **`VITRI_BUDGET_MS`.** `tididi` gives vitri its budget from the run's own
   time limit, so this variable would never take effect. Pass the limit as
   `--time-limit-ms` instead.
 - **`VITRI_ARJUN_EXPORT_LEARNED_CLAUSES`.** It asks vitri for clauses that
   `tididi` does not use.
+- **`VITRI_ARJUN_SKIP_MONOTONE`.** `mc` asks vitri to skip Arjun on a monotone
+  formula itself, and no other mode can use the skip.
 
 Two settings are overridden by design:
 

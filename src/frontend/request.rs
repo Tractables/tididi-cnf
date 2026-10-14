@@ -9,7 +9,8 @@
 //! ([`equivalence_budget_ms`]), whether Arjun runs and the vtree spelling. A stage
 //! a runner asks for later ([`arjun_stage`], [`projection_stage`]) starts from
 //! vitri's defaults with the run's Arjun options and the allowance the runner
-//! computed. Every vitri knob this compiler sets is set in one of the two.
+//! computed. Both set the monotone skip ([`skip_monotone`]) from the mode. Every
+//! vitri knob this compiler sets is set in one of the two.
 
 use crate::Error;
 use crate::config::{Config, PreprocessLevel};
@@ -27,8 +28,9 @@ use crate::vtree::{VtreeOptions, resolve_vitri_selection_ctx};
 ///
 /// [`Error`] when a `VITRI_*` setting does not parse, when it asks vitri to
 /// export Arjun's learnt clauses, which this compiler does not use, or when
-/// `VITRI_BUDGET_MS` is set at all: every request below sets vitri's budget
-/// from the run's own time limit, so the variable would do nothing.
+/// `VITRI_BUDGET_MS` or `VITRI_ARJUN_SKIP_MONOTONE` is set at all: every
+/// request below sets vitri's budget from the run's own time limit and the
+/// monotone skip from its mode, so either variable would do nothing.
 pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
     let invalid = |error: vitri::VitriError| Error::Environment(error.to_string());
     resolve_vitri_selection_ctx(&VtreeOptions::default()).map_err(invalid)?;
@@ -37,6 +39,14 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
             "VITRI_BUDGET_MS is set, but a run sets vitri's budget from its own \
              time limit, so the variable would do nothing; unset VITRI_BUDGET_MS and \
              give the run a time limit instead."
+                .to_owned(),
+        ));
+    }
+    if std::env::var_os("VITRI_ARJUN_SKIP_MONOTONE").is_some() {
+        return Err(Error::Environment(
+            "VITRI_ARJUN_SKIP_MONOTONE is set, but a model count asks vitri for that \
+             skip itself and no other mode can use it, so the variable would do nothing; \
+             unset it."
                 .to_owned(),
         ));
     }
@@ -86,7 +96,17 @@ pub(crate) fn frontend_config(
     } else {
         config.stages.arjun = false;
     }
+    config.arjun.skip_monotone = skip_monotone(mode, config.stages.arjun);
     config
+}
+
+/// Whether a request asks vitri to skip Arjun on a monotone formula: under
+/// `mc`, with the stage on. The compile of such a formula usually answers
+/// sooner without the reduction, and the cascade's monotone reduction asks
+/// for it when that compile gives up. vitri refuses the skip in every other
+/// mode and with the stage off.
+fn skip_monotone(mode: vitri::cnf::Mode, arjun: bool) -> bool {
+    mode == vitri::cnf::Mode::Mc && arjun
 }
 
 /// The most time SAT equivalence probing gets, in ms: its budget in a run
@@ -138,7 +158,7 @@ pub(crate) fn projection_stage(
 /// The vitri request for one stage: Arjun under the exact allowance `arjun`
 /// (off when `None`) and the clause-growth policy `growth`, with `budget_ms`
 /// unset, so vitri does not divide the allowance again. The Arjun options are
-/// the run's, on every mode.
+/// the run's, on every mode, with the monotone skip set for this one.
 fn stage_config(
     parent: &Config,
     mode: vitri::cnf::Mode,
@@ -148,7 +168,7 @@ fn stage_config(
     simplify: bool,
     projection: vitri::config::ProjectionPolicy,
 ) -> vitri::RunConfig {
-    vitri::RunConfig {
+    let mut config = vitri::RunConfig {
         budget_ms: None,
         deadline,
         arjun_budget: arjun.map(vitri::config::ArjunBudget::Exact).unwrap_or_default(),
@@ -161,7 +181,9 @@ fn stage_config(
         mode: Some(mode),
         arjun: parent.vitri.arjun,
         ..vitri::RunConfig::default()
-    }
+    };
+    config.arjun.skip_monotone = skip_monotone(mode, arjun.is_some());
+    config
 }
 
 #[cfg(test)]

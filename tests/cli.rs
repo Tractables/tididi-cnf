@@ -147,6 +147,7 @@ fn refusals_name_what_is_wrong() {
     let skip: Env = &[("VITRI_PORTFOLIO_SKIP", "not-a-candidate")];
     let score: Env = &[("VITRI_SCORE_AGG", "not-a-ranker-file")];
     let learnts: Env = &[("VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "1")];
+    let monotone: Env = &[("VITRI_ARJUN_SKIP_MONOTONE", "1")];
     let wall: Env = &[("TIDIDI_TIME_LIMIT_MS", "12s")];
     let vitri_wall: Env = &[("VITRI_BUDGET_MS", "60000")];
     let prune_maybe: Env = &[("TIDIDI_SAT_PRUNE", "maybe")];
@@ -212,6 +213,8 @@ fn refusals_name_what_is_wrong() {
         // This build does not use Arjun's learnt clauses, so asking vitri to
         // export them is refused rather than ignored.
         (2, vec![TINY, "--mode", "mc"], learnts, vec!["VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "learnt clauses"]),
+        // A model count asks vitri for the monotone skip itself.
+        (2, vec![TINY, "--mode", "mc"], monotone, vec!["VITRI_ARJUN_SKIP_MONOTONE", "model count"]),
         // An unparsable time limit is refused, even beside the flag that
         // would win.
         (2, vec![TINY, "--time-limit-ms", "60000"], wall, vec!["TIDIDI_TIME_LIMIT_MS", "\"12s\""]),

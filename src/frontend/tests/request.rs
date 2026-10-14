@@ -31,7 +31,9 @@ fn frontend_maps_the_parent_wall_and_simplify_level() {
     assert!(config.retain_arjun_input);
     assert!(config.stages.simplify);
     assert_eq!(config.simplify, probing_for(11_250));
-    assert_eq!(config.arjun, parent.vitri.arjun);
+    let mut arjun = parent.vitri.arjun;
+    arjun.skip_monotone = true;
+    assert_eq!(config.arjun, arjun);
     assert_eq!(config.arjun_budget, parent.vitri.arjun_budget);
     assert_eq!(config.stages.arjun, parent.vitri.stages.arjun);
     config.validate().expect("the MC frontend is valid");
@@ -126,6 +128,28 @@ fn weighted_arjun_stage_uses_the_exact_budget_and_the_runs_options() {
         vitri::config::PreprocessStages { simplify: false, arjun: true },
     );
     assert_eq!(config.arjun, parent().vitri.arjun);
+}
+
+/// Every request with Arjun on under `mc`, and no other, asks vitri to skip the
+/// stage on a monotone formula; vitri accepts each.
+#[test]
+fn only_a_model_count_with_arjun_skips_it_on_a_monotone_formula() {
+    let budget = std::time::Duration::from_millis(1_234);
+    let growth = vitri::config::ArjunClauseGrowth::default;
+    let policy = vitri::config::ProjectionPolicy::Full;
+    let requests = [
+        (frontend_config(&parent(), Mode::Mc, None, true), true),
+        (frontend_config(&parent(), Mode::Mc, None, false), false),
+        (frontend_config(&parent(), Mode::Wmc, None, false), false),
+        (frontend_config(&parent(), Mode::Compile, None, true), false),
+        (arjun_stage(&parent(), Mode::Mc, None, budget, growth()), true),
+        (arjun_stage(&parent(), Mode::Wmc, None, budget, growth()), false),
+        (projection_stage(&parent(), Mode::Pmc, None, Some(budget), policy), false),
+    ];
+    for (config, skips) in requests {
+        assert_eq!(config.arjun.skip_monotone, skips, "{:?} with Arjun {}", config.mode, config.stages.arjun);
+        config.validate().expect("vitri accepts the request");
+    }
 }
 
 #[test]

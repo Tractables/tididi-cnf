@@ -125,6 +125,7 @@ fn no_sbva_retry(
     let retry = vitri::bundle::FrontendRetryConfig {
         arjun_sbva: Some(vitri::preprocess::ArjunSbva::Off),
         vtree_spec: Some(RETRY_VTREE_SPEC.to_owned()),
+        arjun_skip_monotone: None,
     };
     let retried = match session.retry(budget, &retry) {
         Ok(Some(retried)) => retried,
