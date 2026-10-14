@@ -50,6 +50,9 @@ pub(crate) enum AnsweredBy {
     NoSbvaRetry,
     /// The fallback that compiles the formula Arjun was given, unreduced.
     UnreducedRetry,
+    /// The fallback that asks Arjun for the reduction it skipped on a
+    /// monotone formula, then compiles the reduction.
+    MonotoneReduction,
     /// Shannon split assembled the count from cofactors.
     ShannonSplit,
     /// The plain compile's second compile, on the hypergraph bisection, after
@@ -68,6 +71,7 @@ impl AnsweredBy {
             AnsweredBy::SupportEnumeration => "support-enumeration",
             AnsweredBy::NoSbvaRetry => "no-sbva-retry",
             AnsweredBy::UnreducedRetry => "unreduced-retry",
+            AnsweredBy::MonotoneReduction => "monotone-reduction",
             AnsweredBy::ShannonSplit => "shannon-split",
             AnsweredBy::BisectRetry => "bisect-retry",
         }
@@ -176,7 +180,8 @@ pub struct Stats {
 
     /// Which stage produced the answer: of a model count, `compile`,
     /// `preprocessing`, `stall-recompile`, `support-enumeration`,
-    /// `no-sbva-retry`, `unreduced-retry` or `shannon-split`; of a plain
+    /// `no-sbva-retry`, `unreduced-retry`, `monotone-reduction` or
+    /// `shannon-split`; of a plain
     /// compile, `compile`, `preprocessing` or `bisect-retry`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub answered_by: Option<&'static str>,

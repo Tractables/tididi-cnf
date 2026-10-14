@@ -7,8 +7,10 @@
 //! fallbacks run — the no-SBVA re-reduce, support enumeration, the unreduced
 //! retry — and then Shannon split, as [`count_with_recovery`] orders them.
 //! Each function below is one step of that order and says what it decides.
-//! Every step that answers folds its own `2^k` multiplier before returning,
-//! so the count leaving this module is always in `compile_formula` space.
+//! The monotone reduction is the fallback of the count without a reduction
+//! instead, on a formula Arjun skipped as monotone. Every step that answers
+//! folds its own `2^k` multiplier before returning, so the count leaving this
+//! module is always in the space of the formula it was handed.
 
 use std::time::Instant;
 
@@ -19,7 +21,8 @@ use crate::output::AnsweredBy;
 use crate::stage::{PORTFOLIO_VTREE_SPEC, RETRY_VTREE_SPEC, Run};
 
 use super::windows::{
-    UNREDUCED_RETRY_RESERVE, no_sbva_retry_want, no_sbva_retry_window, unreduced_retry_window,
+    UNREDUCED_RETRY_RESERVE, monotone_reduction_window, no_sbva_retry_want, no_sbva_retry_window,
+    unreduced_retry_window,
 };
 use super::attempt::{
     CompileAttempt, attempt_from_vitri_build, count_attempt, portfolio_attempt,
@@ -91,10 +94,14 @@ pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
 /// stage — gated on a structure signal that fires on a narrow class — while
 /// the unreduced retry is the generic catch-all, and the no-SBVA route is the
 /// cheaper of the two.
+///
+/// The [`monotone_reduction`] runs it too, with `reduce_monotone` set, so the
+/// retry asks Arjun for the reduction it skipped on that formula.
 fn no_sbva_retry(
     run: &Run<'_>,
     compile_formula: &CnfFormula,
     session: &vitri::bundle::FrontendSession<'_>,
+    reduce_monotone: bool,
 ) -> Option<Counted> {
     let program_deadline = run.deadline;
     let now = Instant::now();
@@ -106,7 +113,7 @@ fn no_sbva_retry(
     let stage_deadline = crate::budget::not_past(now + reserve, program_deadline);
     eprintln!(
         "[mc] no-sbva-retry: re-reducing without SBVA and recompiling on {} \
-         for up to {}s before support enumeration, the unreduced retry and Shannon split",
+         for up to {}s before the fallbacks after it and Shannon split",
         RETRY_VTREE_SPEC,
         reserve.as_secs(),
     );
@@ -125,7 +132,7 @@ fn no_sbva_retry(
     let retry = vitri::bundle::FrontendRetryConfig {
         arjun_sbva: Some(vitri::preprocess::ArjunSbva::Off),
         vtree_spec: Some(RETRY_VTREE_SPEC.to_owned()),
-        arjun_skip_monotone: None,
+        arjun_skip_monotone: reduce_monotone.then_some(false),
     };
     let retried = match session.retry(budget, &retry) {
         Ok(Some(retried)) => retried,
@@ -178,6 +185,119 @@ fn no_sbva_retry(
         t_reduce.elapsed().as_millis(),
     );
     Some(counted)
+}
+
+/// The fallback of the count without a reduction when vitri skipped Arjun on
+/// `formula` because it is monotone ([`vitri::bundle::SkipReason::Monotone`]):
+/// the compile of the formula itself has failed, so ask the frontend session
+/// for the reduction it skipped and count it the way a kept reduction is
+/// counted. Its compile on the tree vitri built for it comes first, unless it
+/// is no smaller than `formula`, then the no-SBVA retry when `no_sbva_armed`
+/// and SBVA ran, then support enumeration over its independent support.
+/// `None` when none answers; Shannon split follows.
+///
+/// The skip is the better start on most monotone formulas, whose unreduced
+/// compile answers sooner than Arjun would finish. On some, only the
+/// reduction's compile finishes, and this answers them. It takes the place of the support hunt the count
+/// without a reduction runs on other formulas, whose fresh Arjun pass skips
+/// this one too.
+///
+/// The whole stage runs inside [`monotone_reduction_window`], which leaves
+/// Shannon split its reserve, and its compile stops early enough to leave the
+/// no-SBVA retry its window. The retry starts from the session's simplify
+/// checkpoint, so the reduction is of `formula` itself and only its Arjun
+/// lift is folded.
+pub(super) fn monotone_reduction(
+    run: &Run<'_>,
+    formula: &CnfFormula,
+    session: &vitri::bundle::FrontendSession<'_>,
+    no_sbva_armed: bool,
+) -> Option<(Counted, AnsweredBy)> {
+    let now = Instant::now();
+    let Some(window) = monotone_reduction_window(run.deadline, now) else {
+        eprintln!("[mc] monotone-reduction: skipped — too little time is left to reduce and compile");
+        return None;
+    };
+    let stage_deadline = crate::budget::not_past(now + window, run.deadline);
+    // Every step below, the no-SBVA retry included, stops at the stage's own
+    // wall.
+    let run = &Run { deadline: Some(stage_deadline), ..*run };
+    eprintln!(
+        "[mc] monotone-reduction: Arjun skipped the monotone formula — reducing it and compiling \
+         the reduction for up to {}s before Shannon split",
+        window.as_secs(),
+    );
+    // The front end's own Arjun budget for the run's limit, capped at half the
+    // window so the reduce cannot take the compile's share.
+    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(window / 2);
+    let budget = vitri::bundle::RetryBudget::new(stage_deadline, arjun_budget).ok()?;
+    let retry = vitri::bundle::FrontendRetryConfig {
+        arjun_skip_monotone: Some(false),
+        ..vitri::bundle::FrontendRetryConfig::default()
+    };
+    let retried = match session.retry(budget, &retry) {
+        Ok(Some(retried)) => retried,
+        Ok(None) => {
+            eprintln!("[mc] monotone-reduction: Arjun kept no reduction — Shannon split next");
+            return None;
+        }
+        Err(error) => {
+            eprintln!("[mc] monotone-reduction: vitri's frontend failed ({error}) — Shannon split next");
+            return None;
+        }
+    };
+    let crate::frontend::McFrontendAttempt { preprocessed: bundle, vtree } =
+        crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
+    let arjun_pow2 = bundle.count_lift.arjun_pow2;
+    eprintln!(
+        "[mc] monotone-reduction: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
+        bundle.telemetry.arjun_ms.unwrap_or(0),
+        formula.num_vars(),
+        formula.clauses().len(),
+        bundle.reduced.num_vars(),
+        bundle.reduced.clauses().len(),
+        arjun_pow2,
+    );
+    let built = match vtree {
+        crate::frontend::FrontendVtree::Refuted => {
+            eprintln!("[mc] monotone-reduction: arjun refuted the formula");
+            return Some(((num_bigint::BigUint::from(0u32), 0), AnsweredBy::MonotoneReduction));
+        }
+        crate::frontend::FrontendVtree::FullyResolved => {
+            eprintln!("[mc] monotone-reduction: arjun resolved every variable");
+            return Some(((num_bigint::BigUint::from(1u32) << arjun_pow2, 0), AnsweredBy::MonotoneReduction));
+        }
+        crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
+    };
+    let no_sbva = no_sbva_armed && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran));
+    let ar = crate::frontend::record::arjun_reduction(bundle)
+        .expect("a kept plain-MC Arjun result carries its support");
+    // A reduction no smaller than the formula is the formula whose compile
+    // just failed, and the portfolio picks its tree again; compiling it would
+    // repeat that compile.
+    if ar.formula.num_vars() >= formula.num_vars() && ar.formula.clauses().len() >= formula.clauses().len() {
+        eprintln!("[mc] monotone-reduction: the reduction is no smaller — not compiling it again");
+    } else {
+        // The no-SBVA retry's window comes out of the compile's when it is armed.
+        let compile_deadline = match run.config.time_limit_ms {
+            Some(total_ms) if no_sbva => stage_deadline
+                .checked_sub(no_sbva_retry_want(total_ms))
+                .filter(|&at| at > Instant::now())
+                .unwrap_or(stage_deadline),
+            _ => stage_deadline,
+        };
+        let attempt = attempt_from_vitri_build(ar.formula.clone(), built, ar.lift_pow2);
+        if let Some(counted) = count_attempt(run, attempt, Some(compile_deadline)) {
+            return Some((counted, AnsweredBy::MonotoneReduction));
+        }
+        eprintln!("[mc] monotone-reduction: the compile of the reduction gave up");
+        release_failed_compile(run.eng);
+    }
+    if no_sbva && let Some(counted) = no_sbva_retry(run, formula, session, true) {
+        return Some((counted, AnsweredBy::NoSbvaRetry));
+    }
+    support_enum_stage(&ar.formula, &ar.support, ar.lift_pow2, "monotone reduction", run.deadline)
+        .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
 }
 
 /// The portfolio entry the stall recompile builds its tree from: goatd's
@@ -370,7 +490,7 @@ pub(super) fn count_primary(
     // when it has nothing to do.
     let fallbacks = || {
         no_sbva_session
-            .and_then(|session| no_sbva_retry(run, compile_formula, session))
+            .and_then(|session| no_sbva_retry(run, compile_formula, session, false))
             .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
             // Count the Arjun-reduced formula by enumerating the feasible
             // assignments to Arjun's own minimized independent support

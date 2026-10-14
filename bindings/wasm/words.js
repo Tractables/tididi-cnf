@@ -26,6 +26,7 @@ export const ANSWERED_BY = {
   "support-enumeration": "enumerating the reduced formula's independent support",
   "no-sbva-retry": "a compile reduced again without SBVA",
   "unreduced-retry": "a compile of the formula Arjun was given",
+  "monotone-reduction": "a compile of the reduction Arjun skipped on a monotone formula",
   "shannon-split": "splitting the formula on variables and counting the pieces",
   "bisect-retry": "a second compile, on a hypergraph bisection, after the first ran out of memory",
 };

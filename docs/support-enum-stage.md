@@ -9,8 +9,9 @@ reduction in `src/stage/mc/mod.rs`.
 The stage runs only after the compile has failed, as a fallback. Behind
 the primary compile the hook tries the no-SBVA retry, then support
 enumeration, then the unreduced retry; behind the count without a reduction,
-support enumeration alone. When they fail, the Shannon-split recovery cascade
-runs.
+support enumeration alone, except on a formula Arjun skipped as monotone,
+where the monotone reduction runs it on the reduction it asks Arjun for. When
+they fail, the Shannon-split recovery cascade runs.
 
 ## The problem it solves
 

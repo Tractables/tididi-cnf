@@ -53,7 +53,7 @@ The last column says in which modes a key can appear.
 | `tdd_pairs` | integer | Pairs in the compiled diagram, the measure of its size. | `compile` |
 | `tdd_width` | integer | The most nodes the compiled diagram has at one vtree node. | `compile` |
 | `peak_pairs` | integer | The largest diagram the compile held at once, in pairs; under `compile`, the compile that answered. | `compile`, `mc` |
-| `answered_by` | string | The stage that produced the count: `compile`; `preprocessing`, when simplification settled it; or one of the stages that take over from a compile that gave up: under `mc`, `stall-recompile`, `support-enumeration`, `no-sbva-retry`, `unreduced-retry` or `shannon-split`, and under `compile`, `bisect-retry` ([`tasks.md`](tasks.md#vtrees)). | `compile`, `mc` |
+| `answered_by` | string | The stage that produced the count: `compile`; `preprocessing`, when simplification settled it; or one of the stages that take over from a compile that gave up: under `mc`, `stall-recompile`, `support-enumeration`, `no-sbva-retry`, `unreduced-retry`, `monotone-reduction` or `shannon-split`, and under `compile`, `bisect-retry` ([`tasks.md`](tasks.md#vtrees)). | `compile`, `mc` |
 | `reduction` | string | `used` when the count went through the formula Arjun reduced, `unavailable` when Arjun gave up or its result was not kept. Absent when Arjun did not run. | `mc` |
 | `preprocess_ms` | integer | Time simplifying the formula; under `mc`, without Arjun, which has its own key. | `compile`, `mc` |
 | `arjun_ms` | integer | Time in Arjun's reduction. | `mc` |

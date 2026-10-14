@@ -56,11 +56,11 @@ const SUPPORT_MIN_REMAINING_MS: u64 = 1_800_000;
 /// Ceiling on that retry, whatever the wall.
 const SUPPORT_ARJUN_MAX_MS: u64 = 600_000;
 
-/// Below this the no-SBVA retry is not entered at all. The stage has to run a
-/// whole Arjun reduce (its own floor is 5 s), build a vtree and compile; under
-/// half a minute it can only take wall away from the unreduced retry and
-/// Shannon split that follow it.
-const NO_SBVA_RETRY_MIN_WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
+/// Below this a fallback that reduces again, the no-SBVA retry or the
+/// monotone reduction, is not entered at all. The stage has to run a whole
+/// Arjun reduce (its own floor is 5 s), build a vtree and compile; under half
+/// a minute it can only take wall away from the stages that follow it.
+const REDUCE_RETRY_MIN_WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Budget for re-running Arjun when the count runs without a reduction, or
 /// `None` when it must not try at all. Pure, so the arithmetic is
@@ -168,7 +168,7 @@ pub(super) fn no_sbva_retry_want(total_ms: u64) -> std::time::Duration {
 
 /// Window for the predicate-gated no-SBVA retry: [`no_sbva_retry_want`], never
 /// more than what is actually left, `None` when that is under
-/// [`NO_SBVA_RETRY_MIN_WINDOW`] (skip the stage). The same shape as
+/// [`REDUCE_RETRY_MIN_WINDOW`] (skip the stage). The same shape as
 /// [`unreduced_retry_window`]: one more step of the same window order.
 ///
 /// With no declared wall at all the stage gets [`UNREDUCED_RETRY_RESERVE`], the same
@@ -182,12 +182,32 @@ pub(super) fn no_sbva_retry_window(
     match (time_limit_ms, program_deadline) {
         (Some(total_ms), Some(program)) => {
             let window = no_sbva_retry_want(total_ms).min(program.saturating_duration_since(now));
-            (window >= NO_SBVA_RETRY_MIN_WINDOW).then_some(window)
+            (window >= REDUCE_RETRY_MIN_WINDOW).then_some(window)
         }
         // No declared wall (the deadline is derived from it, so the two are
         // absent together): the fixed reserved tail.
         _ => Some(UNREDUCED_RETRY_RESERVE),
     }
+}
+
+/// Window for the monotone reduction, the fallback of the count without a
+/// reduction when Arjun skipped the formula as monotone: what is left, less
+/// what Shannon split behind it is owed ([`shannon_split_reserve_ms`]), `None`
+/// when that is under [`REDUCE_RETRY_MIN_WINDOW`] (skip the stage). At a
+/// two-minute limit the reserve is all that is left, so the stage runs only at
+/// longer limits. With no wall at all, the fixed [`UNREDUCED_RETRY_RESERVE`],
+/// as for the no-SBVA retry.
+pub(super) fn monotone_reduction_window(
+    program_deadline: Option<std::time::Instant>,
+    now: std::time::Instant,
+) -> Option<std::time::Duration> {
+    let Some(program) = program_deadline else {
+        return Some(UNREDUCED_RETRY_RESERVE);
+    };
+    let left = program.saturating_duration_since(now);
+    let owed = std::time::Duration::from_millis(shannon_split_reserve_ms(left.as_millis() as u64));
+    let window = left.saturating_sub(owed);
+    (window >= REDUCE_RETRY_MIN_WINDOW).then_some(window)
 }
 
 #[cfg(test)]

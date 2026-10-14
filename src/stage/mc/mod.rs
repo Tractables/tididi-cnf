@@ -8,11 +8,12 @@
 //! `attempt` (what a compile attempt is built from and how it compiles),
 //! `windows` (what each fallback may spend, and the primary compile's
 //! per-step wall), `cascade` (the primary compile, the stall recompile and
-//! the fallbacks), `support_enum` (the fallback that enumerates Arjun's
-//! independent support) and `recovery` (the one order every route counts in:
-//! the first compile, the fallbacks, Shannon split). Its stderr lines carry
-//! the `[mc]` tag and the stage's record token, and the record's `cascade_ms`
-//! is the wall from the first compile to the answer.
+//! the fallbacks, the monotone reduction among them), `support_enum` (the
+//! fallback that enumerates Arjun's independent support) and `recovery` (the
+//! one order every route counts in: the first compile, the fallbacks, Shannon
+//! split). Its stderr lines carry the `[mc]` tag and the stage's record token,
+//! and the record's `cascade_ms` is the wall from the first compile to the
+//! answer.
 //!
 //! Every count a step returns is in the space of the formula the step was
 //! handed — the correction invariant. A step that counts a reduction of that
@@ -25,7 +26,7 @@ use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reducti
 use crate::stage::Run;
 
 use attempt::{attempt_from_vitri_build, count_attempt};
-use cascade::{arm_no_sbva_retry, count_cofactor, count_primary};
+use cascade::{arm_no_sbva_retry, count_cofactor, count_primary, monotone_reduction};
 use recovery::{Recovered, count_with_recovery};
 use support_enum::{reduce_for_support, support_enum_stage};
 use windows::stall_rule;
@@ -120,7 +121,14 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula, stall_rule: Option<Stal
                     .expect("a kept plain-MC Arjun result carries its support");
                 count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
             } else {
-                count_without_reduction(run, bundle.reduced, bundle.stages.arjun, primary_vtree)
+                count_without_reduction(
+                    run,
+                    bundle.reduced,
+                    bundle.stages.arjun,
+                    primary_vtree,
+                    session,
+                    no_sbva_retry_armed,
+                )
             };
             let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) = recovered else {
                 eprintln!("[mc] no answer: Shannon split gave up");
@@ -143,15 +151,23 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula, stall_rule: Option<Stal
 }
 
 /// No kept reduction: say why, then compile the simplified formula on the
-/// vtree vitri built for it, with the support-enum stage (on a fresh, bounded
-/// Arjun pass) as its one fallback and Shannon split behind it. `None` when
-/// nothing answered.
+/// vtree vitri built for it, with one fallback and Shannon split behind it.
+/// The fallback is the support-enum stage on a fresh, bounded Arjun pass, or,
+/// when Arjun skipped the formula as monotone, the [`monotone_reduction`],
+/// which asks `session` for the reduction it skipped. `None` when nothing
+/// answered.
 fn count_without_reduction(
     run: &Run<'_>,
     fallback_formula: CnfFormula,
     outcome: Option<vitri::bundle::StageOutcome>,
     vtree: crate::vtree::VtreeBuild,
+    session: &vitri::bundle::FrontendSession<'_>,
+    no_sbva_armed: bool,
 ) -> Option<Recovered> {
+    let monotone = matches!(
+        outcome,
+        Some(vitri::bundle::StageOutcome::Skipped(vitri::bundle::SkipReason::Monotone))
+    );
     // The single sink for every non-`Ran` disposition vitri reports. The typed reason
     // is kept: a deterministic quality rejection and a budget give-up are
     // different findings.
@@ -188,11 +204,16 @@ fn count_without_reduction(
     // that most need a fallback. Its one fallback is the support-enum stage,
     // which needs a support this count does not hold, so it buys one with a
     // second, tightly bounded exact-budget Arjun pass (`reduce_for_support`).
+    // That pass skips a monotone formula too, which gets the monotone
+    // reduction instead.
     let first = || {
         count_attempt(run, attempt_from_vitri_build(fallback_formula.clone(), vtree, 0), run.deadline)
             .map(|counted| (counted, AnsweredBy::Compile))
     };
     let fallbacks = || {
+        if monotone {
+            return monotone_reduction(run, &fallback_formula, session, no_sbva_armed);
+        }
         let ar = reduce_for_support(run.config, &fallback_formula, run.deadline)?;
         let count = support_enum_stage(
             &ar.formula,

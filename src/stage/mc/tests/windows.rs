@@ -134,7 +134,7 @@ fn declared_wall_is_capped_at_whatever_actually_remains() {
 #[test]
 fn window_under_the_minimum_returns_none() {
     let now = Instant::now();
-    // 100s declared wall -> quarter = 25s, under `NO_SBVA_RETRY_MIN_WINDOW` (30s)
+    // 100s declared wall -> quarter = 25s, under `REDUCE_RETRY_MIN_WINDOW` (30s)
     // -> skip the stage entirely.
     let pd = now + Duration::from_secs(100);
     assert_eq!(no_sbva_retry_window(Some(100_000), Some(pd), now), None);
@@ -142,7 +142,7 @@ fn window_under_the_minimum_returns_none() {
     let pd2 = now + Duration::from_secs(120);
     assert_eq!(
         no_sbva_retry_window(Some(120_000), Some(pd2), now),
-        Some(NO_SBVA_RETRY_MIN_WINDOW),
+        Some(REDUCE_RETRY_MIN_WINDOW),
     );
 }
 
@@ -153,4 +153,26 @@ fn no_declared_wall_returns_the_fixed_tail_reserve() {
     // absent together) -> the fixed `UNREDUCED_RETRY_RESERVE`, same as the no-wall-
     // limit regime of `unreduced_retry_window` above.
     assert_eq!(no_sbva_retry_window(None, None, now), Some(UNREDUCED_RETRY_RESERVE));
+}
+
+#[test]
+fn the_monotone_reduction_leaves_shannon_split_its_reserve() {
+    let now = Instant::now();
+    // An hour left: a quarter (900s) is owed to Shannon split.
+    let pd = now + Duration::from_secs(3600);
+    assert_eq!(monotone_reduction_window(Some(pd), now), Some(Duration::from_secs(2700)));
+    // Twenty minutes left: the 300s floor of the reserve, over a quarter.
+    let pd = now + Duration::from_secs(1200);
+    assert_eq!(monotone_reduction_window(Some(pd), now), Some(Duration::from_secs(900)));
+}
+
+#[test]
+fn the_monotone_reduction_skips_when_the_reserve_takes_the_wall() {
+    let now = Instant::now();
+    // Two minutes: the reserve's 300s floor is more than is left.
+    assert_eq!(monotone_reduction_window(Some(now + Duration::from_secs(120)), now), None);
+    // 20s past the floor is under the 30s entry bar.
+    assert_eq!(monotone_reduction_window(Some(now + Duration::from_secs(320)), now), None);
+    // No wall at all: the fixed tail.
+    assert_eq!(monotone_reduction_window(None, now), Some(UNREDUCED_RETRY_RESERVE));
 }
