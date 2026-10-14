@@ -28,8 +28,8 @@
 //! `f_n ∧ Φ ≡ ⊥`. Unknown (conflict-limit hit) is treated as live — we
 //! never kill on uncertain probes.
 //!
-//! [`PruneLimits`] holds every limit a pass runs under. Two of them scale
-//! with the run's time limit (`--time-limit-ms`, or `TIDIDI_TIME_LIMIT_MS`
+//! [`PruneLimits`] holds every limit a pass runs under. Several of them
+//! scale with the run's time limit ([`PruneLimits::for_wall`] says which) (`--time-limit-ms`, or `TIDIDI_TIME_LIMIT_MS`
 //! without the flag), which [`SatPrune`] carries.
 //!
 //! **Spend caps.** A context's unproductive spend, its spend since its last
