@@ -43,12 +43,9 @@
 //!
 //! ## Per-cofactor work
 //!
-//! - **Arjun is re-run** on the cofactors of the first `SPLIT_ARJUN_MAX_DEPTH`
-//!   split levels; deeper cofactors compile as they stand.
-//! - **Vtree is rebuilt** from the sub-CNF by the caller's cofactor compile;
-//!   that's necessary because the support of the sub-CNF is strictly
-//!   smaller and the original vtree may reference variables that no
-//!   longer constrain anything.
+//! - **Each cofactor is prepared afresh** by the caller's cofactor compile:
+//!   its support is strictly smaller than the formula's, so the formula's
+//!   reduction and vtree no longer fit it.
 //! - **The two branches share nothing.** count(F∧x) and count(F∧¬x) are
 //!   separate compiles, even where they share structure.
 //!
@@ -56,14 +53,9 @@
 //!
 //! The cascade asks whether the run's wall has passed before the first
 //! compile, before the fallbacks, and before each Shannon cofactor, so the
-//! split, and its per-child re-Arjun in `prepare_cofactor`, stop by it instead
-//! of grinding past into an external-timeout `SIGKILL`. A post-deadline result
-//! is uncountable, so bailing only stops dead-weight work. It bounds the
-//! re-Arjun both ways: whether a cofactor's re-Arjun starts (the check before
-//! each child) and how long it may then run
-//! ([`crate::budget::clamped_to_deadline_ms`] in `prepare_cofactor`). With only
-//! the first, a child starting a millisecond before the deadline would take
-//! its whole budget, up to [`RECOVERY_ARJUN_MAX_MS`], past the wall.
+//! split stops by it instead of grinding past into an external-timeout
+//! `SIGKILL`. A post-deadline result is uncountable, so bailing only stops
+//! dead-weight work.
 
 use std::panic;
 use std::time::Instant;
@@ -72,10 +64,9 @@ use num_bigint::BigUint;
 
 use vitri::cnf::{Clause, CnfFormula, Literal, VarId};
 
-use crate::budget::{clamped_to_deadline_ms, deadline_passed, not_past, resolve_scaled};
+use crate::budget::deadline_passed;
 use crate::compile::CompileRun;
 use crate::formula::{most_frequent_var, with_unit};
-use crate::frontend::request::arjun_stage;
 use crate::MIB;
 use crate::mem::{mapped_bytes, purge_all_arenas, rlimit_as_bytes};
 use crate::output::AnsweredBy;
@@ -155,25 +146,10 @@ fn failure<T>(run: &Run<'_>, compile: impl FnOnce() -> Option<T>) -> Result<T, O
     }
 }
 
-/// A post-BCP Shannon cofactor, prepared for its count.
-enum Cofactor {
-    /// The re-reduction resolved every variable: the count is `2^lift_pow2`,
-    /// with nothing to compile.
-    Resolved { lift_pow2: u32 },
-    /// The re-reduction's formula, numbered afresh, whose count lifts by
-    /// `2^lift_pow2`.
-    Reduced { formula: CnfFormula, lift_pow2: u32 },
-    /// The cofactor as BCP left it, in the numbering of the formula it came
-    /// from.
-    Unreduced(CnfFormula),
-}
-
 /// One cofactor at recovery `depth` counted: by `cofactor`, and on its
 /// failure split again.
 ///
-/// `branched` holds the variables the enclosing splits fixed since this
-/// formula's numbering began: the whole formula's, or the re-reduction that
-/// renumbered it.
+/// `branched` holds the variables the enclosing splits fixed.
 fn count_or_split<F>(
     run: &Run<'_>,
     formula: &CnfFormula,
@@ -194,8 +170,8 @@ where
     }
 }
 
-/// The split itself: branch on one variable, BCP-close both cofactors, re-Arjun
-/// each at shallow depth, count each, and sum.
+/// The split itself: branch on one variable, BCP-close both cofactors, count
+/// each, and sum.
 fn split<F>(
     run: &Run<'_>,
     formula: &CnfFormula,
@@ -232,8 +208,8 @@ where
         // Past the deadline the whole split can no longer produce a countable
         // result. Give the entire split up (None) rather than continue —
         // returning the partial `acc` would silently undercount. Checked before
-        // any per-child work (BCP / re-Arjun / recurse). Fires only once the
-        // wall has passed, so it never abandons a countable result.
+        // any per-child work. Fires only once the wall has passed, so it never
+        // abandons a countable result.
         if deadline_passed(run.deadline) {
             eprintln!("[mc] shannon-split: the time limit passed mid-split; giving up");
             return None;
@@ -243,17 +219,7 @@ where
             eprintln!("[mc] shannon-split: child {}/2: UNSAT after BCP — 0 models", child_idx + 1);
             continue;
         };
-
-        let (count, peak) = match prepare_cofactor(run, sub, depth, child_idx) {
-            Cofactor::Resolved { lift_pow2 } => (BigUint::from(1u32) << lift_pow2, 0),
-            // A reduction renumbers the cofactor, and the variables the
-            // enclosing splits fixed are gone from it, so none is excluded.
-            Cofactor::Reduced { formula, lift_pow2 } => {
-                let (count, peak) = count_or_split(run, &formula, depth + 1, &[], cofactor)?;
-                (count << lift_pow2, peak)
-            }
-            Cofactor::Unreduced(formula) => count_or_split(run, &formula, depth + 1, &child_branched, cofactor)?,
-        };
+        let (count, peak) = count_or_split(run, &sub, depth + 1, &child_branched, cofactor)?;
         // Purge between siblings so the next cofactor doesn't inherit this
         // one's retained extents.
         let _ = purge_all_arenas();
@@ -262,157 +228,6 @@ where
         acc.1 = acc.1.max(peak);
     }
     Some(acc)
-}
-
-/// Max recovery depth (exclusive) at which each Shannon cofactor is re-Arjun'd
-/// before its sub-compile. 1 = depth-0 only: only the first split's children get
-/// projection cleanup.
-const SPLIT_ARJUN_MAX_DEPTH: u32 = 1;
-
-/// A recovery cofactor's Arjun budget: this share of the declared wall,
-/// clamped to [`RECOVERY_ARJUN_MIN_MS`, `RECOVERY_ARJUN_MAX_MS`], or
-/// [`RECOVERY_ARJUN_DEFAULT_MS`] when the run declares no wall; then cut to
-/// the time the run has left.
-const RECOVERY_ARJUN_SHARE: f64 = 0.10;
-const RECOVERY_ARJUN_MIN_MS: u64 = 5_000;
-const RECOVERY_ARJUN_MAX_MS: u64 = 300_000;
-const RECOVERY_ARJUN_DEFAULT_MS: u64 = 60_000;
-
-/// Prepare the BCP-closed cofactor `sub`, child `child_idx` of a split at
-/// `depth`, for its count: re-run Arjun on it while `depth` is under
-/// [`SPLIT_ARJUN_MAX_DEPTH`] and the run has time left, and keep the
-/// reduction Arjun keeps.
-fn prepare_cofactor(run: &Run<'_>, sub: CnfFormula, depth: u32, child_idx: usize) -> Cofactor {
-    let deadline = run.deadline;
-    // Sampling-set shrinkage compounds across recovery levels; the depth gate
-    // bounds the exponential cost of 2^N budgeted Arjun calls. `None` is a
-    // budget with nothing left in it, which compiles the cofactor as it
-    // stands, as the depth gate does.
-    let now = Instant::now();
-    let budget_ms = (depth < SPLIT_ARJUN_MAX_DEPTH)
-        .then(|| {
-            clamped_to_deadline_ms(
-                resolve_scaled(
-                    run.config.time_limit_ms,
-                    RECOVERY_ARJUN_SHARE,
-                    RECOVERY_ARJUN_DEFAULT_MS,
-                    RECOVERY_ARJUN_MIN_MS,
-                    RECOVERY_ARJUN_MAX_MS,
-                ),
-                deadline,
-                now,
-            )
-        })
-        .flatten();
-    let Some(budget_ms) = budget_ms else {
-        return Cofactor::Unreduced(sub);
-    };
-    eprintln!(
-        "[mc] shannon-split: child {}/2: re-Arjun budget {}ms on {}v/{}c",
-        child_idx + 1,
-        budget_ms,
-        sub.num_vars(),
-        sub.clauses().len(),
-    );
-    // `budget_ms` is already the recovery allowance, cut to the run's
-    // wall: vitri takes it as given, and stops there.
-    let budget = std::time::Duration::from_millis(budget_ms);
-    let reduce_config = arjun_stage(
-        run.config,
-        vitri::cnf::Mode::Mc,
-        Some(not_past(now + budget, deadline)),
-        budget,
-        vitri::config::ArjunClauseGrowth::default(),
-    );
-    match vitri::bundle::preprocess(
-        &sub,
-        &vitri::cnf::CnfMeta::default(),
-        &reduce_config,
-    ) {
-        // Only a kept Arjun reduction changes the post-BCP cofactor;
-        // every other outcome, a preprocessing error included, keeps
-        // the raw cofactor.
-        Ok(ar) if matches!(ar.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) => {
-            let arjun_pow2 = ar.count_lift.arjun_pow2;
-            eprintln!(
-                "[mc] shannon-split: child {}/2: arjun {}v/{}c → {}v/{}c, lift=2^{}",
-                child_idx + 1,
-                sub.num_vars(),
-                sub.clauses().len(),
-                ar.reduced.num_vars(),
-                ar.reduced.clauses().len(),
-                arjun_pow2,
-            );
-            check_arjun_accounting(&sub, &ar, depth, child_idx);
-            if ar.reduced.num_vars() == 0 {
-                eprintln!(
-                    "[mc] shannon-split: child {}/2: arjun resolved every variable — count = 2^{}",
-                    child_idx + 1,
-                    arjun_pow2,
-                );
-                return Cofactor::Resolved { lift_pow2: arjun_pow2 };
-            }
-            Cofactor::Reduced { formula: ar.reduced, lift_pow2: arjun_pow2 }
-        }
-        Ok(ar) => {
-            eprintln!(
-                "[mc] shannon-split: child {}/2: arjun did not yield a kept reduction ({:?}) — \
-                 using post-BCP sub-formula",
-                child_idx + 1,
-                ar.stages.arjun,
-            );
-            Cofactor::Unreduced(sub)
-        }
-        Err(error) => {
-            eprintln!(
-                "[mc] shannon-split: child {}/2: preprocessing failed ({error}) — \
-                 using post-BCP sub-formula",
-                child_idx + 1,
-            );
-            Cofactor::Unreduced(sub)
-        }
-    }
-}
-
-/// The soundness guard on a re-Arjun'd cofactor: free-eliminated vars (each ×2)
-/// must be a subset of the vars Arjun removed. BCP and Shannon-fixing preserve
-/// `num_vars`, so Arjun is the only place it moves; this local inequality at
-/// every re-Arjun is, by induction, the full per-path variable accounting.
-///
-/// Arjun also adds variables (bounded variable addition), and an added one was
-/// never in `sub` to be removed — so the count of removals is
-/// `sub.num_vars() + added - ar.reduced.num_vars()`, not
-/// `sub.num_vars() - ar.reduced.num_vars()`, and stating the guard without the
-/// `added` term asserts a reduction never grew. It does: the pipeline's own
-/// reduction can add variables, and the guard without the `added` term fires on
-/// a sound reduction. `added` is exactly the reduced variables with no
-/// input-space name (`PreprocessRecord::reduced_to_original_dimacs`), which is
-/// the same channel the caller uses to name a reduction back.
-///
-/// A path that cannot report the map at all reports no names (empty, not
-/// `None`-filled) — there is nothing to check there rather than nothing added,
-/// so the guard stands down.
-fn check_arjun_accounting(
-    sub: &CnfFormula,
-    ar: &vitri::bundle::PreprocessBundle,
-    depth: u32,
-    child_idx: usize,
-) {
-    let arjun_pow2 = ar.count_lift.arjun_pow2;
-    let names = &ar.record.reduced_to_original_dimacs;
-    let added = names.iter().filter(|name| name.is_none()).count() as u32;
-    debug_assert!(
-        names.is_empty()
-            || ar.reduced.num_vars() + arjun_pow2 <= sub.num_vars() + added,
-        "recovery Arjun over-count at depth {} child {}/2: \
-         reduced {}v + free-mult 2^{} exceeds pre-Arjun {}v + {} added",
-        depth,
-        child_idx + 1,
-        ar.reduced.num_vars(),
-        arjun_pow2,
-        sub.num_vars(),
-        added,
-    );
 }
 
 /// Log the recovery trigger under `tag` and purge jemalloc pages.

@@ -30,24 +30,59 @@ use super::attempt::{
 use super::recovery::{Counted, Recovered, count_with_recovery};
 use super::support_enum::support_enum_stage;
 
-/// A Shannon cofactor's compile, in both cascades: a [`portfolio_attempt`], every
-/// component's vtree built up front by vitri, announced on stderr. The run's
-/// wall bounds the vtree builds and the compile alike. A vtree that cannot be
-/// built gives up with `None` before the compile, as a compile that gives up
-/// does.
+/// A Shannon cofactor's count, in both cascades, taken the way the input's
+/// is: the compile of its reduction, then, when that gives up with the run's
+/// wall left, one compile of the cofactor as it stands on the portfolio's tree
+/// for it, as the unreduced retry compiles the input. The two trees cut the
+/// cofactor in different places, and either can fit where the other ran out
+/// of memory. The run's wall bounds both. `None` when neither answers.
 pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
-    // Effective support: the vars that occur in some clause.
-    let eff_support = crate::formula::occurrence_counts(form, 0).iter().filter(|&&n| n > 0).count();
+    if let Some(counted) = count_reduced_cofactor(run, form) {
+        return Some(counted);
+    }
+    if crate::budget::deadline_passed(run.deadline) {
+        return None;
+    }
+    // The failed compile's scratch and dirty pages go back first, as before
+    // any compile that follows a failed one.
+    release_failed_compile(run.eng);
     eprintln!(
-        "[mc] shannon-split: compiling a cofactor on {} \
-         ({} vars, eff support {}/{}, {} clauses)",
-        PORTFOLIO_VTREE_SPEC,
-        form.num_vars(),
-        eff_support,
+        "[mc] shannon-split: compiling the cofactor as it stands: {}v/{}c",
         form.num_vars(),
         form.clauses().len(),
     );
     count_attempt(run, portfolio_attempt(run, form, run.deadline, None)?, run.deadline)
+}
+
+/// A cofactor through the run's frontend, as the input went: vitri's
+/// preprocessing, then the compile on the vtree vitri pairs with its
+/// reduction, the reduction's lift folded, so the count is in the cofactor's
+/// space. A cofactor the preprocessing settles needs no compile; a frontend
+/// that fails gives up with `None`, as a compile that gives up does.
+fn count_reduced_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
+    let counted = crate::frontend::with_mc_frontend(form, run.config, run.deadline, |attempt, _| {
+        let prepared = attempt.preprocessed;
+        let lift_pow2 = prepared.count_lift.total_pow2();
+        eprintln!(
+            "[mc] shannon-split: compiling a cofactor: {}v/{}c reduced to {}v/{}c, lift=2^{lift_pow2}",
+            form.num_vars(),
+            form.clauses().len(),
+            prepared.reduced.num_vars(),
+            prepared.reduced.clauses().len(),
+        );
+        match attempt.vtree {
+            crate::frontend::FrontendVtree::Built(built) => {
+                let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run.eng), lift_pow2);
+                count_attempt(run, attempt, run.deadline)
+            }
+            crate::frontend::FrontendVtree::FullyResolved => Some((num_bigint::BigUint::from(1u32) << lift_pow2, 0)),
+            crate::frontend::FrontendVtree::Refuted => Some((num_bigint::BigUint::from(0u32), 0)),
+        }
+    });
+    counted.unwrap_or_else(|error| {
+        eprintln!("[mc] shannon-split: vitri's frontend failed on a cofactor: {error}");
+        None
+    })
 }
 
 /// Whether the no-SBVA retry may run behind the primary compile: the input is

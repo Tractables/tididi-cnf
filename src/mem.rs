@@ -48,7 +48,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 /// reused for fresh allocations that exceed jemalloc's per-arena
 /// fragmentation pattern. Without this, a failed compile's freed memory stays
 /// in the address-space budget until process exit, leaving the recovery
-/// cascade no room for its re-Arjun'd sub-formulas.
+/// cascade no room for its cofactors.
 ///
 /// **`dirty_decay_ms:-1,muzzy_decay_ms:-1`** — never purge dirty pages on a
 /// timer; keep them in the arena for reuse. The apply/contract cycle frees

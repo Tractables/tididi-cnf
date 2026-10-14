@@ -1,16 +1,25 @@
-/// A cofactor whose vtree cannot be built gives up with `None`, as a compile
-/// that gives up does, and the recovery reads it as one. A panic is kept for a
-/// broken invariant or a refused allocation, not for input vitri refuses.
+/// A cofactor is counted in its own space whatever its preprocessing does:
+/// the lift of the variables it settles is folded into a compiled count, a
+/// cofactor it settles outright counts by the lift alone, and one it refutes
+/// counts 0.
 #[test]
-fn a_cofactor_whose_vtree_cannot_be_built_gives_up_without_panicking() {
+fn a_cofactor_is_counted_in_its_own_space() {
+    use crate::test_support::{brute_projected_count, clause, formula};
     let eng = &tididi::Engine::new();
     let config = crate::test_support::minimal_config();
     let run = crate::test_support::run(eng, &config);
-    let no_variables = crate::test_support::formula(0, Vec::new());
-    let counted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        super::count_cofactor(&run, &no_variables)
-    }));
-    assert!(matches!(counted, Ok(None)));
+    let cofactors = [
+        // x1 pinned as a split leaves it, x5 free, a core to compile.
+        formula(5, vec![clause(&[1]), clause(&[2, 3]), clause(&[-2, 4]), clause(&[3, -4])]),
+        // Every variable pinned or free.
+        formula(3, vec![clause(&[1]), clause(&[-2])]),
+        // No unit, and no model.
+        formula(2, vec![clause(&[1, 2]), clause(&[1, -2]), clause(&[-1, 2]), clause(&[-1, -2])]),
+    ];
+    for cofactor in &cofactors {
+        let (count, _) = super::count_cofactor(&run, cofactor).expect("a small cofactor counts");
+        assert_eq!(count, brute_projected_count(cofactor, 0..cofactor.num_vars() as usize));
+    }
 }
 
 /// A primary compile that stalls is given up and the same reduction is

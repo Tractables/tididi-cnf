@@ -362,8 +362,7 @@ pub(super) fn support_enum_stage(
 /// Why a re-run: that count is reached whenever Arjun kept no reduction
 /// (killed at its deadline, gave up, skipped, or discarded as not smaller or
 /// non-injective), so it has no support to hand the stage. A bounded slice of
-/// the recovery window buys one, as the cascade's per-cofactor re-Arjun already
-/// does.
+/// the recovery window buys one.
 pub(super) fn reduce_for_support(
     parent: &crate::config::Config,
     form: &CnfFormula,
