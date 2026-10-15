@@ -9,9 +9,11 @@ cargo build --release
 The binary is `target/release/tididi`. The diagram library (`tididi/`) and
 vitri (`vendor/vitri/`) are git submodules, and the build needs both; in a
 clone made without them, `git submodule update --init --recursive` fetches
-them. The binary builds and runs on Linux only, as the native build of
-[vitri](https://github.com/Tractables/vitri) does, and
-[`bindings/wasm`](../bindings/wasm/README.md) builds the library for
+them. Until the next release of [goatd](https://github.com/Tractables/goatd),
+vitri's tree-decomposition dependency, a patch in `Cargo.toml` builds against
+goatd's main, which Cargo fetches from GitHub. The binary builds and runs on
+Linux only, as the native build of [vitri](https://github.com/Tractables/vitri)
+does, and [`bindings/wasm`](../bindings/wasm/README.md) builds the library for
 WebAssembly through Emscripten.
 
 ## Toolchain

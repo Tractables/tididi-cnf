@@ -32,3 +32,7 @@ vitri = { path = "../../vendor/vitri" }
 # This crate's Cargo.lock holds cc at the version vitri's browser build locks:
 # the older cc in the repository's Cargo.lock passes em++ -fno-exceptions,
 # under which goatd's FlowCutter, which throws and catches, does not compile.
+
+# goatd's main, as the repository's Cargo.toml patches it.
+[patch.crates-io]
+goatd = { git = "https://github.com/Tractables/goatd", rev = "e237c1afabcf9feb3047bef58efd0113a6005ea7" }

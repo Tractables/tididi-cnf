@@ -91,12 +91,10 @@ dependencies = [
 [[package]]
 name = "goatd"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a7748c42ef96bda1afe0b14727d0f84e3e9663a8683f8e63fe70b1746cc65ec"
+source = "git+https://github.com/Tractables/goatd?rev=e237c1afabcf9feb3047bef58efd0113a6005ea7#e237c1afabcf9feb3047bef58efd0113a6005ea7"
 dependencies = [
  "cc",
  "libc",
- "rand",
  "rustc-hash",
 ]
 
