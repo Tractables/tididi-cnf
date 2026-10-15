@@ -15,4 +15,4 @@
 - Build and run on Linux. The compile is single-threaded; parallelism comes from running instances side by side.
 - Attach a Linux x86-64 archive of the `tididi` binary to each release, with the licence texts of the components it links.
 - Count from C and Python: `bindings/c` builds a C library and its header, and `bindings/python` a Python extension; each runs the library's `count` on DIMACS text, a file or clauses held as data, and returns the mode, the count and the run's record.
-- Build for WebAssembly through Emscripten, where a memory limit is refused, and count in the browser: a page under `bindings/wasm` runs the library in a worker on a pasted or opened CNF.
+- Build for WebAssembly through Emscripten, where a memory limit is refused, and count in the browser: a page under `bindings/wasm` runs the library in a worker on a pasted or opened CNF, and draws the compile of a formula of a few variables step by step, with the probability of each variable under evidence pinned on the page.

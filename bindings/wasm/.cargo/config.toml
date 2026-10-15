@@ -32,7 +32,7 @@ rustflags = [
   # The compile and the vtree construction recurse, and a side module runs on
   # the main module's stack; this is the 8 MB a native main thread has.
   "-Clink-arg=-sSTACK_SIZE=8388608",
-  "-Clink-arg=-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_bonsai_count_json,_bonsai_string_free",
+  "-Clink-arg=-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_bonsai_count_json,_bonsai_draw_json,_bonsai_string_free",
   # What abi.js uses: HEAPU8 to copy a buffer into the memory `malloc` handed
   # it, UTF8ToString to read a returned string.
   "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=UTF8ToString,HEAPU8",

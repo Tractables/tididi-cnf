@@ -91,6 +91,55 @@
   </details>
 </section>
 
+<section class="card" id="compile-card" aria-labelledby="compile-heading" hidden>
+  <div class="result-head">
+    <h2 id="compile-heading">Watch it compile</h2>
+    <span id="compile-stale" class="note" hidden>This drawing is for an earlier
+    input.</span>
+  </div>
+  <p id="compile-unavailable" class="note" hidden></p>
+  <div id="compile-body" hidden>
+    <p class="explain">tididi-bonsai compiles a formula bottom-up over a
+    <em>vtree</em>, a binary tree with one variable at each leaf, into a Tree
+    Decision Diagram. Each clause waits at the lowest vtree node whose subtree
+    holds all its variables. At each node, the diagrams of its two sides are
+    joined, and the clauses waiting there are conjoined in. A diagram node is
+    the disjunction of its pairs, and a pair, drawn as a box of two halves, is
+    the conjunction of a function of the variables on the left and one of
+    those on the right; ⊤ stands for a side that every assignment satisfies.
+    Beside each node is the number of assignments to its variables that
+    satisfy it: a pair multiplies its two sides and a node adds its pairs,
+    which is the whole of counting.</p>
+    <div class="stepper">
+      <button id="step-first" type="button" aria-label="First step">⏮</button>
+      <button id="step-back" type="button" aria-label="Previous step">◀</button>
+      <button id="step-play" type="button">Play</button>
+      <button id="step-next" type="button" aria-label="Next step">▶</button>
+      <button id="step-last" type="button" aria-label="Last step">⏭</button>
+      <input id="step" type="range" min="0" max="1" value="0" aria-label="Step">
+    </div>
+    <p id="step-text" class="step-text" aria-live="polite"></p>
+    <div class="compile-grid">
+      <ol id="clause-list" class="clauses" aria-label="Clauses"></ol>
+      <div class="picture">
+        <svg id="picture" role="img" aria-label="The diagrams built so far, over the vtree"></svg>
+      </div>
+    </div>
+    <h3>Ask the diagram</h3>
+    <p id="ask-text" class="note"></p>
+    <div id="evidence" class="evidence"></div>
+    <div class="ask-foot">
+      <p id="ask-total"></p>
+      <button id="evidence-clear" type="button">Clear the evidence</button>
+    </div>
+    <p class="note">The drawing compiles the formula as it is written, on the
+    vtree vitri's portfolio builds for it, for a formula of a few variables.
+    The count above runs the whole pipeline: it preprocesses the formula
+    first, and projects onto the show variables of a projected task, which
+    the drawing does not.</p>
+  </div>
+</section>
+
 <footer class="note">
   <p>tididi-bonsai is under the <a href="notices/LICENSE">Apache License
   2.0</a>; its <a href="notices/NOTICE">NOTICE</a> lists what it is built

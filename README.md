@@ -146,7 +146,9 @@ The same counts are available through [Python](bindings/python/README.md)
 and [C](bindings/c/README.md), from DIMACS text or from clauses held as data,
 and through [WebAssembly](bindings/wasm/README.md) from DIMACS text. The
 WebAssembly build runs
-[in the browser](https://tractables.github.io/tididi-bonsai/).
+[in the browser](https://tractables.github.io/tididi-bonsai/), where the
+compile of a small formula can be watched step by step and its diagram
+asked for each variable's probability under evidence.
 
 ## Documentation
 

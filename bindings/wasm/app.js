@@ -1,6 +1,8 @@
 // The page: the input, the settings, the run, and the result. The worker that
-// runs tididi-bonsai is worker.js, and runner.js drives it.
+// runs tididi-bonsai is worker.js, and runner.js drives it; compile-view.js
+// draws the compile of a small formula.
 
+import { markDrawingStale, showDrawing } from "./compile-view.js";
 import { EXAMPLES, fetchExample } from "./examples.js";
 import { Runner } from "./runner.js";
 import { ANSWERED_BY, ANSWER_LABELS, ERROR_KINDS, MODE_NAMES, duration, megabytes, plural } from "./words.js";
@@ -238,8 +240,10 @@ function readAddress() {
   // A limit the settings would refuse is left out.
   const limit = params.get("limit");
   if (limit !== null && timeLimit(limit)) control.limit.value = limit;
+  // An address that names no example, or one the row does not have, opens
+  // on the first.
   const example = EXAMPLES.findIndex(([key]) => key === params.get("example"));
-  if (example >= 0) loadExample(example);
+  loadExample(Math.max(0, example));
 }
 
 function flash(button, text) {
@@ -281,13 +285,15 @@ const runner = new Runner("worker.js" + stamp, {
     element("cancel").hidden = false;
     document.body.classList.add("busy");
   },
-  done(result, log, elapsed) {
+  done(result, log, elapsed, drawing) {
     settle();
     showAnswer(result, log, elapsed);
+    showDrawing(drawing);
   },
   failed(error, log) {
     settle();
     showFailure(error, log);
+    showDrawing(null);
   },
 });
 
@@ -323,6 +329,7 @@ element("cancel").addEventListener("click", () => {
 
 function markStale() {
   if (shown) element("stale").hidden = false;
+  markDrawingStale();
 }
 
 // ---------------------------------------------------------------- result

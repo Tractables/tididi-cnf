@@ -14,7 +14,12 @@ one, open a file, or pick an example — and it counts the formula's models:
 - whether the formula has a model, which stage answered, and the time it took,
 - the run's record, as the binary's `--stats` writes it
   ([`stats.md`](../../docs/stats.md)), and the progress the binary prints on
-  stderr.
+  stderr,
+- for a formula of a few variables, its compile, drawn step by step: the
+  vtree, each clause at the lowest vtree node whose subtree holds its
+  variables, and the diagram built at each node, every node with its count;
+  then each variable's probability, or its share of the models, under
+  evidence pinned on the page, evaluated from the diagram.
 
 The count is the one the `tididi` binary prints on the same formula and task:
 the page calls the crate's `tididi_bonsai::count`. A time limit is the
@@ -23,6 +28,13 @@ grows as the run needs it, up to 4 GB, and the crate refuses
 `Limits::mem_limit_mb` on WebAssembly. The address bar carries the example and
 the settings, so a result can be linked to. Nothing is uploaded and nothing is
 fetched from another site: the formula never leaves the browser.
+
+The drawing compiles the formula as it is written, without the preprocessing
+a count runs, on the vtree vitri's portfolio builds for it: one compile per
+internal vtree node, of the clauses whose variables all lie under it. The
+module returns each diagram in the library's `.tdd` text format, and
+`tdd.js` reads and evaluates it; `picture.js` draws it, and
+`compile-view.js` runs the card the drawing is on.
 
 ## Build and serve it locally
 
@@ -49,8 +61,10 @@ server.
 
 `smoke.mjs` runs the built module on the page's examples and on the
 instances [`bindings/parity.txt`](../parity.txt) lists, and compares each
-answer with the native binary's on the same file; vitri's `page-check.mjs`
-checks `index.html` against `styles.css`. The web build workflow runs both.
+answer with the native binary's on the same file, then draws the small
+examples and checks each step's diagram against enumeration; vitri's
+`page-check.mjs` checks `index.html` against `styles.css`. The web build
+workflow runs both.
 The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
 environment, which a native build of vitri refuses:
 

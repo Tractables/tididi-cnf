@@ -3,7 +3,8 @@
 #
 #     site.sh <out-dir> [emscripten-prefix]
 #
-# <out-dir> receives the page: index.html, styles.css, the scripts, the
+# <out-dir> receives the page: index.html, styles.css, the scripts, vitri's
+# reader of the .vtree format, vendor/vitri/bindings/wasm/vtree.js, the
 # crate's logo, docs/logo.svg, and the example formulas examples.js names,
 # from tests/data/.
 # With <emscripten-prefix>, the prefix vitri's emscripten-prefix.sh installed
@@ -27,6 +28,7 @@ root=$(cd "$here/../.." && pwd)
 
 mkdir -p "$out"
 cp "$here"/index.html "$here"/styles.css "$here"/*.js "$root"/docs/logo.svg "$out/"
+cp "$root"/vendor/vitri/bindings/wasm/vtree.js "$out/"
 for example in $(grep -o '"[A-Za-z0-9_]*\.cnf"' "$here/examples.js" | tr -d '"'); do
   cp "$root/tests/data/$example" "$out/"
 done

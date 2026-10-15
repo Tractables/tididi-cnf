@@ -1,0 +1,12 @@
+c Rain and a sprinkler, either of which wets the grass.
+c x1: it rained. x2: the sprinkler ran. x3: the grass is wet.
+c It rains with probability 0.2 and the sprinkler runs with probability 0.4.
+c The grass is wet exactly when one of them happened, so x3 weighs 1 either
+c way and the weighted count is 1.
+c t wmc
+p cnf 3 3
+c p weight 1 0.2 0
+c p weight 2 0.4 0
+-1 3 0
+-2 3 0
+1 2 -3 0

@@ -5,7 +5,7 @@
 //
 // The page hears about it through `on`: `loading()` when a worker starts,
 // `ready()` when its module is up, `started()` when a run begins, then
-// `done(result, log, elapsed)` or `failed(error, log)` for that run, and
+// `done(result, log, elapsed, drawing)` or `failed(error, log)` for that run, and
 // `notLoaded(message)` when the module does not come up.
 
 export class Runner {
@@ -70,7 +70,7 @@ export class Runner {
         }
       } else if (message.result !== undefined && this.#running) {
         this.#running = false;
-        this.#on.done(message.result, message.log, message.elapsed);
+        this.#on.done(message.result, message.log, message.elapsed, message.drawing);
       }
     };
     this.#worker.onerror = (event) => {

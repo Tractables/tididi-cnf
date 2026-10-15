@@ -23,6 +23,14 @@ function bonsaiAbi(bonsai) {
     }
   }
 
+  // The JSON value of the string a call returned at `pointer`, which this
+  // releases.
+  function answer(pointer) {
+    const text = bonsai.UTF8ToString(pointer >>> 0);
+    bonsai._bonsai_string_free(pointer >>> 0);
+    return JSON.parse(text);
+  }
+
   return {
     // The DIMACS text `dimacs` counted under `mode`, a mode's token or null
     // for the task its header declares, within `timeLimitMs` milliseconds, or
@@ -33,14 +41,17 @@ function bonsaiAbi(bonsai) {
       const formula = encoder.encode(dimacs);
       const modeText = mode === null ? null : encoder.encode(mode + "\0");
       return lend(formula, (formulaAt) => {
-        const call = (modeAt) => {
-          const pointer = bonsai._bonsai_count_json(formulaAt, formula.length, modeAt, timeLimitMs) >>> 0;
-          const text = bonsai.UTF8ToString(pointer);
-          bonsai._bonsai_string_free(pointer);
-          return JSON.parse(text);
-        };
+        const call = (modeAt) => answer(bonsai._bonsai_count_json(formulaAt, formula.length, modeAt, timeLimitMs));
         return modeText === null ? call(0) : lend(modeText, call);
       });
+    },
+
+    // The steps of compiling the DIMACS text `dimacs` bottom-up over a vtree,
+    // for a formula of a few variables: {ok: true, clauses, weights, vtree,
+    // steps} or {ok: false, error: {kind, message}}.
+    draw(dimacs) {
+      const formula = new TextEncoder().encode(dimacs);
+      return lend(formula, (formulaAt) => answer(bonsai._bonsai_draw_json(formulaAt, formula.length)));
     },
   };
 }
