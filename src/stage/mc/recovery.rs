@@ -197,7 +197,7 @@ where
         eprintln!("[mc] shannon-split: no variable left to branch on; giving up");
         return None;
     };
-    eprintln!("[mc] shannon-split: branching on var {} → 2 children", var.idx());
+    eprintln!("[mc] shannon-split: branching on var {} → 2 children", var.get());
     let mut child_branched: Vec<VarId> = Vec::with_capacity(branched.len() + 1);
     child_branched.extend_from_slice(branched);
     child_branched.push(var);
