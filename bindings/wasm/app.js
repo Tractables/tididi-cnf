@@ -34,6 +34,10 @@ const inputText = () => (held === null ? cnfBox.value : held.text);
 
 // Whether a result is on show.
 let shown = false;
+// A reply belongs to the input and settings submitted, even if they change
+// while the worker runs or loads.
+let inputRevision = 0;
+let runRevision = 0;
 
 // The declared size of a DIMACS text, from its problem line.
 function dimacsHeader(text) {
@@ -289,11 +293,13 @@ const runner = new Runner("worker.js" + stamp, {
     settle();
     showAnswer(result, log, elapsed);
     showDrawing(drawing);
+    markResult();
   },
   failed(error, log) {
     settle();
     showFailure(error, log);
     showDrawing(null);
+    markResult();
   },
 });
 
@@ -318,6 +324,7 @@ function requestRun() {
   writeAddress();
   if (runner.running) settle();
   if (!runner.ready) statusLine.textContent = "Loading tididi-bonsai; the run starts when it is ready.";
+  runRevision = inputRevision;
   runner.run(built.job);
 }
 
@@ -328,15 +335,21 @@ element("cancel").addEventListener("click", () => {
 });
 
 function markStale() {
+  inputRevision += 1;
   if (shown) element("stale").hidden = false;
   markDrawingStale();
+}
+
+function markResult() {
+  shown = true;
+  const stale = inputRevision !== runRevision;
+  element("stale").hidden = !stale;
+  if (stale) markDrawingStale();
 }
 
 // ---------------------------------------------------------------- result
 
 function showAnswer(result, log, elapsed) {
-  shown = true;
-  element("stale").hidden = true;
   statusLine.textContent = `Done in ${duration(elapsed)}.`;
   const { mode, satisfiable, count, value, stats } = result;
   const answer = make("div", satisfiable ? "answer" : "answer unsatisfiable");
@@ -370,8 +383,6 @@ function decimal(mode, count, value) {
 }
 
 function showFailure(error, log) {
-  shown = true;
-  element("stale").hidden = true;
   const kind = error && typeof error.kind === "string" ? error.kind : "worker";
   const message = error && typeof error.message === "string" ? error.message : String(error);
   statusLine.textContent = "No count; see the result.";

@@ -29,6 +29,10 @@ grows as the run needs it, up to 4 GB, and the crate refuses
 the settings, so a result can be linked to. Nothing is uploaded and nothing is
 fetched from another site: the formula never leaves the browser.
 
+Editing the formula or settings while a run is in progress leaves its
+answer and drawing marked as belonging to the previous input. Count again
+to update them.
+
 The drawing compiles the formula as it is written, without the preprocessing
 a count runs, on the vtree vitri's portfolio builds for it: one compile per
 internal vtree node, of the clauses whose variables all lie under it. The
@@ -66,11 +70,14 @@ answer with the native binary's on the same file, then draws the small
 examples and checks each step's diagram against enumeration; vitri's
 `page-check.mjs` checks `index.html` against `styles.css`, and the
 evaluation page's `index.html` against `page.css`. The web build workflow
-runs all three.
+runs these checks and `app-test.mjs`, which checks delayed worker replies
+after input and settings edits without building the module.
+
 The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
 environment, which a native build of vitri refuses:
 
 ```sh
+node --experimental-vm-modules bindings/wasm/app-test.mjs
 env -u VITRI_EMSCRIPTEN_PREFIX cargo build --release --bin tididi
 node bindings/wasm/smoke.mjs bindings/wasm/site/bonsai.js . target/release/tididi
 node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css

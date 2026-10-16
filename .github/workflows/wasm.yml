@@ -42,10 +42,10 @@ jobs:
         with:
           submodules: recursive
 
-      # Reads the pages alone, so it reports before the long build starts:
-      # the browser page and the evaluation page site.sh puts beside it.
-      - name: Check the pages' markup against their stylesheets
+      # These page checks need no module, so they run before the long build.
+      - name: Check page state, markup and stylesheets
         run: |
+          node --experimental-vm-modules bindings/wasm/app-test.mjs
           node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
           node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
 
