@@ -1,19 +1,19 @@
 //! SAT pruning: removing the intermediate TDD nodes no model of the formula
 //! passes through.
 //!
-//! Tseitin-encode the reachable partial TDD into a
-//! long-lived `vitri::sat::CaDiCal` solver pre-loaded with the full original
-//! CNF, then probe each reachable internal TDD node for liveness via
+//! Tseitin-encode the reachable partial TDD into a long-lived
+//! `vitri::sat::CaDiCal` solver pre-loaded with the full original CNF, then
+//! probe each reachable internal TDD node for liveness via
 //! `assume(y_n) ∧ solve()` (the library's `Tdd::probe_nodes`, on this pass's
 //! solver and stopping rules). A node is dead under Φ iff its function `f_n`
 //! has no model that extends to a model of Φ. Once liveness is known we
 //! propagate deadness bottom-up and *rewrite the TDD* by filtering dead pair
 //! components out of every live node's pair list (the library's node filter,
-//! finished by the compiler's full reduction to canonicalize). If the
-//! rewrite leaves the root dead, the slot becomes `Tdd::zero`. (Sound: the
-//! partial TDD is `∧ scoped-clauses-so-far`, all of which appear in Φ. If
-//! `f_n ∧ Φ ≡ ⊥` then no model of Φ traverses `n`, so dropping every pair
-//! that goes through `n` doesn't change what `Φ` evaluates to.)
+//! finished by the compiler's full reduction to canonicalize). If the rewrite
+//! leaves the root dead, the slot becomes `Tdd::zero`. (Sound: the partial TDD
+//! is `∧ scoped-clauses-so-far`, all of which appear in Φ. If `f_n ∧ Φ ≡ ⊥`
+//! then no model of Φ traverses `n`, so dropping every pair that goes through
+//! `n` doesn't change what `Φ` evaluates to.)
 //!
 //! Per-pass clauses are gated by an activation literal so they can be
 //! disabled cheaply after probing: emit each Tseitin clause with `¬a` as a

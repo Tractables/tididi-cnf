@@ -117,9 +117,8 @@ fn pwmc_show_enum_fastpath(
 /// value in `work`'s own space, or `None` if the compile gave up
 /// (deadline/OOM). The value is returned, so the independent-component
 /// decomposition can multiply per-component results, and the lift is left to
-/// the one seam. The verdict is
-/// the diagram's: the fold cannot tell a satisfiable formula that weighs zero
-/// from an unsatisfiable one.
+/// the one seam. The verdict is the diagram's: the fold cannot tell a
+/// satisfiable formula that weighs zero from an unsatisfiable one.
 fn pwmc_compile_evaluate(
     run: &Run<'_>,
     work: &CnfFormula,
@@ -490,8 +489,8 @@ fn decompose_reduced(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighte
 /// an explicit `--vtree`, with the hidden variables forgotten, and scale,
 /// instead of the monolithic Boolean compile + rational fold, which must
 /// materialize the whole diagram that streaming never builds. On a decline
-/// (deadline/OOM) the monolithic stage follows. Projected vars are weight-1 (symmetric by default), so the
-/// test reduces to "all show weights symmetric".
+/// (deadline/OOM) the monolithic stage follows. Projected vars are weight-1
+/// (symmetric by default), so the test reduces to "all show weights symmetric".
 fn symmetric_subsumption(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -> Step<Weighted> {
     use num_bigint::BigInt;
     let weights = problem_weight_tables(problem);

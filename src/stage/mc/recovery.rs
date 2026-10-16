@@ -238,8 +238,8 @@ where
 /// compiles begin allocating; the decay setting stays with the pressure check
 /// in `crate::mem`.
 ///
-/// It logs the [`HeapStats`](crate::mem::HeapStats) (`allocated` / `mapped` / `retained`) before and
-/// after the purge, with the mallctl return code:
+/// It logs the [`HeapStats`](crate::mem::HeapStats) (`allocated` / `mapped` /
+/// `retained`) before and after the purge, with the mallctl return code:
 /// `allocated ≈ mapped` means live data the purge cannot reclaim, while
 /// `allocated ≪ mapped + retained` means address space jemalloc holds, which
 /// the purge gives back (under `retain:false` purged extents are unmapped).

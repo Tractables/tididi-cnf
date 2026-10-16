@@ -95,9 +95,8 @@ sat_prune_stats! {
     /// Activation literal `a` is retired before bail-out so the
     /// partially-emitted clauses are inert in subsequent passes.
     passes_aborted_encode_budget,
-    /// Passes that hit the encode budget but kept the
-    /// fully-encoded bottom-up prefix and probed it instead of
-    /// discarding the pass.
+    /// Passes that hit the encode budget but kept the fully-encoded bottom-up
+    /// prefix and probed it instead of discarding the pass.
     passes_encode_prefix,
     /// Allocated y-slots zeroed because they lie at or above the
     /// encode-prefix break point; the prelude and the walk then treat them as
@@ -141,11 +140,10 @@ sat_prune_stats! {
     /// Nodes first witnessed alive by an AllSAT round (a node already
     /// witnessed by an earlier round is not counted again).
     allsat_witnesses_harvested,
-    /// Nodes proved dead via AllSAT-UNSAT termination (every reachable
-    /// internal node that wasn't
-    /// witnessed in any of the K SAT models is dead by exhaustion).
-    /// Subset of `nodes_pruned`. Disjoint from `probes_unsat`
-    /// and `zero_count_kills`.
+    /// Nodes proved dead via AllSAT-UNSAT termination (every reachable internal
+    /// node that wasn't witnessed in any of the K SAT models is dead by
+    /// exhaustion). Subset of `nodes_pruned`. Disjoint from `probes_unsat` and
+    /// `zero_count_kills`.
     allsat_kills,
     /// Wall time spent in the AllSAT prelude's solves, in microseconds.
     /// Subset of `probe_us`.

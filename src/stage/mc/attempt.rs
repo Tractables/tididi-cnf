@@ -1,14 +1,14 @@
 //! The compile attempts the model count runs, and how each is built.
 //!
-//! One attempt is one formula plus the per-component vtrees it will be
-//! compiled on. The primary compile, the no-SBVA retry and a Shannon
-//! cofactor's compile take the tree vitri built beside the reduction each is
-//! made of; the unreduced retry, the stall recompile and a cofactor compiled
-//! as it stands have no such pairing and build their own trees through
+//! One attempt is one formula plus the per-component vtrees it will be compiled
+//! on. The primary compile, the no-SBVA retry and a Shannon cofactor's compile
+//! take the tree vitri built beside the reduction each is made of; the
+//! unreduced retry, the stall recompile and a cofactor compiled as it stands
+//! have no such pairing and build their own trees through
 //! [`portfolio_attempt`], bounded by the time limit the attempt will be
-//! compiled against, then hand them to the same constructor. All end at the same `CompileAttempt`, so an attempt cannot
-//! arrive at the compile half-built. [`count_attempt`] compiles one under
-//! panic isolation.
+//! compiled against, then hand them to the same constructor. All end at the
+//! same `CompileAttempt`, so an attempt cannot arrive at the compile
+//! half-built. [`count_attempt`] compiles one under panic isolation.
 
 use std::time::Instant;
 
@@ -76,11 +76,11 @@ pub(super) fn attempt_from_vitri_build(
     CompileAttempt { formula, components, lift_pow2 }
 }
 
-/// An attempt for `formula` on vitri's portfolio, every component's
-/// vtree built up front by vitri, with no Arjun lift: the unreduced retry's,
-/// a cofactor's compiled as it stands, and the stall recompile's, whose caller
-/// sets the lift of the reduction it compiles. The portfolio is vitri's default, or the one catalog entry
-/// `only_entry` names. `None` when the construction fails, as
+/// An attempt for `formula` on vitri's portfolio, every component's vtree built
+/// up front by vitri, with no Arjun lift: the unreduced retry's, a cofactor's
+/// compiled as it stands, and the stall recompile's, whose caller sets the lift
+/// of the reduction it compiles. The portfolio is vitri's default, or the one
+/// catalog entry `only_entry` names. `None` when the construction fails, as
 /// [`built_or_give_up`] reads it.
 ///
 /// `deadline` is the wall the attempt will be compiled against, and its vtree

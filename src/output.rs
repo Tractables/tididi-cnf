@@ -181,8 +181,8 @@ pub struct Stats {
     /// Which stage produced the answer: of a model count, `compile`,
     /// `preprocessing`, `stall-recompile`, `support-enumeration`,
     /// `no-sbva-retry`, `unreduced-retry`, `monotone-reduction` or
-    /// `shannon-split`; of a plain
-    /// compile, `compile`, `preprocessing` or `bisect-retry`.
+    /// `shannon-split`; of a plain compile, `compile`, `preprocessing` or
+    /// `bisect-retry`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub answered_by: Option<&'static str>,
     /// What became of Arjun's reduction on a model count: `used`, or

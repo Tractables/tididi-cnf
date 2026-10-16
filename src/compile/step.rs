@@ -1,12 +1,12 @@
 //! Bottom-up compile of one component: [`compile_component`], the traversal
 //! every compile runs, on the whole formula or once per component, and the
-//! per-vtree-node leaf and internal step functions it drives. It walks the vtree bottom-up, hands each
-//! scope group's clauses to [`super::batch`] to fold (or, at a node whose
-//! smaller child spans a few variables, to the cofactor step in
-//! [`super::cofactor`]), applies the marginalize schedule through
-//! [`super::marginalize`], and stops on the deadline, or, for a compile
-//! handed a [`super::StallWatch`], on a single internal step's own wall
-//! ([`super::stall`]).
+//! per-vtree-node leaf and internal step functions it drives. It walks the
+//! vtree bottom-up, hands each scope group's clauses to [`super::batch`] to
+//! fold (or, at a node whose smaller child spans a few variables, to the
+//! cofactor step in [`super::cofactor`]), applies the marginalize schedule
+//! through [`super::marginalize`], and stops on the deadline, or, for a
+//! compile handed a [`super::StallWatch`], on a single internal step's own
+//! wall ([`super::stall`]).
 
 use std::collections::HashSet;
 use std::ops::ControlFlow;
@@ -114,10 +114,10 @@ impl DiagramClauses {
 /// clauses.
 ///
 /// [`GiveUp::Stopped`] and [`GiveUp::Refused`] are give-ups: the pass was cut
-/// short by the deadline, or an apply was refused (`OverBudget` /
-/// `OutputCap`). [`GiveUp::Invalid`] is a vtree that does not place exactly
-/// the formula's variables. A node
-/// proved UNSAT answers ⊥ at once, however much is left uncompiled.
+/// short by the deadline, or an apply was refused (`OverBudget` / `OutputCap`).
+/// [`GiveUp::Invalid`] is a vtree that does not place exactly the formula's
+/// variables. A node proved UNSAT answers ⊥ at once, however much is left
+/// uncompiled.
 pub(crate) fn compile_component(
     eng: &Engine,
     formula: &CnfFormula,

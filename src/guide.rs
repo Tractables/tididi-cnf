@@ -2,7 +2,8 @@
 //! counting a product's configurations to the distinct outputs of a circuit.
 //! [Using diagrams from the compiler](library_integration) runs a bounded
 //! compile from Rust and queries its diagram. The [architecture
-//! reference](architecture) maps the source for contributors. The binary, the input format and the run record are in the
+//! reference](architecture) maps the source for contributors. The binary, the
+//! input format and the run record are in the
 //! [command-line guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md).
 
 // Keep the index, sidebar and module declarations in one reading order.

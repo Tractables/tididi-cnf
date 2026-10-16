@@ -233,9 +233,9 @@ fn no_sbva_retry(
 ///
 /// The skip is the better start on most monotone formulas, whose unreduced
 /// compile answers sooner than Arjun would finish. On some, only the
-/// reduction's compile finishes, and this answers them. It takes the place of the support hunt the count
-/// without a reduction runs on other formulas, whose fresh Arjun pass skips
-/// this one too.
+/// reduction's compile finishes, and this answers them. It takes the place of
+/// the support hunt the count without a reduction runs on other formulas, whose
+/// fresh Arjun pass skips this one too.
 ///
 /// The whole stage runs inside [`monotone_reduction_window`], which leaves
 /// Shannon split its reserve, and its compile stops early enough to leave the

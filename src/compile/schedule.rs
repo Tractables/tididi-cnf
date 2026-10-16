@@ -48,13 +48,13 @@ pub(crate) fn step_completions(
 
 /// Decide which vtree levels may be marginal after each compilation step.
 ///
-/// Returns `schedule[t]`: the vtree nodes whose levels [`marginalize_levels`](tididi::Engine::marginalize_levels) may sum
-/// out once step `t` completes, each group sorted bottom-up so a node's
-/// children are marginal before it. A node is scheduled at the step of the
-/// highest-scoped clause mentioning any variable of its subtree — after that
-/// step nothing reads the subtree explicitly again — or at its own step if
-/// that is later. `last_scope_pos` is [`last_scope_positions`] of the
-/// compile's clause groups.
+/// Returns `schedule[t]`: the vtree nodes whose levels
+/// [`marginalize_levels`](tididi::Engine::marginalize_levels) may sum out once
+/// step `t` completes, each group sorted bottom-up so a node's children are
+/// marginal before it. A node is scheduled at the step of the highest-scoped
+/// clause mentioning any variable of its subtree — after that step nothing
+/// reads the subtree explicitly again — or at its own step if that is later.
+/// `last_scope_pos` is [`last_scope_positions`] of the compile's clause groups.
 pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<Vec<VtreeIdx>> {
     let n = vtree.num_nodes();
 

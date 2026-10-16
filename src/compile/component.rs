@@ -1,9 +1,10 @@
 //! Component compilation: the per-component compile-and-graft path driven by
-//! `compile/mod.rs`. The descriptors it works
-//! from are [`crate::vtree::ComponentVtree`] and [`crate::vtree::Component`].
+//! `compile/mod.rs`. The descriptors it works from are
+//! [`crate::vtree::ComponentVtree`] and [`crate::vtree::Component`].
 //! Variable-disjoint components are compiled separately, each by the
 //! bottom-up pass in `step.rs`, and grafted into one TDD here; [`CompileJob`]
 //! carries the caller's work order into that pass.
+
 use std::collections::HashSet;
 
 use tididi::Engine;
@@ -132,11 +133,11 @@ fn collect_free_vars(components: &[ComponentVtree], total_vars: u32) -> Vec<VarI
 ///
 /// The streaming count builds each `sub_formula` with
 /// `num_vars == component.local_to_global.len()` (see
-/// [`remap_component_clauses_into`]), so
-/// its product runs only over clause-appearing vars and drops free vars; the
-/// caller folds `2^free` on top. The grafted (TDD-returning) paths handle this
-/// separately via `collect_free_vars` + `graft_over`, and count a projected
-/// free var into [`Compiled::forgotten`] instead of leaving it out.
+/// [`remap_component_clauses_into`]), so its product runs only over
+/// clause-appearing vars and drops free vars; the caller folds `2^free` on top.
+/// The grafted (TDD-returning) paths handle this separately via
+/// `collect_free_vars` + `graft_over`, and count a projected free var into
+/// [`Compiled::forgotten`] instead of leaving it out.
 pub(crate) fn streaming_free_var_count(
     formula: &CnfFormula,
     components: &[Component],

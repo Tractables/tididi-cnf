@@ -3,13 +3,12 @@
 //! A node's clauses are not conjoined one by one into the accumulator: runs
 //! of them, the batches, are each built into a diagram first, and the batch
 //! is merged. `build_one_batch` decides where a batch stops (the floor and
-//! its width cap, an extension past the floor that
-//! weighs the batch's build cost against the merge's accumulator cost,
-//! UNSAT), `merge_batch` merges one batch and says whether the accumulator
-//! went UNSAT and whether the merge stayed absorbing, and `batch_accumulate`
-//! is the fold over the two. The width caps and the spine marking that reads
-//! a batch's width and pairs are here as well. `step.rs` decides which node
-//! is folded and when.
+//! its width cap, an extension past the floor that weighs the batch's build
+//! cost against the merge's accumulator cost, UNSAT), `merge_batch` merges
+//! one batch and says whether the accumulator went UNSAT and whether the
+//! merge stayed absorbing, and `batch_accumulate` is the fold over the two.
+//! The width caps and the spine marking that reads a batch's width and pairs
+//! are here as well. `step.rs` decides which node is folded and when.
 
 use std::cell::OnceCell;
 use std::sync::Arc;

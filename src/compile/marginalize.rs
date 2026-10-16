@@ -150,14 +150,14 @@ pub(crate) fn run_marginalize_at(
             }
         }
         // (2) Root backstop: any projected var not yet forgotten by (1) — its
-        // clause-scope was a leaf-step the main loop never visits (unit-only
-        // or free vars, incl. root-children) — is forgotten when the root
-        // step is processed. The projection shield (`forget_shield`) keeps
-        // every not-yet-forgotten projected var's ancestors explicit, so at
-        // the root every such var still has a marginal-ancestor-free path —
-        // the structural ∃-forget's precondition holds. (Free vars are ×2-correct without a forget, but
-        // ∃ on an unconstrained leaf is a harmless no-op and keeps the
-        // uniform 2^k divisor valid.)
+        // clause-scope was a leaf-step the main loop never visits (unit-only or
+        // free vars, incl. root-children) — is forgotten when the root step is
+        // processed. The projection shield (`forget_shield`) keeps every
+        // not-yet-forgotten projected var's ancestors explicit, so at the root
+        // every such var still has a marginal-ancestor-free path — the
+        // structural ∃-forget's precondition holds. (Free vars are ×2-correct
+        // without a forget, but ∃ on an unconstrained leaf is a harmless no-op
+        // and keeps the uniform 2^k divisor valid.)
         if t == current_vtree.root() {
             for &var in proj_vars {
                 if !forgotten.contains(&var) && !vars_to_forget.contains(&var) {

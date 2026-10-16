@@ -15,8 +15,8 @@
 //!
 //! Nothing may panic inside `GlobalAlloc::alloc`: `__rust_alloc` is
 //! `#[rustc_nounwind]`. A refused allocation panics at its call site through
-//! Rust's default handler instead, which is what lets
-//! the model count's recovery (`stage/mc/recovery.rs`) catch it.
+//! Rust's default handler instead, which is what lets the model count's
+//! recovery (`stage/mc/recovery.rs`) catch it.
 
 use tikv_jemalloc_ctl::{epoch, epoch_mib, raw, stats};
 use tikv_jemalloc_ctl::stats::{allocated_mib, mapped_mib, retained_mib};
