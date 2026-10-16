@@ -26,6 +26,7 @@ include = [
     "/docs/logo.svg",
     "/docs/switches-tdd.svg",
     "/docs/evaluation/cactus-120s.svg",
+    "/docs/evaluation/cactus-3600s.svg",
     "/CHANGELOG.md",
     "/LICENSE",
     "/NOTICE",

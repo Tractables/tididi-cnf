@@ -57,10 +57,21 @@ competition was scored on:
 
 <!-- end of evaluation table -->
 
-Given an hour, tididi-bonsai solves 120 of the 200 instances of 2025, 69 of
-the 100 public instances of 2026 and 61 of the 100 private ones. The
-[evaluation](docs/evaluation.md) says how this was measured, with the result
-of every run and the competition's own results, and the
+The competition's main track allows an hour per instance. Run the same way
+for an hour each on the private set, tididi-bonsai solves more instances than
+any of them within any time limit from about three seconds to 18 minutes;
+over the full hour, d4 and Ganak solve 62, tididi-bonsai 61, Cara 58 and
+GPMC 54:
+
+<p align="center">
+  <img src="docs/evaluation/cactus-3600s.svg" width="760"
+       alt="Cactus plot of instances solved against time per instance, up to an hour, on the 100 private instances of 2026, for tididi-bonsai, Ganak, d4, GPMC and Cara">
+</p>
+
+Given an hour, tididi-bonsai also solves 120 of the 200 instances of 2025 and
+69 of the 100 public ones of 2026. The [evaluation](docs/evaluation.md) says
+how this was measured, with the result of every run and the competition's own
+results, and the
 [evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
 shows every run by set, by pair of solvers and by instance.
 

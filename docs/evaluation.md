@@ -5,9 +5,11 @@ with the exact model counters entered in the 2026
 [Model Counting Competition](https://mccompetition.org/), on the instances of
 the competition's track 1, unweighted model counting, from 2025 and 2026. This
 page says how it was measured. The result of every run is in
-[`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv): the set,
-the instance, the solver, whether it printed a count in time and after how
-many seconds. The
+[`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv) and, for
+an hour per instance,
+[`evaluation/mcc-track1-3600s.csv`](evaluation/mcc-track1-3600s.csv): the
+set, the instance, the solver, whether it printed a count in time and after
+how many seconds. The
 [evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
 shows these runs by set, by pair of solvers and by instance; it reads the
 files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
@@ -29,10 +31,10 @@ each formula was run once, and its repeat takes its result.
   its defaults, told the time and memory the run has
   ([time and memory limits](limits.md)).
 - The 2026 competition's entries in its exact category, as submitted, each
-  run by its own script for the competition's two-minute track: Ganak (in the
-  two-minute configuration it entered), d4, GPMC and Cara. The entries in the
-  approximate and heuristic categories do not promise exact counts and are
-  left out.
+  run by its own script for the track of the run: Ganak, which entered one
+  configuration for two minutes and another for an hour, and d4, GPMC and
+  Cara, which entered one script for both. The entries in the approximate and
+  heuristic categories do not promise exact counts and are left out.
 
 ## Machine and limits
 
@@ -45,10 +47,29 @@ the instance and, on the private set, with the competition's.
 
 ## One hour
 
-Given an hour per instance (3600 s, 48 runs at a time on the same kind of
-machine, a 30,000 MiB address-space limit), tididi-bonsai solves 120 of the
-200 instances of 2025, 69 of the 100 public instances of 2026 and 61 of the
-100 private ones.
+The competition's main track, track 1, allows an hour per instance. On the
+100 private instances, the five solvers ran for an hour each on the same kind
+of machine under the same limits, side by side: 8 runs of each at a time, 40
+in all, so that every solver ran under the same load. An instance that no
+entry in the exact category solved in either track of the competition, and
+that tididi-bonsai had not solved in an hour before, was not run again and
+counts as unsolved for every solver; that leaves 67 of the 100 to run.
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-3600s.csv -->
+
+| Solver | MCC 2026 private (100) |
+| --- | ---: |
+| tididi-bonsai | 61 |
+| Ganak | **62** |
+| d4 | **62** |
+| GPMC | 54 |
+| Cara | 58 |
+
+<!-- end of evaluation table -->
+
+Given an hour on its own (48 runs at a time, a 30,000 MiB address-space
+limit), tididi-bonsai solves 120 of the 200 instances of 2025 and 69 of the
+100 public instances of 2026.
 
 ## The competition's own results
 
@@ -67,5 +88,6 @@ instances, the entries in the exact category solved, in two minutes (track
 | TiDiDi | 46 | 56 |
 
 Its machines and ours differ, so these numbers and the ones above do not
-compare one to one; on ours, tididi-bonsai 0.1.0 solves 53 of these instances
-in 120 s and 61 in an hour.
+compare one to one: on ours, d4 solves one instance fewer in an hour, Cara
+one and GPMC three, and tididi-bonsai 0.1.0 solves 53 of these instances in
+120 s and 61 in an hour.

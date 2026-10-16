@@ -18,9 +18,9 @@
 <line class="grid" x1="64" x2="736" y1="92.0" y2="92.0" stroke-width="1"/>
 <text class="muted" x="56" y="96.0" font-size="12" text-anchor="end">30 s</text>
 <line class="grid" x1="64" x2="736" y1="56.0" y2="56.0" stroke-width="1"/>
-<text class="muted" x="56" y="60.0" font-size="12" text-anchor="end">60 s</text>
+<text class="muted" x="56" y="60.0" font-size="12" text-anchor="end">1 min</text>
 <line class="grid" x1="64" x2="736" y1="20.0" y2="20.0" stroke-width="1"/>
-<text class="muted" x="56" y="24.0" font-size="12" text-anchor="end">120 s</text>
+<text class="muted" x="56" y="24.0" font-size="12" text-anchor="end">2 min</text>
 <line class="grid" x1="64.0" x2="64.0" y1="20" y2="388" stroke-width="1"/>
 <text class="muted" x="64.0" y="406" font-size="12" text-anchor="middle">0</text>
 <line class="grid" x1="232.0" x2="232.0" y1="20" y2="388" stroke-width="1"/>
