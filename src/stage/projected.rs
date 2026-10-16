@@ -155,10 +155,8 @@ pub(super) fn enumerate_show<T: Tally + Clone>(
 /// just short of converging leaves the raw formula, which is far slower to
 /// count.
 pub(super) fn projected_arjun_budget_ms(time_limit_ms: Option<u64>, num_vars: u64) -> u64 {
-    let frac: u64 = if num_vars >= 1_000_000 { 50 } else { 38 };
-    time_limit_ms
-        .map(|w| (w * frac / 100).clamp(5_000, 300_000))
-        .unwrap_or(300_000)
+    let ratio = if num_vars >= 1_000_000 { 0.50 } else { 0.38 };
+    crate::budget::resolve_scaled(time_limit_ms, ratio, 300_000, 5_000, 300_000)
 }
 
 /// One vitri preprocessing stage on `problem`, as a pipeline step: UNSAT is

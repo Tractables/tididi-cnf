@@ -98,3 +98,11 @@ fn the_projected_arjun_reduce_takes_a_size_adaptive_share_of_the_wall() {
     // No wall declared ⇒ the flat default.
     assert_eq!(projected_arjun_budget_ms(None, 1_000), 300_000);
 }
+
+/// Even the largest declared wall reaches the budget ceiling without overflow.
+#[test]
+fn the_projected_arjun_budget_caps_the_largest_time_limit() {
+    for num_vars in [1_000, 2_000_000] {
+        assert_eq!(projected_arjun_budget_ms(Some(u64::MAX), num_vars), 300_000);
+    }
+}
