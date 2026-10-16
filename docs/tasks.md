@@ -140,17 +140,17 @@ second and another not finish. Without `--vtree`, the run chooses:
   of its own. `wmc` has no such step limit.
 - Under `mc`, the run asks vitri to skip Arjun on a monotone formula, one in
   which every variable occurs in one polarity only: its compile usually
-  answers sooner without the reduction. When that compile gives up with more than five and a
-  half minutes left, Arjun reduces the formula after all and the reduction,
-  when smaller, is compiled, leaving a quarter of the time left, and at least
-  five minutes, to the steps after it; the record's `answered_by` is then
-  `monotone-reduction`.
+  answers sooner without the reduction. When that compile gives up with more
+  than five and a half minutes left, Arjun reduces the formula after all and
+  the reduction, when smaller, is compiled, leaving a quarter of the time
+  left, and at least five minutes, to the steps after it; the record's
+  `answered_by` is then `monotone-reduction`.
 
 With `--vtree <spec>`, the run compiles on that construction instead, and a
 `compile` that gives up on it has no retry. Under `mc` that also skips the
-cascade: the formula is simplified but not reduced by
-Arjun, and each of its independent parts compiles on a vtree of that
-construction. `wmc` has the cascade only and refuses the flag.
+cascade: the formula is simplified but not reduced by Arjun, and each of its
+independent parts compiles on a vtree of that construction. `wmc` has the
+cascade only and refuses the flag.
 `tididi --help` lists every spec and its parameters, and
 [vitri's vtree guide](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md)
 explains the constructions. `balanced`, `linear`, `reverse-linear` and
