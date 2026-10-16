@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 - First public release: a command-line compiler and a Rust library that compile a DIMACS CNF into a Tree Decision Diagram (TDD) with the [tididi](https://github.com/Tractables/tididi) library, after CNF preprocessing and vtree construction by [vitri](https://github.com/Tractables/vitri).
 - Count models (MC), projected models (PMC) and projected weighted models (PWMC) exactly, and weighted models (WMC) in double-precision log arithmetic.
