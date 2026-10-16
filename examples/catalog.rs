@@ -3,7 +3,7 @@
 //! Run with `cargo run --example catalog`.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tididi_bonsai::tididi::Literal;
+    use tididi_bonsai::tididi::{self, Literal, Tdd};
     use tididi_bonsai::{parse_dimacs, Limits, Mode};
 
     // Variables 1–3 choose the processor, 4–6 the memory (8, 16 or 32 GB),
@@ -40,5 +40,9 @@ p cnf 8 11
     println!("And the first processor: {}", counter.model_count()?);
     counter.observe([Literal::try_from(-7)?])?;
     println!("First processor, no graphics card: {}", counter.model_count()?);
+
+    let extra = Tdd::clause(rules_circuit.vtree(), [7, 8])?;
+    let upgraded = tididi::and(rules_circuit.clone(), extra)?;
+    println!("With a graphics card or larger battery: {}", upgraded.model_count()?);
     Ok(())
 }

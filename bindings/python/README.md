@@ -68,18 +68,30 @@ counts a file and prints the answer.
 The extension compiles the library in this repository, and vitri's C++ stack
 with it, so it needs the toolchain and system packages that
 [`docs/building.md`](https://github.com/Tractables/tididi-bonsai/blob/main/docs/building.md)
-lists, and maturin:
+lists. From the repository root, create a virtual environment and install
+the extension with maturin:
 
 ```sh
-pip install maturin
-maturin build --release --manifest-path bindings/python/Cargo.toml
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install maturin
+maturin develop --release --locked --manifest-path bindings/python/Cargo.toml
 ```
 
 The extension links the system GMP dynamically. No wheel is published yet.
 
-`maturin develop --release` installs the extension into the active virtual
-environment for `pytest bindings/python/tests`. Give pytest
-`--tididi-cli target/release/tididi` to also compare the version, and the
-counts of the instances
+To build a wheel instead, run
+`maturin build --release --locked --manifest-path bindings/python/Cargo.toml --compatibility linux --auditwheel skip`.
+That wheel links the system libraries and is for a compatible Linux machine.
+
+Run the tests in the same environment, from the repository root:
+
+```sh
+python -m pip install pytest
+cargo build --release --locked --bin tididi
+python -m pytest bindings/python/tests --tididi-cli target/release/tididi
+```
+
+The tests also compare the version and the counts of the instances
 [`bindings/parity.txt`](https://github.com/Tractables/tididi-bonsai/blob/main/bindings/parity.txt)
 lists with the binary's.

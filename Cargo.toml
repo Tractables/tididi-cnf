@@ -37,6 +37,7 @@ include = [
     "/docs/examples/*.md",
     "/docs/example-navigation.js",
     "/docs/architecture.md",
+    "/docs/library-integration.md",
     # The instances the doctests read.
     "/tests/data/simple.cnf",
     "/tests/data/queens5.cnf",

@@ -1,6 +1,9 @@
 # Cargo's build output.
 /target
 
+# The Python bindings' local installation environment.
+/.venv
+
 # Editor state.
 .idea/
 .vscode/

@@ -34,8 +34,8 @@ tool, `tididi`, and a Rust library, `tididi_bonsai`.
 tididi-bonsai and the exact counters entered in the 2026
 [Model Counting Competition](https://mccompetition.org/) ran on the
 competition's exact counting instances of 2025 and 2026, two minutes each, on
-the same machine under the same limits. For any time limit from about one
-second to 100 seconds, tididi-bonsai solves more instances within it than any
+the same machine under the same limits. For any time limit from two
+seconds to 90 seconds, tididi-bonsai solves more instances within it than any
 of them. At two minutes Ganak is two instances ahead overall, and
 tididi-bonsai leads on the private set, the 100 instances the 2026
 competition was scored on:
@@ -58,8 +58,8 @@ competition was scored on:
 <!-- end of evaluation table -->
 
 The competition's main track allows an hour per instance. Run the same way
-for an hour each on the private set, tididi-bonsai solves more instances than
-any of them within any time limit from about three seconds to 18 minutes;
+for an hour each on the private set, tididi-bonsai solves at least as many
+instances as any of them within any time limit from three seconds to 18 minutes;
 over the full hour, d4 and Ganak solve 62, tididi-bonsai 61, Cara 58 and
 GPMC 54:
 
@@ -74,7 +74,7 @@ Given an hour, tididi-bonsai also solves 120 of the 200 instances of 2025 and
 As a compiler, writing a circuit that can be queried afterwards,
 tididi-bonsai compiles 181 of the same 400 instances in two minutes each. Of
 four d-DNNF compilers run beside it, Panini compiles 149, D4v2 143, GPMC 131
-and c2d 105, and from two seconds on, tididi-bonsai compiles the most within
+and c2d 105, and from three seconds on, tididi-bonsai compiles the most within
 any time limit:
 
 <p align="center">
@@ -203,13 +203,9 @@ compilation and the fallbacks for an instance that runs out of time or memory.
 Below it, [`compile_cnf`] compiles a formula on a vtree you choose; the
 [vtree example] compares the circuits several vtrees give. A program that
 builds its formula as data passes the clauses to [`formula_from_clauses`]
-instead of writing DIMACS text. The crate is not on crates.io yet; depend on
-it through git:
-
-```toml
-[dependencies]
-tididi-bonsai = { git = "https://github.com/Tractables/tididi-bonsai" }
-```
+instead of writing DIMACS text. The crate is not on crates.io yet;
+[use it through git](docs/building.md#use-from-another-rust-crate), with the
+dependency settings shown in the building guide.
 
 ## Bindings
 

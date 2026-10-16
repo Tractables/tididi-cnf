@@ -117,9 +117,34 @@ With the card, the battery is out and memory is 16 GB (any processor) or
 32 GB (the third): 4 laptops. The first processor then leaves only 16 GB.
 Dropping the card again gives 8 or 16 GB, each with or without the battery.
 
+## Add a rule to the circuit
+
+The shop now offers only laptops with a graphics card or a larger battery.
+Build that clause as a diagram on the compiled circuit's own vtree, then
+conjoin the diagrams with [`tididi::and`](crate::tididi::and). The compiler
+may return a different vtree from the one it started with, so new operands
+use the result's tree. Cloning keeps the original circuit available for
+other queries; the counter's observations belong to that counter and do not
+change the circuit.
+
+```rust,ignore,{class=tested-example}
+let extra = Tdd::clause(rules_circuit.vtree(), [7, 8])?;
+let upgraded = tididi::and(rules_circuit.clone(), extra)?;
+println!("With a graphics card or larger battery: {}", upgraded.model_count()?);
+```
+
+Output:
+
+```text
+With a graphics card or larger battery: 11
+```
+
+Four configurations have a graphics card, and seven have the larger battery.
+The rules forbid having both, so the new offer has 4 + 7 = 11 configurations.
+
 To keep the circuit between runs, save it as the binary's `--save-tdd` does;
 the library's
 [persistence example](https://tractables.github.io/tididi/tididi/guide/examples/persistence/index.html)
 saves and reloads one. The
 [complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/catalog.rs)
-runs all three questions.
+runs all these queries.

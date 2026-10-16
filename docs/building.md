@@ -46,6 +46,25 @@ link:
 RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo build --release
 ```
 
+## Use from another Rust crate
+
+The crate is not on crates.io yet. Add it through git, together with the
+goatd revision used by this release, to your application's root `Cargo.toml`:
+
+```toml
+[dependencies]
+tididi-bonsai = { git = "https://github.com/Tractables/tididi-bonsai" }
+
+[patch.crates-io]
+goatd = { git = "https://github.com/Tractables/goatd", rev = "e237c1afabcf9feb3047bef58efd0113a6005ea7" }
+```
+
+Cargo applies patches from the consuming workspace's root manifest only;
+the patch in this repository does not reach your application. Until the
+next goatd release, include this patch to build with the dependency revision
+tested here. The native toolchain and system packages above are also needed
+when building the library.
+
 ## Documentation builds
 
 ```sh
