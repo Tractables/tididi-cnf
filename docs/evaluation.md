@@ -2,14 +2,17 @@
 
 The [evaluation in the README](../README.md#evaluation) compares tididi-bonsai
 with the exact model counters entered in the 2026
-[Model Counting Competition](https://mccompetition.org/), on the instances of
-the competition's track 1, unweighted model counting, from 2025 and 2026. This
-page says how it was measured. The result of every run is in
-[`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv) and, for
-an hour per instance,
-[`evaluation/mcc-track1-3600s.csv`](evaluation/mcc-track1-3600s.csv): the
-set, the instance, the solver, whether it printed a count in time and after
-how many seconds. The
+[Model Counting Competition](https://mccompetition.org/), and with four d-DNNF
+compilers, on the instances of the competition's track 1, unweighted model
+counting, from 2025 and 2026. This page says how it was measured. The result
+of every run is in
+[`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv), for an
+hour per instance in
+[`evaluation/mcc-track1-3600s.csv`](evaluation/mcc-track1-3600s.csv) and for
+compilation in
+[`evaluation/mcc-track1-compile-120s.csv`](evaluation/mcc-track1-compile-120s.csv):
+the set, the instance, the solver, whether it finished in time and after how
+many seconds. The
 [evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
 shows these runs by set, by pair of solvers and by instance; it reads the
 files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
@@ -70,6 +73,43 @@ counts as unsolved for every solver; that leaves 67 of the 100 to run.
 Given an hour on its own (48 runs at a time, a 30,000 MiB address-space
 limit), tididi-bonsai solves 120 of the 200 instances of 2025 and 69 of the
 100 public instances of 2026.
+
+## Compilation
+
+With `--mode compile`, tididi-bonsai writes the diagram it compiles, which
+the tididi library reads back and queries. Four d-DNNF compilers, whose
+circuits can be queried in the same ways, ran beside it on the same 400
+instances, two minutes each, side by side (9 runs of each at a time, 45 in
+all) on the same kind of machine under the same memory limit:
+
+- tididi-bonsai 0.1.0, as
+  `tididi --mode compile --save-tdd <file> --time-limit-ms 120000 --mem-limit-mb 61440 <instance>`,
+  on the instance without its `c t mc` line, since compilation takes no task.
+- [Panini](https://github.com/meelgroup/KCBox),
+  [D4v2](https://github.com/crillab/d4v2) and
+  [GPMC](https://github.com/System-Verification-Lab/GPMC), built from their
+  repositories' main branches, GPMC in its d-DNNF mode with variable
+  elimination off so that its circuit keeps every variable, and
+  [c2d](http://reasoning.cs.ucla.edu/c2d/) 2.20.
+
+An instance is compiled when the compiler wrote its circuit within the time
+and a separate checker, reading the circuit back, found that it mentions every
+variable and that its model count is the one the compiler reported. D4v2
+reports no count, so its time is its own run, without the check. On one
+instance of 2025, Panini's circuit and count differ from the count of
+tididi-bonsai and of Ganak; it counts as not compiled there.
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-compile-120s.csv -->
+
+| Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
+| --- | ---: | ---: | ---: | ---: |
+| tididi-bonsai | **73** | **59** | **49** | **181** |
+| Panini | 55 | 53 | 41 | 149 |
+| D4v2 | 48 | 55 | 40 | 143 |
+| GPMC | 48 | 50 | 33 | 131 |
+| c2d | 30 | 44 | 31 | 105 |
+
+<!-- end of evaluation table -->
 
 ## The competition's own results
 

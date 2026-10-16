@@ -69,9 +69,21 @@ GPMC 54:
 </p>
 
 Given an hour, tididi-bonsai also solves 120 of the 200 instances of 2025 and
-69 of the 100 public ones of 2026. The [evaluation](docs/evaluation.md) says
-how this was measured, with the result of every run and the competition's own
-results, and the
+69 of the 100 public ones of 2026.
+
+As a compiler, writing a circuit that can be queried afterwards,
+tididi-bonsai compiles 181 of the same 400 instances in two minutes each. Of
+four d-DNNF compilers run beside it, Panini compiles 149, D4v2 143, GPMC 131
+and c2d 105, and from two seconds on, tididi-bonsai compiles the most within
+any time limit:
+
+<p align="center">
+  <img src="docs/evaluation/cactus-compile-120s.svg" width="760"
+       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-bonsai, Panini, D4v2, GPMC and c2d">
+</p>
+
+The [evaluation](docs/evaluation.md) says how this was measured, with the
+result of every run and the competition's own results, and the
 [evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
 shows every run by set, by pair of solvers and by instance.
 
