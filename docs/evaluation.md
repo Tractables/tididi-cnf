@@ -41,12 +41,13 @@ each formula was run once, and its repeat takes its result.
 
 ## Machine and limits
 
-All runs were on an AWS `r7i.24xlarge` machine (48 cores, 768 GiB), 24 at a
-time, one solver after another. Each run had 120 s of wall-clock time and a
-60 GiB address-space limit; the competition allowed 120 s of CPU time and
-62,000 MiB. An instance is solved when the solver printed its count within the
-time. Every count agrees with the count of each other solver that finished
-the instance and, on the private set, with the competition's.
+Every run was on an AWS `r7i.24xlarge` machine (48 cores, 768 GiB). The
+two-minute counts ran 24 at a time, one solver after another. Each run had
+120 s of wall-clock time and a 60 GiB address-space limit; the competition
+allowed 120 s of CPU time and 62,000 MiB. An instance is solved when the
+solver printed its count within the time. Every count agrees with the count of
+each other solver that finished the instance and, on the private set, with the
+competition's.
 
 ## One hour
 
