@@ -1,0 +1,267 @@
+:root {
+  /* The browser page's palette and type, so the two pages read as one site.
+     The series colours are the solvers', in the order of the README's
+     figure; the first, the logo's blue, is tididi-bonsai's. */
+  color-scheme: light dark;
+  --bg: #f3f5f8;
+  --card: #ffffff;
+  --line: #dce2ea;
+  --ink: #1b2430;
+  --muted: #5d6877;
+  --accent: #2774ae;
+  --accent-fill: #dcebf7;
+  --bad: #b3261e;
+  --code: #f6f8fa;
+  --series-0: #2774ae;
+  --series-1: #d55e00;
+  --series-2: #009e73;
+  --series-3: #cc79a7;
+  --series-4: #e69f00;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181d;
+    --card: #1b2027;
+    --line: #2d343d;
+    --ink: #e4e8ec;
+    --muted: #9aa3ad;
+    --accent: #6cb0e8;
+    --accent-fill: #1c3347;
+    --bad: #f28b82;
+    --code: #151a20;
+    --series-0: #58a6ff;
+    --series-1: #f0884a;
+    --series-2: #3fc59a;
+    --series-3: #e0a3c8;
+    --series-4: #f2be4a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* The browser's `display: none` for the `hidden` attribute is a user-agent
+   rule, which any rule here setting `display` overrides. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 var(--sans);
+}
+
+main {
+  max-width: 84rem;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 4rem;
+}
+
+@media (max-width: 40rem) {
+  main { padding: 1rem 1rem 3rem; }
+}
+
+header { margin-bottom: 1.25rem; max-width: 60rem; }
+
+.logo { display: block; width: auto; height: 3.5rem; max-width: 100%; }
+
+h1 { margin: 0.6rem 0 0.4rem; font-size: 1.5rem; font-weight: 600; }
+
+h2 { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 600; }
+
+.lede { margin: 0; color: var(--muted); }
+
+a { color: var(--accent); }
+
+.note { margin: 0 0 0.8rem; font-size: 13px; color: var(--muted); }
+
+.error {
+  margin: 0 0 1.25rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 4px solid var(--bad);
+  background: var(--card);
+  color: var(--bad);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.card {
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ------------------------------------------------------------ controls */
+
+.choice, .pair-choice, .filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem 1rem;
+}
+
+.choice { margin-bottom: 1.25rem; }
+.choice .note, .pair-choice { margin-bottom: 0.4rem; }
+.filters { margin-bottom: 0.6rem; }
+
+.field { min-width: 10rem; }
+.filters .field { flex: 1 1 12rem; max-width: 20rem; }
+
+label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+select, input {
+  width: 100%;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.4rem 0.55rem;
+  font: 14px/1.4 var(--sans);
+}
+
+select:focus, input:focus, button:focus-visible, svg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A solver's colour, beside its name. */
+.key {
+  display: inline-block;
+  width: 0.9rem;
+  height: 3px;
+  margin-right: 0.4rem;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.toggles { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
+
+.toggle {
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: 13px/1.4 var(--sans);
+  cursor: pointer;
+}
+
+.toggle .count { margin-left: 0.45rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.toggle[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-fill); }
+.toggle[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.toggle[aria-pressed="false"] .key { opacity: 0.35; }
+
+.counts { margin: 0.4rem 0 0.6rem; padding: 0; list-style: none; font-size: 14px; }
+
+/* --------------------------------------------------------------- plots */
+
+/* The two plots side by side once there is room for both. */
+@media (min-width: 64rem) {
+  .charts { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 1.25rem; }
+}
+
+.plot { position: relative; }
+
+.plot svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  font: 12px var(--sans);
+  touch-action: pan-y;
+}
+
+.plot .grid { stroke: var(--line); }
+.plot .axis { stroke: var(--muted); fill: none; }
+.plot .tick, .plot .band-label { fill: var(--muted); }
+.plot .band-label { font-size: 11px; }
+.plot .axis-title, .plot .region { fill: var(--ink); font-size: 13px; }
+.plot .curve { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+.plot .curve.ours { stroke-width: 3; }
+.plot .band { fill: var(--muted); opacity: 0.1; }
+.plot .diagonal { stroke: var(--muted); stroke-dasharray: 4 4; }
+.plot .dot { stroke: var(--card); stroke-width: 1; fill-opacity: 0.85; }
+.plot .ring { fill: none; stroke-width: 2; pointer-events: none; }
+
+.tip {
+  position: absolute;
+  z-index: 1;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--card);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tip > * { display: block; }
+.tip strong { font-weight: 600; }
+
+/* -------------------------------------------------------------- tables */
+
+.scroll { overflow: auto; }
+/* Positioned, so the hidden words in its cells stay inside its scroll. */
+.table-box { position: relative; max-height: 36rem; border: 1px solid var(--line); border-radius: 6px; }
+
+table.numbers {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.numbers th, .numbers td {
+  padding: 0.3rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.numbers th { font-weight: 500; }
+.numbers thead th { color: var(--muted); font-size: 13px; }
+.numbers th[scope="row"], .numbers th:first-child, .numbers .set { text-align: left; }
+.numbers thead th.group { text-align: center; color: var(--ink); }
+.numbers .picked { background: var(--code); }
+.numbers .best { font-weight: 700; }
+
+/* The instance table keeps its header and its first column in view. */
+.table-box table { width: 100%; }
+.table-box thead th { position: sticky; top: 0; z-index: 1; background: var(--card); }
+.table-box tbody th { position: sticky; left: 0; background: var(--card); font: 13px var(--mono); }
+.table-box thead th:first-child { left: 0; z-index: 2; }
+.table-box td.set { color: var(--muted); }
+.table-box td.none { color: var(--muted); }
+.table-box td.fastest { font-weight: 700; background: var(--accent-fill); }
+
+.sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sort .arrow { display: inline-block; width: 1em; font-size: 10px; }

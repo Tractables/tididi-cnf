@@ -6,7 +6,9 @@
 # <out-dir> receives the page: index.html, styles.css, the scripts, vitri's
 # reader of the .vtree format, vendor/vitri/bindings/wasm/vtree.js, the
 # crate's logo, docs/logo.svg, and the example formulas examples.js names,
-# from tests/data/.
+# from tests/data/. Its evaluation/ receives the evaluation page from
+# docs/evaluation/: index.html, its stylesheet and scripts, and the results it
+# reads, datasets.json and the CSV files of runs.
 # With <emscripten-prefix>, the prefix vitri's emscripten-prefix.sh installed
 # GMP into, it also receives the built module from
 # target/wasm32-unknown-emscripten/release, the two side modules the module
@@ -29,6 +31,8 @@ root=$(cd "$here/../.." && pwd)
 mkdir -p "$out"
 cp "$here"/index.html "$here"/styles.css "$here"/*.js "$root"/docs/logo.svg "$out/"
 cp "$root"/vendor/vitri/bindings/wasm/vtree.js "$out/"
+mkdir -p "$out/evaluation"
+cp "$root"/docs/evaluation/index.html "$root"/docs/evaluation/*.{css,js,json,csv} "$out/evaluation/"
 for example in $(grep -o '"[A-Za-z0-9_]*\.cnf"' "$here/examples.js" | tr -d '"'); do
   cp "$root/tests/data/$example" "$out/"
 done

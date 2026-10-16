@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="tididi-bonsai and the exact model counters of the 2026 Model Counting Competition on the competition's instances: solved counts, a cactus plot, a head-to-head plot and every run.">
+<title>tididi-bonsai: evaluation</title>
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+
+<main>
+
+<header>
+  <a href="https://github.com/Tractables/tididi-bonsai"><img class="logo"
+     src="../logo.svg" alt="tididi bonsai" width="916" height="262"></a>
+  <h1>Evaluation</h1>
+  <p class="lede">tididi-bonsai and the exact model counters entered in the
+  2026 <a href="https://mccompetition.org/">Model Counting Competition</a> ran
+  on the instances of the competition's track 1, unweighted model counting,
+  from 2025 and 2026: each solver on each instance, on one machine under the
+  same limits. An instance is solved when the solver printed its count within
+  the time limit, and every count agrees with the count of each other solver
+  that finished the same instance.
+  <a href="https://github.com/Tractables/tididi-bonsai/blob/main/docs/evaluation.md">How
+  it was measured</a> names the solvers' versions, the machine and the limits.
+  tididi-bonsai also runs <a href="https://tractables.github.io/tididi-bonsai/">in
+  the browser</a>.</p>
+</header>
+
+<section class="choice" aria-label="Which runs and instances">
+  <div class="field">
+    <label for="dataset">Runs</label>
+    <select id="dataset"></select>
+  </div>
+  <div class="field">
+    <label for="set">Instances</label>
+    <select id="set"></select>
+  </div>
+  <p id="dataset-note" class="note"></p>
+</section>
+
+<p id="load-error" class="error" role="alert" hidden></p>
+
+<section class="card" aria-labelledby="summary-heading">
+  <h2 id="summary-heading">Solved per set</h2>
+  <p id="summary-note" class="note"></p>
+  <div class="scroll">
+    <table id="summary" class="numbers" aria-labelledby="summary-heading"></table>
+  </div>
+</section>
+
+<div class="charts">
+  <section class="card" aria-labelledby="cactus-heading">
+    <h2 id="cactus-heading">Solved within a time limit</h2>
+    <p class="note">A point at <i>n</i> instances and <i>t</i> seconds: the
+    solver finished <i>n</i> instances in <i>t</i> seconds or less each. Point
+    at a curve, or focus the plot and use the arrow keys, to read it; the
+    buttons show and hide each solver.</p>
+    <div id="cactus-solvers" class="toggles" role="group" aria-label="Solvers on the plot"></div>
+    <div class="plot">
+      <svg id="cactus" role="img" tabindex="0"></svg>
+      <div class="tip" hidden></div>
+      <p class="live visually-hidden" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <section class="card" id="pair-card" aria-labelledby="pair-heading">
+    <h2 id="pair-heading">Head to head</h2>
+    <p class="note">One point per instance either solver solved, at the time
+    each took; the diagonal is where they take the same.</p>
+    <div class="pair-choice">
+      <div class="field">
+        <label for="pair-a">Across</label>
+        <select id="pair-a"></select>
+      </div>
+      <div class="field">
+        <label for="pair-b">Up</label>
+        <select id="pair-b"></select>
+      </div>
+    </div>
+    <ul id="pair-counts" class="counts"></ul>
+    <div class="plot">
+      <svg id="pair" role="img" tabindex="0"></svg>
+      <div class="tip" hidden></div>
+      <p class="live visually-hidden" aria-live="polite"></p>
+    </div>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="instances-heading">
+  <h2 id="instances-heading">Every instance</h2>
+  <div class="filters">
+    <div class="field">
+      <label for="search">Instance name</label>
+      <input id="search" type="search" placeholder="mc2026_track1" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="solved-by">Solved by</label>
+      <select id="solved-by"></select>
+    </div>
+    <div class="field">
+      <label for="unsolved-by">Not solved by</label>
+      <select id="unsolved-by"></select>
+    </div>
+  </div>
+  <p id="instance-count" class="note" aria-live="polite"></p>
+  <div class="scroll table-box">
+    <table id="instances" class="numbers" aria-labelledby="instances-heading"></table>
+  </div>
+</section>
+
+</main>
+
+<script type="module" src="page.js"></script>
+
+</body>
+</html>

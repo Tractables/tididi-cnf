@@ -2,7 +2,8 @@ name: Docs
 
 # Builds the crate's rustdoc, with the worked examples and the architecture
 # reference under `guide`, and the browser page, and on request publishes both
-# to GitHub Pages: the page at the site root, the rustdoc beside it.
+# to GitHub Pages: the page at the site root, with the evaluation page under
+# `evaluation/`, the rustdoc beside it.
 #
 # The documentation build needs none of the C++ toolchain the Rust workflow
 # installs: vitri's `build.rs` returns early when `DOCS_RS` is set, and rustdoc
