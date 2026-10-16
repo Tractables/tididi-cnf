@@ -29,8 +29,9 @@
 //! never kill on uncertain probes.
 //!
 //! [`PruneLimits`] holds every limit a pass runs under. Several of them
-//! scale with the run's time limit ([`PruneLimits::for_wall`] says which) (`--time-limit-ms`, or `TIDIDI_TIME_LIMIT_MS`
-//! without the flag), which [`SatPrune`] carries.
+//! scale with the run's time limit, `--time-limit-ms` or, without the flag,
+//! `TIDIDI_TIME_LIMIT_MS`; [`PruneLimits::for_wall`] says which, and
+//! [`SatPrune`] carries them.
 //!
 //! **Spend caps.** A context's unproductive spend, its spend since its last
 //! productive rewrite, is capped at `PruneLimits::spend_cap_ms`. A compile
@@ -87,12 +88,13 @@ impl SatPrune {
         SatPruneCtx::new(formula, self.limits, skip_content_twins, compile_spent_us)
     }
 
-    /// Add what one pass did to the run's tallies.
+    /// Add the tallies of one component's pruning context, every pass it
+    /// ran, to the run's.
     pub(crate) fn absorb(&self, stats: SatPruneStats) {
         self.tally.borrow_mut().get_or_insert_default().absorb(stats);
     }
 
-    /// The run's tallies, `None` when no pass ran to its end.
+    /// The run's tallies, `None` when no component's compile ran to its end.
     pub(crate) fn into_stats(self) -> Option<SatPruneStats> {
         self.tally.into_inner()
     }

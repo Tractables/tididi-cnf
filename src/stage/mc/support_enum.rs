@@ -386,9 +386,8 @@ pub(super) fn reduce_for_support(
     );
     let t = Instant::now();
     // vitri's Arjun-only operation on the exact allowance chosen above.
-    // Simplification is deliberately disabled: this retry asks only for the
-    // independent support that the first attempt could not carry across its
-    // process boundary.
+    // Simplification is deliberately disabled: this retry asks only for an
+    // independent support, which the first attempt did not keep.
     let config = crate::frontend::request::arjun_stage(
         parent,
         vitri::cnf::Mode::Mc,

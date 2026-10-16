@@ -138,12 +138,11 @@ pub(super) fn projected_compile(
 /// and the run's spec may be an expensive one.
 ///
 /// Why rebuild the vtree per branch (not reuse the parent's): conditioning the
-/// hub show vars changes the formula's structure graph; the parent vtree,
-/// optimized for the unconditioned formula, drives a giant single-level scatter
-/// that balloons past any byte budget without the mid-batch check catching it
-/// (one scatter == one merge iteration). With `arjun_ms > 0` the branch is
-/// re-reduced first and compiled in the reduction's numbering, with its show
-/// set and lift.
+/// hub show vars changes the formula's structure graph, and on the parent
+/// vtree, chosen for the unconditioned formula, a branch's diagram can grow
+/// far past the one a vtree built for the branch gives. With `arjun_ms > 0`
+/// the branch is re-reduced first and compiled in the reduction's numbering,
+/// with its show set and lift.
 ///
 /// The compile gives up cleanly on `deadline` rather than panicking.
 fn pmc_branch_count(

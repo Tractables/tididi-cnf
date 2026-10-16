@@ -52,8 +52,9 @@ struct McOutcome {
     answered_by: AnsweredBy,
     /// What became of Arjun's reduction.
     reduction: Option<Reduction>,
-    /// Preprocessing telemetry for the frontend attempt that owns this count,
-    /// which the driver prints as it is.
+    /// Preprocessing telemetry of the frontend attempt that owns this count:
+    /// the record's preprocessing fields, and the time the compile clock
+    /// leaves out.
     preprocessing: vitri::bundle::PreprocessTelemetry,
 }
 

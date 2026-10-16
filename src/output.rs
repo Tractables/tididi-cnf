@@ -724,7 +724,7 @@ fn magnitude(count: &Count) -> (f64, bool) {
 }
 
 /// The last MCC answer line after its `c s `: solver type, precision, notation
-/// and the count, as each task has always printed it.
+/// and the count, in each task's spelling.
 fn exact(count: &Count) -> String {
     match count {
         Count::Integer(n) => format!("exact arb int {n}"),
