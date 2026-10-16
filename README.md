@@ -117,6 +117,17 @@ Progress goes to stderr; the answer is the one line on stdout.
 [Getting started](docs/getting-started.md) works the count out by hand and
 then asks the other questions of the same formula.
 
+Its four clauses compile to the diagram below, drawn over its vtree, the
+pale tree behind it. Each node is the disjunction of its pairs, a pair the
+conjunction of its two halves, and • the node its line leads to. Beside each
+node is its number of models: a pair multiplies its halves and a node adds
+its pairs, 22 at the top.
+
+<p align="center">
+  <img src="docs/switches-tdd.svg" width="424"
+       alt="The Tree Decision Diagram of the example formula: nine nodes over a vtree on x1 to x6, with model count 22 at the root">
+</p>
+
 A run answers one task. The instance's header lines name it, as the
 competition's format has them, and `--mode` can name it too; the two must
 agree.

@@ -184,7 +184,17 @@ tdd written to switches.tdd, vtree to switches.tdd.vtree: 9 nodes, 16 pairs
 
 `switches.tdd` is the circuit and `switches.tdd.vtree` the vtree it follows;
 [`output.md`](output.md#the-saved-circuit) shows how to read the two back
-with the tididi library.
+with the tididi library. Drawn, with the vtree as the pale tree behind it,
+the nine nodes count 22 at the top: each pair multiplies the counts of its
+two halves, and each node adds its pairs.
+
+<p align="center">
+  <img src="switches-tdd.svg" width="424"
+       alt="The Tree Decision Diagram of switches.cnf: nine nodes over a vtree on x1 to x6, with model count 22 at the root">
+</p>
+
+The [browser page](https://tractables.github.io/tididi-bonsai/) draws the
+diagram of any small formula this way and shows its compile step by step.
 
 ## Your own problem
 
