@@ -27,15 +27,16 @@ function logScale(low, high, from, to) {
 
 // The ticks of a time axis `length` pixels long: 1 and 3 times each power of
 // ten from `low`, or the powers alone when those would sit closer than
-// `spacing` pixels, then the time limit `high`, without a tick that would
-// crowd it.
+// `spacing` pixels, then the time limit `high`, without a tick closer to it
+// than `spacing`.
 function timeTicks(low, high, length, spacing) {
+  const fromHigh = (value) => (length * Math.log(high / value)) / Math.log(high / low);
   const ticks = (steps) => {
     const values = [];
     for (let power = low; power < high; power *= 10) {
       for (const step of steps) values.push(Number((power * step).toPrecision(2)));
     }
-    return [...values.filter((value) => value < high / 1.4), high];
+    return [...values.filter((value) => fromHigh(value) >= spacing), high];
   };
   const fine = ticks([1, 3]);
   return length / fine.length >= spacing ? fine : ticks([1]);
@@ -161,6 +162,8 @@ function readout(svg, points) {
 // any solver reaches, on a time axis from `low` up to the time limit. Ours
 // is drawn last, on top.
 export function drawCactus(svg, { width, curves, most, total, low, timeout, title }) {
+  // A hidden box has no width; the page draws the plot when it gets one.
+  if (width === 0) return;
   const height = Math.round(Math.min(560, Math.max(260, width * 0.78)));
   const plot = { left: 60, right: width - 16, top: 12, bottom: height - 46 };
   const { end, ticks } = countTicks(most, plot.right - plot.left, 64);
@@ -204,6 +207,8 @@ export function drawCactus(svg, { width, curves, most, total, low, timeout, titl
 // end of its axis, inside the band's label. The diagonal is where the two
 // take the same time.
 export function drawScatter(svg, { width, a, b, instances, low, timeout, tie, title }) {
+  // A hidden box has no width; the page draws the plot when it gets one.
+  if (width === 0) return;
   const size = Math.min(width, 560);
   const plot = { left: 60, right: size - 12, top: 12, bottom: size - 46 };
   const band = 30;
