@@ -197,7 +197,9 @@ pub(crate) struct Failure {
 ///
 /// # Errors
 ///
-/// - [`Error::Input`]: the file cannot be opened, or is not DIMACS.
+/// - [`Error::Input`]: the file cannot be opened, or is not DIMACS; or a
+///   supplied formula's metadata names a show or weight variable outside
+///   that formula's declared variable space.
 /// - [`Error::Usage`]: `mode` contradicts the header, or asks for an
 ///   unweighted count ([`Mode::Mc`] or [`Mode::Pmc`]) of an instance with
 ///   `c p weight` lines, which that count would ignore.

@@ -32,7 +32,10 @@ hold no logic of their own. One run goes:
    reader and hands back vitri's `CnfFormula` plus a `CnfMeta` carrying the
    `c t` mode header, the `c p show` projection set and the `c p weight` table.
    A library caller holding clauses as DIMACS integers builds the same pair
-   with `formula_from_clauses`.
+   with `formula_from_clauses`. A supplied formula and metadata pair is
+   checked against the formula's variable space through vitri's metadata
+   constructor before dispatch, so show variables and weight literals cannot
+   name variables outside the formula.
 3. **Dispatch.** `Mode::resolve` merges `--mode` with the `c t` / `c p show`
    header into the mode — plain compile, MC, WMC, PMC or PWMC — refusing a
    `--mode` the header contradicts and `--mode mc` or `--mode pmc` beside

@@ -79,7 +79,18 @@ fn parse_input(
 
     let (formula, meta) = match input {
         Input::File(path) => read_dimacs(&path)?,
-        Input::Formula(formula, meta) => (formula, meta),
+        Input::Formula(formula, meta) => {
+            // A caller can pair a formula with metadata built for another
+            // variable space. Rebuild through vitri's range gate before any
+            // stage reads the show set or resolves the weights.
+            let meta = vitri::cnf::CnfMeta::from_parts(
+                formula.num_vars(),
+                meta.declared_track(),
+                meta.declared_show_vars().cloned(),
+                meta.declared_weights().cloned(),
+            ).map_err(|error| Error::Input(error.to_string()))?;
+            (formula, meta)
+        }
     };
 
     // `--mode` and the instance header (`c t`, `c p show`) decide the mode;

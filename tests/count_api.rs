@@ -266,6 +266,39 @@ fn a_file_that_cannot_be_read_is_an_input_error() {
     assert!(matches!(&missing, Err(Error::Input(message)) if message.contains("no_such_instance")), "{missing:?}");
 }
 
+/// Separately constructed metadata must name only the formula's variables.
+#[test]
+fn formula_metadata_rejects_a_shown_variable_outside_the_formula() {
+    use tididi_bonsai::vitri::cnf::{CnfMeta, ShowSet};
+
+    let (formula, _) = parse_dimacs("p cnf 2 1\n1 2 0\n".as_bytes()).unwrap();
+    let show = ShowSet::from_dimacs_ids(&[3]).unwrap();
+    let meta = CnfMeta::from_parts(3, None, Some(show), None).unwrap();
+    let limits = Limits { time_limit_ms: Some(1_000), ..Limits::default() };
+    for mode in [Mode::Pmc, Mode::Pwmc] {
+        let result = count((formula.clone(), meta.clone()), Some(mode), &limits);
+        assert!(matches!(&result, Err(Error::Input(message)) if message.contains("show variable 3")),
+            "{mode}: {result:?}");
+    }
+}
+
+/// A weight valid for a different formula cannot be discarded by the count.
+#[test]
+fn formula_metadata_rejects_a_weighted_variable_outside_the_formula() {
+    use num_rational::BigRational;
+    use tididi_bonsai::vitri::cnf::{CnfMeta, WeightTable};
+
+    let (formula, _) = parse_dimacs("p cnf 2 1\n1 2 0\n".as_bytes()).unwrap();
+    let weights = WeightTable::from_dimacs_pairs([(3, BigRational::new(1.into(), 2.into()))], 3).unwrap();
+    let meta = CnfMeta::from_parts(3, None, None, Some(weights)).unwrap();
+    let limits = Limits { time_limit_ms: Some(1_000), ..Limits::default() };
+    for mode in [Mode::Wmc, Mode::Pwmc] {
+        let result = count((formula.clone(), meta.clone()), Some(mode), &limits);
+        assert!(matches!(&result, Err(Error::Input(message)) if message.contains("weight literal 3")),
+            "{mode}: {result:?}");
+    }
+}
+
 /// The binary and the library make one run: the same count on stdout, and
 /// the same record field for field, clock readings aside.
 #[test]
