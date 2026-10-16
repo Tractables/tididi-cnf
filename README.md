@@ -3,6 +3,8 @@
 </p>
 
 <p align="center">
+  <a href="https://tractables.github.io/tididi-bonsai/"><img
+     src="https://img.shields.io/badge/run-in%20the%20browser-blue" alt="Run in the browser"></a>
   <a href="https://github.com/Tractables/tididi-bonsai/actions/workflows/rust.yml"><img
      src="https://github.com/Tractables/tididi-bonsai/actions/workflows/rust.yml/badge.svg" alt="CI"></a>
   <a href="https://tractables.github.io/tididi-bonsai/tididi_bonsai/"><img
