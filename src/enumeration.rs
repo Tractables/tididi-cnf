@@ -921,7 +921,7 @@ pub(crate) fn show_enum_fastpath<T: Tally + Clone>(
             if let Some(wall_ms) = wall_ms
                 && !near_full()
             {
-                let allsat_budget = std::time::Duration::from_millis(wall_ms);
+                let allsat_budget = Duration::from_millis(wall_ms);
                 result = allsat(formula, &split, model_budget, allsat_budget, ctl, tally)
                     .map(|v| (v, "projected ALL-SAT"));
             }

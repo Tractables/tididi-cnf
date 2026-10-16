@@ -275,7 +275,7 @@ pub(crate) fn solve(
         .map_err(|error| Failure { error, stats: None })?;
     let _address_space = crate::mem::limit_address_space(limits.mem_limit_mb)
         .map_err(|error| Failure { error, stats: None })?;
-    let context = std::sync::Arc::new(tididi::Context::new());
+    let context = Arc::new(tididi::Context::new());
     context.run(|eng| solve_on(eng, input, mode_flag, limits, settings, vitri))
 }
 
