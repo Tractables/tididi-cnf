@@ -68,5 +68,11 @@ says what it turns on. The binary builds its vtree with
 `vtree::build_vtree_with_components`, and passes the component trees of the
 `VtreeBuild` it returns as `ComponentPlan::from_components`.
 
+Invalid compile inputs return `GiveUp::Invalid`: a projection must name
+variables in `1..=formula.num_vars()`, literal weights must cover every
+formula variable, and a supplied split must partition the formula. These
+checks also apply to constant formulas. An expired deadline stops a constant
+compile too, including a deadline inherited from the enclosing batch.
+
 A diagram returned from the batch owns its storage and stays usable after the
 batch ends.

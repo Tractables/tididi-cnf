@@ -258,11 +258,10 @@ fn invert_local_to_global_into(out: &mut Vec<Option<u32>>, local_to_global: &[Va
 
 // ── Checks ───────────────────────────────────────────────────────────────────
 
-/// Whether `vtree` places exactly `formula`'s variables, one leaf each: a
+/// Whether `vtree` places exactly `n` variables, one leaf each: a
 /// variable with no leaf has nowhere to put its clauses, and a leaf with no
 /// variable of the formula would be counted free.
-pub(crate) fn check_vtree(formula: &CnfFormula, vtree: &Vtree) -> Result<(), GiveUp> {
-    let n = formula.num_vars();
+pub(crate) fn check_vtree(n: u32, vtree: &Vtree) -> Result<(), GiveUp> {
     if vtree.num_leaves() == n && (1..=n).all(|v| vtree.leaf_of(VarId(v)).is_some()) {
         return Ok(());
     }
@@ -274,13 +273,13 @@ pub(crate) fn check_vtree(formula: &CnfFormula, vtree: &Vtree) -> Result<(), Giv
 
 /// Whether `components` partition `formula`: every clause in exactly one
 /// component, every variable in at most one, and each component's clauses
-/// naming only its own variables. Each component's vtree is checked against
-/// its sub-formula when that compiles.
-fn check_partition(formula: &CnfFormula, components: &[ComponentVtree]) -> Result<(), GiveUp> {
+/// naming only its own variables, with a vtree over their local numbering.
+pub(super) fn check_partition(formula: &CnfFormula, components: &[ComponentVtree]) -> Result<(), GiveUp> {
     let invalid = |why: String| Err(GiveUp::Invalid(format!("the split does not partition the formula: {why}")));
     // Which component each variable is in, by variable index.
     let mut owner: Vec<Option<usize>> = vec![None; formula.num_vars() as usize];
-    for (k, ComponentVtree { component, .. }) in components.iter().enumerate() {
+    for (k, ComponentVtree { component, vtree }) in components.iter().enumerate() {
+        check_vtree(component.local_to_global.len() as u32, vtree)?;
         for v in &component.local_to_global {
             match (v.0 as usize).checked_sub(1).and_then(|i| owner.get_mut(i)) {
                 Some(slot @ None) => *slot = Some(k),
@@ -346,7 +345,6 @@ pub(crate) fn compile_split(
     components: &[ComponentVtree],
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
-    check_partition(formula, components)?;
     let forget = job.output.forget();
     let weights = job.output.weights();
     let free_vars = collect_free_vars(components, formula.num_vars());

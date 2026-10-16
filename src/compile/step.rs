@@ -22,7 +22,7 @@ use crate::convert::diagram_literal;
 use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
 use super::cofactor::cofactor_step;
-use super::component::{CompileJob, check_vtree};
+use super::component::CompileJob;
 use super::marginalize::{build_marginalize_targets, run_marginalize_at};
 use super::minimize::MinimizeGate;
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
@@ -111,23 +111,18 @@ impl DiagramClauses {
 
 /// Compile one component, all of `formula`, bottom-up against the vtree:
 /// process each vtree node, conjoining child TDDs and accumulating local
-/// clauses.
+/// clauses. The caller has checked that the vtree places the formula's
+/// variables, or built it directly in that numbering.
 ///
 /// [`GiveUp::Stopped`] and [`GiveUp::Refused`] are give-ups: the pass was cut
 /// short by the deadline, or an apply was refused (`OverBudget` / `OutputCap`).
-/// [`GiveUp::Invalid`] is a vtree that does not place exactly the formula's
-/// variables. A node proved UNSAT answers ⊥ at once, however much is left
-/// uncompiled.
+/// A node proved UNSAT answers ⊥ at once, however much is left uncompiled.
 pub(crate) fn compile_component(
     eng: &Engine,
     formula: &CnfFormula,
     vtree: &Arc<Vtree>,
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
-    // Each vtree a pass runs on, whole or per component, is checked here;
-    // `compile_with` checks the root for the paths that do not reach a pass.
-    check_vtree(formula, vtree)?;
-
     // An empty clause makes the component the constant false, so it compiles
     // to ⊥ instead of reaching `clause_scope`'s assertion. Projected cutset
     // conditioning can produce one when preprocessing a conditioned UNSAT

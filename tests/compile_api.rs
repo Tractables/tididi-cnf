@@ -46,12 +46,79 @@ fn a_passed_deadline_stops_the_compile() {
     for (what, clauses) in [
         ("one component", vec![vec![1, 2], vec![-2, 3], vec![3, 4], vec![-1, 4]]),
         ("two components", vec![vec![1, 2], vec![3, 4]]),
+        ("constant true", vec![]),
+        ("constant false", vec![vec![]]),
     ] {
         let formula = make_formula(4, clauses);
         assert!(
             compile_cnf(eng, &formula, &vtree, CompileOptions { deadline, ..CompileOptions::default() }).is_err(),
             "{what}: a passed deadline must stop the compile"
         );
+        let _scope = eng.limits().edit(|limits| limits.with_deadline(deadline));
+        assert!(matches!(
+            compile_cnf(eng, &formula, &vtree, CompileOptions::default()),
+            Err(GiveUp::Stopped),
+        ), "{what}: the enclosing deadline must stop the compile too");
+    }
+}
+
+#[test]
+fn compile_rejects_projection_variables_outside_the_formula() {
+    let formula = make_formula(2, vec![vec![1, 2]]);
+    let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
+    for var in [VarId(0), VarId(3)] {
+        for output in [Output::ProjectedCount(&[var]), Output::ProjectedFunction(&[var])] {
+            let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+                output, ..CompileOptions::default()
+            });
+            assert!(matches!(result, Err(GiveUp::Invalid(message)) if message.contains(&var.0.to_string())));
+        }
+    }
+}
+
+#[test]
+fn compile_rejects_missing_literal_weights_before_shortcuts_or_splitting() {
+    for clauses in [vec![], vec![vec![]], vec![vec![1, 2]], vec![vec![1], vec![2]]] {
+        let formula = make_formula(2, clauses);
+        let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
+        for plan in [ComponentPlan::Whole, ComponentPlan::Detect] {
+            let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+                plan,
+                output: Output::WeightedCount {
+                    weights: RationalWeights::unit(1), arithmetic: Arithmetic::ExactRational,
+                },
+                ..CompileOptions::default()
+            });
+            assert!(matches!(result, Err(GiveUp::Invalid(_))));
+        }
+    }
+}
+
+#[test]
+fn compile_rejects_invalid_splits_even_when_the_formula_is_constant() {
+    for clauses in [vec![], vec![vec![]]] {
+        let formula = make_formula(2, clauses);
+        let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
+        let split = [ComponentVtree {
+            vtree: vtree.clone(),
+            component: Component { clause_indices: vec![1], local_to_global: vec![VarId(1), VarId(2)] },
+        }];
+        let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+            plan: ComponentPlan::Split(&split), ..CompileOptions::default()
+        });
+        assert!(matches!(result, Err(GiveUp::Invalid(_))));
+
+        let wrong_tree = [ComponentVtree {
+            vtree: vtree.clone(),
+            component: Component {
+                clause_indices: (0..formula.clauses().len()).collect(),
+                local_to_global: vec![VarId(1)],
+            },
+        }];
+        let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+            plan: ComponentPlan::Split(&wrong_tree), ..CompileOptions::default()
+        });
+        assert!(matches!(result, Err(GiveUp::Invalid(_))));
     }
 }
 

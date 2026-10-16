@@ -117,8 +117,9 @@ pub enum GiveUp {
     /// what a benchmark harness reads to classify the run as out of memory.
     OutOfMemory,
     /// The caller's input does not fit together: the vtree does not place
-    /// exactly the formula's variables, or a [`ComponentPlan::Split`] does not
-    /// partition the formula. The text says which.
+    /// exactly the formula's variables, a [`ComponentPlan::Split`] does not
+    /// partition the formula, or the output's variables or weights do not
+    /// cover the requested formula. The text says which.
     Invalid(String),
 }
 
@@ -253,7 +254,7 @@ pub enum Output<'a> {
     /// values in `arithmetic` instead of integers, and the result holds the
     /// store [`tididi::Engine::weighted_value`] reads the weighted count from.
     WeightedCount {
-        /// The weight of each literal.
+        /// The weight of each literal, covering every formula variable.
         weights: RationalWeights,
         /// The domain the values are computed in.
         arithmetic: Arithmetic,
@@ -279,8 +280,8 @@ pub enum Output<'a> {
 pub struct CompileOptions<'a> {
     /// Which components to compile separately, and against which vtrees.
     pub plan: ComponentPlan<'a>,
-    /// What the compile produces. Variable ids it lists above
-    /// `formula.num_vars` are ignored.
+    /// What the compile produces. Every variable it lists must belong to the
+    /// formula (`1..=formula.num_vars()`).
     pub output: Output<'a>,
     /// The wall-clock the compile gives up at. When set it is also installed
     /// as the apply-level cut for this compile, so one giant un-yielding
@@ -347,7 +348,8 @@ impl Compiled {
 ///   finished diagram.
 /// - [`GiveUp::Invalid`]: `vtree`, or a component's vtree, does not place
 ///   exactly its formula's variables, or a [`ComponentPlan::Split`] does not
-///   partition the formula.
+///   partition the formula; a projected variable is outside the formula, or
+///   a literal weight is missing.
 pub fn compile_cnf(
     eng: &Engine,
     formula: &CnfFormula,
@@ -371,27 +373,39 @@ pub(crate) fn compile_with(
     // return and panic path.
     let _apply_deadline = deadline_scope(eng, deadline);
 
+    component::check_vtree(formula.num_vars(), vtree)?;
+    if let ComponentPlan::Split(components) = plan {
+        component::check_partition(formula, components)?;
+    }
+
     let weights;
     let forget: HashSet<VarId>;
     let output = match output {
         Output::Function => PassOutput::Function,
         Output::Count => PassOutput::Count(None),
         Output::WeightedCount { weights: algebra, arithmetic } => {
+            // Literal tables cover a contiguous range starting at one. Ask
+            // the library to validate its last required entry before either
+            // a constant shortcut or a component can read the table.
+            if formula.num_vars() > 0 {
+                algebra.restated(&[VarId(formula.num_vars())])
+                    .map_err(|error| GiveUp::Invalid(error.to_string()))?;
+            }
             weights = WeightStore::new(algebra, arithmetic);
             PassOutput::Count(Some(&weights))
         }
         Output::ProjectedCount(vars) => {
-            forget = formula_vars(formula, vars);
+            forget = formula_vars(formula, vars)?;
             PassOutput::ProjectedCount(&forget)
         }
         Output::ProjectedFunction(vars) => {
-            forget = formula_vars(formula, vars);
+            forget = formula_vars(formula, vars)?;
             PassOutput::ProjectedFunction(&forget)
         }
     };
     let prune_spent_us = Cell::new(0);
     let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
-    component::check_vtree(formula, vtree)?;
+    eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;
 
     if formula.clauses().is_empty() {
         let diagram = output.with_store(eng.one(vtree));
@@ -431,10 +445,17 @@ pub(crate) fn compile_with(
     Ok(result)
 }
 
-/// The variables of `vars` that `formula` has: ids above `formula.num_vars`
-/// are dropped.
-fn formula_vars(formula: &CnfFormula, vars: &[VarId]) -> HashSet<VarId> {
-    vars.iter().filter(|v| v.idx() < formula.num_vars() as usize).copied().collect()
+/// The projected variables as a set, refusing ids outside the formula.
+fn formula_vars(formula: &CnfFormula, vars: &[VarId]) -> Result<HashSet<VarId>, GiveUp> {
+    vars.iter().map(|&var| {
+        if var.0 == 0 || var.0 > formula.num_vars() {
+            Err(GiveUp::Invalid(format!(
+                "projected variable {} is outside the formula's 1..={} variables", var.0, formula.num_vars(),
+            )))
+        } else {
+            Ok(var)
+        }
+    }).collect()
 }
 
 /// The weighted count of `formula` under `algebra`, computed in
@@ -508,7 +529,7 @@ pub(crate) fn model_count_streaming<F>(
 where
     F: FnMut(&CnfFormula) -> Option<Arc<Vtree>>,
 {
-    let forget = forget.map(|vars| formula_vars(formula, vars));
+    let forget = settle(forget.map(|vars| formula_vars(formula, vars)).transpose())?;
 
     if formula.clauses().is_empty() {
         return Some((
@@ -536,6 +557,7 @@ where
         );
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
+        settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
