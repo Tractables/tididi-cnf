@@ -60,7 +60,9 @@ competition was scored on:
 Given an hour, tididi-bonsai solves 120 of the 200 instances of 2025, 69 of
 the 100 public instances of 2026 and 61 of the 100 private ones. The
 [evaluation](docs/evaluation.md) says how this was measured, with the result
-of every run and the competition's own results.
+of every run and the competition's own results, and the
+[evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
+shows every run by set, by pair of solvers and by instance.
 
 ## What it answers
 

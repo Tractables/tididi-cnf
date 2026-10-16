@@ -7,7 +7,11 @@ the competition's track 1, unweighted model counting, from 2025 and 2026. This
 page says how it was measured. The result of every run is in
 [`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv): the set,
 the instance, the solver, whether it printed a count in time and after how
-many seconds.
+many seconds. The
+[evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
+shows these runs by set, by pair of solvers and by instance; it reads the
+files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
+lists, and its source is beside them.
 
 ## Instances
 
