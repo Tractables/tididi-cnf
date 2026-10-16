@@ -27,6 +27,39 @@ The compiler simplifies the formula and chooses the vtree with
 [tididi](https://github.com/Tractables/tididi) library. It is a command-line
 tool, `tididi`, and a Rust library, `tididi_bonsai`.
 
+## Evaluation
+
+tididi-bonsai and the exact counters entered in the 2026
+[Model Counting Competition](https://mccompetition.org/) ran on the
+competition's exact counting instances of 2025 and 2026, two minutes each, on
+the same machine under the same limits. For any time limit from about one
+second to 100 seconds, tididi-bonsai solves more instances within it than any
+of them. At two minutes Ganak is two instances ahead overall, and
+tididi-bonsai leads on the private set, the 100 instances the 2026
+competition was scored on:
+
+<p align="center">
+  <img src="docs/evaluation/cactus-120s.svg" width="760"
+       alt="Cactus plot of instances solved against time per instance, up to two minutes, for tididi-bonsai, Ganak, d4, GPMC and Cara">
+</p>
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-120s.csv -->
+
+| Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
+| --- | ---: | ---: | ---: | ---: |
+| tididi-bonsai | 82 | 60 | **53** | 195 |
+| Ganak | **87** | **61** | 49 | **197** |
+| d4 | 65 | 53 | 44 | 162 |
+| GPMC | 56 | 53 | 40 | 149 |
+| Cara | 54 | 52 | 39 | 145 |
+
+<!-- end of evaluation table -->
+
+Given an hour, tididi-bonsai solves 120 of the 200 instances of 2025, 69 of
+the 100 public instances of 2026 and 61 of the 100 private ones. The
+[evaluation](docs/evaluation.md) says how this was measured, with the result
+of every run and the competition's own results.
+
 ## What it answers
 
 **Model counting.** How many assignments satisfy the formula: the valid

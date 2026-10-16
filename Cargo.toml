@@ -22,8 +22,9 @@ include = [
     "/src/**/*.rs",
     "/Cargo.toml",
     "/README.md",
-    # The logo the README shows.
+    # The logo and the figure the README shows.
     "/docs/logo.svg",
+    "/docs/evaluation/cactus-120s.svg",
     "/CHANGELOG.md",
     "/LICENSE",
     "/NOTICE",
