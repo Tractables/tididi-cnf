@@ -107,7 +107,7 @@ fn structured_shatter(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unwe
             Step::Answer(total)
         }
         None => {
-            eprintln!("[pmc] shatter: the batch refused a component readout — the next stage runs");
+            eprintln!("[pmc] shatter: a component's vtree, compile or readout gave up — the next stage runs");
             Step::Decline
         }
     }
