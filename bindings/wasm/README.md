@@ -82,4 +82,6 @@ and the imports between the scripts with the commit (`app.js?v=<sha>`). A
 script reads its own stamp from `import.meta.url`; the page passes it to the
 worker, the worker to `bonsai.js` and every file the module loads, and the
 example list to the formulas it fetches, so a new page never runs with an
-older file a browser still holds.
+older file a browser still holds. The evaluation page under `evaluation/` is
+stamped the same way, and its results take the stamp of the script that
+fetches them.

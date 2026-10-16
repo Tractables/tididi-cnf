@@ -64,8 +64,8 @@ jobs:
       # The page is the site root. The module build uploads the whole page, so
       # a page that grows a file needs no change here. A name the rustdoc
       # already uses fails the job rather than overwriting it. The two
-      # references in `index.html` and the imports between the page's scripts
-      # take this commit as their stamp (see bindings/wasm/README.md).
+      # references in each page's `index.html` and the imports between its
+      # scripts take this commit as their stamp (see bindings/wasm/README.md).
       - name: Assemble the site
         run: |
           set -eu
@@ -84,12 +84,18 @@ jobs:
             -e "s|src=\"app.js\"|src=\"app.js?v=$GITHUB_SHA\"|" \
             "$site/index.html"
           test "$(grep -c "?v=$GITHUB_SHA\"" "$site/index.html")" -eq 2
-          sed -i -e "s|from \"\./\([a-z-]*\.js\)\"|from \"./\1?v=$GITHUB_SHA\"|" "$site"/*.js
-          if grep -l 'from "\./[a-z-]*\.js"' "$site"/*.js; then
+          sed -i \
+            -e "s|href=\"page.css\"|href=\"page.css?v=$GITHUB_SHA\"|" \
+            -e "s|src=\"page.js\"|src=\"page.js?v=$GITHUB_SHA\"|" \
+            "$site/evaluation/index.html"
+          test "$(grep -c "?v=$GITHUB_SHA\"" "$site/evaluation/index.html")" -eq 2
+          sed -i -e "s|from \"\./\([a-z-]*\.js\)\"|from \"./\1?v=$GITHUB_SHA\"|" "$site"/*.js "$site"/evaluation/*.js
+          if grep -l 'from "\./[a-z-]*\.js"' "$site"/*.js "$site"/evaluation/*.js; then
             echo "an import above is not stamped" >&2
             exit 1
           fi
           grep -q "from \"\./runner.js?v=$GITHUB_SHA\"" "$site/app.js"
+          grep -q "from \"\./results.js?v=$GITHUB_SHA\"" "$site/evaluation/page.js"
 
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -47,10 +47,14 @@ export function parseRuns(text, file, timeout) {
   return { sets, solvers, instances };
 }
 
+// This file's version stamp (see bindings/wasm/README.md), passed on to the
+// results it fetches.
+const stamp = new URL(import.meta.url).search;
+
 // Every dataset datasets.json lists, beside `base`, with its runs read.
 export async function loadDatasets(base) {
   const fetchOk = async (file) => {
-    const response = await fetch(new URL(file, base));
+    const response = await fetch(new URL(file + stamp, base));
     if (!response.ok) throw new Error(`${file}: ${response.status} ${response.statusText}`);
     return response;
   };
