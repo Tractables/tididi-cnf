@@ -10,7 +10,6 @@
 //! The width caps and the spine marking that reads a batch's width and pairs
 //! are here as well. `step.rs` decides which node is folded and when.
 
-use std::cell::OnceCell;
 use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
@@ -136,7 +135,6 @@ pub(crate) fn batch_accumulate(
             floor: floor.size,
             limit,
             acc: acc.as_ref(),
-            acc_pairs: OnceCell::new(),
             streaming: streaming.as_ref(),
         };
         let mut local;
@@ -186,9 +184,10 @@ pub(super) struct BatchFloor {
 /// [`BATCH_LARGE_ENTRY_PAIRS`] pairs. Fixed at the fold's start: a fold that
 /// starts small and grows past the threshold keeps the small floor, so the
 /// larger one only applies at nodes that begin with an accumulator whose
-/// merges dominate. The pair count stops once the threshold is passed.
+/// merges dominate. Read the library's pair total so later batch decisions
+/// reuse the cached count, and implicit levels need no per-node scan.
 pub(super) fn batch_floor(acc: Option<&Tdd>) -> BatchFloor {
-    if acc.is_some_and(|a| !a.pair_count_at_most(BATCH_LARGE_ENTRY_PAIRS)) {
+    if acc.is_some_and(|a| a.pair_count() > BATCH_LARGE_ENTRY_PAIRS) {
         BatchFloor { size: BATCH_LARGE_SIZE, width_limit: BATCH_LARGE_WIDTH_LIMIT }
     } else {
         BatchFloor { size: BATCH_SIZE, width_limit: BATCH_WIDTH_LIMIT }
@@ -379,8 +378,6 @@ struct BatchStop<'a> {
     limit: usize,
     /// The accumulator the batch will be merged into.
     acc: Option<&'a Tdd>,
-    /// Its pair count, read at most once per batch ([`BatchStop::acc_pairs`]).
-    acc_pairs: OnceCell<usize>,
     /// The node's marginalize targets by clause position, when it streams.
     streaming: Option<&'a StreamTargets>,
 }
@@ -390,10 +387,10 @@ impl BatchStop<'_> {
         self.streaming.is_some_and(|s| s.completes(p))
     }
 
-    /// The accumulator's pair count (0 before the first merge), read once and
-    /// shared by the extension rule and the merge's absorption check.
+    /// The accumulator's pair count (0 before the first merge), cached by
+    /// the diagram and shared by extension and absorption checks.
     fn acc_pairs(&self) -> usize {
-        *self.acc_pairs.get_or_init(|| self.acc.map_or(0, Tdd::pair_count))
+        self.acc.map_or(0, Tdd::pair_count)
     }
 }
 
@@ -429,9 +426,8 @@ impl BatchStop<'_> {
 ///   marginalization past the boundary the floor would have given it.
 ///
 /// The pairs are read off the spine union ([`batch_spine_pairs`]), and the
-/// accumulator's pair count at most once per batch, at the first extension
-/// decision ([`BatchStop::acc_pairs`], which the merge's absorption check
-/// shares).
+/// accumulator's cached pair count by [`BatchStop::acc_pairs`], which the
+/// extension decision and the merge's absorption check share.
 ///
 /// Returns the batch diagram and the index of the next clause, at least
 /// `start + 1`: the first clause is always taken. A one-clause batch merged

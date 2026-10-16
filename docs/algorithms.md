@@ -91,7 +91,9 @@ accumulator with `merge_batch_into_acc`. Where a batch closes is decided in
   costs in proportion to its pairs whether or not the clauses multiply it,
   and the earned extension below only lengthens batches after absorbing
   merges, so a large node whose merges expand would otherwise pay a full
-  accumulator merge every `BATCH_SIZE` clauses.
+  accumulator merge every `BATCH_SIZE` clauses. The decision reads the
+  library's pair total, which caches the result for later batch decisions
+  and counts implicit levels without scanning their nodes.
 - **Extension.** A merge into a wide accumulator costs time in proportion to
   the accumulator's pairs, nearly independent of the batch, while conjoining
   one more clause costs time in proportion to the batch's pairs. Past the
