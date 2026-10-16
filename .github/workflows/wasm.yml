@@ -42,9 +42,12 @@ jobs:
         with:
           submodules: recursive
 
-      # Reads the page alone, so it reports before the long build starts.
-      - name: Check the page's markup against its stylesheet
-        run: node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
+      # Reads the pages alone, so it reports before the long build starts:
+      # the browser page and the evaluation page site.sh puts beside it.
+      - name: Check the pages' markup against their stylesheets
+        run: |
+          node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
+          node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
 
       # The packages the native build needs, and m4, which GMP's configure
       # runs for the side modules.

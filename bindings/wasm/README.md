@@ -64,8 +64,9 @@ examples are fetched, so they have to come from a server.
 instances [`bindings/parity.txt`](../parity.txt) lists, and compares each
 answer with the native binary's on the same file, then draws the small
 examples and checks each step's diagram against enumeration; vitri's
-`page-check.mjs` checks `index.html` against `styles.css`. The web build
-workflow runs both.
+`page-check.mjs` checks `index.html` against `styles.css`, and the
+evaluation page's `index.html` against `page.css`. The web build workflow
+runs all three.
 The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
 environment, which a native build of vitri refuses:
 
@@ -73,6 +74,7 @@ environment, which a native build of vitri refuses:
 env -u VITRI_EMSCRIPTEN_PREFIX cargo build --release --bin tididi
 node bindings/wasm/smoke.mjs bindings/wasm/site/bonsai.js . target/release/tididi
 node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
+node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
 ```
 
 ## Cache stamps
