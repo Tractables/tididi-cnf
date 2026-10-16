@@ -97,7 +97,7 @@ function chooseDataset() {
   element("pair-card").hidden = solvers.length < 2;
   const link = make("a", "", dataset.file);
   link.href = dataset.file;
-  element("dataset-note").replaceChildren(`${dataset.timeout} s per instance. The result of every run: `, link, ".");
+  element("dataset-note").replaceChildren(`${dataset.about} The result of every run: `, link, ".");
   render();
 }
 

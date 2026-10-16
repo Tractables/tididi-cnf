@@ -17,6 +17,9 @@
   --series-2: #009e73;
   --series-3: #cc79a7;
   --series-4: #e69f00;
+  --series-5: #6a3d9a;
+  --series-6: #8c6d31;
+  --series-7: #6b7280;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -37,6 +40,9 @@
     --series-2: #3fc59a;
     --series-3: #e0a3c8;
     --series-4: #f2be4a;
+    --series-5: #b39ddb;
+    --series-6: #c9a66b;
+    --series-7: #b0b6bf;
   }
 }
 

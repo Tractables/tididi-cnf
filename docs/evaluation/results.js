@@ -55,12 +55,12 @@ export async function loadDatasets(base) {
     return response;
   };
   const entries = await (await fetchOk("datasets.json")).json();
-  return Promise.all(entries.map(async ({ file, title, timeout_s: timeout }) => {
-    if (typeof file !== "string" || typeof title !== "string" || !(timeout > 0)) {
-      throw new Error("datasets.json: each entry needs a file, a title and a positive timeout_s");
+  return Promise.all(entries.map(async ({ file, title, about, timeout_s: timeout }) => {
+    if (typeof file !== "string" || typeof title !== "string" || typeof about !== "string" || !(timeout > 0)) {
+      throw new Error("datasets.json: each entry needs a file, a title, an about and a positive timeout_s");
     }
     const runs = parseRuns(await (await fetchOk(file)).text(), file, timeout);
-    return { file, title, timeout, ...runs };
+    return { file, title, about, timeout, ...runs };
   }));
 }
 
