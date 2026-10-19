@@ -1,7 +1,7 @@
 :root {
   /* The browser page's palette and type, so the two pages read as one site.
      The series colours are the solvers', in the order of the README's
-     figure; the first, the logo's blue, is tididi-bonsai's. */
+     figure; the first, the logo's blue, is tididi-cnf's. */
   color-scheme: light dark;
   --bg: #f3f5f8;
   --card: #ffffff;

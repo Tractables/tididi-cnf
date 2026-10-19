@@ -3,13 +3,13 @@
 The `tididi` crate owns diagrams and their operations, and the `vitri` crate
 owns the formula: `vitri::cnf` defines `CnfFormula`, `Clause`, `Literal`, the
 header metadata and the DIMACS reader and writer, and this crate takes those
-types as they are. What this crate adds is `tididi_bonsai::compile` —
+types as they are. What this crate adds is `tididi_cnf::compile` —
 `compile_cnf` with its `CompileOptions`, `ComponentPlan` and `Output`, and
-what it returns, `Compiled` or a `GiveUp` — and `tididi_bonsai::vtree`, the
+what it returns, `Compiled` or a `GiveUp` — and `tididi_cnf::vtree`, the
 vtree requests (`build_vtree` and `build_vtree_with_components`, with their
 `VtreeOptions`, returning a tree or a `VtreeBuild`, and an `Error` when the
 construction fails) and the two component descriptors, `ComponentVtree` and
-`Component`. `tididi_bonsai::tididi` and `tididi_bonsai::vitri` re-export
+`Component`. `tididi_cnf::tididi` and `tididi_cnf::vitri` re-export
 the two libraries, so a caller uses the versions this crate compiles
 against. The public `count` entry runs the same complete task as the binary
 and returns an `Answer` under the caller's `Limits`; the individual counting
@@ -35,10 +35,10 @@ a separate checkout without them.
 use std::sync::Arc;
 use std::time::Instant;
 
-use tididi_bonsai::compile::{CompileOptions, ComponentPlan, compile_cnf};
-use tididi_bonsai::tididi::limits::LimitConfig;
-use tididi_bonsai::tididi::{Context, Vtree};
-use tididi_bonsai::vitri::cnf::CnfFormula;
+use tididi_cnf::compile::{CompileOptions, ComponentPlan, compile_cnf};
+use tididi_cnf::tididi::limits::LimitConfig;
+use tididi_cnf::tididi::{Context, Vtree};
+use tididi_cnf::vitri::cnf::CnfFormula;
 
 /// The model count of `formula` compiled on `vtree`, in decimal, or `None`
 /// when the compile or the count gives up by `deadline`.

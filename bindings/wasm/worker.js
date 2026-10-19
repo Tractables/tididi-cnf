@@ -1,6 +1,6 @@
 "use strict";
 
-// tididi-bonsai in a worker of its own, so the page stays live while a
+// tididi-cnf in a worker of its own, so the page stays live while a
 // formula is counted and a run can be stopped: the page ends this worker and
 // starts another. In, one message per run: {dimacs, mode, timeLimitMs}. Out:
 // {ready: true} once the module is up, then per run either
@@ -15,17 +15,17 @@
 // A throw out of the module is left to reach onerror, where the page
 // terminates this worker and starts another: an Emscripten abort poisons the
 // module, so every later run in the same worker would throw too.
-importScripts("abi.js" + location.search, "bonsai.js" + location.search);
+importScripts("abi.js" + location.search, "tididi_cnf.js" + location.search);
 
-let bonsai = null;
+let compiler = null;
 let log = [];
 
-createBonsai({
+createTididiCnf({
   locateFile: (file) => file + location.search,
   printErr: (line) => log.push(line),
 }).then(
   (module) => {
-    bonsai = bonsaiAbi(module);
+    compiler = tididiCnfAbi(module);
     postMessage({ ready: true });
   },
   (failure) => {
@@ -37,14 +37,14 @@ onmessage = (event) => {
   const { dimacs, mode, timeLimitMs } = event.data;
   log = [];
   const started = performance.now();
-  const answer = bonsai.count(dimacs, mode, timeLimitMs);
+  const answer = compiler.count(dimacs, mode, timeLimitMs);
   const elapsed = performance.now() - started;
   if (answer.ok === true) {
     const { mode, satisfiable, count, value, stats } = answer;
     const countLog = log;
     // What the drawing writes to stderr is not the count's progress.
     log = [];
-    const drawing = bonsai.draw(dimacs);
+    const drawing = compiler.draw(dimacs);
     postMessage({ result: { mode, satisfiable, count, value, stats }, log: countLog, elapsed, drawing });
   } else {
     postMessage({ error: answer.error, log });

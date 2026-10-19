@@ -6,7 +6,7 @@ const COLUMNS = "set,instance,solver,solved,seconds";
 
 // The solver this repository builds. The page gives it the first colour and
 // draws it on top.
-export const OURS = "tididi-bonsai";
+export const OURS = "tididi-cnf";
 
 // Whether a solver printed its count on an instance in time.
 export const solvedBy = (instance, solver) => instance.times.get(solver) !== null;

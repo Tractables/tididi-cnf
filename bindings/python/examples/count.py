@@ -14,13 +14,13 @@ a projected weighted count, it prints:
 
 import sys
 
-import tididi_bonsai
+import tididi_cnf
 
 
 def main(path, mode=None):
     try:
-        answer = tididi_bonsai.count_file(path, mode=mode, time_limit_ms=60_000)
-    except tididi_bonsai.Error as error:
+        answer = tididi_cnf.count_file(path, mode=mode, time_limit_ms=60_000)
+    except tididi_cnf.Error as error:
         sys.exit(f"{type(error).__name__}: {error}")
     print(f"mode: {answer.mode}")
     print(f"satisfiable: {answer.satisfiable}")

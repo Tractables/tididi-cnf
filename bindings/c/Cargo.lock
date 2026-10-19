@@ -354,7 +354,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tididi-bonsai"
+name = "tididi-cnf"
 version = "0.1.0"
 dependencies = [
  "libc",
@@ -372,11 +372,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "tididi-bonsai-c"
+name = "tididi-cnf-c"
 version = "0.1.0"
 dependencies = [
  "serde_json",
- "tididi-bonsai",
+ "tididi-cnf",
  "tikv-jemalloc-sys",
 ]
 

@@ -1,6 +1,6 @@
 # Evaluation
 
-The [evaluation in the README](../README.md#evaluation) compares tididi-bonsai
+The [evaluation in the README](../README.md#evaluation) compares tididi-cnf
 with the exact model counters entered in the 2026
 [Model Counting Competition](https://mccompetition.org/), and with four d-DNNF
 compilers, on the instances of the competition's track 1, unweighted model
@@ -13,12 +13,12 @@ compilation in
 [`evaluation/mcc-track1-compile-120s.csv`](evaluation/mcc-track1-compile-120s.csv):
 the set, the instance, the solver, whether it finished in time and after how
 many seconds. The
-[evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
+[evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
 shows these runs by set, by pair of solvers and by instance; it reads the
 files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
 lists, and its source is beside them.
 
-The measurements use the [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-bonsai/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
+The measurements use the [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-cnf/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
 including the dependency revisions recorded there.
 
 ## Instances
@@ -32,7 +32,7 @@ each formula was run once, and its repeat takes its result.
 
 ## Solvers
 
-- tididi-bonsai 0.1.0, as
+- tididi-cnf 0.1.0, as
   `tididi --mode mc --time-limit-ms 120000 --mem-limit-mb 61440 <instance>`:
   its defaults, told the time and memory the run has
   ([time and memory limits](limits.md)).
@@ -59,14 +59,14 @@ The competition's main track, track 1, allows an hour per instance. On the
 of machine under the same limits, side by side: 8 runs of each at a time, 40
 in all, so that every solver ran under the same load. An instance that no
 entry in the exact category solved in either track of the competition, and
-that tididi-bonsai had not solved in an hour before, was not run again and
+that tididi-cnf had not solved in an hour before, was not run again and
 counts as unsolved for every solver; that leaves 67 of the 100 to run.
 
 <!-- evaluation table: generated from docs/evaluation/mcc-track1-3600s.csv -->
 
 | Solver | MCC 2026 private (100) |
 | --- | ---: |
-| tididi-bonsai | 61 |
+| tididi-cnf | 61 |
 | Ganak | **62** |
 | d4 | **62** |
 | GPMC | 54 |
@@ -75,18 +75,18 @@ counts as unsolved for every solver; that leaves 67 of the 100 to run.
 <!-- end of evaluation table -->
 
 Given an hour on its own (48 runs at a time, a 30,000 MiB address-space
-limit), tididi-bonsai solves 120 of the 200 instances of 2025 and 69 of the
+limit), tididi-cnf solves 120 of the 200 instances of 2025 and 69 of the
 100 public instances of 2026.
 
 ## Compilation
 
-With `--mode compile`, tididi-bonsai writes the diagram it compiles, which
+With `--mode compile`, tididi-cnf writes the diagram it compiles, which
 the tididi library reads back and queries. Four d-DNNF compilers, whose
 circuits can be queried in the same ways, ran beside it on the same 400
 instances, two minutes each, side by side (9 runs of each at a time, 45 in
 all) on the same kind of machine under the same memory limit:
 
-- tididi-bonsai 0.1.0, as
+- tididi-cnf 0.1.0, as
   `tididi --mode compile --save-tdd <file> --time-limit-ms 120000 --mem-limit-mb 61440 <instance>`,
   on the instance without its `c t mc` line, since compilation takes no task.
 - [Panini](https://github.com/meelgroup/KCBox),
@@ -101,13 +101,13 @@ and a separate checker, reading the circuit back, found that it mentions every
 variable and that its model count is the one the compiler reported. D4v2
 reports no count, so its time is its own run, without the check. On one
 instance of 2025, Panini's circuit and count differ from the count of
-tididi-bonsai and of Ganak; it counts as not compiled there.
+tididi-cnf and of Ganak; it counts as not compiled there.
 
 <!-- evaluation table: generated from docs/evaluation/mcc-track1-compile-120s.csv -->
 
 | Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
 | --- | ---: | ---: | ---: | ---: |
-| tididi-bonsai | **73** | **59** | **49** | **181** |
+| tididi-cnf | **73** | **59** | **49** | **181** |
 | Panini | 55 | 53 | 41 | 149 |
 | D4v2 | 48 | 55 | 40 | 143 |
 | GPMC | 48 | 50 | 33 | 131 |
@@ -133,5 +133,5 @@ instances, the entries in the exact category solved, in two minutes (track
 
 Its machines and ours differ, so these numbers and the ones above do not
 compare one to one: on ours, d4 solves one instance fewer in an hour, Cara
-one and GPMC three, and tididi-bonsai 0.1.0 solves 53 of these instances in
+one and GPMC three, and tididi-cnf 0.1.0 solves 53 of these instances in
 120 s and 61 in an hour.

@@ -29,9 +29,9 @@ use crate::Error;
 ///
 /// ```
 /// let text = "c t mc\np cnf 2 1\n1 -2 0\n";
-/// let (formula, _header) = tididi_bonsai::parse_dimacs(text.as_bytes())?;
+/// let (formula, _header) = tididi_cnf::parse_dimacs(text.as_bytes())?;
 /// assert_eq!((formula.num_vars(), formula.clauses().len()), (2, 1));
-/// # Ok::<(), tididi_bonsai::Error>(())
+/// # Ok::<(), tididi_cnf::Error>(())
 /// ```
 ///
 /// # Errors
@@ -64,7 +64,7 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 ///
 /// ```
 /// use num_rational::BigRational;
-/// use tididi_bonsai::{count, formula_from_clauses, Count, Limits, Mode};
+/// use tididi_cnf::{count, formula_from_clauses, Count, Limits, Mode};
 ///
 /// // (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3), projected onto x1 and x2, where
 /// // x1 weighs 1/4, ¬x1 weighs 3/4, and x2 weighs 1/2, so ¬x2 weighs 1/2.
@@ -76,7 +76,7 @@ pub fn parse_dimacs<R: std::io::BufRead>(
 /// let answer = count(formula, Some(Mode::Pwmc), &Limits::default())?;
 /// // x1 ¬x2 weighs 1/4 · 1/2, and ¬x1 x2 weighs 3/4 · 1/2.
 /// assert_eq!(answer.count(), &Count::Rational(BigRational::new(1.into(), 2.into())));
-/// # Ok::<(), tididi_bonsai::Error>(())
+/// # Ok::<(), tididi_cnf::Error>(())
 /// ```
 ///
 /// # Errors

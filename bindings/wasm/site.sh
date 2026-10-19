@@ -12,7 +12,7 @@
 # With <emscripten-prefix>, the prefix vitri's emscripten-prefix.sh installed
 # GMP into, it also receives the built module from
 # target/wasm32-unknown-emscripten/release, the two side modules the module
-# loads from that prefix, and the notices under notices/: tididi-bonsai's
+# loads from that prefix, and the notices under notices/: tididi-cnf's
 # LICENSE and NOTICE, and vitri's own under notices/vitri/.
 #
 # The docs workflow assembles the published site from this directory, and
@@ -39,7 +39,7 @@ done
 
 if [ "$#" -eq 2 ]; then
   prefix=$(cd "$2" && pwd)
-  cp "$here"/target/wasm32-unknown-emscripten/release/bonsai.{js,wasm} \
+  cp "$here"/target/wasm32-unknown-emscripten/release/tididi_cnf.{js,wasm} \
     "$prefix"/lib/libgmp.so "$prefix"/lib/libgmpxx.so "$out/"
   mkdir -p "$out/notices"
   cp "$root"/LICENSE "$root"/NOTICE "$out/notices/"

@@ -3,9 +3,9 @@
 #
 #   make                 the shared and static libraries, and the tididi executable
 #   make check           the examples and the conformance tests against each library
-#   make link-libs-check Libs.private in tididi-bonsai-c.pc.in covers what rustc reports
-#   make header          regenerate include/tididi_bonsai.h
-#   make header-check    fail if include/tididi_bonsai.h differs from cbindgen's output
+#   make link-libs-check Libs.private in tididi-cnf-c.pc.in covers what rustc reports
+#   make header          regenerate include/tididi_cnf.h
+#   make header-check    fail if include/tididi_cnf.h differs from cbindgen's output
 
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
@@ -20,16 +20,16 @@ CXXFLAGS ?= -O2 -g
 ROOT := ../..
 RELEASE := target/release
 OUT := target/c
-SHARED := $(RELEASE)/libtididi_bonsai_c.so
-STATIC := $(RELEASE)/libtididi_bonsai_c.a
+SHARED := $(RELEASE)/libtididi_cnf_c.so
+STATIC := $(RELEASE)/libtididi_cnf_c.a
 # The binary the conformance tests compare counts with, built from the same
 # checkout by the workspace above.
 TIDIDI := $(ROOT)/target/release/tididi
 
-# The system libraries a static link needs. tididi-bonsai-c.pc.in is the one
+# The system libraries a static link needs. tididi-cnf-c.pc.in is the one
 # place they are listed.
-STATIC_LIBS := $(shell sed -n 's/^Libs.private: //p' tididi-bonsai-c.pc.in)
-LINK_shared := -L$(RELEASE) -ltididi_bonsai_c -Wl,-rpath,$(abspath $(RELEASE))
+STATIC_LIBS := $(shell sed -n 's/^Libs.private: //p' tididi-cnf-c.pc.in)
+LINK_shared := -L$(RELEASE) -ltididi_cnf_c -Wl,-rpath,$(abspath $(RELEASE))
 LINK_static := $(STATIC) $(STATIC_LIBS)
 
 WARNINGS := -Wall -Wextra -Werror
@@ -61,16 +61,16 @@ libs:
 # every run; a program relinks when its library came out of that newer.
 $(SHARED) $(STATIC) $(TIDIDI): libs
 
-$(OUT)/count-%: examples/count.c include/tididi_bonsai.h $(SHARED) $(STATIC)
+$(OUT)/count-%: examples/count.c include/tididi_cnf.h $(SHARED) $(STATIC)
 	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) -Iinclude $< $(LINK_$*) -o $@
 
-$(OUT)/count-cpp-%: examples/count.cpp include/tididi_bonsai.h $(SHARED) $(STATIC)
+$(OUT)/count-cpp-%: examples/count.cpp include/tididi_cnf.h $(SHARED) $(STATIC)
 	$(CXX) -std=c++17 $(WARNINGS) $(CXXFLAGS) -Iinclude $< $(LINK_$*) -o $@
 
-$(OUT)/clauses-%: examples/clauses.c include/tididi_bonsai.h $(SHARED) $(STATIC)
+$(OUT)/clauses-%: examples/clauses.c include/tididi_cnf.h $(SHARED) $(STATIC)
 	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) -Iinclude $< $(LINK_$*) -o $@
 
-$(OUT)/conformance-%: tests/conformance.c include/tididi_bonsai.h $(SHARED) $(STATIC)
+$(OUT)/conformance-%: tests/conformance.c include/tididi_cnf.h $(SHARED) $(STATIC)
 	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) -pthread -Iinclude $< $(LINK_$*) -o $@
 
 # The runs' progress lines go to stderr, kept in $(OUT) beside the programs;
@@ -93,16 +93,16 @@ link-libs-check:
 	for lib in $$libs; do \
 	  case " $(STATIC_LIBS) " in *" $$lib "*) ;; *) missing="$$missing $$lib" ;; esac; \
 	done; \
-	test -z "$$missing" || { echo "Libs.private in tididi-bonsai-c.pc.in lacks:$$missing"; exit 1; }
+	test -z "$$missing" || { echo "Libs.private in tididi-cnf-c.pc.in lacks:$$missing"; exit 1; }
 
 header:
-	$(CBINDGEN) --config cbindgen.toml --crate tididi-bonsai-c --output include/tididi_bonsai.h .
+	$(CBINDGEN) --config cbindgen.toml --crate tididi-cnf-c --output include/tididi_cnf.h .
 
 header-check:
 	@mkdir -p $(OUT)
-	$(CBINDGEN) --config cbindgen.toml --crate tididi-bonsai-c --output $(OUT)/tididi_bonsai.h .
-	diff -u include/tididi_bonsai.h $(OUT)/tididi_bonsai.h || { \
-	  echo "include/tididi_bonsai.h is out of date; regenerate it with make header"; exit 1; }
+	$(CBINDGEN) --config cbindgen.toml --crate tididi-cnf-c --output $(OUT)/tididi_cnf.h .
+	diff -u include/tididi_cnf.h $(OUT)/tididi_cnf.h || { \
+	  echo "include/tididi_cnf.h is out of date; regenerate it with make header"; exit 1; }
 
 clean:
 	rm -rf $(OUT)

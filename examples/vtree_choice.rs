@@ -2,9 +2,9 @@
 //! Run with `cargo run --example vtree_choice`.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use tididi_bonsai::compile::{compile_cnf, CompileOptions};
-    use tididi_bonsai::parse_dimacs;
-    use tididi_bonsai::vtree::{build_vtree, VtreeOptions};
+    use tididi_cnf::compile::{compile_cnf, CompileOptions};
+    use tididi_cnf::parse_dimacs;
+    use tididi_cnf::vtree::{build_vtree, VtreeOptions};
 
     // Two 12-bit registers x and y that hold the same nonzero value:
     // variable i is bit i of x and variable i + 12 the same bit of y.

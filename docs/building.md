@@ -1,8 +1,8 @@
 # Building
 
 ```sh
-git clone --recurse-submodules https://github.com/Tractables/tididi-bonsai
-cd tididi-bonsai
+git clone --recurse-submodules https://github.com/Tractables/tididi-cnf
+cd tididi-cnf
 cargo build --release
 ```
 
@@ -53,7 +53,7 @@ goatd revision used by this release, to your application's root `Cargo.toml`:
 
 ```toml
 [dependencies]
-tididi-bonsai = { git = "https://github.com/Tractables/tididi-bonsai" }
+tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }
 
 [patch.crates-io]
 goatd = { git = "https://github.com/Tractables/goatd", rev = "e237c1afabcf9feb3047bef58efd0113a6005ea7" }
@@ -68,7 +68,7 @@ when building the library.
 ## Documentation builds
 
 ```sh
-DOCS_RS=1 cargo doc --no-deps -p tididi-bonsai --open
+DOCS_RS=1 cargo doc --no-deps -p tididi-cnf --open
 ```
 
 With `DOCS_RS` set, vitri's `build.rs` skips the native build, and rustdoc

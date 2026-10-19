@@ -91,7 +91,7 @@ impl Count {
     /// is infinite.
     ///
     /// ```
-    /// let count = tididi_bonsai::Count::Rational(num_rational::BigRational::new(91.into(), 125.into()));
+    /// let count = tididi_cnf::Count::Rational(num_rational::BigRational::new(91.into(), 125.into()));
     /// assert_eq!(count.to_f64(), 0.728);
     /// ```
     pub fn to_f64(&self) -> f64 {
@@ -214,13 +214,13 @@ pub(crate) struct Failure {
 /// # Example
 ///
 /// ```
-/// use tididi_bonsai::{Count, Limits, Mode};
+/// use tididi_cnf::{Count, Limits, Mode};
 ///
 /// // (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3), with no header: a model count
 /// // needs the mode.
-/// let answer = tididi_bonsai::count("tests/data/simple.cnf", Some(Mode::Mc), &Limits::default())?;
+/// let answer = tididi_cnf::count("tests/data/simple.cnf", Some(Mode::Mc), &Limits::default())?;
 /// assert_eq!(answer.count(), &Count::Integer(2u32.into()));
-/// # Ok::<(), tididi_bonsai::Error>(())
+/// # Ok::<(), tididi_cnf::Error>(())
 /// ```
 pub fn count(input: impl Into<Input>, mode: Option<Mode>, limits: &Limits) -> Result<Answer, Error> {
     let _one_at_a_time = ONE_RUN.lock().unwrap_or_else(PoisonError::into_inner);

@@ -21,8 +21,8 @@ use tididi::Engine;
 use tididi::test_helpers::check::check_all_fast;
 use tididi::test_helpers::check_minimize_soundness;
 use tididi::vtree::Vtree;
-use tididi_bonsai::compile::{CompileOptions, compile_cnf};
-use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
+use tididi_cnf::compile::{CompileOptions, compile_cnf};
+use tididi_cnf::vtree::{VtreeOptions, build_vtree};
 
 /// A shape of [`common::VTREE_SHAPES`], or one of two constructions from a
 /// spec: `minfill` and `flowcutter`.

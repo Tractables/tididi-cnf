@@ -20,8 +20,8 @@ use tididi::test_helpers::check::marginal::{
     check_inline_discipline, check_marginal_canonical_form, check_no_orphan_slots,
     check_slot_count_uniqueness, subsumed_marginal_data_violations,
 };
-use tididi_bonsai::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
-use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
+use tididi_cnf::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
+use tididi_cnf::vtree::{VtreeOptions, build_vtree};
 
 use common::{all_vtree_shapes, case_table, load_cnf, load_vtree, make_formula};
 

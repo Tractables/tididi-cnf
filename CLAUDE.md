@@ -3,8 +3,8 @@
 `CLAUDE.md` is the one instruction file in this repository; `AGENTS.md` is a
 symlink to it, so every agent reads the same rules.
 
-This is the public source repository of tididi-bonsai: the `tididi` binary,
-the `tididi_bonsai` library, their tests and documentation, and the C, Python
+This is the public source repository of tididi-cnf: the `tididi` binary,
+the `tididi_cnf` library, their tests and documentation, and the C, Python
 and WebAssembly bindings under `bindings/`. Every tracked file and every commit
 is public.
 

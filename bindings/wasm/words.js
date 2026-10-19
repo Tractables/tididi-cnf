@@ -1,4 +1,4 @@
-// The words the page puts to tididi-bonsai's tokens, and small formatters.
+// The words the page puts to tididi-cnf's tokens, and small formatters.
 
 // What the answer line calls each mode's count (`docs/tasks.md`).
 export const ANSWER_LABELS = {
@@ -40,8 +40,8 @@ export const ERROR_KINDS = {
   input: "the input was refused",
   artifact: "an artifact could not be produced",
   incomplete: "the run gave up without a count",
-  panic: "tididi-bonsai panicked",
-  load: "tididi-bonsai did not load",
+  panic: "tididi-cnf panicked",
+  load: "tididi-cnf did not load",
   worker: "the worker failed",
 };
 

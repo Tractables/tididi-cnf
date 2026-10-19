@@ -7,7 +7,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--tididi-cli",
         metavar="PATH",
-        help="the tididi executable, to compare its counts with tididi_bonsai's",
+        help="the tididi executable, to compare its counts with tididi_cnf's",
     )
 
 

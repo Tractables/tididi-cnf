@@ -8,11 +8,11 @@
 // step's diagram, read by the page's own tdd.js, against enumeration: its
 // model count, and at the last step the probabilities under evidence.
 //
-//   node smoke.mjs <bonsai.js> <repository> <tididi>
+//   node smoke.mjs <tididi_cnf.js> <repository> <tididi>
 //
 // <repository> is the checkout the module was built from, whose tests/data/
 // holds the files examples.js names, and <tididi> the native binary built
-// from it. bonsai.js is in the directory site.sh fills, beside libgmp.so,
+// from it. tididi_cnf.js is in the directory site.sh fills, beside libgmp.so,
 // libgmpxx.so, tdd.js and vtree.js; abi.js and examples.js are beside this
 // file.
 
@@ -26,14 +26,14 @@ import { EXAMPLES } from "./examples.js";
 
 const [modulePath, repository, nativePath] = process.argv.slice(2);
 if (!modulePath || !repository || !nativePath) {
-  console.error("usage: node smoke.mjs <bonsai.js> <repository> <tididi>");
+  console.error("usage: node smoke.mjs <tididi_cnf.js> <repository> <tididi>");
   process.exit(2);
 }
 // The module and the ABI load as classic scripts, the way the page's worker
 // loads them.
 const require = createRequire(import.meta.url);
-const createBonsai = require(path.resolve(modulePath));
-const { bonsaiAbi } = require(path.join(path.dirname(fileURLToPath(import.meta.url)), "abi.js"));
+const createTididiCnf = require(path.resolve(modulePath));
+const { tididiCnfAbi } = require(path.join(path.dirname(fileURLToPath(import.meta.url)), "abi.js"));
 
 let failures = 0;
 function check(condition, what) {
@@ -56,10 +56,10 @@ function nativeAnswer(file, args) {
 
 // The module's answer on `file` under `mode` is the native binary's under the
 // matching `--mode`.
-function checkParity(bonsai, name, file, mode, timeLimitMs = 0) {
+function checkParity(compiler, name, file, mode, timeLimitMs = 0) {
   const label = `${name}${mode === null ? "" : `, task ${mode}`}`;
   const started = Date.now();
-  const module = bonsai.count(fs.readFileSync(file, "utf8"), mode, timeLimitMs);
+  const module = compiler.count(fs.readFileSync(file, "utf8"), mode, timeLimitMs);
   check(module.ok, `${label}: ${JSON.stringify(module.error)}`);
   if (!module.ok) return;
   const native = nativeAnswer(file, mode === null ? [] : ["--mode", mode]);
@@ -83,37 +83,37 @@ function checkParity(bonsai, name, file, mode, timeLimitMs = 0) {
   }
 }
 
-function checkRefused(bonsai, label, dimacs, mode, kind) {
-  const answer = bonsai.count(dimacs, mode, 0);
+function checkRefused(compiler, label, dimacs, mode, kind) {
+  const answer = compiler.count(dimacs, mode, 0);
   console.log(`${label}: ${JSON.stringify(answer.error)}`);
   check(!answer.ok && answer.error.kind === kind, `${label}: expected an error of kind ${kind}`);
 }
 
-const bonsai = bonsaiAbi(await createBonsai());
+const compiler = tididiCnfAbi(await createTididiCnf());
 const file = (name) => path.join(repository, "tests", "data", name);
 
-for (const [, name, example] of EXAMPLES) checkParity(bonsai, `${example} (${name})`, file(example), null);
+for (const [, name, example] of EXAMPLES) checkParity(compiler, `${example} (${name})`, file(example), null);
 
 // The instances every binding is checked on, each under the mode it names.
 const parity = fs.readFileSync(path.join(repository, "bindings", "parity.txt"), "utf8");
 for (const line of parity.split("\n")) {
   if (line.trim() === "" || line.startsWith("#")) continue;
   const [instance, mode] = line.trim().split(/\s+/);
-  checkParity(bonsai, instance, path.join(repository, instance), mode);
+  checkParity(compiler, instance, path.join(repository, instance), mode);
 }
 
 // A headerless formula with a time limit.
-checkParity(bonsai, "queens6.cnf, a minute to run", file("queens6.cnf"), "mc", 60000);
+checkParity(compiler, "queens6.cnf, a minute to run", file("queens6.cnf"), "mc", 60000);
 
-checkRefused(bonsai, "malformed", "p cnf 2 1\n1 x 0\n", null, "input");
+checkRefused(compiler, "malformed", "p cnf 2 1\n1 x 0\n", null, "input");
 checkRefused(
-  bonsai,
+  compiler,
   "wmc_header_tiny_sat.cnf under task mc",
   fs.readFileSync(file("wmc_header_tiny_sat.cnf"), "utf8"),
   "mc",
   "usage",
 );
-checkRefused(bonsai, "unknown task", fs.readFileSync(file("simple.cnf"), "utf8"), "count", "usage");
+checkRefused(compiler, "unknown task", fs.readFileSync(file("simple.cnf"), "utf8"), "count", "usage");
 
 // The page's readers, from the site beside the module.
 const site = path.dirname(path.resolve(modulePath));
@@ -150,7 +150,7 @@ function weigh(models, variables, weights, evidence) {
 const close = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b));
 
 function checkDrawing(label, dimacs) {
-  const drawing = bonsai.draw(dimacs);
+  const drawing = compiler.draw(dimacs);
   check(drawing.ok, `${label}: ${JSON.stringify(drawing.error)}`);
   if (!drawing.ok) return;
   const tree = parseVtree(drawing.vtree);
@@ -203,12 +203,12 @@ function checkDrawing(label, dimacs) {
 
 for (const [, name, example] of EXAMPLES) {
   const dimacs = fs.readFileSync(file(example), "utf8");
-  const drawing = bonsai.draw(dimacs);
+  const drawing = compiler.draw(dimacs);
   if (!drawing.ok && drawing.error.kind === "size") continue;
   checkDrawing(`${example} (${name}), drawn`, dimacs);
 }
 checkDrawing("unsat_empty_clause.cnf, drawn", fs.readFileSync(file("unsat_empty_clause.cnf"), "utf8"));
-const unwieldy = bonsai.draw(fs.readFileSync(file("queens6.cnf"), "utf8"));
+const unwieldy = compiler.draw(fs.readFileSync(file("queens6.cnf"), "utf8"));
 console.log(`queens6.cnf, drawn: ${JSON.stringify(unwieldy.error)}`);
 check(!unwieldy.ok && unwieldy.error.kind === "size", "queens6.cnf, drawn: expected an error of kind size");
 

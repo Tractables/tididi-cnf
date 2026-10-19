@@ -7,7 +7,7 @@ Two kinds of page are checked, from the repository root:
 
 - The worked examples, `docs/examples/<name>.md`. Each has a program
   `examples/<name>.rs` and the other way round. The program runs with
-  `cargo run --release --locked -p tididi-bonsai --example <name>`, and every
+  `cargo run --release --locked -p tididi-cnf --example <name>`, and every
   `Output:` block of the page must occur in its stdout, as whole lines and in
   page order.
 - The command-line guide, `README.md` and `docs/*.md`. A `sh` block followed by
@@ -68,7 +68,7 @@ def check_walkthroughs(failures):
             failures.append(f"docs/examples/{name}.md: no Output block")
             continue
         run = subprocess.run(
-            ["cargo", "run", "--quiet", "--release", "--locked", "-p", "tididi-bonsai", "--example", name],
+            ["cargo", "run", "--quiet", "--release", "--locked", "-p", "tididi-cnf", "--example", name],
             cwd=ROOT, capture_output=True, text=True,
         )
         if run.returncode != 0:

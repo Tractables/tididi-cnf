@@ -1,33 +1,33 @@
-// The function bonsai.wasm exports, called one way from the page's worker and
+// The function tididi_cnf.wasm exports, called one way from the page's worker and
 // from the node smoke test. Loads as a classic script (`importScripts`), which
-// defines `bonsaiAbi`, and as a CommonJS module.
+// defines `tididiCnfAbi`, and as a CommonJS module.
 //
 // Emscripten returns a pointer above 2 GB as a negative number; `>>> 0` reads
 // it back as the unsigned address it is.
 "use strict";
 
-// The exports of an instantiated `bonsai` module as one call that takes and
+// The exports of an instantiated `compiler` module as one call that takes and
 // returns JSON values. The string the module returns is allocated on its side
 // and released here.
-function bonsaiAbi(bonsai) {
+function tididiCnfAbi(compiler) {
   // `bytes` copied into the module's heap while `body` runs with their
   // address. Passed as a "string" argument, ccall would copy them onto the
   // module's stack, which a large formula overflows.
   function lend(bytes, body) {
-    const at = bonsai._malloc(Math.max(1, bytes.length)) >>> 0;
+    const at = compiler._malloc(Math.max(1, bytes.length)) >>> 0;
     try {
-      bonsai.HEAPU8.set(bytes, at);
+      compiler.HEAPU8.set(bytes, at);
       return body(at);
     } finally {
-      bonsai._free(at);
+      compiler._free(at);
     }
   }
 
   // The JSON value of the string a call returned at `pointer`, which this
   // releases.
   function answer(pointer) {
-    const text = bonsai.UTF8ToString(pointer >>> 0);
-    bonsai._bonsai_string_free(pointer >>> 0);
+    const text = compiler.UTF8ToString(pointer >>> 0);
+    compiler._tididi_cnf_string_free(pointer >>> 0);
     return JSON.parse(text);
   }
 
@@ -41,7 +41,7 @@ function bonsaiAbi(bonsai) {
       const formula = encoder.encode(dimacs);
       const modeText = mode === null ? null : encoder.encode(mode + "\0");
       return lend(formula, (formulaAt) => {
-        const call = (modeAt) => answer(bonsai._bonsai_count_json(formulaAt, formula.length, modeAt, timeLimitMs));
+        const call = (modeAt) => answer(compiler._tididi_cnf_count_json(formulaAt, formula.length, modeAt, timeLimitMs));
         return modeText === null ? call(0) : lend(modeText, call);
       });
     },
@@ -51,9 +51,9 @@ function bonsaiAbi(bonsai) {
     // steps} or {ok: false, error: {kind, message}}.
     draw(dimacs) {
       const formula = new TextEncoder().encode(dimacs);
-      return lend(formula, (formulaAt) => answer(bonsai._bonsai_draw_json(formulaAt, formula.length)));
+      return lend(formula, (formulaAt) => answer(compiler._tididi_cnf_draw_json(formulaAt, formula.length)));
     },
   };
 }
 
-if (typeof module !== "undefined") module.exports = { bonsaiAbi };
+if (typeof module !== "undefined") module.exports = { tididiCnfAbi };

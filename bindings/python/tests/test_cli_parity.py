@@ -1,4 +1,4 @@
-"""tididi_bonsai counts what `tididi --mode MODE` counts, on the instances
+"""tididi_cnf counts what `tididi --mode MODE` counts, on the instances
 bindings/parity.txt lists, and reports the version `tididi --version` prints.
 Runs when pytest is given --tididi-cli."""
 
@@ -8,7 +8,7 @@ from fractions import Fraction
 
 import pytest
 
-import tididi_bonsai
+import tididi_cnf
 from instances import parity_instances
 
 INSTANCES = parity_instances()
@@ -41,7 +41,7 @@ def test_the_version_is_the_command_lines(tididi_cli):
     printed = subprocess.run(
         [str(tididi_cli), "--version"], capture_output=True, text=True, check=True, timeout=60
     ).stdout
-    assert printed == f"tididi {tididi_bonsai.__version__}\n"
+    assert printed == f"tididi {tididi_cnf.__version__}\n"
 
 
 def test_the_list_names_instances_that_exist():
@@ -54,8 +54,8 @@ def test_the_list_names_instances_that_exist():
 def test_count_matches_the_command_line(tididi_cli, path, mode):
     satisfiable, count = answered_by_the_command_line(tididi_cli, path, mode)
     for answer in (
-        tididi_bonsai.count_file(path, mode=mode),
-        tididi_bonsai.count(path.read_bytes(), mode=mode),
+        tididi_cnf.count_file(path, mode=mode),
+        tididi_cnf.count(path.read_bytes(), mode=mode),
     ):
         assert answer.mode == mode
         assert answer.satisfiable == satisfiable

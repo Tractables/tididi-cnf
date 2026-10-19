@@ -1,8 +1,8 @@
-//! Python bindings for tididi-bonsai: a CNF goes in, as DIMACS text, as
+//! Python bindings for tididi-cnf: a CNF goes in, as DIMACS text, as
 //! clauses of DIMACS integers or as a file, and its count comes back with the
 //! run's record.
 //!
-//! Each call is one `tididi_bonsai::count`: the parsing, the mode check, the
+//! Each call is one `tididi_cnf::count`: the parsing, the mode check, the
 //! limits and the count are the library's, and this crate converts the
 //! arguments and the answer.
 
@@ -13,45 +13,45 @@ use num_rational::BigRational;
 use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyFloat, PyString};
-use tididi_bonsai::{Count, Input, Limits, Mode};
+use tididi_cnf::{Count, Input, Limits, Mode};
 
-/// One class per class of `tididi_bonsai::Error`, whose documentation says
+/// One class per class of `tididi_cnf::Error`, whose documentation says
 /// what each covers. The message is the library's own.
 mod errors {
     use pyo3::create_exception;
     use pyo3::exceptions::PyException;
     use pyo3::prelude::*;
 
-    create_exception!(tididi_bonsai, Error, PyException, "Base class of the errors tididi-bonsai raises.");
+    create_exception!(tididi_cnf, Error, PyException, "Base class of the errors tididi-cnf raises.");
     create_exception!(
-        tididi_bonsai,
+        tididi_cnf,
         UsageError,
         Error,
         "The mode is unknown, contradicts the instance's header or asks for an unweighted count of an instance \
          with `c p weight` lines; or a clause keyword is given with DIMACS text."
     );
-    create_exception!(tididi_bonsai, EnvError, Error, "An environment setting the run reads is invalid.");
-    create_exception!(tididi_bonsai, StageError, Error, "A preprocessing or compile stage failed.");
+    create_exception!(tididi_cnf, EnvError, Error, "An environment setting the run reads is invalid.");
+    create_exception!(tididi_cnf, StageError, Error, "A preprocessing or compile stage failed.");
     create_exception!(
-        tididi_bonsai,
+        tididi_cnf,
         VtreeSpecError,
         Error,
         "The vtree construction cannot serve this run."
     );
     create_exception!(
-        tididi_bonsai,
+        tididi_cnf,
         InputError,
         Error,
         "The input could not be opened or read, or does not describe a formula."
     );
     create_exception!(
-        tididi_bonsai,
+        tididi_cnf,
         ArtifactError,
         Error,
         "The count could not be read off the compiled diagram."
     );
     create_exception!(
-        tididi_bonsai,
+        tididi_cnf,
         IncompleteError,
         Error,
         "The run ended without a count: at the time limit, on a refused allocation, or when every stage gave up."
@@ -60,8 +60,8 @@ mod errors {
     /// The exception class for `error`'s class, carrying its message.
     /// Exhaustive, so a class added to the library gets an exception here
     /// before this crate builds again.
-    pub(crate) fn of(error: tididi_bonsai::Error) -> PyErr {
-        use tididi_bonsai::Error as E;
+    pub(crate) fn of(error: tididi_cnf::Error) -> PyErr {
+        use tididi_cnf::Error as E;
         let message = error.to_string();
         match error {
             E::Usage(_) => UsageError::new_err(message),
@@ -92,7 +92,7 @@ mod errors {
 ///
 /// `count` and `stats` build new Python objects on each access, so keep what
 /// they return rather than reading them in a loop.
-#[pyclass(module = "tididi_bonsai", name = "Answer", frozen)]
+#[pyclass(module = "tididi_cnf", name = "Answer", frozen)]
 pub struct Answer {
     mode: Mode,
     satisfiable: bool,
@@ -140,12 +140,12 @@ impl Answer {
     }
 
     fn __repr__(&self) -> String {
-        format!("<tididi_bonsai.Answer: {}, {}>", self.mode, self.count)
+        format!("<tididi_cnf.Answer: {}, {}>", self.mode, self.count)
     }
 }
 
 impl Answer {
-    fn of(answer: tididi_bonsai::Answer) -> Self {
+    fn of(answer: tididi_cnf::Answer) -> Self {
         Answer {
             mode: answer.mode(),
             satisfiable: answer.satisfiable(),
@@ -164,11 +164,11 @@ fn mode(token: Option<&str>) -> PyResult<Option<Mode>> {
 /// released.
 fn run(
     py: Python<'_>,
-    input: impl FnOnce() -> Result<Input, tididi_bonsai::Error> + Send,
+    input: impl FnOnce() -> Result<Input, tididi_cnf::Error> + Send,
     mode: Option<Mode>,
     limits: Limits,
 ) -> PyResult<Answer> {
-    py.detach(|| tididi_bonsai::count(input()?, mode, &limits).map(Answer::of)).map_err(errors::of)
+    py.detach(|| tididi_cnf::count(input()?, mode, &limits).map(Answer::of)).map_err(errors::of)
 }
 
 /// Count the models of a CNF, given as DIMACS text or as clauses, as
@@ -246,12 +246,12 @@ fn count(
     };
     let given = [("num_vars", num_vars.is_some()), ("show", show.is_some()), ("weights", weights.is_some())];
     if let Some((keyword, _)) = given.into_iter().find(|&(_, given)| given) {
-        return Err(errors::of(tididi_bonsai::Error::Usage(format!(
+        return Err(errors::of(tididi_cnf::Error::Usage(format!(
             "{keyword} applies to a formula given as clauses; DIMACS text declares its variables, \
              show set and weights in its own lines."
         ))));
     }
-    run(py, || tididi_bonsai::parse_dimacs(bytes).map(Input::from), mode, limits)
+    run(py, || tididi_cnf::parse_dimacs(bytes).map(Input::from), mode, limits)
 }
 
 /// A formula given as clauses, read out of its Python objects so the count
@@ -316,8 +316,8 @@ impl Clauses {
         Ok(Clauses { num_vars: num_vars.or(nv).unwrap_or(widest), clauses, show, weights })
     }
 
-    fn build(self) -> Result<Input, tididi_bonsai::Error> {
-        tididi_bonsai::formula_from_clauses(self.num_vars, &self.clauses, self.show.as_deref(), &self.weights)
+    fn build(self) -> Result<Input, tididi_cnf::Error> {
+        tididi_cnf::formula_from_clauses(self.num_vars, &self.clauses, self.show.as_deref(), &self.weights)
             .map(Input::from)
     }
 }
@@ -336,7 +336,7 @@ fn weight(literal: i32, value: &Bound<'_, PyAny>) -> PyResult<BigRational> {
         let numerator: BigInt = value.getattr("numerator")?.extract()?;
         let denominator: BigInt = value.getattr("denominator")?.extract()?;
         if denominator == BigInt::ZERO {
-            return Err(errors::of(tididi_bonsai::Error::Input(format!(
+            return Err(errors::of(tididi_cnf::Error::Input(format!(
                 "the weight of literal {literal} has denominator 0"
             ))));
         }
@@ -349,8 +349,8 @@ fn weight(literal: i32, value: &Bound<'_, PyAny>) -> PyResult<BigRational> {
     };
     // The reading `c p weight` lines get, so a string weighs what it would in
     // a DIMACS file.
-    tididi_bonsai::vitri::cnf::parse_rational_weight(text).map_err(|error| {
-        errors::of(tididi_bonsai::Error::Input(format!("the weight of literal {literal}: {error}")))
+    tididi_cnf::vitri::cnf::parse_rational_weight(text).map_err(|error| {
+        errors::of(tididi_cnf::Error::Input(format!("the weight of literal {literal}: {error}")))
     })
 }
 
@@ -396,12 +396,12 @@ fn count_file(
 }
 
 // `pymodule` expands this function into a Rust module of the same name, so it
-// cannot be called `tididi_bonsai` without shadowing the crate being wrapped.
+// cannot be called `tididi_cnf` without shadowing the crate being wrapped.
 // `name` is what Python imports.
 /// Exact model counting by compiling a CNF into a Tree Decision Diagram: the
 /// model count, the weighted count and their projections of a DIMACS formula.
 #[pymodule]
-#[pyo3(name = "tididi_bonsai")]
+#[pyo3(name = "tididi_cnf")]
 fn python_module(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("__version__", env!("CARGO_PKG_VERSION"))?;
     errors::add_to(module)?;

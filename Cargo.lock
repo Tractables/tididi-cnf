@@ -355,7 +355,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tididi-bonsai"
+name = "tididi-cnf"
 version = "0.1.0"
 dependencies = [
  "libc",

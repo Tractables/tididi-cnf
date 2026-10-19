@@ -23,7 +23,7 @@ rustflags = [
   # A factory function instead of a script that starts itself, so the page
   # decides when to instantiate and `main` is never run.
   "-Clink-arg=-sMODULARIZE=1",
-  "-Clink-arg=-sEXPORT_NAME=createBonsai",
+  "-Clink-arg=-sEXPORT_NAME=createTididiCnf",
   "-Clink-arg=-sINVOKE_RUN=0",
   # The heap grows as a run needs it, up to the whole 32-bit address space
   # rather than Emscripten's default ceiling of 2 GB.
@@ -32,7 +32,7 @@ rustflags = [
   # The compile and the vtree construction recurse, and a side module runs on
   # the main module's stack; this is the 8 MB a native main thread has.
   "-Clink-arg=-sSTACK_SIZE=8388608",
-  "-Clink-arg=-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_bonsai_count_json,_bonsai_draw_json,_bonsai_string_free",
+  "-Clink-arg=-sEXPORTED_FUNCTIONS=_main,_malloc,_free,_tididi_cnf_count_json,_tididi_cnf_draw_json,_tididi_cnf_string_free",
   # What abi.js uses: HEAPU8 to copy a buffer into the memory `malloc` handed
   # it, UTF8ToString to read a returned string.
   "-Clink-arg=-sEXPORTED_RUNTIME_METHODS=UTF8ToString,HEAPU8",

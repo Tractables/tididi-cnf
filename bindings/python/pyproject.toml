@@ -3,7 +3,7 @@ requires = ["maturin>=1.9,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "tididi-bonsai"
+name = "tididi-cnf"
 description = "Exact model counting by compiling a CNF into a Tree Decision Diagram: the model count, the weighted count and their projections of a DIMACS formula."
 readme = "README.md"
 # The extension is built against the stable ABI of 3.10, so one wheel per
@@ -20,11 +20,11 @@ classifiers = [
 dynamic = ["version"]
 
 [project.urls]
-Repository = "https://github.com/Tractables/tididi-bonsai"
-Documentation = "https://github.com/Tractables/tididi-bonsai/blob/main/bindings/python/README.md"
+Repository = "https://github.com/Tractables/tididi-cnf"
+Documentation = "https://github.com/Tractables/tididi-cnf/blob/main/bindings/python/README.md"
 
 [tool.maturin]
-# The Cargo package is `tididi-bonsai-python` to keep it distinct from the
-# library it wraps; the module Python imports is `tididi_bonsai`.
-module-name = "tididi_bonsai"
+# The Cargo package is `tididi-cnf-python` to keep it distinct from the
+# library it wraps; the module Python imports is `tididi_cnf`.
+module-name = "tididi_cnf"
 strip = true

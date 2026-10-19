@@ -19,7 +19,7 @@ use tididi::vtree::Vtree;
 pub fn load_cnf(path: &str) -> CnfFormula {
     let path = format!("{}/{path}", env!("CARGO_MANIFEST_DIR"));
     let file = std::fs::File::open(&path).unwrap_or_else(|e| panic!("open {path}: {e}"));
-    tididi_bonsai::parse_dimacs(std::io::BufReader::new(file))
+    tididi_cnf::parse_dimacs(std::io::BufReader::new(file))
         .unwrap_or_else(|e| panic!("parse {path}: {e}"))
         .0
 }

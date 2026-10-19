@@ -58,7 +58,7 @@ The header declares the task, so [`count`](crate::count) needs no
 ```rust,ignore,{class=tested-example}
 let reliable = [90; 5];
 let instance = format!("{network}{}", weights(reliable));
-let answer = tididi_bonsai::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
+let answer = tididi_cnf::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
 println!("Connected: {:.5}", answer.count().to_f64());
 ```
 
@@ -78,7 +78,7 @@ for link in 1..=5 {
     let mut broken = reliable;
     broken[link - 1] = 0;
     let instance = format!("{network}{}", weights(broken));
-    let answer = tididi_bonsai::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
+    let answer = tididi_cnf::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
     println!("Connected with link {link} down: {:.5}", answer.count().to_f64());
 }
 ```
@@ -96,5 +96,5 @@ Connected with link 5 down: 0.88290
 Without the bridge, s reaches t over a–t or b–t: 1 − (1 − 0.81)² = 0.9639.
 Each outer link matters more: without link 1, every route starts on link 2.
 
-The [complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/reliability.rs)
+The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/reliability.rs)
 also builds the instance text for each case.

@@ -34,8 +34,8 @@ impl Circuit {
     }
 }
 
-fn main() -> Result<(), tididi_bonsai::Error> {
-    use tididi_bonsai::{formula_from_clauses, Limits, Mode};
+fn main() -> Result<(), tididi_cnf::Error> {
+    use tididi_cnf::{formula_from_clauses, Limits, Mode};
 
     let mut circuit = Circuit::default();
     let [a0, a1, b0, b1] = [(); 4].map(|_| circuit.var());
@@ -51,11 +51,11 @@ fn main() -> Result<(), tididi_bonsai::Error> {
     let num_vars = circuit.num_vars;
     let limits = Limits::default();
     let inputs = formula_from_clauses(num_vars, &circuit.clauses, None, &[])?;
-    let answer = tididi_bonsai::count(inputs, Some(Mode::Mc), &limits)?;
+    let answer = tididi_cnf::count(inputs, Some(Mode::Mc), &limits)?;
     println!("Input pairs: {}", answer.count());
 
     let products = formula_from_clauses(num_vars, &circuit.clauses, Some(&[p0, p1, p2, p3]), &[])?;
-    let answer = tididi_bonsai::count(products, Some(Mode::Pmc), &limits)?;
+    let answer = tididi_cnf::count(products, Some(Mode::Pmc), &limits)?;
     println!("Distinct products: {}", answer.count());
     Ok(())
 }

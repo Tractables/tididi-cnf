@@ -1,5 +1,5 @@
 // The page: the input, the settings, the run, and the result. The worker that
-// runs tididi-bonsai is worker.js, and runner.js drives it; compile-view.js
+// runs tididi-cnf is worker.js, and runner.js drives it; compile-view.js
 // draws the compile of a small formula.
 
 import { markDrawingStale, showDrawing } from "./compile-view.js";
@@ -277,7 +277,7 @@ const runner = new Runner("worker.js" + stamp, {
     statusLine.textContent = "Ready.";
   },
   notLoaded(message) {
-    statusLine.textContent = `tididi-bonsai did not load: ${message}`;
+    statusLine.textContent = `tididi-cnf did not load: ${message}`;
   },
   started() {
     const started = performance.now();
@@ -323,7 +323,7 @@ function requestRun() {
   }
   writeAddress();
   if (runner.running) settle();
-  if (!runner.ready) statusLine.textContent = "Loading tididi-bonsai; the run starts when it is ready.";
+  if (!runner.ready) statusLine.textContent = "Loading tididi-cnf; the run starts when it is ready.";
   runRevision = inputRevision;
   runner.run(built.job);
 }
@@ -331,7 +331,7 @@ function requestRun() {
 element("cancel").addEventListener("click", () => {
   if (!runner.cancel()) return;
   settle();
-  statusLine.textContent = "Stopped. Loading tididi-bonsai again.";
+  statusLine.textContent = "Stopped. Loading tididi-cnf again.";
 });
 
 function markStale() {

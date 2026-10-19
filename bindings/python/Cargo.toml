@@ -3,26 +3,26 @@
 [workspace]
 
 [package]
-name = "tididi-bonsai-python"
+name = "tididi-cnf-python"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 license = "Apache-2.0"
-repository = "https://github.com/Tractables/tididi-bonsai"
-description = "Python bindings for tididi-bonsai."
+repository = "https://github.com/Tractables/tididi-cnf"
+description = "Python bindings for tididi-cnf."
 publish = false
 
 [lib]
 # Python imports the extension by this name, so it matches the `#[pymodule]`
 # name and `module-name` in pyproject.toml.
-name = "tididi_bonsai"
+name = "tididi_cnf"
 crate-type = ["cdylib"]
 
 [dependencies]
 # The checkout this crate sits in, so a change to the library is built and
 # tested through the bindings. `__version__` is this package's version, which
 # .github/scripts/check-versions.py keeps equal to the library's.
-tididi-bonsai = { path = "../.." }
+tididi-cnf = { path = "../.." }
 # `extension-module` links against the interpreter that loads the wheel rather
 # than a libpython. `abi3-py310` builds against the stable ABI, so one wheel
 # per platform covers CPython 3.10 and later. `num-bigint` and `num-rational`

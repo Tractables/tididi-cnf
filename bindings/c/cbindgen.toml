@@ -1,5 +1,5 @@
 language = "C"
-include_guard = "TIDIDI_BONSAI_H"
+include_guard = "TIDIDI_CNF_H"
 cpp_compat = true
 style = "both"
 documentation_style = "doxy"
@@ -8,12 +8,12 @@ no_includes = true
 sys_includes = ["stdbool.h", "stddef.h", "stdint.h"]
 
 header = """
-/* tididi-bonsai: model counting by compiling a CNF into a Tree Decision Diagram.
+/* tididi-cnf: model counting by compiling a CNF into a Tree Decision Diagram.
  *
- * Copyright the tididi-bonsai authors. Licensed under the Apache License,
+ * Copyright the tididi-cnf authors. Licensed under the Apache License,
  * Version 2.0.
  *
- * Compare TIDIDI_BONSAI_ABI_VERSION with tididi_bonsai_abi_version() at run
+ * Compare TIDIDI_CNF_ABI_VERSION with tididi_cnf_abi_version() at run
  * time to catch a library built from a different ABI than this header.
  */"""
 

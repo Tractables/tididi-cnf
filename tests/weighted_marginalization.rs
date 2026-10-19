@@ -30,8 +30,8 @@ use tididi::Engine;
 use tididi::diagram::{Arithmetic, Tdd, WeightStore};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
-use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
-use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
+use tididi_cnf::compile::{CompileOptions, Output, compile_cnf};
+use tididi_cnf::vtree::{VtreeOptions, build_vtree};
 
 use common::{make_formula, random_3cnf};
 

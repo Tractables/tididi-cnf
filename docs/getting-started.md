@@ -193,7 +193,7 @@ two halves, and each node adds its pairs.
        alt="The Tree Decision Diagram of switches.cnf: nine nodes over a vtree on x1 to x6, with model count 22 at the root">
 </p>
 
-The [browser page](https://tractables.github.io/tididi-bonsai/) draws the
+The [browser page](https://tractables.github.io/tididi-cnf/) draws the
 diagram of any small formula this way and shows its compile step by step.
 
 ## Your own problem
@@ -218,11 +218,11 @@ returns the mode, whether the formula has a model, the count and the run's
 record. It is the run `tididi` makes on the same formula and mode. In Python:
 
 ```python
-import tididi_bonsai
+import tididi_cnf
 
-answer = tididi_bonsai.count_file("tests/data/mcc_mc_sat.cnf")
+answer = tididi_cnf.count_file("tests/data/mcc_mc_sat.cnf")
 print(answer.mode, answer.count)  # mc 22
-answer = tididi_bonsai.count([[1, 2], [-1, 3], [-2, -3]], mode="mc")
+answer = tididi_cnf.count([[1, 2], [-1, 3], [-2, -3]], mode="mc")
 print(answer.count)  # 2
 ```
 
@@ -232,7 +232,7 @@ building and linking the C library.
 
 ## In the browser
 
-[The tididi-bonsai page](https://tractables.github.io/tididi-bonsai/) runs the
+[The tididi-cnf page](https://tractables.github.io/tididi-cnf/) runs the
 library in the browser tab, built for WebAssembly: paste or open a formula, or
 pick an example, and it counts it as `tididi` would, under the task the
 formula declares or one picked on the page, with an optional time limit, and

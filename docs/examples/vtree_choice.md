@@ -16,9 +16,9 @@ Each bit gives two clauses, `¬xᵢ ∨ yᵢ` and `xᵢ ∨ ¬yᵢ`, and one mor
 `x₁ ∨ … ∨ x₁₂`, says some bit of `x` is set:
 
 ```rust,ignore,{class=tested-example}
-use tididi_bonsai::compile::{compile_cnf, CompileOptions};
-use tididi_bonsai::parse_dimacs;
-use tididi_bonsai::vtree::{build_vtree, VtreeOptions};
+use tididi_cnf::compile::{compile_cnf, CompileOptions};
+use tididi_cnf::parse_dimacs;
+use tididi_cnf::vtree::{build_vtree, VtreeOptions};
 ```
 
 ```rust,ignore,{class=tested-example}
@@ -83,4 +83,4 @@ The specs and the constructions behind them are documented with
 Continue with the
 [configuration example](crate::guide::examples::catalog), which
 counts with the vtree chosen for you, or see the
-[complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/vtree_choice.rs).
+[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/vtree_choice.rs).

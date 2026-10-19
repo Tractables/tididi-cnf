@@ -20,8 +20,8 @@ use vitri::cnf::CnfFormula;
 use tididi::Engine;
 use tididi::limits::StopRules;
 use tididi::vtree::Vtree;
-use tididi_bonsai::compile::{CompileOptions, compile_cnf};
-use tididi_bonsai::vtree::VtreeOptions;
+use tididi_cnf::compile::{CompileOptions, compile_cnf};
+use tididi_cnf::vtree::VtreeOptions;
 
 use common::make_formula;
 
@@ -39,7 +39,7 @@ fn heap_bytes() -> u64 {
 fn subject() -> (CnfFormula, Arc<Vtree>) {
     let (num_vars, clauses) = common::queens_cnf(8);
     let f = make_formula(num_vars, clauses);
-    let built = tididi_bonsai::vtree::build_vtree_with_components(
+    let built = tididi_cnf::vtree::build_vtree_with_components(
         &f,
         "portfolio",
         &VtreeOptions::default(),

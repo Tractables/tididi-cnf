@@ -1,31 +1,31 @@
-//! tididi-bonsai built for the browser: the C functions below wrap
-//! [`tididi_bonsai::count`], and draw the steps of a small formula's compile.
+//! tididi-cnf built for the browser: the C functions below wrap
+//! [`tididi_cnf::count`], and draw the steps of a small formula's compile.
 //!
 //! Emscripten links a program, so `main` has to exist. It does nothing and the
 //! page never runs it; the page calls the exported functions.
 //!
 //! Every string these functions return is NUL-terminated UTF-8, and the caller
-//! releases it with [`bonsai_string_free`].
+//! releases it with [`tididi_cnf_string_free`].
 
 use std::ffi::{CStr, CString, c_char};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use serde_json::{Value, json};
-use tididi_bonsai::compile::{ComponentPlan, CompileOptions, compile_cnf};
-use tididi_bonsai::tididi::io::write_tdd;
-use tididi_bonsai::tididi::vtree::VtreeNode;
-use tididi_bonsai::vitri::cnf::{Clause, CnfFormula, Original};
-use tididi_bonsai::vtree::{VtreeOptions, build_vtree};
-use tididi_bonsai::{Answer, Error, Limits, Mode};
+use tididi_cnf::compile::{ComponentPlan, CompileOptions, compile_cnf};
+use tididi_cnf::tididi::io::write_tdd;
+use tididi_cnf::tididi::vtree::VtreeNode;
+use tididi_cnf::vitri::cnf::{Clause, CnfFormula, Original};
+use tididi_cnf::vtree::{VtreeOptions, build_vtree};
+use tididi_cnf::{Answer, Error, Limits, Mode};
 
-/// The most variables a formula [`bonsai_draw_json`] draws can have. The page
+/// The most variables a formula [`tididi_cnf_draw_json`] draws can have. The page
 /// lays out every node of every step, and evaluates the diagrams in doubles,
 /// which hold every count up to 2^53 exactly.
 const DRAW_MAX_VARIABLES: u32 = 16;
 
 fn main() {}
 
-/// [`tididi_bonsai::count`] on the `len` bytes of DIMACS at `dimacs`.
+/// [`tididi_cnf::count`] on the `len` bytes of DIMACS at `dimacs`.
 ///
 /// `mode` is null for the task the instance's header declares, or a mode's
 /// token (`mc`, `wmc`, `pmc`, `pwmc`, `compile`), which the header must then
@@ -35,10 +35,10 @@ fn main() {}
 /// The answer is `{"ok": true, "mode", "satisfiable", "count", "value",
 /// "stats"}`: the mode the run resolved to, its verdict, the count as the
 /// binary prints it, the count's nearest `f64`
-/// ([`Count::to_f64`](tididi_bonsai::Count::to_f64), `null` past an `f64`'s
+/// ([`Count::to_f64`](tididi_cnf::Count::to_f64), `null` past an `f64`'s
 /// range), and the record the binary's `--stats` writes. A run without an
 /// answer is `{"ok": false, "error": {"kind", "message"}}`, `kind` being
-/// [`Error::kind`](tididi_bonsai::Error::kind), or `panic` for a panic that
+/// [`Error::kind`](tididi_cnf::Error::kind), or `panic` for a panic that
 /// reached this function.
 ///
 /// # Safety
@@ -46,7 +46,7 @@ fn main() {}
 /// `dimacs` points to `len` readable bytes, or is null or `len` is 0, which is
 /// the empty input. `mode` is null or points to a NUL-terminated string.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bonsai_count_json(
+pub unsafe extern "C" fn tididi_cnf_count_json(
     dimacs: *const u8,
     len: usize,
     mode: *const c_char,
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn bonsai_count_json(
 
 /// The steps of compiling the `len` bytes of DIMACS at `dimacs`, for the page
 /// to draw: the formula as it stands, without the preprocessing
-/// [`bonsai_count_json`] runs, on the vtree vitri's portfolio builds for it.
+/// [`tididi_cnf_count_json`] runs, on the vtree vitri's portfolio builds for it.
 ///
 /// The compile works bottom-up over the vtree: each clause waits at the lowest
 /// node whose subtree holds its variables, and each internal node conjoins
@@ -83,26 +83,26 @@ pub unsafe extern "C" fn bonsai_count_json(
 /// diagram in the library's `.tdd` text format ([`write_tdd`]). A formula
 /// with fewer than 2 or more than [`DRAW_MAX_VARIABLES`] variables is
 /// `{"ok": false, "error": {"kind": "size", "message"}}`, and other errors are
-/// as [`bonsai_count_json`] reports them.
+/// as [`tididi_cnf_count_json`] reports them.
 ///
 /// # Safety
 ///
-/// As for [`bonsai_count_json`]'s `dimacs` and `len`.
+/// As for [`tididi_cnf_count_json`]'s `dimacs` and `len`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bonsai_draw_json(dimacs: *const u8, len: usize) -> *mut c_char {
+pub unsafe extern "C" fn tididi_cnf_draw_json(dimacs: *const u8, len: usize) -> *mut c_char {
     // SAFETY: the caller's guarantee for `dimacs` is the one `input` needs.
     let dimacs = unsafe { input(dimacs, len) };
     reply(|| draw(dimacs))
 }
 
-/// Release a string [`bonsai_count_json`] or [`bonsai_draw_json`] returned.
+/// Release a string [`tididi_cnf_count_json`] or [`tididi_cnf_draw_json`] returned.
 ///
 /// # Safety
 ///
 /// `text` is null or a string one of them returned that nothing has released
 /// since.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bonsai_string_free(text: *mut c_char) {
+pub unsafe extern "C" fn tididi_cnf_string_free(text: *mut c_char) {
     if !text.is_null() {
         // SAFETY: the pointer came from `CString::into_raw` in `reply`, and
         // this is its only release point.
@@ -126,12 +126,12 @@ unsafe fn input<'a>(bytes: *const u8, len: usize) -> &'a [u8] {
     }
 }
 
-/// `answer()` as a string the caller releases with [`bonsai_string_free`].
+/// `answer()` as a string the caller releases with [`tididi_cnf_string_free`].
 fn reply(answer: impl FnOnce() -> Value) -> *mut c_char {
     // A panic reaching Emscripten aborts the module, and every later call on
     // it fails; the panic hook has already written the details to stderr.
     let answer = catch_unwind(AssertUnwindSafe(answer))
-        .unwrap_or_else(|_| failure("panic", "tididi-bonsai panicked; please report it as a bug"));
+        .unwrap_or_else(|_| failure("panic", "tididi-cnf panicked; please report it as a bug"));
     // JSON escapes a NUL inside a string, so serialized JSON never holds one.
     CString::new(answer.to_string())
         .expect("serialized JSON contains no NUL byte")
@@ -141,7 +141,7 @@ fn reply(answer: impl FnOnce() -> Value) -> *mut c_char {
 /// The answer as JSON: the count and the record, or the error.
 fn count(dimacs: &[u8], mode: Option<&str>, limits: &Limits) -> Value {
     let answer = mode.map(str::parse::<Mode>).transpose().and_then(|mode| {
-        tididi_bonsai::count(tididi_bonsai::parse_dimacs(dimacs)?, mode, limits)
+        tididi_cnf::count(tididi_cnf::parse_dimacs(dimacs)?, mode, limits)
     });
     match answer {
         Ok(answer) => answered(&answer),
@@ -167,7 +167,7 @@ fn failure(kind: &str, message: &str) -> Value {
 
 /// The drawing as JSON, or the error.
 fn draw(dimacs: &[u8]) -> Value {
-    let (formula, meta) = match tididi_bonsai::parse_dimacs(dimacs) {
+    let (formula, meta) = match tididi_cnf::parse_dimacs(dimacs) {
         Ok(parsed) => parsed,
         Err(error) => return failure(error.kind(), &error.to_string()),
     };

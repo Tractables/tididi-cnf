@@ -2,8 +2,8 @@
 //! two sites, as a weighted model count.
 //! Run with `cargo run --example reliability`.
 
-fn main() -> Result<(), tididi_bonsai::Error> {
-    use tididi_bonsai::{parse_dimacs, Limits};
+fn main() -> Result<(), tididi_cnf::Error> {
+    use tididi_cnf::{parse_dimacs, Limits};
 
     // Links 1 (s–a), 2 (s–b), 3 (a–b), 4 (a–t) and 5 (b–t): s reaches t
     // unless every link of a cut fails, so every cut keeps a working link.
@@ -28,14 +28,14 @@ p cnf 5 4
 
     let reliable = [90; 5];
     let instance = format!("{network}{}", weights(reliable));
-    let answer = tididi_bonsai::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
+    let answer = tididi_cnf::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
     println!("Connected: {:.5}", answer.count().to_f64());
 
     for link in 1..=5 {
         let mut broken = reliable;
         broken[link - 1] = 0;
         let instance = format!("{network}{}", weights(broken));
-        let answer = tididi_bonsai::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
+        let answer = tididi_cnf::count(parse_dimacs(instance.as_bytes())?, None, &Limits::default())?;
         println!("Connected with link {link} down: {:.5}", answer.count().to_f64());
     }
     Ok(())

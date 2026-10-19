@@ -112,7 +112,7 @@ impl Reduction {
 /// everything else is a number, a boolean or a token. Serialize it with
 /// `serde_json` to get the object the binary writes.
 ///
-/// The [record reference](https://github.com/Tractables/tididi-bonsai/blob/main/docs/stats.md)
+/// The [record reference](https://github.com/Tractables/tididi-cnf/blob/main/docs/stats.md)
 /// tabulates the fields and which modes carry each.
 #[derive(Clone, Debug, Default, Serialize)]
 #[non_exhaustive]

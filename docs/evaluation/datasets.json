@@ -1,5 +1,5 @@
 [
-  {"file": "mcc-track1-120s.csv", "title": "Two minutes per instance", "about": "tididi-bonsai and the exact counters entered in the 2026 competition, two minutes per instance; an instance is solved when the solver printed its count in time.", "timeout_s": 120},
+  {"file": "mcc-track1-120s.csv", "title": "Two minutes per instance", "about": "tididi-cnf and the exact counters entered in the 2026 competition, two minutes per instance; an instance is solved when the solver printed its count in time.", "timeout_s": 120},
   {"file": "mcc-track1-3600s.csv", "title": "One hour per instance", "about": "The same counters for an hour per instance on the 100 private instances of 2026; the 33 instances that no solver had finished before were not run and count as unsolved.", "timeout_s": 3600},
-  {"file": "mcc-track1-compile-120s.csv", "title": "Compilation, two minutes per instance", "about": "tididi-bonsai and four d-DNNF compilers, two minutes per instance; an instance is solved when the compiler wrote its circuit in time and the circuit's model count, checked independently, was right.", "timeout_s": 120}
+  {"file": "mcc-track1-compile-120s.csv", "title": "Compilation, two minutes per instance", "about": "tididi-cnf and four d-DNNF compilers, two minutes per instance; an instance is solved when the compiler wrote its circuit in time and the circuit's model count, checked independently, was right.", "timeout_s": 120}
 ]

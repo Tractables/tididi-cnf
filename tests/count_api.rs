@@ -1,4 +1,4 @@
-//! `tididi_bonsai::count`, the one-call entry: the mode it resolves from the
+//! `tididi_cnf::count`, the one-call entry: the mode it resolves from the
 //! header or takes as given, the count in each task's domain, the record it
 //! returns, its refusals, and its agreement with the binary, which makes the
 //! same run.
@@ -6,7 +6,7 @@
 mod common;
 
 use num_bigint::BigUint;
-use tididi_bonsai::{Count, Error, Limits, Mode, count, parse_dimacs};
+use tididi_cnf::{Count, Error, Limits, Mode, count, parse_dimacs};
 
 const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
 
@@ -269,7 +269,7 @@ fn a_file_that_cannot_be_read_is_an_input_error() {
 /// Separately constructed metadata must name only the formula's variables.
 #[test]
 fn formula_metadata_rejects_a_shown_variable_outside_the_formula() {
-    use tididi_bonsai::vitri::cnf::{CnfMeta, ShowSet};
+    use tididi_cnf::vitri::cnf::{CnfMeta, ShowSet};
 
     let (formula, _) = parse_dimacs("p cnf 2 1\n1 2 0\n".as_bytes()).unwrap();
     let show = ShowSet::from_dimacs_ids(&[3]).unwrap();
@@ -286,7 +286,7 @@ fn formula_metadata_rejects_a_shown_variable_outside_the_formula() {
 #[test]
 fn formula_metadata_rejects_a_weighted_variable_outside_the_formula() {
     use num_rational::BigRational;
-    use tididi_bonsai::vitri::cnf::{CnfMeta, WeightTable};
+    use tididi_cnf::vitri::cnf::{CnfMeta, WeightTable};
 
     let (formula, _) = parse_dimacs("p cnf 2 1\n1 2 0\n".as_bytes()).unwrap();
     let weights = WeightTable::from_dimacs_pairs([(3, BigRational::new(1.into(), 2.into()))], 3).unwrap();

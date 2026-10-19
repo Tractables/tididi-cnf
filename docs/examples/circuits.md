@@ -55,7 +55,7 @@ task [`Mode::Mc`](crate::Mode::Mc):
 let num_vars = circuit.num_vars;
 let limits = Limits::default();
 let inputs = formula_from_clauses(num_vars, &circuit.clauses, None, &[])?;
-let answer = tididi_bonsai::count(inputs, Some(Mode::Mc), &limits)?;
+let answer = tididi_cnf::count(inputs, Some(Mode::Mc), &limits)?;
 println!("Input pairs: {}", answer.count());
 ```
 
@@ -71,7 +71,7 @@ it:
 
 ```rust,ignore,{class=tested-example}
 let products = formula_from_clauses(num_vars, &circuit.clauses, Some(&[p0, p1, p2, p3]), &[])?;
-let answer = tididi_bonsai::count(products, Some(Mode::Pmc), &limits)?;
+let answer = tididi_cnf::count(products, Some(Mode::Pmc), &limits)?;
 println!("Distinct products: {}", answer.count());
 ```
 
@@ -83,5 +83,5 @@ Distinct products: 7
 
 The products of numbers from 0 to 3 are 0, 1, 2, 3, 4, 6 and 9.
 
-The [complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/circuits.rs)
+The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/circuits.rs)
 has the XOR gate.

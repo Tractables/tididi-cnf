@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>tididi-bonsai: model counting in the browser</title>
+<title>tididi-cnf: model counting in the browser</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,20 +11,20 @@
 <main>
 
 <header>
-  <h1><a href="https://github.com/Tractables/tididi-bonsai"><img class="logo"
-     src="logo.svg" alt="tididi bonsai" width="916" height="262"></a></h1>
+  <h1><a href="https://github.com/Tractables/tididi-cnf"><img class="logo"
+     src="logo.svg" alt="tididi-cnf" width="916" height="262"></a></h1>
   <p class="lede">Paste a DIMACS CNF, open or drop a file, or pick an example.
-  tididi-bonsai compiles the formula into a Tree Decision Diagram and counts
+  tididi-cnf compiles the formula into a Tree Decision Diagram and counts
   its models: the model count, the weighted count, or either one projected
   onto the formula's show variables. The weights and the show variables come
   from the formula's own <code>c p weight</code> and <code>c p show</code>
   lines, and its <code>c t</code> line names the task unless you pick one.
-  Everything runs in this tab and nothing is uploaded. tididi-bonsai is also a
-  <a href="https://github.com/Tractables/tididi-bonsai">Rust crate</a> with a
+  Everything runs in this tab and nothing is uploaded. tididi-cnf is also a
+  <a href="https://github.com/Tractables/tididi-cnf">Rust crate</a> with a
   command-line tool and
-  <a href="https://tractables.github.io/tididi-bonsai/tididi_bonsai/">API
+  <a href="https://tractables.github.io/tididi-cnf/tididi_cnf/">API
   documentation</a>; its
-  <a href="https://github.com/Tractables/tididi-bonsai/blob/main/docs/input.md">input
+  <a href="https://github.com/Tractables/tididi-cnf/blob/main/docs/input.md">input
   reference</a> describes the format, and its <a href="evaluation/">evaluation</a>
   compares it with other exact counters.</p>
 </header>
@@ -68,7 +68,7 @@
       formula's <code>c t</code> line.</p>
       <button id="run" type="submit" disabled>Count</button>
       <button id="cancel" type="button" hidden>Cancel</button>
-      <p id="status" role="status">Loading tididi-bonsai.</p>
+      <p id="status" role="status">Loading tididi-cnf.</p>
     </form>
   </div>
 </section>
@@ -100,7 +100,7 @@
   </div>
   <p id="compile-unavailable" class="note" hidden></p>
   <div id="compile-body" hidden>
-    <p class="explain">tididi-bonsai compiles a formula bottom-up over a
+    <p class="explain">tididi-cnf compiles a formula bottom-up over a
     <em>vtree</em>, a binary tree with one variable at each leaf, into a Tree
     Decision Diagram. Each clause waits at the lowest vtree node whose subtree
     holds all its variables. At each node, the diagrams of its two sides are
@@ -142,7 +142,7 @@
 </section>
 
 <footer class="note">
-  <p>tididi-bonsai is under the <a href="notices/LICENSE">Apache License
+  <p>tididi-cnf is under the <a href="notices/LICENSE">Apache License
   2.0</a>; its <a href="notices/NOTICE">NOTICE</a> lists what it is built
   from. vitri, which preprocesses the formula and builds its vtrees, is under
   the same <a href="notices/vitri/LICENSE">licence</a>;

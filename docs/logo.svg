@@ -1,19 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-272 -10 916 262" role="img" aria-label="tididi bonsai: a vtree grown as a bonsai in its pot, beside the word bonsai"><title>tididi bonsai</title>
-  <g fill="none" stroke="#2774AE" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M-150 186 C-150 158 -184 152 -170 124 C-164 112 -160 108 -158 104" stroke-width="24"/>
-    <path d="M-158 104 C-176 98 -190 96 -202 90 M-158 104 C-140 100 -124 100 -112 96" stroke-width="16"/>
-    <path d="M-202 90 L-248 74 M-202 90 L-206 50 M-112 96 L-148 40 M-112 96 L-80 82 M-80 82 L-98 48 M-80 82 L-46 72" stroke-width="10"/>
-    <path d="M-246 186 H-54" stroke-width="20"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 916 262" role="img" aria-label="tididi-cnf: a variable tree beside the compiler name">
+  <title>tididi-cnf</title>
+  <g fill="none" stroke="#2774AE" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M112 55 L63 105 M112 55 L161 105 M63 105 L30 158 M63 105 L94 158 M161 105 L143 158 M161 105 L195 158 M143 158 L124 210 M143 158 L163 210"/>
   </g>
-  <path d="M-232 190 L-214 236 Q-212 240 -206 240 H-94 Q-88 240 -86 236 L-68 190 Z" fill="#2774AE"/>
-  <g fill="#FFD100"><circle cx="-248" cy="74" r="12"/><circle cx="-206" cy="50" r="12"/><circle cx="-148" cy="40" r="12"/><circle cx="-98" cy="48" r="12"/><circle cx="-46" cy="72" r="12"/></g>
-  <g fill="none" stroke="#2774AE" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M0 95 V227 M0 180 A43 47 0 1 0 86 180 A43 47 0 1 0 0 180"/>
-    <path d="M128 180 A43 47 0 1 0 214 180 A43 47 0 1 0 128 180"/>
-    <path d="M256 227 V133 M256 178 Q256 133 296 133 Q336 133 336 178 V227"/>
-    <path d="M447 150 C438 139 427 133 413 133 C393 133 381 143 381 157 C381 173 395 178 414 180 C435 182 449 189 449 204 C449 219 435 227 414 227 C398 227 386 221 378 210"/>
-    <path d="M576 133 V227 M576 180 A43 47 0 1 1 490 180 A43 47 0 1 1 576 180"/>
-    <path d="M618 133 V227"/>
+  <g fill="#2774AE"><circle cx="112" cy="55" r="9"/><circle cx="63" cy="105" r="9"/><circle cx="161" cy="105" r="9"/><circle cx="143" cy="158" r="9"/></g>
+  <g fill="#FFD100"><circle cx="30" cy="158" r="11"/><circle cx="94" cy="158" r="11"/><circle cx="195" cy="158" r="11"/><circle cx="124" cy="210" r="11"/><circle cx="163" cy="210" r="11"/></g>
+  <g transform="translate(260 22) scale(.72)">
+    <g fill="none" stroke="#2774AE" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M29 95 V202 Q29 227 54 227 H60 M7 133 H60"/>
+      <path d="M90 133 V227 M260 133 V227 M430 133 V227"/>
+      <path d="M217 95 V227 M217 180 A43 47 0 1 1 131 180 A43 47 0 1 1 217 180"/>
+      <path d="M387 95 V227 M387 180 A43 47 0 1 1 301 180 A43 47 0 1 1 387 180"/>
+      <path d="M480 180 H512"/>
+      <path d="M624 150 C616 139 604 133 592 133 C567 133 550 153 550 180 C550 207 567 227 592 227 C604 227 616 221 624 210"/>
+      <path d="M666 227 V133 M666 178 Q666 133 706 133 Q746 133 746 178 V227"/>
+      <path d="M809 227 V120 Q809 88 843 88 H850 M785 133 H850"/>
+    </g>
+    <g fill="#FFD100"><circle cx="90" cy="70" r="12"/><circle cx="260" cy="70" r="12"/><circle cx="430" cy="70" r="12"/></g>
   </g>
-  <circle cx="618" cy="82" r="12" fill="#FFD100"/>
 </svg>

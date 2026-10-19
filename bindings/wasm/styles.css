@@ -63,7 +63,7 @@ header { margin-bottom: 1.5rem; max-width: 60rem; }
 
 h1 { margin: 0 0 0.6rem; line-height: 0; }
 
-/* The logo is the title: a bonsai grown from a vtree beside the word. */
+/* The logo is the title: the compiler's name beside a variable tree. */
 .logo { display: block; width: auto; height: 4.5rem; max-width: 100%; }
 
 h2 {

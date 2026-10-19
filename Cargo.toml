@@ -1,5 +1,5 @@
 [package]
-name = "tididi-bonsai"
+name = "tididi-cnf"
 version = "0.1.0"
 edition = "2024"
 # The floor let-chains (`if let … && let …`) set for edition 2024, which this
@@ -7,8 +7,8 @@ edition = "2024"
 rust-version = "1.88"
 description = "Tree Decision Diagram (TDD) compiler for CNF: compiles a DIMACS formula into a canonical TDD and counts its models — plain, weighted, projected, or projected and weighted."
 license = "Apache-2.0"
-repository = "https://github.com/Tractables/tididi-bonsai"
-documentation = "https://tractables.github.io/tididi-bonsai/tididi_bonsai/"
+repository = "https://github.com/Tractables/tididi-cnf"
+documentation = "https://tractables.github.io/tididi-cnf/tididi_cnf/"
 readme = "README.md"
 # crates.io caps keywords at 5 entries of 20 characters, hence
 # "knowledge-compiler" over the 21-character "knowledge-compilation".
@@ -53,7 +53,7 @@ default-members = [".", "tididi"]
 # leaves its tests to its own repository.
 exclude = ["vendor/vitri"]
 
-# The package is `tididi-bonsai` and its library `tididi_bonsai`; the binary is
+# The package is `tididi-cnf` and its library `tididi_cnf`; the binary is
 # `tididi`.
 [[bin]]
 name = "tididi"
@@ -101,7 +101,7 @@ opt-level = 1
 
 [dev-dependencies]
 # The library's oracles and generators (`tididi::test_helpers`) for this
-# crate's tests, including a `cargo test -p tididi-bonsai` that does not build
+# crate's tests, including a `cargo test -p tididi-cnf` that does not build
 # the library's own tests beside it.
 tididi = { version = "0.1.0", path = "tididi", features = ["testing"] }
 

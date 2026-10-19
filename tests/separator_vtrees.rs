@@ -13,7 +13,7 @@ use tididi::Engine;
 use tididi::test_helpers::Lcg;
 use tididi::test_helpers::check::check_all_fast;
 use tididi::vtree::{VarId, Vtree};
-use tididi_bonsai::compile::{CompileOptions, compile_cnf};
+use tididi_cnf::compile::{CompileOptions, compile_cnf};
 
 /// A clause over `vars` (zero-based) with random polarities.
 fn clause(vars: &[u32], rng: &mut Lcg) -> Clause {

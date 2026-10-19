@@ -54,11 +54,11 @@ jobs:
         env:
           DOCS_RS: 1
           RUSTDOCFLAGS: -D warnings
-        run: cargo doc --no-deps --locked -p tididi-bonsai
+        run: cargo doc --no-deps --locked -p tididi-cnf
 
       - uses: actions/download-artifact@v4
         with:
-          name: tididi-bonsai-wasm
+          name: tididi-cnf-wasm
           path: module
 
       # The page is the site root. The module build uploads the whole page, so

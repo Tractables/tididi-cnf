@@ -1,10 +1,10 @@
-//! The C API for tididi-bonsai: a CNF goes in, as DIMACS text, as clauses of
+//! The C API for tididi-cnf: a CNF goes in, as DIMACS text, as clauses of
 //! DIMACS integers or as a file, and its count comes back with the run's
 //! record.
 //!
-//! Each call is one `tididi_bonsai::count`: the parsing, the mode check, the
+//! Each call is one `tididi_cnf::count`: the parsing, the mode check, the
 //! limits and the count are the library's, and this crate converts the
-//! arguments and the answer. `include/tididi_bonsai.h` is generated from this
+//! arguments and the answer. `include/tididi_cnf.h` is generated from this
 //! file by cbindgen, so the documentation comments on the exported items are
 //! what a C caller reads. `README.md` beside this crate covers building and
 //! linking.
@@ -22,52 +22,52 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::{ptr, slice};
 
-use tididi_bonsai::{Answer, Error, Input, Limits, Mode};
+use tididi_cnf::{Answer, Error, Input, Limits, Mode};
 
-/// The version of the ABI this header declares. `tididi_bonsai_abi_version`
+/// The version of the ABI this header declares. `tididi_cnf_abi_version`
 /// returns the version of the library that is actually loaded. It is raised
 /// whenever a signature, a status code or an ownership rule changes in a way
 /// that breaks a program built against the previous header.
-pub const TIDIDI_BONSAI_ABI_VERSION: u32 = 1;
+pub const TIDIDI_CNF_ABI_VERSION: u32 = 1;
 
-/// A status code: `TIDIDI_BONSAI_OK`, or one of the `TIDIDI_BONSAI_ERROR_`
+/// A status code: `TIDIDI_CNF_OK`, or one of the `TIDIDI_CNF_ERROR_`
 /// values.
-pub type tididi_bonsai_code = i32;
+pub type tididi_cnf_code = i32;
 
 /// The call succeeded.
-pub const TIDIDI_BONSAI_OK: tididi_bonsai_code = 0;
+pub const TIDIDI_CNF_OK: tididi_cnf_code = 0;
 /// The mode is unknown, contradicts the instance's header, or asks for an
 /// unweighted count of an instance with `c p weight` lines.
-pub const TIDIDI_BONSAI_ERROR_USAGE: tididi_bonsai_code = 1;
+pub const TIDIDI_CNF_ERROR_USAGE: tididi_cnf_code = 1;
 /// An environment setting the run reads is invalid.
-pub const TIDIDI_BONSAI_ERROR_ENVIRONMENT: tididi_bonsai_code = 2;
+pub const TIDIDI_CNF_ERROR_ENVIRONMENT: tididi_cnf_code = 2;
 /// A preprocessing or compile stage failed.
-pub const TIDIDI_BONSAI_ERROR_STAGE: tididi_bonsai_code = 3;
+pub const TIDIDI_CNF_ERROR_STAGE: tididi_cnf_code = 3;
 /// The vtree construction cannot serve this run.
-pub const TIDIDI_BONSAI_ERROR_VTREE_SPEC: tididi_bonsai_code = 4;
+pub const TIDIDI_CNF_ERROR_VTREE_SPEC: tididi_cnf_code = 4;
 /// The input could not be opened or read, or does not describe a formula.
-pub const TIDIDI_BONSAI_ERROR_INPUT: tididi_bonsai_code = 5;
+pub const TIDIDI_CNF_ERROR_INPUT: tididi_cnf_code = 5;
 /// The count could not be read off the compiled diagram.
-pub const TIDIDI_BONSAI_ERROR_ARTIFACT: tididi_bonsai_code = 6;
+pub const TIDIDI_CNF_ERROR_ARTIFACT: tididi_cnf_code = 6;
 /// The run ended without a count: at the time limit, on a refused allocation,
 /// or when every stage gave up.
-pub const TIDIDI_BONSAI_ERROR_INCOMPLETE: tididi_bonsai_code = 7;
+pub const TIDIDI_CNF_ERROR_INCOMPLETE: tididi_cnf_code = 7;
 /// An argument broke this header's contract, such as a null pointer with a
 /// nonzero length.
-pub const TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT: tididi_bonsai_code = 8;
-/// tididi-bonsai panicked. The panic stopped at this boundary and its message
+pub const TIDIDI_CNF_ERROR_INVALID_ARGUMENT: tididi_cnf_code = 8;
+/// tididi-cnf panicked. The panic stopped at this boundary and its message
 /// is the error message; report it as a bug.
-pub const TIDIDI_BONSAI_ERROR_PANIC: tididi_bonsai_code = 9;
+pub const TIDIDI_CNF_ERROR_PANIC: tididi_cnf_code = 9;
 
 /// What one count call produced: the answer, or the error that stopped the
 /// run.
 ///
-/// Opaque. Read it with the `tididi_bonsai_answer_` functions and release it
-/// with `tididi_bonsai_answer_free`. An answer does not change after the call
+/// Opaque. Read it with the `tididi_cnf_answer_` functions and release it
+/// with `tididi_cnf_answer_free`. An answer does not change after the call
 /// returns it, so several threads may read one at the same time; free it
 /// once, after the last read.
-pub struct tididi_bonsai_answer {
-    code: tididi_bonsai_code,
+pub struct tididi_cnf_answer {
+    code: tididi_cnf_code,
     outcome: Outcome,
 }
 
@@ -100,11 +100,11 @@ impl Text {
     }
 }
 
-impl tididi_bonsai_answer {
+impl tididi_cnf_answer {
     fn counted(answer: &Answer) -> Self {
         let stats = serde_json::to_string(answer.stats()).expect("the stats record serializes to JSON");
-        tididi_bonsai_answer {
-            code: TIDIDI_BONSAI_OK,
+        tididi_cnf_answer {
+            code: TIDIDI_CNF_OK,
             outcome: Outcome::Counted(Counted {
                 mode: Text::new(answer.mode().to_string()),
                 satisfiable: answer.satisfiable(),
@@ -115,8 +115,8 @@ impl tididi_bonsai_answer {
         }
     }
 
-    fn failed(code: tididi_bonsai_code, message: String) -> Self {
-        tididi_bonsai_answer { code, outcome: Outcome::Failed(Text::new(message)) }
+    fn failed(code: tididi_cnf_code, message: String) -> Self {
+        tididi_cnf_answer { code, outcome: Outcome::Failed(Text::new(message)) }
     }
 
     fn counts(&self) -> Option<&Counted> {
@@ -138,28 +138,28 @@ impl tididi_bonsai_answer {
 enum Refusal {
     /// An argument broke the header's contract; the message says which.
     Argument(String),
-    /// tididi-bonsai refused the input or the mode, or the run failed.
-    Bonsai(Error),
+    /// tididi-cnf refused the input or the mode, or the run failed.
+    Compiler(Error),
 }
 
 impl From<Error> for Refusal {
     fn from(error: Error) -> Self {
-        Refusal::Bonsai(error)
+        Refusal::Compiler(error)
     }
 }
 
 /// The ABI version of the loaded library, which is the
-/// `TIDIDI_BONSAI_ABI_VERSION` it was built with.
+/// `TIDIDI_CNF_ABI_VERSION` it was built with.
 #[unsafe(no_mangle)]
-pub extern "C" fn tididi_bonsai_abi_version() -> u32 {
-    TIDIDI_BONSAI_ABI_VERSION
+pub extern "C" fn tididi_cnf_abi_version() -> u32 {
+    TIDIDI_CNF_ABI_VERSION
 }
 
-/// The version of tididi-bonsai inside the library, such as `0.1.0`, as a
+/// The version of tididi-cnf inside the library, such as `0.1.0`, as a
 /// NUL-terminated string. The string is static: the caller does not free it,
 /// and it stays valid for as long as the library is loaded.
 #[unsafe(no_mangle)]
-pub extern "C" fn tididi_bonsai_version() -> *const c_char {
+pub extern "C" fn tididi_cnf_version() -> *const c_char {
     static VERSION: OnceLock<CString> = OnceLock::new();
     catch_unwind(|| {
         VERSION
@@ -175,34 +175,34 @@ pub extern "C" fn tididi_bonsai_version() -> *const c_char {
 /// `dimacs` points to `dimacs_len` bytes of DIMACS text, which need not end in
 /// a NUL, with its `c t`, `c p show` and `c p weight` lines if it has them; it
 /// may be null when `dimacs_len` is 0. The other arguments and the result are
-/// those of `tididi_bonsai_count_file`.
+/// those of `tididi_cnf_count_file`.
 ///
 /// # Safety
 ///
 /// `dimacs` must be null or point to `dimacs_len` readable bytes that do not
-/// change during the call; `mode` and `out` as for `tididi_bonsai_count_file`.
+/// change during the call; `mode` and `out` as for `tididi_cnf_count_file`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_count(
+pub unsafe extern "C" fn tididi_cnf_count(
     dimacs: *const u8,
     dimacs_len: usize,
     mode: *const c_char,
     time_limit_ms: u64,
     mem_limit_mb: u64,
-    out: *mut *mut tididi_bonsai_answer,
-) -> tididi_bonsai_code {
+    out: *mut *mut tididi_cnf_answer,
+) -> tididi_cnf_code {
     unsafe {
         deliver(out, || {
             let dimacs = borrow(dimacs, dimacs_len, "dimacs")?;
-            let input = Input::from(tididi_bonsai::parse_dimacs(dimacs)?);
+            let input = Input::from(tididi_cnf::parse_dimacs(dimacs)?);
             count(input, mode, time_limit_ms, mem_limit_mb)
         })
     }
 }
 
-/// One literal's weight, for `tididi_bonsai_count_clauses`: a `c p weight`
+/// One literal's weight, for `tididi_cnf_count_clauses`: a `c p weight`
 /// line.
 #[repr(C)]
-pub struct tididi_bonsai_weight {
+pub struct tididi_cnf_weight {
     /// The literal: `3` for variable 3, `-3` for its negation.
     pub literal: i32,
     /// The weight as NUL-terminated text, read as a `c p weight` line's is,
@@ -234,34 +234,34 @@ pub struct tididi_bonsai_weight {
 /// set makes the count projected and anything else compiles.
 ///
 /// The other arguments and the result are those of
-/// `tididi_bonsai_count_file`. A literal, shown variable or weight literal
+/// `tididi_cnf_count_file`. A literal, shown variable or weight literal
 /// that names no variable of the formula (0, `INT32_MIN`, or a variable above
 /// `num_vars`), a clause that names a variable twice, a weight that is not a
 /// number, and a literal given alone at a weight outside (0, 1), which leaves
-/// its partner none, return `TIDIDI_BONSAI_ERROR_INPUT`; `literals` not ending
-/// with 0 returns `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT`.
+/// its partner none, return `TIDIDI_CNF_ERROR_INPUT`; `literals` not ending
+/// with 0 returns `TIDIDI_CNF_ERROR_INVALID_ARGUMENT`.
 ///
 /// # Safety
 ///
 /// `literals`, `show` and `weights` must each be null or point to as many
 /// readable elements as its length says, each weight's `weight` must be null
 /// or a NUL-terminated string, none of them may change during the call, and
-/// `mode` and `out` are as for `tididi_bonsai_count_file`.
+/// `mode` and `out` are as for `tididi_cnf_count_file`.
 #[unsafe(no_mangle)]
 #[allow(clippy::too_many_arguments)]
-pub unsafe extern "C" fn tididi_bonsai_count_clauses(
+pub unsafe extern "C" fn tididi_cnf_count_clauses(
     num_vars: u32,
     literals: *const i32,
     literals_len: usize,
     show: *const u32,
     show_len: usize,
-    weights: *const tididi_bonsai_weight,
+    weights: *const tididi_cnf_weight,
     weights_len: usize,
     mode: *const c_char,
     time_limit_ms: u64,
     mem_limit_mb: u64,
-    out: *mut *mut tididi_bonsai_answer,
-) -> tididi_bonsai_code {
+    out: *mut *mut tididi_cnf_answer,
+) -> tididi_cnf_code {
     unsafe {
         deliver(out, || {
             let literals = borrow(literals, literals_len, "literals")?;
@@ -287,13 +287,13 @@ pub unsafe extern "C" fn tididi_bonsai_count_clauses(
                         .map_err(|e| Refusal::Argument(format!("weights[{i}].weight is not UTF-8 text: {e}")))?;
                     // The reading `c p weight` lines get, so a weight is what
                     // it would be in a DIMACS file.
-                    let value = tididi_bonsai::vitri::cnf::parse_rational_weight(text).map_err(|error| {
+                    let value = tididi_cnf::vitri::cnf::parse_rational_weight(text).map_err(|error| {
                         Error::Input(format!("the weight of literal {}: {error}", weight.literal))
                     })?;
                     Ok((weight.literal, value))
                 })
                 .collect::<Result<Vec<_>, Refusal>>()?;
-            let formula = tididi_bonsai::formula_from_clauses(num_vars, clauses.into_iter().flatten(), show, &weights)?;
+            let formula = tididi_cnf::formula_from_clauses(num_vars, clauses.into_iter().flatten(), show, &weights)?;
             count(Input::from(formula), mode, time_limit_ms, mem_limit_mb)
         })
     }
@@ -314,12 +314,12 @@ pub unsafe extern "C" fn tididi_bonsai_count_clauses(
 /// reaches one does: the time limit is checked as the run goes, so a step in
 /// progress can finish after it.
 ///
-/// Returns `TIDIDI_BONSAI_OK` or a `TIDIDI_BONSAI_ERROR_` code. Unless `out`
+/// Returns `TIDIDI_CNF_OK` or a `TIDIDI_CNF_ERROR_` code. Unless `out`
 /// is null, `*out` receives a new answer whatever the code, and the code
-/// equals `tididi_bonsai_answer_code(*out)`: the count on success, the error
+/// equals `tididi_cnf_answer_code(*out)`: the count on success, the error
 /// message otherwise. The caller owns `*out` and releases it with
-/// `tididi_bonsai_answer_free`. A null `out` returns
-/// `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT` and produces no answer. Nothing
+/// `tididi_cnf_answer_free`. A null `out` returns
+/// `TIDIDI_CNF_ERROR_INVALID_ARGUMENT` and produces no answer. Nothing
 /// keeps a reference to the arguments after the call returns.
 ///
 /// The run prints its progress to stderr, as the binary does. Calls run one
@@ -332,13 +332,13 @@ pub unsafe extern "C" fn tididi_bonsai_count_clauses(
 /// NUL-terminated string, neither may change during the call, and `out` must
 /// be null or point to storage for one pointer.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_count_file(
+pub unsafe extern "C" fn tididi_cnf_count_file(
     path: *const c_char,
     mode: *const c_char,
     time_limit_ms: u64,
     mem_limit_mb: u64,
-    out: *mut *mut tididi_bonsai_answer,
-) -> tididi_bonsai_code {
+    out: *mut *mut tididi_cnf_answer,
+) -> tididi_cnf_code {
     unsafe {
         deliver(out, || {
             let path = c_string(path).ok_or_else(|| Refusal::Argument("path is null".to_string()))?;
@@ -355,24 +355,24 @@ pub unsafe extern "C" fn tididi_bonsai_count_file(
 /// `answer` must be null or an answer a count call produced that has not been
 /// freed. Every buffer borrowed from it becomes invalid.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_free(answer: *mut tididi_bonsai_answer) {
+pub unsafe extern "C" fn tididi_cnf_answer_free(answer: *mut tididi_cnf_answer) {
     if !answer.is_null() {
         drop(unsafe { Box::from_raw(answer) });
     }
 }
 
-/// The code the count call returned with this answer: `TIDIDI_BONSAI_OK` or a
-/// `TIDIDI_BONSAI_ERROR_` value. `TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT` for a
+/// The code the count call returned with this answer: `TIDIDI_CNF_OK` or a
+/// `TIDIDI_CNF_ERROR_` value. `TIDIDI_CNF_ERROR_INVALID_ARGUMENT` for a
 /// null `answer`.
 ///
 /// # Safety
 ///
 /// `answer` must be null or a live answer from a count call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_code(
-    answer: *const tididi_bonsai_answer,
-) -> tididi_bonsai_code {
-    unsafe { answer.as_ref() }.map_or(TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, |answer| answer.code)
+pub unsafe extern "C" fn tididi_cnf_answer_code(
+    answer: *const tididi_cnf_answer,
+) -> tididi_cnf_code {
+    unsafe { answer.as_ref() }.map_or(TIDIDI_CNF_ERROR_INVALID_ARGUMENT, |answer| answer.code)
 }
 
 /// The mode the run resolved to, from the instance's header and the mode it
@@ -380,7 +380,7 @@ pub unsafe extern "C" fn tididi_bonsai_answer_code(
 ///
 /// Writes the token's length to `*len` when `len` is not null. The bytes
 /// belong to `answer`: they stay valid and unchanged until
-/// `tididi_bonsai_answer_free(answer)`, and are followed by a NUL that `*len`
+/// `tididi_cnf_answer_free(answer)`, and are followed by a NUL that `*len`
 /// does not count. Null, with `*len` set to 0, for a failed or null `answer`.
 ///
 /// # Safety
@@ -388,11 +388,11 @@ pub unsafe extern "C" fn tididi_bonsai_answer_code(
 /// `answer` must be null or a live answer from a count call, and `len` must be
 /// null or point to storage for one `size_t`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_mode(
-    answer: *const tididi_bonsai_answer,
+pub unsafe extern "C" fn tididi_cnf_answer_mode(
+    answer: *const tididi_cnf_answer,
     len: *mut usize,
 ) -> *const c_char {
-    let counted = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::counts);
+    let counted = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::counts);
     unsafe { lend(counted.map(|counted| &counted.mode), len) }
 }
 
@@ -404,8 +404,8 @@ pub unsafe extern "C" fn tididi_bonsai_answer_mode(
 ///
 /// `answer` must be null or a live answer from a count call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_satisfiable(answer: *const tididi_bonsai_answer) -> bool {
-    let counted = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::counts);
+pub unsafe extern "C" fn tididi_cnf_answer_satisfiable(answer: *const tididi_cnf_answer) -> bool {
+    let counted = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::counts);
     counted.is_some_and(|counted| counted.satisfiable)
 }
 
@@ -419,7 +419,7 @@ pub unsafe extern "C" fn tididi_bonsai_answer_satisfiable(answer: *const tididi_
 ///
 /// Writes the text's length to `*len` when `len` is not null. The bytes belong
 /// to `answer`: they stay valid and unchanged until
-/// `tididi_bonsai_answer_free(answer)`, and are followed by a NUL that `*len`
+/// `tididi_cnf_answer_free(answer)`, and are followed by a NUL that `*len`
 /// does not count. Null, with `*len` set to 0, for a failed or null `answer`.
 ///
 /// # Safety
@@ -427,25 +427,25 @@ pub unsafe extern "C" fn tididi_bonsai_answer_satisfiable(answer: *const tididi_
 /// `answer` must be null or a live answer from a count call, and `len` must be
 /// null or point to storage for one `size_t`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_count(
-    answer: *const tididi_bonsai_answer,
+pub unsafe extern "C" fn tididi_cnf_answer_count(
+    answer: *const tididi_cnf_answer,
     len: *mut usize,
 ) -> *const c_char {
-    let counted = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::counts);
+    let counted = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::counts);
     unsafe { lend(counted.map(|counted| &counted.count), len) }
 }
 
 /// The count as the nearest `double`, for printing or plotting: lossy, since
 /// a large count rounds to a `double`'s precision and a magnitude past its
-/// range is infinite. `tididi_bonsai_answer_count` spells the exact count.
+/// range is infinite. `tididi_cnf_answer_count` spells the exact count.
 /// NaN for a failed or null `answer`.
 ///
 /// # Safety
 ///
 /// `answer` must be null or a live answer from a count call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_count_f64(answer: *const tididi_bonsai_answer) -> f64 {
-    let counted = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::counts);
+pub unsafe extern "C" fn tididi_cnf_answer_count_f64(answer: *const tididi_cnf_answer) -> f64 {
+    let counted = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::counts);
     counted.map_or(f64::NAN, |counted| counted.count_f64)
 }
 
@@ -455,7 +455,7 @@ pub unsafe extern "C" fn tididi_bonsai_answer_count_f64(answer: *const tididi_bo
 ///
 /// Writes the text's length to `*len` when `len` is not null. The bytes belong
 /// to `answer`: they stay valid and unchanged until
-/// `tididi_bonsai_answer_free(answer)`, and are followed by a NUL that `*len`
+/// `tididi_cnf_answer_free(answer)`, and are followed by a NUL that `*len`
 /// does not count. Null, with `*len` set to 0, for a failed or null `answer`.
 ///
 /// # Safety
@@ -463,22 +463,22 @@ pub unsafe extern "C" fn tididi_bonsai_answer_count_f64(answer: *const tididi_bo
 /// `answer` must be null or a live answer from a count call, and `len` must be
 /// null or point to storage for one `size_t`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_stats_json(
-    answer: *const tididi_bonsai_answer,
+pub unsafe extern "C" fn tididi_cnf_answer_stats_json(
+    answer: *const tididi_cnf_answer,
     len: *mut usize,
 ) -> *const c_char {
-    let counted = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::counts);
+    let counted = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::counts);
     unsafe { lend(counted.map(|counted| &counted.stats), len) }
 }
 
 /// The error message: UTF-8 text saying what went wrong, as the binary prints
 /// it on stderr. It names the input line, mode or setting at fault where there
-/// is one. A run that gave up (`TIDIDI_BONSAI_ERROR_INCOMPLETE`) says what
+/// is one. A run that gave up (`TIDIDI_CNF_ERROR_INCOMPLETE`) says what
 /// ended it; what stopped each stage went to stderr as the run went.
 ///
 /// Writes the message's length to `*len` when `len` is not null. The bytes
 /// belong to `answer`: they stay valid and unchanged until
-/// `tididi_bonsai_answer_free(answer)`, and are followed by a NUL that `*len`
+/// `tididi_cnf_answer_free(answer)`, and are followed by a NUL that `*len`
 /// does not count. Null, with `*len` set to 0, for a successful or null
 /// `answer`.
 ///
@@ -487,11 +487,11 @@ pub unsafe extern "C" fn tididi_bonsai_answer_stats_json(
 /// `answer` must be null or a live answer from a count call, and `len` must be
 /// null or point to storage for one `size_t`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn tididi_bonsai_answer_error_message(
-    answer: *const tididi_bonsai_answer,
+pub unsafe extern "C" fn tididi_cnf_answer_error_message(
+    answer: *const tididi_cnf_answer,
     len: *mut usize,
 ) -> *const c_char {
-    let message = unsafe { answer.as_ref() }.and_then(tididi_bonsai_answer::message);
+    let message = unsafe { answer.as_ref() }.and_then(tididi_cnf_answer::message);
     unsafe { lend(message, len) }
 }
 
@@ -502,16 +502,16 @@ pub unsafe extern "C" fn tididi_bonsai_answer_error_message(
 ///
 /// `out` must be null or point to storage for one pointer.
 unsafe fn deliver(
-    out: *mut *mut tididi_bonsai_answer,
+    out: *mut *mut tididi_cnf_answer,
     body: impl FnOnce() -> Result<Answer, Refusal>,
-) -> tididi_bonsai_code {
+) -> tididi_cnf_code {
     if out.is_null() {
-        return TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT;
+        return TIDIDI_CNF_ERROR_INVALID_ARGUMENT;
     }
     let result = answer(|| match body() {
-        Ok(counted) => tididi_bonsai_answer::counted(&counted),
-        Err(Refusal::Argument(message)) => tididi_bonsai_answer::failed(TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, message),
-        Err(Refusal::Bonsai(error)) => tididi_bonsai_answer::failed(code_of(&error), error.to_string()),
+        Ok(counted) => tididi_cnf_answer::counted(&counted),
+        Err(Refusal::Argument(message)) => tididi_cnf_answer::failed(TIDIDI_CNF_ERROR_INVALID_ARGUMENT, message),
+        Err(Refusal::Compiler(error)) => tididi_cnf_answer::failed(code_of(&error), error.to_string()),
     });
     let code = result.code;
     unsafe { out.write(Box::into_raw(Box::new(result))) };
@@ -519,9 +519,9 @@ unsafe fn deliver(
 }
 
 /// Run `body`, turning a panic into an answer that carries its message.
-fn answer(body: impl FnOnce() -> tididi_bonsai_answer) -> tididi_bonsai_answer {
+fn answer(body: impl FnOnce() -> tididi_cnf_answer) -> tididi_cnf_answer {
     catch_unwind(AssertUnwindSafe(body)).unwrap_or_else(|payload| {
-        tididi_bonsai_answer::failed(TIDIDI_BONSAI_ERROR_PANIC, panic_message(&*payload))
+        tididi_cnf_answer::failed(TIDIDI_CNF_ERROR_PANIC, panic_message(&*payload))
     })
 }
 
@@ -531,22 +531,22 @@ fn panic_message(payload: &(dyn Any + Send)) -> String {
         .copied()
         .or_else(|| payload.downcast_ref::<String>().map(String::as_str));
     match what {
-        Some(what) => format!("tididi-bonsai panicked: {what}"),
-        None => "tididi-bonsai panicked".to_string(),
+        Some(what) => format!("tididi-cnf panicked: {what}"),
+        None => "tididi-cnf panicked".to_string(),
     }
 }
 
 /// The status code for an error the library returned. Exhaustive, so a class
 /// added to the library gets a code here before this crate builds again.
-fn code_of(error: &Error) -> tididi_bonsai_code {
+fn code_of(error: &Error) -> tididi_cnf_code {
     match error {
-        Error::Usage(_) => TIDIDI_BONSAI_ERROR_USAGE,
-        Error::Environment(_) => TIDIDI_BONSAI_ERROR_ENVIRONMENT,
-        Error::Stage(_) => TIDIDI_BONSAI_ERROR_STAGE,
-        Error::VtreeSpec(_) => TIDIDI_BONSAI_ERROR_VTREE_SPEC,
-        Error::Input(_) => TIDIDI_BONSAI_ERROR_INPUT,
-        Error::Artifact(_) => TIDIDI_BONSAI_ERROR_ARTIFACT,
-        Error::Incomplete(_) => TIDIDI_BONSAI_ERROR_INCOMPLETE,
+        Error::Usage(_) => TIDIDI_CNF_ERROR_USAGE,
+        Error::Environment(_) => TIDIDI_CNF_ERROR_ENVIRONMENT,
+        Error::Stage(_) => TIDIDI_CNF_ERROR_STAGE,
+        Error::VtreeSpec(_) => TIDIDI_CNF_ERROR_VTREE_SPEC,
+        Error::Input(_) => TIDIDI_CNF_ERROR_INPUT,
+        Error::Artifact(_) => TIDIDI_CNF_ERROR_ARTIFACT,
+        Error::Incomplete(_) => TIDIDI_CNF_ERROR_INCOMPLETE,
     }
 }
 
@@ -571,7 +571,7 @@ unsafe fn count(
         }
     };
     let limits = Limits { time_limit_ms: (time_limit_ms != 0).then_some(time_limit_ms), mem_limit_mb };
-    Ok(tididi_bonsai::count(input, mode, &limits)?)
+    Ok(tididi_cnf::count(input, mode, &limits)?)
 }
 
 /// The NUL-terminated string at `text`, or `None` for null.

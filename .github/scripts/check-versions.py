@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that every file naming tididi-bonsai's release version names the same one.
+"""Check that every file naming tididi-cnf's release version names the same one.
 
     check-versions.py [tag]
 
@@ -13,7 +13,7 @@ The package version in Cargo.toml is the reference. These must equal it:
 - the newest released section of CHANGELOG.md, its first `## ` heading other
   than `Unreleased`, once there is one;
 - every link a worked example, `docs/examples/*.md`, makes to its program at
-  a release tag (`tididi-bonsai/blob/v<version>/`).
+  a release tag (`tididi-cnf/blob/v<version>/`).
 
 With a tag (as the release workflow passes it, e.g. `v0.1.0`), the tag must
 name the version and the changelog must have its section. Prints each
@@ -26,7 +26,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGE = "tididi-bonsai"
+PACKAGE = "tididi-cnf"
 BINDINGS = ["bindings/c", "bindings/python", "bindings/wasm"]
 
 
@@ -58,7 +58,7 @@ def main():
                 if heading != "Unreleased"]
     linked = [(page.name, tagged)
               for page in sorted((ROOT / "docs/examples").glob("*.md"))
-              for tagged in re.findall(r"tididi-bonsai/blob/v([^/]+)/", page.read_text(encoding="utf-8"))]
+              for tagged in re.findall(r"tididi-cnf/blob/v([^/]+)/", page.read_text(encoding="utf-8"))]
 
     problems = [f"{source} names {found}, but Cargo.toml names {version}"
                 for source, found in named.items() if found != [version]]

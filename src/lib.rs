@@ -1,7 +1,7 @@
 //! Count the models of a CNF formula by compiling it into a Tree Decision
 //! Diagram.
 //!
-//! tididi-bonsai answers the model count, the weighted model count and their
+//! tididi-cnf answers the model count, the weighted model count and their
 //! projections onto a set of variables: the model count and the projected
 //! counts exactly, the weighted model count in a bounded-precision log domain.
 //! It preprocesses the formula, chooses a vtree for what is left and compiles
@@ -17,14 +17,14 @@
 //! DIMACS text with [`parse_dimacs`], and the task is its model count:
 //!
 //! ```
-//! use tididi_bonsai::{count, parse_dimacs, Limits, Mode};
+//! use tididi_cnf::{count, parse_dimacs, Limits, Mode};
 //!
 //! let formula = parse_dimacs("p cnf 3 3\n1 2 0\n-1 3 0\n-2 -3 0\n".as_bytes())?;
 //! let answer = count(formula, Some(Mode::Mc), &Limits::default())?;
 //! println!("Models: {}", answer.count());
-//! # assert_eq!(answer.count(), &tididi_bonsai::Count::Integer(2u32.into()));
+//! # assert_eq!(answer.count(), &tididi_cnf::Count::Integer(2u32.into()));
 //! # assert!(answer.satisfiable());
-//! # Ok::<(), tididi_bonsai::Error>(())
+//! # Ok::<(), tididi_cnf::Error>(())
 //! ```
 //!
 //! Output:
@@ -42,13 +42,13 @@
 //! [`parse_dimacs`] returns for the same formula.
 //!
 //! ```
-//! use tididi_bonsai::{count, formula_from_clauses, Limits, Mode};
+//! use tididi_cnf::{count, formula_from_clauses, Limits, Mode};
 //!
 //! let formula = formula_from_clauses(3, [[1, 2], [-1, 3], [-2, -3]], None, &[])?;
 //! let answer = count(formula, Some(Mode::Mc), &Limits::default())?;
 //! println!("Models: {}", answer.count());
-//! # assert_eq!(answer.count(), &tididi_bonsai::Count::Integer(2u32.into()));
-//! # Ok::<(), tididi_bonsai::Error>(())
+//! # assert_eq!(answer.count(), &tididi_cnf::Count::Integer(2u32.into()));
+//! # Ok::<(), tididi_cnf::Error>(())
 //! ```
 //!
 //! Output:
@@ -64,7 +64,7 @@
 //! with `c p weight` lines for the literal weights and a `c p show` line for
 //! the variables projected onto; a formula that declares neither a task nor a
 //! show set is compiled.
-//! The [user guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md)
+//! The [user guide](https://github.com/Tractables/tididi-cnf/blob/main/docs/getting-started.md)
 //! describes the input format, the answers and the binary.
 //!
 //! # One step at a time
@@ -82,13 +82,13 @@
 //! use std::fs::File;
 //! use std::io::BufReader;
 //!
-//! use tididi_bonsai::compile::{compile_cnf, CompileOptions};
-//! use tididi_bonsai::vtree::{build_vtree, VtreeOptions};
+//! use tididi_cnf::compile::{compile_cnf, CompileOptions};
+//! use tididi_cnf::vtree::{build_vtree, VtreeOptions};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Five queens on a 5×5 board, none attacking another.
 //! let file = BufReader::new(File::open("tests/data/queens5.cnf")?);
-//! let (formula, _header) = tididi_bonsai::parse_dimacs(file)?;
+//! let (formula, _header) = tididi_cnf::parse_dimacs(file)?;
 //! let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default())?;
 //! let diagram = vtree
 //!     .context()

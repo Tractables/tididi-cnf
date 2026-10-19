@@ -16,8 +16,8 @@ use tididi::Engine;
 use tididi::diagram::{Arithmetic, LiteralWeights, RationalWeights};
 use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
 use tididi::vtree::{VarId, Vtree};
-use tididi_bonsai::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
-use tididi_bonsai::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
+use tididi_cnf::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
+use tididi_cnf::vtree::{Component, ComponentVtree, VtreeOptions, build_vtree, build_vtree_with_components};
 
 use common::{brute_force_projected_count, make_formula};
 

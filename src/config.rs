@@ -40,7 +40,7 @@ impl PreprocessLevel {
 /// same meaning. `Limits::default()` sets neither.
 ///
 /// ```
-/// let limits = tididi_bonsai::Limits { time_limit_ms: Some(60_000), ..Default::default() };
+/// let limits = tididi_cnf::Limits { time_limit_ms: Some(60_000), ..Default::default() };
 /// assert_eq!(limits.mem_limit_mb, 0);
 /// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -248,11 +248,11 @@ impl std::fmt::Display for Mode {
 /// vocabulary.
 ///
 /// ```
-/// use tididi_bonsai::Mode;
+/// use tididi_cnf::Mode;
 ///
 /// assert_eq!("pwmc".parse::<Mode>()?, Mode::Pwmc);
 /// assert!("weighted".parse::<Mode>().is_err());
-/// # Ok::<(), tididi_bonsai::Error>(())
+/// # Ok::<(), tididi_cnf::Error>(())
 /// ```
 impl std::str::FromStr for Mode {
     type Err = crate::Error;

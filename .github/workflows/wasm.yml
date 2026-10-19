@@ -2,7 +2,7 @@ name: Web build
 
 # Builds the crate for wasm32-unknown-emscripten through bindings/wasm, runs the
 # module with node on the page's examples and the instances bindings/parity.txt
-# lists, against the native binary, and uploads the `tididi-bonsai-wasm`
+# lists, against the native binary, and uploads the `tididi-cnf-wasm`
 # artifact: the directory bindings/wasm/site.sh assembles, plus the GMP source
 # tarball the side modules were built from.
 # Nothing here publishes a page; the docs workflow calls this one and does.
@@ -106,7 +106,7 @@ jobs:
       # Proves the module runs and answers as the binary does, from the files
       # that are uploaded.
       - name: Run the module on the examples and the parity instances
-        run: node bindings/wasm/smoke.mjs bindings/wasm/site/bonsai.js . target/release/tididi
+        run: node bindings/wasm/smoke.mjs bindings/wasm/site/tididi_cnf.js . target/release/tididi
 
       - name: Lint
         if: ${{ !cancelled() }}
@@ -116,6 +116,6 @@ jobs:
       - name: Upload the module
         uses: actions/upload-artifact@v4
         with:
-          name: tididi-bonsai-wasm
+          name: tididi-cnf-wasm
           path: bindings/wasm/site/
           if-no-files-found: error

@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite the paper below."
 type: software
-title: "tididi-bonsai: a Tree Decision Diagram compiler for CNF"
+title: "tididi-cnf: a Tree Decision Diagram compiler for CNF"
 abstract: "A compiler from DIMACS CNF to Tree Decision Diagrams, canonical vtree-shaped decision diagrams, for model counting: plain, weighted, projected, and projected weighted."
 license: Apache-2.0
-repository-code: "https://github.com/Tractables/tididi-bonsai"
-url: "https://tractables.github.io/tididi-bonsai/tididi_bonsai/"
+repository-code: "https://github.com/Tractables/tididi-cnf"
+url: "https://tractables.github.io/tididi-cnf/tididi_cnf/"
 version: 0.1.0
 authors:
   - family-names: "Capelli"

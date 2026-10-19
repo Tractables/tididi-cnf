@@ -4,7 +4,7 @@
 //! compile from Rust and queries its diagram. The [architecture
 //! reference](architecture) maps the source for contributors. The binary, the
 //! input format and the run record are in the
-//! [command-line guide](https://github.com/Tractables/tididi-bonsai/blob/main/docs/getting-started.md).
+//! [command-line guide](https://github.com/Tractables/tididi-cnf/blob/main/docs/getting-started.md).
 
 // Keep the index, sidebar and module declarations in one reading order.
 macro_rules! walkthroughs {

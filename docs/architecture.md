@@ -186,13 +186,13 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
 
 <!-- Absolute links: rustdoc renders this page as the crate's `architecture`
 module (src/guide.rs), where a relative link would not resolve. -->
-[algorithms]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/algorithms.md
-[contributing-code]: https://github.com/Tractables/tididi-bonsai/blob/main/CONTRIBUTING.md#code
-[library-integration]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/library-integration.md
+[algorithms]: https://github.com/Tractables/tididi-cnf/blob/main/docs/algorithms.md
+[contributing-code]: https://github.com/Tractables/tididi-cnf/blob/main/CONTRIBUTING.md#code
+[library-integration]: https://github.com/Tractables/tididi-cnf/blob/main/docs/library-integration.md
 [library-invariants]: https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants
-[marginal-tdd-levels]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/marginal-tdd-levels.md
+[marginal-tdd-levels]: https://github.com/Tractables/tididi-cnf/blob/main/docs/marginal-tdd-levels.md
 [paper]: https://arxiv.org/abs/2604.05537
-[sat-pruning]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/sat-pruning.md
-[stats]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/stats.md
-[support-enum-stage]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/support-enum-stage.md
-[weighted-marginal-levels]: https://github.com/Tractables/tididi-bonsai/blob/main/docs/weighted-marginal-levels.md
+[sat-pruning]: https://github.com/Tractables/tididi-cnf/blob/main/docs/sat-pruning.md
+[stats]: https://github.com/Tractables/tididi-cnf/blob/main/docs/stats.md
+[support-enum-stage]: https://github.com/Tractables/tididi-cnf/blob/main/docs/support-enum-stage.md
+[weighted-marginal-levels]: https://github.com/Tractables/tididi-cnf/blob/main/docs/weighted-marginal-levels.md

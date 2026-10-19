@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="docs/logo.svg" alt="tididi bonsai" width="460">
+  <img src="docs/logo.svg" alt="tididi-cnf" width="460">
 </p>
 
 <p align="center">
-  <a href="https://tractables.github.io/tididi-bonsai/"><img
+  <a href="https://tractables.github.io/tididi-cnf/"><img
      src="https://img.shields.io/badge/run-in%20the%20browser-blue" alt="Run in the browser"></a>
-  <a href="https://github.com/Tractables/tididi-bonsai/actions/workflows/rust.yml"><img
-     src="https://github.com/Tractables/tididi-bonsai/actions/workflows/rust.yml/badge.svg" alt="CI"></a>
-  <a href="https://tractables.github.io/tididi-bonsai/tididi_bonsai/"><img
+  <a href="https://github.com/Tractables/tididi-cnf/actions/workflows/rust.yml"><img
+     src="https://github.com/Tractables/tididi-cnf/actions/workflows/rust.yml/badge.svg" alt="CI"></a>
+  <a href="https://tractables.github.io/tididi-cnf/tididi_cnf/"><img
      src="https://img.shields.io/badge/docs-main-blue" alt="Documentation"></a>
   <a href="LICENSE"><img
      src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
@@ -16,7 +16,7 @@
 **Count the solutions of a CNF formula exactly, or compile it into a circuit
 you can query.**
 
-tididi-bonsai reads a propositional formula in DIMACS CNF and answers how many
+tididi-cnf reads a propositional formula in DIMACS CNF and answers how many
 assignments satisfy it, optionally weighted and optionally counted over a
 chosen subset of the variables. It gets there by compiling the formula into a
 **Tree Decision Diagram** (TDD), a canonical circuit on which counting takes
@@ -27,29 +27,29 @@ one pass. Where an OBDD tests variables in one fixed order, a TDD follows a
 The compiler simplifies the formula and chooses the vtree with
 [vitri](https://github.com/Tractables/vitri), and builds the diagram with the
 [tididi](https://github.com/Tractables/tididi) library. It is a command-line
-tool, `tididi`, and a Rust library, `tididi_bonsai`.
+tool, `tididi`, and a Rust library, `tididi_cnf`.
 
 ## Evaluation
 
-tididi-bonsai and the exact counters entered in the 2026
+tididi-cnf and the exact counters entered in the 2026
 [Model Counting Competition](https://mccompetition.org/) ran on the
 competition's exact counting instances of 2025 and 2026, two minutes each, on
 the same machine under the same limits. For any time limit from two
-seconds to 90 seconds, tididi-bonsai solves more instances within it than any
+seconds to 90 seconds, tididi-cnf solves more instances within it than any
 of them. At two minutes Ganak is two instances ahead overall, and
-tididi-bonsai leads on the private set, the 100 instances the 2026
+tididi-cnf leads on the private set, the 100 instances the 2026
 competition was scored on:
 
 <p align="center">
   <img src="docs/evaluation/cactus-120s.svg" width="760"
-       alt="Cactus plot of instances solved against time per instance, up to two minutes, for tididi-bonsai, Ganak, d4, GPMC and Cara">
+       alt="Cactus plot of instances solved against time per instance, up to two minutes, for tididi-cnf, Ganak, d4, GPMC and Cara">
 </p>
 
 <!-- evaluation table: generated from docs/evaluation/mcc-track1-120s.csv -->
 
 | Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
 | --- | ---: | ---: | ---: | ---: |
-| tididi-bonsai | 82 | 60 | **53** | 195 |
+| tididi-cnf | 82 | 60 | **53** | 195 |
 | Ganak | **87** | **61** | 49 | **197** |
 | d4 | 65 | 53 | 44 | 162 |
 | GPMC | 56 | 53 | 40 | 149 |
@@ -58,33 +58,33 @@ competition was scored on:
 <!-- end of evaluation table -->
 
 The competition's main track allows an hour per instance. Run the same way
-for an hour each on the private set, tididi-bonsai solves at least as many
+for an hour each on the private set, tididi-cnf solves at least as many
 instances as any of them within any time limit from three seconds to 18 minutes;
-over the full hour, d4 and Ganak solve 62, tididi-bonsai 61, Cara 58 and
+over the full hour, d4 and Ganak solve 62, tididi-cnf 61, Cara 58 and
 GPMC 54:
 
 <p align="center">
   <img src="docs/evaluation/cactus-3600s.svg" width="760"
-       alt="Cactus plot of instances solved against time per instance, up to an hour, on the 100 private instances of 2026, for tididi-bonsai, Ganak, d4, GPMC and Cara">
+       alt="Cactus plot of instances solved against time per instance, up to an hour, on the 100 private instances of 2026, for tididi-cnf, Ganak, d4, GPMC and Cara">
 </p>
 
-Given an hour, tididi-bonsai also solves 120 of the 200 instances of 2025 and
+Given an hour, tididi-cnf also solves 120 of the 200 instances of 2025 and
 69 of the 100 public ones of 2026.
 
 As a compiler, writing a circuit that can be queried afterwards,
-tididi-bonsai compiles 181 of the same 400 instances in two minutes each. Of
+tididi-cnf compiles 181 of the same 400 instances in two minutes each. Of
 four d-DNNF compilers run beside it, Panini compiles 149, D4v2 143, GPMC 131
-and c2d 105, and from three seconds on, tididi-bonsai compiles the most within
+and c2d 105, and from three seconds on, tididi-cnf compiles the most within
 any time limit:
 
 <p align="center">
   <img src="docs/evaluation/cactus-compile-120s.svg" width="760"
-       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-bonsai, Panini, D4v2, GPMC and c2d">
+       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-cnf, Panini, D4v2, GPMC and c2d">
 </p>
 
 The [evaluation](docs/evaluation.md) says how this was measured, with the
 result of every run and the competition's own results, and the
-[evaluation page](https://tractables.github.io/tididi-bonsai/evaluation/)
+[evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
 shows every run by set, by pair of solvers and by instance.
 
 ## What it answers
@@ -119,8 +119,8 @@ WebAssembly. Besides Rust, the build needs a C++20 compiler, CMake,
 vitri are git submodules:
 
 ```sh
-git clone --recurse-submodules https://github.com/Tractables/tididi-bonsai
-cd tididi-bonsai
+git clone --recurse-submodules https://github.com/Tractables/tididi-cnf
+cd tididi-cnf
 cargo build --release
 ```
 
@@ -185,7 +185,7 @@ This program counts the models of (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬
 given as DIMACS text:
 
 ```rust
-use tididi_bonsai::{count, parse_dimacs, Limits, Mode};
+use tididi_cnf::{count, parse_dimacs, Limits, Mode};
 
 let formula = parse_dimacs("p cnf 3 3\n1 2 0\n-1 3 0\n-2 -3 0\n".as_bytes())?;
 let answer = count(formula, Some(Mode::Mc), &Limits::default())?;
@@ -213,7 +213,7 @@ The same counts are available through [Python](bindings/python/README.md)
 and [C](bindings/c/README.md), from DIMACS text or from clauses held as data,
 and through [WebAssembly](bindings/wasm/README.md) from DIMACS text. The
 WebAssembly build runs
-[in the browser](https://tractables.github.io/tididi-bonsai/), where the
+[in the browser](https://tractables.github.io/tididi-cnf/), where the
 compile of a small formula can be watched step by step and its diagram
 asked for each variable's probability under evidence.
 
@@ -231,7 +231,7 @@ asked for each variable's probability under evidence.
 - [Building](docs/building.md) and [contributing](CONTRIBUTING.md).
 
 To browse the documentation locally, run
-`DOCS_RS=1 cargo doc --no-deps -p tididi-bonsai --open`; it needs none of the
+`DOCS_RS=1 cargo doc --no-deps -p tididi-cnf --open`; it needs none of the
 C++ toolchain ([building](docs/building.md#documentation-builds)).
 
 ## Citing
@@ -256,13 +256,13 @@ Apache License, Version 2.0 ([LICENSE](LICENSE)). [NOTICE](NOTICE) lists the
 components the build includes and where their licences are, among them the
 C++ solvers vitri vendors.
 
-[`count`]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/fn.count.html
-[`compile_cnf`]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/compile/fn.compile_cnf.html
-[`formula_from_clauses`]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/fn.formula_from_clauses.html
-[configuration example]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/examples/catalog/index.html
-[reliability example]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/examples/reliability/index.html
-[circuit example]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/examples/circuits/index.html
-[vtree example]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/examples/vtree_choice/index.html
-[Worked examples]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/examples/index.html
-[API reference]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/
-[architecture reference]: https://tractables.github.io/tididi-bonsai/tididi_bonsai/guide/architecture/index.html
+[`count`]: https://tractables.github.io/tididi-cnf/tididi_cnf/fn.count.html
+[`compile_cnf`]: https://tractables.github.io/tididi-cnf/tididi_cnf/compile/fn.compile_cnf.html
+[`formula_from_clauses`]: https://tractables.github.io/tididi-cnf/tididi_cnf/fn.formula_from_clauses.html
+[configuration example]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/catalog/index.html
+[reliability example]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/reliability/index.html
+[circuit example]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/circuits/index.html
+[vtree example]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/vtree_choice/index.html
+[Worked examples]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/index.html
+[API reference]: https://tractables.github.io/tididi-cnf/tididi_cnf/
+[architecture reference]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/architecture/index.html

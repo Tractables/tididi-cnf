@@ -13,7 +13,7 @@ use vitri::cnf::CnfFormula;
 use tididi::Engine;
 use tididi::test_helpers::{CnfShape, Lcg, rand_cnf};
 use tididi::vtree::{VarId, Vtree};
-use tididi_bonsai::compile::{CompileOptions, Output, compile_cnf};
+use tididi_cnf::compile::{CompileOptions, Output, compile_cnf};
 
 /// The variables with the given zero-based indices.
 fn vars(indices: impl IntoIterator<Item = u32>) -> Vec<VarId> {
@@ -113,8 +113,8 @@ fn compile_project_matches_brute_force() {
 /// portfolio build; the whole plan compiles on a balanced root.
 #[test]
 fn every_plan_counts_a_free_variable_once() {
-    use tididi_bonsai::compile::ComponentPlan;
-    use tididi_bonsai::vtree::ComponentVtree;
+    use tididi_cnf::compile::ComponentPlan;
+    use tididi_cnf::vtree::ComponentVtree;
     let eng = &Engine::new();
     let check = |formula: &CnfFormula, clauses: &[Vec<i32>], show: &[u32], components: &[ComponentVtree]| {
         let n = formula.num_vars();
@@ -138,10 +138,10 @@ fn every_plan_counts_a_free_variable_once() {
     // (variables, show): x5 projected; x5 and x6 projected; x5 shown.
     for (n, show) in [(5, vec![0, 2]), (6, vec![0, 2]), (5, vec![0, 2, 4])] {
         let formula = common::make_formula(n, clauses.clone());
-        let components = tididi_bonsai::vtree::build_vtree_with_components(
+        let components = tididi_cnf::vtree::build_vtree_with_components(
             &formula,
             "portfolio",
-            &tididi_bonsai::vtree::VtreeOptions::by_peak_width(),
+            &tididi_cnf::vtree::VtreeOptions::by_peak_width(),
         )
         .unwrap()
         .components

@@ -3,11 +3,11 @@ exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
-Name: tididi-bonsai-c
-Description: C API for tididi-bonsai, model counting by compiling a CNF into a Tree Decision Diagram
-URL: https://github.com/Tractables/tididi-bonsai
+Name: tididi-cnf-c
+Description: C API for tididi-cnf, model counting by compiling a CNF into a Tree Decision Diagram
+URL: https://github.com/Tractables/tididi-cnf
 Version: @VERSION@
-Libs: -L${libdir} -ltididi_bonsai_c
+Libs: -L${libdir} -ltididi_cnf_c
 # Only a static link needs these, on Linux: the C++ runtime and the system GMP,
 # MPFR and zlib that vitri's vendored solvers use, then the libraries Rust's
 # standard library uses. The Makefile links its static programs with this

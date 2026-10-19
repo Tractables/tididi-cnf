@@ -1,4 +1,4 @@
-// tididi-bonsai runs in a worker, so the page stays live during a run and a
+// tididi-cnf runs in a worker, so the page stays live during a run and a
 // run can be stopped: cancelling ends the worker and starts another, which
 // loads the module again. A run asked for before the worker is ready, or
 // while another runs, starts once it is.

@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tididi_bonsai.h"
+#include "tididi_cnf.h"
 
 static int failures = 0;
 
@@ -49,7 +49,7 @@ static const char MALFORMED[] = "p cnf 2 1\n1 x 0\n";
 static const int32_t TWO_MODELS_LITERALS[] = {1, 2, 0, -1, 3, 0, -2, -3, 0};
 #define TWO_MODELS_LEN (sizeof TWO_MODELS_LITERALS / sizeof *TWO_MODELS_LITERALS)
 
-/* A formula as tididi_bonsai_count_clauses takes it. */
+/* A formula as tididi_cnf_count_clauses takes it. */
 typedef struct {
   uint32_t num_vars;
   int32_t literals[MAX_LITERALS];
@@ -57,7 +57,7 @@ typedef struct {
   int has_show;
   uint32_t show[MAX_NAMED];
   size_t show_len;
-  tididi_bonsai_weight weights[MAX_NAMED];
+  tididi_cnf_weight weights[MAX_NAMED];
   char weight_text[MAX_NAMED][64];
   size_t weights_len;
 } clauses;
@@ -70,61 +70,61 @@ static int near(double value, double expected) {
   return difference < 1e-9 && difference > -1e-9;
 }
 
-/* tididi_bonsai_count_clauses over TWO_MODELS_LITERALS, with no limits. */
-static tididi_bonsai_code count_two_models(const uint32_t *show, size_t show_len,
-                                           const tididi_bonsai_weight *weights, size_t weights_len,
-                                           const char *mode, tididi_bonsai_answer **out) {
-  return tididi_bonsai_count_clauses(3, TWO_MODELS_LITERALS, TWO_MODELS_LEN, show, show_len, weights,
+/* tididi_cnf_count_clauses over TWO_MODELS_LITERALS, with no limits. */
+static tididi_cnf_code count_two_models(const uint32_t *show, size_t show_len,
+                                           const tididi_cnf_weight *weights, size_t weights_len,
+                                           const char *mode, tididi_cnf_answer **out) {
+  return tididi_cnf_count_clauses(3, TWO_MODELS_LITERALS, TWO_MODELS_LEN, show, show_len, weights,
                                      weights_len, mode, 0, 0, out);
 }
 
-/* tididi_bonsai_count over NUL-terminated text, with no limits. */
-static tididi_bonsai_code count_text(const char *dimacs, const char *mode,
-                                     tididi_bonsai_answer **out) {
-  return tididi_bonsai_count((const uint8_t *)dimacs, strlen(dimacs), mode, 0, 0, out);
+/* tididi_cnf_count over NUL-terminated text, with no limits. */
+static tididi_cnf_code count_text(const char *dimacs, const char *mode,
+                                     tididi_cnf_answer **out) {
+  return tididi_cnf_count((const uint8_t *)dimacs, strlen(dimacs), mode, 0, 0, out);
 }
 
-static const char *message_of(const tididi_bonsai_answer *answer) {
-  return or_null(tididi_bonsai_answer_error_message(answer, NULL));
+static const char *message_of(const tididi_cnf_answer *answer) {
+  return or_null(tididi_cnf_answer_error_message(answer, NULL));
 }
 
 /* The answer must be a count with this mode, verdict and count. */
-static void expect_count(const char *what, tididi_bonsai_code code, const tididi_bonsai_answer *answer,
+static void expect_count(const char *what, tididi_cnf_code code, const tididi_cnf_answer *answer,
                          const char *mode, int satisfiable, const char *count) {
   size_t len = 99;
   const char *text;
 
-  CHECK(code == TIDIDI_BONSAI_OK, "%s: code %d: %s", what, code, message_of(answer));
-  if (code != TIDIDI_BONSAI_OK) return;
-  CHECK(tididi_bonsai_answer_code(answer) == code, "%s: the answer's code differs", what);
-  text = tididi_bonsai_answer_mode(answer, &len);
+  CHECK(code == TIDIDI_CNF_OK, "%s: code %d: %s", what, code, message_of(answer));
+  if (code != TIDIDI_CNF_OK) return;
+  CHECK(tididi_cnf_answer_code(answer) == code, "%s: the answer's code differs", what);
+  text = tididi_cnf_answer_mode(answer, &len);
   CHECK(text && strcmp(text, mode) == 0 && len == strlen(mode), "%s: mode %s, expected %s", what,
         or_null(text), mode);
-  CHECK(tididi_bonsai_answer_satisfiable(answer) == (satisfiable != 0), "%s: satisfiable is not %d",
+  CHECK(tididi_cnf_answer_satisfiable(answer) == (satisfiable != 0), "%s: satisfiable is not %d",
         what, satisfiable);
-  text = tididi_bonsai_answer_count(answer, &len);
+  text = tididi_cnf_answer_count(answer, &len);
   CHECK(text && strcmp(text, count) == 0 && len == strlen(count), "%s: count %s, expected %s", what,
         or_null(text), count);
-  CHECK(tididi_bonsai_answer_error_message(answer, &len) == NULL && len == 0,
+  CHECK(tididi_cnf_answer_error_message(answer, &len) == NULL && len == 0,
         "%s: a count has no error message", what);
 }
 
 /* The answer must be a failure with this code, whose message mentions
  * `needle`, and lend nothing a count would. */
-static void expect_error(const char *what, tididi_bonsai_code code, const tididi_bonsai_answer *answer,
-                         tididi_bonsai_code expected, const char *needle) {
+static void expect_error(const char *what, tididi_cnf_code code, const tididi_cnf_answer *answer,
+                         tididi_cnf_code expected, const char *needle) {
   size_t len = 99;
 
   CHECK(code == expected, "%s: code %d, expected %d: %s", what, code, expected, message_of(answer));
-  CHECK(tididi_bonsai_answer_code(answer) == code, "%s: the answer's code differs", what);
+  CHECK(tididi_cnf_answer_code(answer) == code, "%s: the answer's code differs", what);
   CHECK(strstr(message_of(answer), needle) != NULL, "%s: the message does not mention \"%s\": %s",
         what, needle, message_of(answer));
-  CHECK(tididi_bonsai_answer_mode(answer, &len) == NULL && len == 0, "%s: a failure lends a mode", what);
-  CHECK(tididi_bonsai_answer_count(answer, &len) == NULL && len == 0, "%s: a failure lends a count", what);
-  CHECK(tididi_bonsai_answer_stats_json(answer, &len) == NULL && len == 0,
+  CHECK(tididi_cnf_answer_mode(answer, &len) == NULL && len == 0, "%s: a failure lends a mode", what);
+  CHECK(tididi_cnf_answer_count(answer, &len) == NULL && len == 0, "%s: a failure lends a count", what);
+  CHECK(tididi_cnf_answer_stats_json(answer, &len) == NULL && len == 0,
         "%s: a failure lends a record", what);
-  CHECK(!tididi_bonsai_answer_satisfiable(answer), "%s: a failure is satisfiable", what);
-  CHECK(isnan(tididi_bonsai_answer_count_f64(answer)), "%s: a failure's count is not NaN", what);
+  CHECK(!tididi_cnf_answer_satisfiable(answer), "%s: a failure is satisfiable", what);
+  CHECK(isnan(tididi_cnf_answer_count_f64(answer)), "%s: a failure's count is not NaN", what);
 }
 
 /* The whole file at `path` in a NUL-terminated buffer the caller frees, or
@@ -215,7 +215,7 @@ static int run_tididi(const char *executable, const char *path, const char *mode
   return pclose(output) == 0 && found == 3 ? 0 : -1;
 }
 
-/* The library reports the version of tididi-bonsai it was built from, which
+/* The library reports the version of tididi-cnf it was built from, which
  * the executable built from the same source prints for --version. */
 static void test_versions(const char *executable) {
   char command[2 * LINE_SIZE];
@@ -223,9 +223,9 @@ static void test_versions(const char *executable) {
   char printed[LINE_SIZE] = "";
   FILE *output;
 
-  CHECK(tididi_bonsai_abi_version() == TIDIDI_BONSAI_ABI_VERSION, "ABI version %u, header %u",
-        tididi_bonsai_abi_version(), TIDIDI_BONSAI_ABI_VERSION);
-  snprintf(expected, sizeof expected, "tididi %s\n", tididi_bonsai_version());
+  CHECK(tididi_cnf_abi_version() == TIDIDI_CNF_ABI_VERSION, "ABI version %u, header %u",
+        tididi_cnf_abi_version(), TIDIDI_CNF_ABI_VERSION);
+  snprintf(expected, sizeof expected, "tididi %s\n", tididi_cnf_version());
   if (snprintf(command, sizeof command, "'%s' --version", executable) >= (int)sizeof command)
     output = NULL;
   else
@@ -235,7 +235,7 @@ static void test_versions(const char *executable) {
   if (fgets(printed, sizeof printed, output) == NULL) printed[0] = '\0';
   CHECK(pclose(output) == 0, "%s --version failed", executable);
   CHECK(strcmp(printed, expected) == 0, "the library is version %s, the executable prints %s",
-        tididi_bonsai_version(), printed);
+        tididi_cnf_version(), printed);
 }
 
 /* Each listed instance, read from its file, from its text and as clauses,
@@ -256,8 +256,8 @@ static void test_counts_match_the_executable(const char *executable, const char 
   while (fgets(line, sizeof line, list) != NULL) {
     char relative[LINE_SIZE], mode[LINE_SIZE], path[2 * LINE_SIZE], count[LINE_SIZE];
     int satisfiable = -1;
-    tididi_bonsai_answer *answer = NULL;
-    tididi_bonsai_code code;
+    tididi_cnf_answer *answer = NULL;
+    tididi_cnf_code code;
     char *text;
 
     if (line[0] == '#' || sscanf(line, "%4095s %4095s", relative, mode) != 2) continue;
@@ -271,25 +271,25 @@ static void test_counts_match_the_executable(const char *executable, const char 
       continue;
     }
 
-    code = tididi_bonsai_count_file(path, mode, 0, 0, &answer);
+    code = tididi_cnf_count_file(path, mode, 0, 0, &answer);
     expect_count(relative, code, answer, mode, satisfiable, count);
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
 
     text = read_file(path);
     CHECK(text != NULL, "cannot read %s", path);
     if (text == NULL) continue;
     code = count_text(text, mode, &answer);
     expect_count(relative, code, answer, mode, satisfiable, count);
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
 
     if (read_clauses(text, &formula) != 0) {
       CHECK(0, "%s does not fit the clause buffers", relative);
     } else {
-      code = tididi_bonsai_count_clauses(formula.num_vars, formula.literals, formula.literals_len,
+      code = tididi_cnf_count_clauses(formula.num_vars, formula.literals, formula.literals_len,
                                          formula.has_show ? formula.show : NULL, formula.show_len,
                                          formula.weights, formula.weights_len, mode, 0, 0, &answer);
       expect_count(relative, code, answer, mode, satisfiable, count);
-      tididi_bonsai_answer_free(answer);
+      tididi_cnf_answer_free(answer);
     }
     free(text);
   }
@@ -298,206 +298,206 @@ static void test_counts_match_the_executable(const char *executable, const char 
 }
 
 static void test_counts(void) {
-  tididi_bonsai_answer *answer = NULL;
-  tididi_bonsai_code code;
+  tididi_cnf_answer *answer = NULL;
+  tididi_cnf_code code;
   const char *stats;
 
   code = count_text(TWO_MODELS, "mc", &answer);
   expect_count("mc", code, answer, "mc", 1, "2");
-  stats = tididi_bonsai_answer_stats_json(answer, NULL);
+  stats = tididi_cnf_answer_stats_json(answer, NULL);
   CHECK(stats && strstr(stats, "\"mode\":\"mc\"") && strstr(stats, "\"model_count\":\"2\""),
         "the record does not carry the mode and the count: %s", or_null(stats));
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 
   /* Without a mode, the header chooses, and a formula without one is
    * compiled. */
   code = count_text(TWO_MODELS_MC, NULL, &answer);
   expect_count("the header's mode", code, answer, "mc", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
   code = count_text(TWO_MODELS, NULL, &answer);
   expect_count("no mode", code, answer, "compile", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 
   code = count_text(REFUTED, "mc", &answer);
   expect_count("refuted", code, answer, "mc", 0, "0");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 
   /* The weighted count is in the log domain, so its last digits round. */
   code = count_text(WEIGHTED, NULL, &answer);
-  CHECK(code == TIDIDI_BONSAI_OK && near(tididi_bonsai_answer_count_f64(answer), 0.65),
-        "the weighted count is %s", or_null(tididi_bonsai_answer_count(answer, NULL)));
-  tididi_bonsai_answer_free(answer);
+  CHECK(code == TIDIDI_CNF_OK && near(tididi_cnf_answer_count_f64(answer), 0.65),
+        "the weighted count is %s", or_null(tididi_cnf_answer_count(answer, NULL)));
+  tididi_cnf_answer_free(answer);
 }
 
 static void test_clauses(void) {
   /* TWO_MODELS counted over x1 and x2, with x1 weighing 0.3 true and 0.7
    * false and x2 2/5 true, so 3/5 false: 0.3 * 3/5 + 0.7 * 2/5 = 23/50. */
   static const uint32_t shown[] = {1, 2};
-  const tididi_bonsai_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "2/5"}};
-  tididi_bonsai_answer *answer = NULL;
-  tididi_bonsai_code code;
+  const tididi_cnf_weight weights[] = {{1, "0.3"}, {-1, "0.7"}, {2, "2/5"}};
+  tididi_cnf_answer *answer = NULL;
+  tididi_cnf_code code;
 
   code = count_two_models(NULL, 0, NULL, 0, "mc", &answer);
   expect_count("clauses", code, answer, "mc", 1, "2");
-  CHECK(tididi_bonsai_answer_count_f64(answer) == 2.0, "the count as a double is %g",
-        tididi_bonsai_answer_count_f64(answer));
-  tididi_bonsai_answer_free(answer);
+  CHECK(tididi_cnf_answer_count_f64(answer) == 2.0, "the count as a double is %g",
+        tididi_cnf_answer_count_f64(answer));
+  tididi_cnf_answer_free(answer);
 
   code = count_two_models(shown, 2, weights, 3, "pwmc", &answer);
   expect_count("weighted clauses", code, answer, "pwmc", 1, "23/50");
-  CHECK(near(tididi_bonsai_answer_count_f64(answer), 0.46), "the count as a double is %g",
-        tididi_bonsai_answer_count_f64(answer));
-  tididi_bonsai_answer_free(answer);
+  CHECK(near(tididi_cnf_answer_count_f64(answer), 0.46), "the count as a double is %g",
+        tididi_cnf_answer_count_f64(answer));
+  tididi_cnf_answer_free(answer);
 
   /* A null show declares no show set, so the count is over every variable;
    * an empty one projects onto no variable, leaving only the verdict. */
   code = count_two_models(NULL, 0, NULL, 0, "pmc", &answer);
   expect_count("no show set", code, answer, "pmc", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
   code = count_two_models(shown, 0, NULL, 0, "pmc", &answer);
   expect_count("an empty show set", code, answer, "pmc", 1, "1");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 
   /* Without a mode, a show set makes the count projected and anything else
    * compiles. */
   code = count_two_models(NULL, 0, NULL, 0, NULL, &answer);
   expect_count("clauses with no mode", code, answer, "compile", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
   code = count_two_models(shown, 1, NULL, 0, NULL, &answer);
   expect_count("clauses with a show set", code, answer, "pmc", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 
   /* No clauses: every assignment of the one variable is a model. */
-  code = tididi_bonsai_count_clauses(1, NULL, 0, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
+  code = tididi_cnf_count_clauses(1, NULL, 0, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
   expect_count("no clauses", code, answer, "mc", 1, "2");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
 }
 
 static void test_errors(const char *root) {
-  tididi_bonsai_answer *answer = NULL;
-  tididi_bonsai_code code;
+  tididi_cnf_answer *answer = NULL;
+  tididi_cnf_code code;
   char path[LINE_SIZE];
 
   code = count_text(MALFORMED, "mc", &answer);
-  expect_error("malformed", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "x");
-  tididi_bonsai_answer_free(answer);
+  expect_error("malformed", code, answer, TIDIDI_CNF_ERROR_INPUT, "x");
+  tididi_cnf_answer_free(answer);
 
   code = count_text(TWO_MODELS, "weighted", &answer);
-  expect_error("unknown mode", code, answer, TIDIDI_BONSAI_ERROR_USAGE, "weighted");
-  tididi_bonsai_answer_free(answer);
+  expect_error("unknown mode", code, answer, TIDIDI_CNF_ERROR_USAGE, "weighted");
+  tididi_cnf_answer_free(answer);
 
   code = count_text(WEIGHTED, "mc", &answer);
-  expect_error("a mode the header contradicts", code, answer, TIDIDI_BONSAI_ERROR_USAGE, "mc");
-  tididi_bonsai_answer_free(answer);
+  expect_error("a mode the header contradicts", code, answer, TIDIDI_CNF_ERROR_USAGE, "mc");
+  tididi_cnf_answer_free(answer);
 
   {
     static const int32_t past[] = {1, 4, 0};
     static const int32_t twice[] = {1, -1, 0};
     static const int32_t no_variable[] = {INT32_MIN, 0};
     static const uint32_t zero[] = {0};
-    const tididi_bonsai_weight heavy[] = {{1, "heavy"}};
-    const tididi_bonsai_weight half[] = {{1, "1/2"}};
+    const tididi_cnf_weight heavy[] = {{1, "heavy"}};
+    const tididi_cnf_weight half[] = {{1, "1/2"}};
 
-    code = tididi_bonsai_count_clauses(3, past, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
-    expect_error("a variable past num_vars", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "variable 4");
-    tididi_bonsai_answer_free(answer);
-    code = tididi_bonsai_count_clauses(3, twice, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
-    expect_error("a clause naming a variable twice", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "twice");
-    tididi_bonsai_answer_free(answer);
-    code = tididi_bonsai_count_clauses(3, no_variable, 2, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
-    expect_error("INT32_MIN", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "names no variable");
-    tididi_bonsai_answer_free(answer);
+    code = tididi_cnf_count_clauses(3, past, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
+    expect_error("a variable past num_vars", code, answer, TIDIDI_CNF_ERROR_INPUT, "variable 4");
+    tididi_cnf_answer_free(answer);
+    code = tididi_cnf_count_clauses(3, twice, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
+    expect_error("a clause naming a variable twice", code, answer, TIDIDI_CNF_ERROR_INPUT, "twice");
+    tididi_cnf_answer_free(answer);
+    code = tididi_cnf_count_clauses(3, no_variable, 2, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
+    expect_error("INT32_MIN", code, answer, TIDIDI_CNF_ERROR_INPUT, "names no variable");
+    tididi_cnf_answer_free(answer);
     code = count_two_models(zero, 1, NULL, 0, "pmc", &answer);
-    expect_error("show variable 0", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "0 is not a variable");
-    tididi_bonsai_answer_free(answer);
+    expect_error("show variable 0", code, answer, TIDIDI_CNF_ERROR_INPUT, "0 is not a variable");
+    tididi_cnf_answer_free(answer);
     code = count_two_models(NULL, 0, heavy, 1, "wmc", &answer);
-    expect_error("a weight that is no number", code, answer, TIDIDI_BONSAI_ERROR_INPUT,
+    expect_error("a weight that is no number", code, answer, TIDIDI_CNF_ERROR_INPUT,
                  "the weight of literal 1");
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
     code = count_two_models(NULL, 0, half, 1, "mc", &answer);
-    expect_error("weights in an unweighted count", code, answer, TIDIDI_BONSAI_ERROR_USAGE, "weight");
-    tididi_bonsai_answer_free(answer);
+    expect_error("weights in an unweighted count", code, answer, TIDIDI_CNF_ERROR_USAGE, "weight");
+    tididi_cnf_answer_free(answer);
   }
 
   if (snprintf(path, sizeof path, "%s/bindings/no-such-file.cnf", root) >= (int)sizeof path) {
     CHECK(0, "%s is too long a path", root);
     return;
   }
-  code = tididi_bonsai_count_file(path, "mc", 0, 0, &answer);
-  expect_error("missing file", code, answer, TIDIDI_BONSAI_ERROR_INPUT, "no-such-file.cnf");
-  tididi_bonsai_answer_free(answer);
+  code = tididi_cnf_count_file(path, "mc", 0, 0, &answer);
+  expect_error("missing file", code, answer, TIDIDI_CNF_ERROR_INPUT, "no-such-file.cnf");
+  tididi_cnf_answer_free(answer);
 }
 
 static void test_argument_contract(void) {
-  tididi_bonsai_answer *answer = NULL;
-  tididi_bonsai_code code;
+  tididi_cnf_answer *answer = NULL;
+  tididi_cnf_code code;
   size_t len = 99;
 
-  CHECK(count_text(TWO_MODELS, "mc", NULL) == TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT,
+  CHECK(count_text(TWO_MODELS, "mc", NULL) == TIDIDI_CNF_ERROR_INVALID_ARGUMENT,
         "a null out is refused");
-  CHECK(tididi_bonsai_count_file("x.cnf", "mc", 0, 0, NULL) == TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT,
+  CHECK(tididi_cnf_count_file("x.cnf", "mc", 0, 0, NULL) == TIDIDI_CNF_ERROR_INVALID_ARGUMENT,
         "a null out is refused");
 
-  code = tididi_bonsai_count(NULL, 3, "mc", 0, 0, &answer);
-  expect_error("null dimacs", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, "dimacs_len is 3");
-  tididi_bonsai_answer_free(answer);
+  code = tididi_cnf_count(NULL, 3, "mc", 0, 0, &answer);
+  expect_error("null dimacs", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT, "dimacs_len is 3");
+  tididi_cnf_answer_free(answer);
 
-  code = tididi_bonsai_count_file(NULL, "mc", 0, 0, &answer);
-  expect_error("null path", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, "path is null");
-  tididi_bonsai_answer_free(answer);
+  code = tididi_cnf_count_file(NULL, "mc", 0, 0, &answer);
+  expect_error("null path", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT, "path is null");
+  tididi_cnf_answer_free(answer);
 
   /* The last literal closes a clause, which catches a short literals_len. */
-  code = tididi_bonsai_count_clauses(3, TWO_MODELS_LITERALS, TWO_MODELS_LEN - 1, NULL, 0, NULL, 0, "mc",
+  code = tididi_cnf_count_clauses(3, TWO_MODELS_LITERALS, TWO_MODELS_LEN - 1, NULL, 0, NULL, 0, "mc",
                                      0, 0, &answer);
-  expect_error("an unclosed clause", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT,
+  expect_error("an unclosed clause", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT,
                "literals ends with -3");
-  tididi_bonsai_answer_free(answer);
-  code = tididi_bonsai_count_clauses(3, NULL, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
-  expect_error("null literals", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, "literals_len is 3");
-  tididi_bonsai_answer_free(answer);
+  tididi_cnf_answer_free(answer);
+  code = tididi_cnf_count_clauses(3, NULL, 3, NULL, 0, NULL, 0, "mc", 0, 0, &answer);
+  expect_error("null literals", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT, "literals_len is 3");
+  tididi_cnf_answer_free(answer);
   code = count_two_models(NULL, 2, NULL, 0, "pmc", &answer);
-  expect_error("null show", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, "show_len is 2");
-  tididi_bonsai_answer_free(answer);
+  expect_error("null show", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT, "show_len is 2");
+  tididi_cnf_answer_free(answer);
   {
-    const tididi_bonsai_weight unwritten[] = {{1, NULL}};
+    const tididi_cnf_weight unwritten[] = {{1, NULL}};
     code = count_two_models(NULL, 0, unwritten, 1, "wmc", &answer);
-    expect_error("a null weight", code, answer, TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT,
+    expect_error("a null weight", code, answer, TIDIDI_CNF_ERROR_INVALID_ARGUMENT,
                  "weights[0].weight is null");
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
   }
-  CHECK(isnan(tididi_bonsai_answer_count_f64(NULL)), "a null answer's count is not NaN");
+  CHECK(isnan(tididi_cnf_answer_count_f64(NULL)), "a null answer's count is not NaN");
 
   /* Only the first dimacs_len bytes are read: the rest is not DIMACS. */
   {
     char text[sizeof TWO_MODELS + 8];
     memcpy(text, TWO_MODELS, strlen(TWO_MODELS));
     memcpy(text + strlen(TWO_MODELS), "garbage", 8);
-    code = tididi_bonsai_count((const uint8_t *)text, strlen(TWO_MODELS), "mc", 0, 0, &answer);
+    code = tididi_cnf_count((const uint8_t *)text, strlen(TWO_MODELS), "mc", 0, 0, &answer);
     expect_count("length-bounded text", code, answer, "mc", 1, "2");
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
   }
 
-  CHECK(tididi_bonsai_answer_code(NULL) == TIDIDI_BONSAI_ERROR_INVALID_ARGUMENT, "a null answer's code");
-  CHECK(tididi_bonsai_answer_count(NULL, &len) == NULL && len == 0, "a null answer lends nothing");
-  CHECK(tididi_bonsai_answer_error_message(NULL, &len) == NULL && len == 0, "a null answer lends nothing");
-  CHECK(!tididi_bonsai_answer_satisfiable(NULL), "a null answer is not satisfiable");
-  tididi_bonsai_answer_free(NULL);
+  CHECK(tididi_cnf_answer_code(NULL) == TIDIDI_CNF_ERROR_INVALID_ARGUMENT, "a null answer's code");
+  CHECK(tididi_cnf_answer_count(NULL, &len) == NULL && len == 0, "a null answer lends nothing");
+  CHECK(tididi_cnf_answer_error_message(NULL, &len) == NULL && len == 0, "a null answer lends nothing");
+  CHECK(!tididi_cnf_answer_satisfiable(NULL), "a null answer is not satisfiable");
+  tididi_cnf_answer_free(NULL);
 }
 
 static void test_repeated_calls(void) {
   for (int i = 0; i < 3; i++) {
-    tididi_bonsai_answer *answer = NULL;
-    tididi_bonsai_code code = count_text(TWO_MODELS, "mc", &answer);
+    tididi_cnf_answer *answer = NULL;
+    tididi_cnf_code code = count_text(TWO_MODELS, "mc", &answer);
     expect_count("repeated", code, answer, "mc", 1, "2");
-    tididi_bonsai_answer_free(answer);
+    tididi_cnf_answer_free(answer);
   }
 }
 
 /* One call made on a thread of its own, and what it returned. */
 struct call {
   pthread_t thread;
-  tididi_bonsai_code code;
-  tididi_bonsai_answer *answer;
+  tididi_cnf_code code;
+  tididi_cnf_answer *answer;
 };
 
 static void *count_on_a_thread(void *arg) {
@@ -518,7 +518,7 @@ static void test_concurrent_calls(void) {
   for (int i = 0; i < 4; i++) {
     pthread_join(calls[i].thread, NULL);
     expect_count("concurrent", calls[i].code, calls[i].answer, "mc", 1, "2");
-    tididi_bonsai_answer_free(calls[i].answer);
+    tididi_cnf_answer_free(calls[i].answer);
   }
 }
 

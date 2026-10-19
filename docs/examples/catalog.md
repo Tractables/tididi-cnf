@@ -47,7 +47,7 @@ all eight variables that satisfy every clause.
 
 ```rust,ignore,{class=tested-example}
 let limits = Limits::default();
-let answer = tididi_bonsai::count(parse_dimacs(rules.as_bytes())?, Some(Mode::Mc), &limits)?;
+let answer = tididi_cnf::count(parse_dimacs(rules.as_bytes())?, Some(Mode::Mc), &limits)?;
 println!("Valid configurations: {}", answer.count());
 ```
 
@@ -72,7 +72,7 @@ it to a valid configuration.
 
 ```rust,ignore,{class=tested-example}
 let hardware = format!("{rules}c p show 1 2 3 4 5 6 0\n");
-let answer = tididi_bonsai::count(parse_dimacs(hardware.as_bytes())?, Some(Mode::Pmc), &limits)?;
+let answer = tididi_cnf::count(parse_dimacs(hardware.as_bytes())?, Some(Mode::Pmc), &limits)?;
 println!("Processor and memory pairs: {}", answer.count());
 ```
 
@@ -94,7 +94,7 @@ choice without compiling again; `observe` fixes literals, replacing an
 earlier choice of the same variable.
 
 ```rust,ignore,{class=tested-example}
-let answer = tididi_bonsai::count(parse_dimacs(rules.as_bytes())?, Some(Mode::Compile), &limits)?;
+let answer = tididi_cnf::count(parse_dimacs(rules.as_bytes())?, Some(Mode::Compile), &limits)?;
 let rules_circuit = answer.diagram().expect("a compile keeps its circuit");
 let mut counter = rules_circuit.counter()?;
 counter.observe([Literal::try_from(7)?])?;
@@ -146,5 +146,5 @@ To keep the circuit between runs, save it as the binary's `--save-tdd` does;
 the library's
 [persistence example](https://tractables.github.io/tididi/tididi/guide/examples/persistence/index.html)
 saves and reloads one. The
-[complete program](https://github.com/Tractables/tididi-bonsai/blob/v0.1.0/examples/catalog.rs)
+[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/catalog.rs)
 runs all these queries.

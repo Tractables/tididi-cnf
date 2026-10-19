@@ -1,8 +1,8 @@
-# tididi-bonsai in the browser
+# tididi-cnf in the browser
 
-**<https://tractables.github.io/tididi-bonsai/>**
+**<https://tractables.github.io/tididi-cnf/>**
 
-A page that runs tididi-bonsai in the tab. Drop in a DIMACS CNF — or paste
+A page that runs tididi-cnf in the tab. Drop in a DIMACS CNF — or paste
 one, open a file, or pick an example — and it counts the formula's models:
 
 - the model count, the weighted count, or either one projected onto the
@@ -22,7 +22,7 @@ one, open a file, or pick an example — and it counts the formula's models:
   evidence pinned on the page, evaluated from the diagram.
 
 The count is the one the `tididi` binary prints on the same formula and task:
-the page calls the crate's `tididi_bonsai::count`. A time limit is the
+the page calls the crate's `tididi_cnf::count`. A time limit is the
 binary's `--time-limit-ms`. There is no memory limit: the module's memory
 grows as the run needs it, up to 4 GB, and the crate refuses
 `Limits::mem_limit_mb` on WebAssembly. The address bar carries the example and
@@ -79,7 +79,7 @@ environment, which a native build of vitri refuses:
 ```sh
 node --experimental-vm-modules bindings/wasm/app-test.mjs
 env -u VITRI_EMSCRIPTEN_PREFIX cargo build --release --bin tididi
-node bindings/wasm/smoke.mjs bindings/wasm/site/bonsai.js . target/release/tididi
+node bindings/wasm/smoke.mjs bindings/wasm/site/tididi_cnf.js . target/release/tididi
 node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
 node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
 ```
@@ -89,7 +89,7 @@ node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/e
 A workflow that publishes the page stamps the two references in `index.html`
 and the imports between the scripts with the commit (`app.js?v=<sha>`). A
 script reads its own stamp from `import.meta.url`; the page passes it to the
-worker, the worker to `bonsai.js` and every file the module loads, and the
+worker, the worker to `tididi_cnf.js` and every file the module loads, and the
 example list to the formulas it fetches, so a new page never runs with an
 older file a browser still holds. The evaluation page under `evaluation/` is
 stamped the same way, and its results take the stamp of the script that
