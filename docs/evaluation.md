@@ -18,6 +18,9 @@ shows these runs by set, by pair of solvers and by instance; it reads the
 files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
 lists, and its source is beside them.
 
+The measurements use the [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-bonsai/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
+including the dependency revisions recorded there.
+
 ## Instances
 
 Track 1 of the 2025 competition has 200 instances. The 2026 competition
