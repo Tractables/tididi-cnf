@@ -13,15 +13,16 @@
      src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
-**Count the solutions of a CNF formula exactly, or compile it into a circuit
-you can query.**
+**Compile a CNF formula into a Tree Decision Diagram you can reuse and query.**
 
-tididi-cnf reads a propositional formula in DIMACS CNF and answers how many
-assignments satisfy it, optionally weighted and optionally counted over a
-chosen subset of the variables. It gets there by compiling the formula into a
-**Tree Decision Diagram** (TDD), a canonical circuit on which counting takes
-one pass. Where an OBDD tests variables in one fixed order, a TDD follows a
-*vtree*, a binary tree over the variables. TDDs are introduced in
+tididi-cnf is a bottom-up compiler for propositional formulas in DIMACS CNF.
+Its output is a **Tree Decision Diagram** (TDD): a canonical circuit that can
+be saved, combined with further constraints, and queried repeatedly under
+new evidence or literal weights. Counting the solutions is one application,
+including weighted counts and counts projected onto chosen variables.
+
+Where an OBDD tests variables in one fixed order, a TDD follows a *vtree*,
+a binary tree over the variables. TDDs are introduced in
 [*A Canonical Generalization of OBDD*](https://arxiv.org/abs/2604.05537).
 
 The compiler simplifies the formula and chooses the vtree with
@@ -29,7 +30,39 @@ The compiler simplifies the formula and chooses the vtree with
 [tididi](https://github.com/Tractables/tididi) library. It is a command-line
 tool, `tididi`, and a Rust library, `tididi_cnf`.
 
-## Evaluation
+## How well does it work?
+
+We compare compilation into reusable circuits first, then model counting.
+Both primary comparisons use every MCC 2020–2026 track-1 entry:
+1,400 entries representing 1,153 distinct formulas, with the same input
+representative for every tool and two minutes per instance. The plots start
+at 200 ms, with time horizontally and instances completed vertically; higher
+is better.
+
+### Compared with logic-circuit compilers
+
+The logic-circuit comparison runs tididi-cnf, Panini, D4v2, GPMC and c2d on
+the same full competition corpus, two minutes per instance. Each written
+circuit is read back and counted independently.
+
+<p align="center">
+  <img src="docs/evaluation/cactus-2020-2026-logic-compile-120s.svg" width="760"
+       alt="All 1,400 MCC 2020–2026 entries compiled within two minutes by tididi-cnf, Panini, D4v2, GPMC and c2d">
+</p>
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-logic-compile-120s.csv -->
+
+| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
+| Panini | 112 | 60 | 98 | 102 | 57 | 55 | 53 | 41 | 578 |
+| D4v2 | 59 | 56 | 98 | 79 | 52 | 48 | 55 | 40 | 487 |
+| GPMC | 84 | 50 | 92 | 76 | 49 | 48 | 50 | 33 | 482 |
+| c2d | 79 | 44 | 66 | 57 | 36 | 30 | 44 | 31 | 387 |
+
+<!-- end of evaluation table -->
+
+### Compared with model counters
 
 tididi-cnf and the exact counters entered in the 2026
 [Model Counting Competition](https://mccompetition.org/) ran on all 1,400
@@ -54,18 +87,6 @@ use one fixed representative for every solver.
 
 <!-- end of evaluation table -->
 
-As a compiler, writing a circuit that can be queried afterwards,
-tididi-cnf compiles 181 of the 400 instances from 2025 and 2026 in two
-minutes each. Of four d-DNNF compilers run beside it, Panini compiles 149,
-D4v2 143, GPMC 131
-and c2d 105, and from three seconds on, tididi-cnf compiles the most within
-any time limit:
-
-<p align="center">
-  <img src="docs/evaluation/cactus-compile-120s.svg" width="760"
-       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-cnf, Panini, D4v2, GPMC and c2d">
-</p>
-
 <details>
 <summary>One-hour model counting results</summary>
 
@@ -86,14 +107,17 @@ Given an hour, tididi-cnf also solves 120 of the 200 instances of 2025 and
 
 </details>
 
-The [evaluation](docs/evaluation.md) documents the measured source snapshot,
-formula selection and limits. It includes the separate 2025–2026 comparison,
-the one-hour results and every measured run. The
-[evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
-opens with the full-corpus two-minute comparison and lets you inspect results
-by set, by pair of solvers and by instance.
+The [evaluation method](docs/evaluation.md) documents each comparison's
+source, formula selection and limits. The
+[interactive evaluation](https://tractables.github.io/tididi-cnf/evaluation/)
+starts with logic-circuit compilation and lets you inspect every
+comparison by set, pair of tools and instance.
 
 ## What it answers
+
+**Compilation.** The TDD itself, saved to a file that the tididi library reads
+back and queries: counts under evidence, weighted evaluation, conjunction with
+further constraints.
 
 **Model counting.** How many assignments satisfy the formula: the valid
 configurations of a product whose options constrain one another, say. The
@@ -110,10 +134,6 @@ connects two sites.
 only: each assignment to them counts once if the rest of the formula can be
 completed. An encoding's auxiliary variables stay out of the count this way.
 The [circuit example] counts the distinct products a multiplier outputs.
-
-**Compilation.** The TDD itself, saved to a file that the tididi library reads
-back and queries: counts under evidence, weighted evaluation, conjunction with
-further constraints.
 
 ## Build
 

@@ -59,13 +59,19 @@ export async function loadDatasets(base) {
     return response;
   };
   const entries = await (await fetchOk("datasets.json")).json();
-  return Promise.all(entries.map(async ({ file, title, about, timeout_s: timeout, cactus_min_s: cactusLow }) => {
+  return Promise.all(entries.map(async ({ file, title, about, timeout_s: timeout, cactus_min_s: cactusLow, colours }) => {
     if (typeof file !== "string" || typeof title !== "string" || typeof about !== "string" || !(timeout > 0)
         || !(cactusLow > 0 && cactusLow < timeout)) {
       throw new Error("datasets.json: each entry needs a file, a title, an about, a positive timeout_s and cactus_min_s below its timeout");
     }
     const runs = parseRuns(await (await fetchOk(file)).text(), file, timeout);
-    return { file, title, about, timeout, cactusLow, ...runs };
+    for (const solver of runs.solvers) {
+      const pair = colours?.[solver];
+      if (!Array.isArray(pair) || pair.length !== 2 || !pair.every((c) => /^#[0-9a-f]{6}$/i.test(c))) {
+        throw new Error(`${file}: ${solver} needs light and dark colours`);
+      }
+    }
+    return { file, title, about, timeout, cactusLow, colours, ...runs };
   }));
 }
 

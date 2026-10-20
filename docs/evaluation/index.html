@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="tididi-cnf and the exact model counters of the 2026 Model Counting Competition on the competition's instances: solved counts, a cactus plot, a head-to-head plot and every run.">
+<meta name="description" content="tididi-cnf compared with logic-circuit compilers and model counters on the full MCC 2020–2026 corpus, with separate decision-diagram supplements.">
 <title>tididi-cnf: evaluation</title>
 <link rel="stylesheet" href="page.css">
 </head>
@@ -14,12 +14,14 @@
 <header>
   <a href="https://github.com/Tractables/tididi-cnf"><img class="logo"
      src="../logo.svg" alt="tididi-cnf" width="916" height="262"></a>
-  <h1>Evaluation</h1>
-  <p class="lede">The primary comparison covers all 1,400 track-1 entries of
-  the <a href="https://mccompetition.org/">Model Counting Competition</a>
-  from 2020–2026: tididi-cnf and the latest exact competition counters,
-  two minutes per instance, on one machine under the same limits. Separate
-  datasets show compilation and one-hour counting results.
+  <h1>How well does it work?</h1>
+  <p class="lede">tididi-cnf is a bottom-up CNF compiler. Compare its reusable
+  circuits with logic-circuit compilers, then compare model counting.
+  Both primary
+  comparisons use the same 1,400 track-1 entries of the
+  <a href="https://mccompetition.org/">Model Counting Competition</a>
+  from 2020–2026, with the same input representatives and two minutes per
+  instance. Historical subsets remain available as supplements.
   <a href="https://github.com/Tractables/tididi-cnf/blob/main/docs/evaluation.md">How
   it was measured</a> names the source snapshot, representative inputs,
   solvers, machine and limits, and records failed invocations.
@@ -29,7 +31,7 @@
 
 <section class="choice" aria-label="Which runs and instances">
   <div class="field">
-    <label for="dataset">Runs</label>
+    <label for="dataset">Comparison</label>
     <select id="dataset"></select>
   </div>
   <div class="field">

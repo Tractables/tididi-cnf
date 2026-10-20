@@ -1,7 +1,6 @@
 :root {
-  /* The browser page's palette and type, so the two pages read as one site.
-     The series colours are the solvers', in the order of the README's
-     figure; the first, the logo's blue, is tididi-cnf's. */
+  /* The browser page's palette and type, so the pages read as one site.
+     Solver colours come from the evaluation manifests. */
   color-scheme: light dark;
   --bg: #f3f5f8;
   --card: #ffffff;
@@ -12,14 +11,6 @@
   --accent-fill: #dcebf7;
   --bad: #b3261e;
   --code: #f6f8fa;
-  --series-0: #2774ae;
-  --series-1: #d55e00;
-  --series-2: #009e73;
-  --series-3: #cc79a7;
-  --series-4: #e69f00;
-  --series-5: #6a3d9a;
-  --series-6: #8c6d31;
-  --series-7: #6b7280;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -35,14 +26,6 @@
     --accent-fill: #1c3347;
     --bad: #f28b82;
     --code: #151a20;
-    --series-0: #58a6ff;
-    --series-1: #f0884a;
-    --series-2: #3fc59a;
-    --series-3: #e0a3c8;
-    --series-4: #f2be4a;
-    --series-5: #b39ddb;
-    --series-6: #c9a66b;
-    --series-7: #b0b6bf;
   }
 }
 

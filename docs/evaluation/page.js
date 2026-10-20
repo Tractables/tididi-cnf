@@ -32,9 +32,6 @@ const cactus = element("cactus");
 const pair = element("pair");
 
 let datasets = [];
-// Every solver of every dataset, ours first: a solver's colour is its place
-// here, so it keeps its colour from one dataset to the next.
-let palette = [];
 let dataset = null;
 // The solvers switched off on the cactus plot.
 const hidden = new Set();
@@ -43,7 +40,11 @@ let order = { key: "instance", direction: 1 };
 // The two solvers on the head-to-head plot.
 let pairShown = [];
 
-const colourOf = (solver) => `var(--series-${palette.indexOf(solver)}, var(--muted))`;
+// The same manifest supplies the static figure and the interactive colours.
+const colourOf = (solver) => {
+  const [light, dark] = dataset.colours[solver];
+  return `light-dark(${light}, ${dark})`;
+};
 const key = (colour) => {
   const swatch = make("i", "key");
   swatch.style.background = colour;
@@ -316,7 +317,6 @@ resized.observe(pair.parentElement);
 
 try {
   datasets = await loadDatasets(import.meta.url);
-  palette = [...new Set([OURS, ...datasets.flatMap((d) => d.solvers)])];
   for (const d of datasets) {
     // The time axes start at the power of ten at or below the fastest run.
     const times = d.instances.flatMap((instance) => [...instance.times.values()]).filter((time) => time > 0);
