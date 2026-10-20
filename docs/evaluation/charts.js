@@ -26,15 +26,18 @@ function logScale(low, high, from, to) {
 }
 
 // The ticks of a time axis `length` pixels long: 1 and 3 times each power of
-// ten from `low`, or the powers alone when those would sit closer than
+// ten, starting at `low`, or the powers alone when those would sit closer than
 // `spacing` pixels, then the time limit `high`, without a tick closer to it
 // than `spacing`.
 function timeTicks(low, high, length, spacing) {
   const fromHigh = (value) => (length * Math.log(high / value)) / Math.log(high / low);
   const ticks = (steps) => {
-    const values = [];
-    for (let power = low; power < high; power *= 10) {
-      for (const step of steps) values.push(Number((power * step).toPrecision(2)));
+    const values = [low];
+    for (let power = 10 ** Math.floor(Math.log10(low)); power < high; power *= 10) {
+      for (const step of steps) {
+        const value = Number((power * step).toPrecision(2));
+        if (value > low) values.push(value);
+      }
     }
     return [...values.filter((value) => fromHigh(value) >= spacing), high];
   };
@@ -174,7 +177,7 @@ export function drawCactus(svg, { width, curves, most, total, low, timeout, titl
   frame(
     svg,
     plot,
-    timeTicks(low, timeout, plot.right - plot.left, 52).map((time) => ({ at: x(time), label: `${time} s` })),
+    timeTicks(low, timeout, plot.right - plot.left, 52).map((time) => ({ at: x(time), label: time === low && time < 1 ? `${time * 1000} ms` : `${time} s` })),
     ticks.map((count) => ({ at: y(count), label: String(count) })),
     "time per instance",
     `instances solved, of ${total}`,

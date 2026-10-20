@@ -21,7 +21,8 @@ opens with the full-corpus two-minute comparison. It reads the files listed
 in [`evaluation/datasets.json`](evaluation/datasets.json), and its source is
 beside them.
 
-The cactus plots put time per instance on the horizontal axis (logarithmic)
+The cactus plots put time per instance on the horizontal axis (logarithmic,
+starting at 200 ms)
 and instances solved within that time on the vertical axis. Higher is better;
 each curve continues to the time limit so its final height shows its total.
 

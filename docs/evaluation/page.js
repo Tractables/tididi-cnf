@@ -182,7 +182,7 @@ function renderCactus() {
     curves: curves.filter((curve) => !hidden.has(curve.name)),
     most: Math.max(1, ...curves.map((curve) => curve.times.length)),
     total: instances.length,
-    low: dataset.low,
+    low: dataset.cactusLow,
     timeout: dataset.timeout,
     title: `Instances of ${scopeName()} solved within a time limit, up to ${dataset.timeout} s`,
   });
