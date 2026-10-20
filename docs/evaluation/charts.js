@@ -166,31 +166,34 @@ export function drawCactus(svg, { width, curves, most, total, low, timeout, titl
   if (width === 0) return;
   const height = Math.round(Math.min(560, Math.max(260, width * 0.78)));
   const plot = { left: 60, right: width - 16, top: 12, bottom: height - 46 };
-  const { end, ticks } = countTicks(most, plot.right - plot.left, 64);
-  const x = (count) => plot.left + ((plot.right - plot.left) * count) / end;
-  const y = logScale(low, timeout, plot.bottom, plot.top);
+  const { end, ticks } = countTicks(most, plot.bottom - plot.top, 32);
+  const x = logScale(low, timeout, plot.left, plot.right);
+  const y = (count) => plot.bottom - ((plot.bottom - plot.top) * count) / end;
   const solved = curves.map((curve) => `${curve.name} solves ${curve.times.length}`).join(", ");
-  begin(svg, width, height, title, `Cactus plot of ${total} instances. ${solved || "No solver is shown"}.`);
+  begin(svg, width, height, title, `Cactus plot of ${total} instances: time horizontal (logarithmic), instances solved vertical. ${solved || "No solver is shown"}.`);
   frame(
     svg,
     plot,
-    ticks.map((count) => ({ at: x(count), label: String(count) })),
-    timeTicks(low, timeout, plot.bottom - plot.top, 26).map((time) => ({ at: y(time), label: `${time} s` })),
-    `instances solved, of ${total}`,
+    timeTicks(low, timeout, plot.right - plot.left, 52).map((time) => ({ at: x(time), label: `${time} s` })),
+    ticks.map((count) => ({ at: y(count), label: String(count) })),
     "time per instance",
+    `instances solved, of ${total}`,
   );
 
   const points = [];
   for (const curve of [...curves].sort((x, y) => x.ours - y.ours)) {
-    const at = curve.times.map((time, i) => ({ x: x(i + 1), y: y(time) }));
+    const at = curve.times.map((time, i) => ({ x: x(time), y: y(i + 1) }));
+    const steps = [{ x: x(low), y: y(0) }];
+    at.forEach((point, i) => steps.push({ x: point.x, y: y(i) }, point));
+    steps.push({ x: x(timeout), y: y(at.length) });
     const style = `stroke: ${curve.colour}`;
     svg.append(svgNode("polyline", {
       class: curve.ours ? "curve ours" : "curve",
-      points: at.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "),
+      points: steps.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "),
       style,
     }));
     if (at.length > 0) {
-      svg.append(svgNode("circle", { class: "end", cx: at.at(-1).x, cy: at.at(-1).y, r: curve.ours ? 3.5 : 2.5, style: `fill: ${curve.colour}` }));
+      svg.append(svgNode("circle", { class: "end", cx: x(timeout), cy: y(at.length), r: curve.ours ? 3.5 : 2.5, style: `fill: ${curve.colour}` }));
     }
     curve.times.forEach((time, i) => points.push({
       ...at[i],

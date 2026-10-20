@@ -21,6 +21,10 @@ opens with the full-corpus two-minute comparison. It reads the files listed
 in [`evaluation/datasets.json`](evaluation/datasets.json), and its source is
 beside them.
 
+The cactus plots put time per instance on the horizontal axis (logarithmic)
+and instances solved within that time on the vertical axis. Higher is better;
+each curve continues to the time limit so its final height shows its total.
+
 All model counting measurements use the
 [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-cnf/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
 including its recorded dependency revisions. The full-corpus comparison
