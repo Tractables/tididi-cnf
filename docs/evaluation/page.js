@@ -22,6 +22,7 @@ const setOptions = (select, entries) =>
 const control = {
   dataset: element("dataset"),
   set: element("set"),
+  scale: element("cactus-scale"),
   a: element("pair-a"),
   b: element("pair-b"),
   search: element("search"),
@@ -185,6 +186,7 @@ function renderCactus() {
     total: instances.length,
     low: dataset.cactusLow,
     timeout: dataset.timeout,
+    scale: control.scale.value,
     title: `Instances of ${scopeName()} solved within a time limit, up to ${dataset.timeout} s`,
   });
 }
@@ -291,6 +293,7 @@ function renderInstances() {
 
 control.dataset.onchange = chooseDataset;
 control.set.onchange = render;
+control.scale.onchange = renderCactus;
 // The two solvers of the head-to-head stay distinct: picking the other one's
 // solver swaps them.
 control.a.onchange = () => {

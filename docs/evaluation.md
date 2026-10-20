@@ -27,9 +27,9 @@ opens with logic-circuit compilation. It reads the files listed
 in [`evaluation/datasets.json`](evaluation/datasets.json), and its source is
 beside them.
 
-The cactus plots put time per instance on the horizontal axis (logarithmic,
-starting at 200 ms)
-and instances solved within that time on the vertical axis. Higher is better;
+The cactus plots put time per instance on a linear horizontal axis starting
+at 200 ms, and instances solved within that time on the vertical axis.
+The interactive page also offers a logarithmic time scale. Higher is better;
 each curve continues to the time limit so its final height shows its total.
 
 The primary measurements use the

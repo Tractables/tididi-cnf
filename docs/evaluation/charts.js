@@ -57,6 +57,15 @@ function countTicks(most, length, spacing) {
   return { end, ticks: Array.from({ length: end / step + 1 }, (_, i) => i * step) };
 }
 
+// Evenly spaced time ticks, retaining both ends without crowding their labels.
+function linearTimeTicks(low, high, length, spacing) {
+  const unit = high >= 600 ? 60 : 1;
+  const { ticks } = countTicks(high / unit, length, spacing);
+  const pixels = (time) => (length * (time - low)) / (high - low);
+  return [low, ...ticks.map((time) => time * unit).filter((time) =>
+    time > low && time < high && pixels(time) >= spacing && length - pixels(time) >= spacing), high];
+}
+
 // Sizes the plot and starts it afresh with its title and description.
 function begin(svg, width, height, title, description) {
   svg.setAttribute("width", width);
@@ -164,20 +173,24 @@ function readout(svg, points) {
 // instances the solver finished within each, up to `most`, the largest count
 // any solver reaches, on a time axis from `low` up to the time limit. Ours
 // is drawn last, on top.
-export function drawCactus(svg, { width, curves, most, total, low, timeout, title }) {
+export function drawCactus(svg, { width, curves, most, total, low, timeout, scale, title }) {
+  if (scale !== "linear" && scale !== "log") throw new Error(`Unknown cactus time scale: ${scale}`);
   // A hidden box has no width; the page draws the plot when it gets one.
   if (width === 0) return;
   const height = Math.round(Math.min(560, Math.max(260, width * 0.78)));
   const plot = { left: 60, right: width - 16, top: 12, bottom: height - 46 };
   const { end, ticks } = countTicks(most, plot.bottom - plot.top, 32);
-  const x = logScale(low, timeout, plot.left, plot.right);
+  const x = scale === "log" ? logScale(low, timeout, plot.left, plot.right)
+    : (time) => plot.left + ((plot.right - plot.left) * (Math.max(time, low) - low)) / (timeout - low);
+  const timeAxisTicks = scale === "log" ? timeTicks : linearTimeTicks;
   const y = (count) => plot.bottom - ((plot.bottom - plot.top) * count) / end;
   const solved = curves.map((curve) => `${curve.name} solves ${curve.times.length}`).join(", ");
-  begin(svg, width, height, title, `Cactus plot of ${total} instances: time horizontal (logarithmic), instances solved vertical. ${solved || "No solver is shown"}.`);
+  begin(svg, width, height, title, `Cactus plot of ${total} instances: time horizontal (${scale === "log" ? "logarithmic" : "linear"}), instances solved vertical. ${solved || "No solver is shown"}.`);
   frame(
     svg,
     plot,
-    timeTicks(low, timeout, plot.right - plot.left, 52).map((time) => ({ at: x(time), label: time === low && time < 1 ? `${time * 1000} ms` : `${time} s` })),
+    timeAxisTicks(low, timeout, plot.right - plot.left, 52).map((time) => ({ at: x(time),
+      label: time < 1 ? `${time * 1000} ms` : time % 60 === 0 ? `${time / 60} min` : `${time} s` })),
     ticks.map((count) => ({ at: y(count), label: String(count) })),
     "time per instance",
     `instances solved, of ${total}`,

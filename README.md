@@ -35,9 +35,9 @@ tool, `tididi`, and a Rust library, `tididi_cnf`.
 We compare compilation into reusable circuits first, then model counting.
 Both primary comparisons use every MCC 2020–2026 track-1 entry:
 1,400 entries representing 1,153 distinct formulas, with the same input
-representative for every tool and two minutes per instance. The plots start
-at 200 ms, with time horizontally and instances completed vertically; higher
-is better.
+representative for every tool and two minutes per instance. The plots use
+linear time horizontally, starting at 200 ms, and instances completed
+vertically; higher is better.
 
 ### Compared with logic-circuit compilers
 

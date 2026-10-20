@@ -59,6 +59,15 @@
     <i>n</i> instances in <i>t</i> seconds or less each. Higher is better. Point
     at a curve, or focus the plot and use the arrow keys, to read it; the
     buttons show and hide each solver.</p>
+    <div class="pair-choice">
+      <div class="field">
+        <label for="cactus-scale">Time scale</label>
+        <select id="cactus-scale">
+          <option value="linear">Linear</option>
+          <option value="log">Logarithmic</option>
+        </select>
+      </div>
+    </div>
     <div id="cactus-solvers" class="toggles" role="group" aria-label="Solvers on the plot"></div>
     <div class="plot">
       <svg id="cactus" role="img" tabindex="0"></svg>
