@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" width="760" height="440" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
 <title id="t">Instances solved within a time limit, MCC 2025 and 2026 track 1, compilation, 120 s</title>
-<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, logarithmic, up to 120 s). tididi-cnf solves 181; Panini solves 149; D4v2 solves 143; GPMC solves 131; c2d solves 105.</desc>
+<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, logarithmic, up to 120 s). tididi-cnf solves 181; Panini solves 149; D4 (compiler) solves 143; GPMC (compiler) solves 131; c2d solves 105.</desc>
 <style>
-.canvas{fill:#fff}.ink{fill:#1b2430}.muted{fill:#5d6877}.grid{stroke:#dce2ea}.axis{stroke:#5d6877}.c0{stroke:#2774AE}.f0{fill:#2774AE}.c1{stroke:#6A3D9A}.f1{fill:#6A3D9A}.c2{stroke:#8C6D31}.f2{fill:#8C6D31}.c3{stroke:#CC79A7}.f3{fill:#CC79A7}.c4{stroke:#6B7280}.f4{fill:#6B7280}
-@media (prefers-color-scheme: dark){.canvas{fill:#0d1117}.ink{fill:#e6edf3}.muted{fill:#9da7b3}.grid{stroke:#30363d}.axis{stroke:#9da7b3}.c0{stroke:#58A6FF}.f0{fill:#58A6FF}.c1{stroke:#B39DDB}.f1{fill:#B39DDB}.c2{stroke:#C9A66B}.f2{fill:#C9A66B}.c3{stroke:#E0A3C8}.f3{fill:#E0A3C8}.c4{stroke:#B0B6BF}.f4{fill:#B0B6BF}}
+.canvas{fill:#fff}.ink{fill:#1b2430}.muted{fill:#5d6877}.grid{stroke:#dce2ea}.axis{stroke:#5d6877}.c0{stroke:#2774AE}.f0{fill:#2774AE}.c1{stroke:#6A3D9A}.f1{fill:#6A3D9A}.c2{stroke:#009E73}.f2{fill:#009E73}.c3{stroke:#CC79A7}.f3{fill:#CC79A7}.c4{stroke:#6B7280}.f4{fill:#6B7280}
+@media (prefers-color-scheme: dark){.canvas{fill:#0d1117}.ink{fill:#e6edf3}.muted{fill:#9da7b3}.grid{stroke:#30363d}.axis{stroke:#9da7b3}.c0{stroke:#58A6FF}.f0{fill:#58A6FF}.c1{stroke:#B39DDB}.f1{fill:#B39DDB}.c2{stroke:#3FC59A}.f2{fill:#3FC59A}.c3{stroke:#E0A3C8}.f3{fill:#E0A3C8}.c4{stroke:#B0B6BF}.f4{fill:#B0B6BF}}
 </style>
 <rect class="canvas" width="760" height="440"/>
 <line class="grid" x1="64.0" x2="64.0" y1="20" y2="388" stroke-width="1"/>
@@ -47,17 +47,17 @@
 <circle class="f0" cx="736.0" cy="55.0" r="3.5"/>
 <line class="c0" x1="82" x2="104" y1="38" y2="38" stroke-width="3" stroke-linecap="round"/>
 <text class="ink" x="112" y="42" font-size="13" font-weight="600">tididi-cnf</text>
-<text class="ink" x="242" y="42" font-size="13" text-anchor="end" font-weight="600">181</text>
+<text class="ink" x="302" y="42" font-size="13" text-anchor="end" font-weight="600">181</text>
 <line class="c1" x1="82" x2="104" y1="58" y2="58" stroke-width="1.75" stroke-linecap="round"/>
 <text class="ink" x="112" y="62" font-size="13">Panini</text>
-<text class="ink" x="242" y="62" font-size="13" text-anchor="end">149</text>
+<text class="ink" x="302" y="62" font-size="13" text-anchor="end">149</text>
 <line class="c2" x1="82" x2="104" y1="78" y2="78" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="112" y="82" font-size="13">D4v2</text>
-<text class="ink" x="242" y="82" font-size="13" text-anchor="end">143</text>
+<text class="ink" x="112" y="82" font-size="13">D4 (compiler)</text>
+<text class="ink" x="302" y="82" font-size="13" text-anchor="end">143</text>
 <line class="c3" x1="82" x2="104" y1="98" y2="98" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="112" y="102" font-size="13">GPMC</text>
-<text class="ink" x="242" y="102" font-size="13" text-anchor="end">131</text>
+<text class="ink" x="112" y="102" font-size="13">GPMC (compiler)</text>
+<text class="ink" x="302" y="102" font-size="13" text-anchor="end">131</text>
 <line class="c4" x1="82" x2="104" y1="118" y2="118" stroke-width="1.75" stroke-linecap="round"/>
 <text class="ink" x="112" y="122" font-size="13">c2d</text>
-<text class="ink" x="242" y="122" font-size="13" text-anchor="end">105</text>
+<text class="ink" x="302" y="122" font-size="13" text-anchor="end">105</text>
 </svg>

@@ -41,26 +41,16 @@ is better.
 
 ### Compared with logic-circuit compilers
 
-The logic-circuit comparison runs tididi-cnf, Panini, D4v2, GPMC and c2d on
-the same full competition corpus, two minutes per instance. Each written
-circuit is read back and counted independently.
+tididi-cnf compiles the most entries within two minutes in this comparison
+with Panini, D4, GPMC and c2d. Each written circuit is read back and counted
+independently.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-logic-compile-120s.svg" width="760"
-       alt="All 1,400 MCC 2020–2026 entries compiled within two minutes by tididi-cnf, Panini, D4v2, GPMC and c2d">
+       alt="All 1,400 MCC 2020–2026 entries compiled within two minutes by tididi-cnf, Panini, D4 as a compiler, GPMC as a compiler and c2d">
 </p>
 
-<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-logic-compile-120s.csv -->
-
-| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
-| Panini | 112 | 60 | 98 | 102 | 57 | 55 | 53 | 41 | 578 |
-| D4v2 | 59 | 56 | 98 | 79 | 52 | 48 | 55 | 40 | 487 |
-| GPMC | 84 | 50 | 92 | 76 | 49 | 48 | 50 | 33 | 482 |
-| c2d | 79 | 44 | 66 | 57 | 36 | 30 | 44 | 31 | 387 |
-
-<!-- end of evaluation table -->
+[Detailed results and method](docs/evaluation.md#logic-circuit-compilation).
 
 ### Compared with model counters
 
@@ -72,7 +62,7 @@ use one fixed representative for every solver.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-120s.svg" width="760"
-       alt="Cactus plot of all 1,400 MCC 2020–2026 entries solved against time per instance, up to two minutes, for tididi-cnf, Ganak, d4, GPMC and Cara">
+       alt="Cactus plot of all 1,400 MCC 2020–2026 entries solved against time per instance, up to two minutes, for tididi-cnf, Ganak, D4 as a counter, GPMC as a counter and Cara">
 </p>
 
 <!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-120s.csv -->
@@ -81,8 +71,8 @@ use one fixed representative for every solver.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | tididi-cnf | **144** | 91 | 134 | 124 | **82** | 82 | 60 | **53** | 770 |
 | Ganak | 142 | **102** | **141** | **129** | 81 | **87** | **61** | 49 | **792** |
-| d4 | 123 | 66 | 123 | 94 | 61 | 65 | 53 | 44 | 629 |
-| GPMC | 93 | 58 | 123 | 94 | 60 | 56 | 53 | 40 | 577 |
+| D4 (counter) | 123 | 66 | 123 | 94 | 61 | 65 | 53 | 44 | 629 |
+| GPMC (counter) | 93 | 58 | 123 | 94 | 60 | 56 | 53 | 40 | 577 |
 | Cara | 90 | 36 | 110 | 83 | 53 | 54 | 52 | 39 | 517 |
 
 <!-- end of evaluation table -->
@@ -94,12 +84,12 @@ The competition's main track allows an hour per instance. Run the same way
 for an hour each on the 100 private instances of 2026, tididi-cnf solves
 at least as many
 instances as any of them within any time limit from three seconds to 18 minutes;
-over the full hour, d4 and Ganak solve 62, tididi-cnf 61, Cara 58 and
+over the full hour, D4 and Ganak solve 62, tididi-cnf 61, Cara 58 and
 GPMC 54:
 
 <p align="center">
   <img src="docs/evaluation/cactus-3600s.svg" width="760"
-       alt="Cactus plot of instances solved against time per instance, up to an hour, on the 100 private instances of 2026, for tididi-cnf, Ganak, d4, GPMC and Cara">
+       alt="Cactus plot of instances solved against time per instance, up to an hour, on the 100 private instances of 2026, for tididi-cnf, Ganak, D4 as a counter, GPMC as a counter and Cara">
 </p>
 
 Given an hour, tididi-cnf also solves 120 of the 200 instances of 2025 and

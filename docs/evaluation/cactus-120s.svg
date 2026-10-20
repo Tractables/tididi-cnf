@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 440" width="760" height="440" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
 <title id="t">Instances solved within a time limit, MCC 2025 and 2026 track 1, 120 s</title>
-<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, logarithmic, up to 120 s). tididi-cnf solves 195; Ganak solves 197; d4 solves 162; GPMC solves 149; Cara solves 145.</desc>
+<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, logarithmic, up to 120 s). tididi-cnf solves 195; Ganak solves 197; D4 (counter) solves 162; GPMC (counter) solves 149; Cara solves 145.</desc>
 <style>
 .canvas{fill:#fff}.ink{fill:#1b2430}.muted{fill:#5d6877}.grid{stroke:#dce2ea}.axis{stroke:#5d6877}.c0{stroke:#2774AE}.f0{fill:#2774AE}.c1{stroke:#D55E00}.f1{fill:#D55E00}.c2{stroke:#009E73}.f2{fill:#009E73}.c3{stroke:#CC79A7}.f3{fill:#CC79A7}.c4{stroke:#E69F00}.f4{fill:#E69F00}
 @media (prefers-color-scheme: dark){.canvas{fill:#0d1117}.ink{fill:#e6edf3}.muted{fill:#9da7b3}.grid{stroke:#30363d}.axis{stroke:#9da7b3}.c0{stroke:#58A6FF}.f0{fill:#58A6FF}.c1{stroke:#F0884A}.f1{fill:#F0884A}.c2{stroke:#3FC59A}.f2{fill:#3FC59A}.c3{stroke:#E0A3C8}.f3{fill:#E0A3C8}.c4{stroke:#F2BE4A}.f4{fill:#F2BE4A}}
@@ -47,17 +47,17 @@
 <circle class="f0" cx="736.0" cy="29.2" r="3.5"/>
 <line class="c0" x1="82" x2="104" y1="38" y2="38" stroke-width="3" stroke-linecap="round"/>
 <text class="ink" x="112" y="42" font-size="13" font-weight="600">tididi-cnf</text>
-<text class="ink" x="242" y="42" font-size="13" text-anchor="end" font-weight="600">195</text>
+<text class="ink" x="302" y="42" font-size="13" text-anchor="end" font-weight="600">195</text>
 <line class="c1" x1="82" x2="104" y1="58" y2="58" stroke-width="1.75" stroke-linecap="round"/>
 <text class="ink" x="112" y="62" font-size="13">Ganak</text>
-<text class="ink" x="242" y="62" font-size="13" text-anchor="end">197</text>
+<text class="ink" x="302" y="62" font-size="13" text-anchor="end">197</text>
 <line class="c2" x1="82" x2="104" y1="78" y2="78" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="112" y="82" font-size="13">d4</text>
-<text class="ink" x="242" y="82" font-size="13" text-anchor="end">162</text>
+<text class="ink" x="112" y="82" font-size="13">D4 (counter)</text>
+<text class="ink" x="302" y="82" font-size="13" text-anchor="end">162</text>
 <line class="c3" x1="82" x2="104" y1="98" y2="98" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="112" y="102" font-size="13">GPMC</text>
-<text class="ink" x="242" y="102" font-size="13" text-anchor="end">149</text>
+<text class="ink" x="112" y="102" font-size="13">GPMC (counter)</text>
+<text class="ink" x="302" y="102" font-size="13" text-anchor="end">149</text>
 <line class="c4" x1="82" x2="104" y1="118" y2="118" stroke-width="1.75" stroke-linecap="round"/>
 <text class="ink" x="112" y="122" font-size="13">Cara</text>
-<text class="ink" x="242" y="122" font-size="13" text-anchor="end">145</text>
+<text class="ink" x="302" y="122" font-size="13" text-anchor="end">145</text>
 </svg>

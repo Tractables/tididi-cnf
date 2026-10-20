@@ -40,6 +40,11 @@ settings. These are not new measurements of later release commits.
 The September supplements measure an earlier development snapshot. Compare
 tools within each comparison: their source and machine are recorded separately.
 
+The labels “D4 (compiler)” and “D4 (counter)” distinguish the task being
+measured; GPMC is labelled the same way. Compilation uses the repository
+builds and modes below; counting uses the competition's submitted binaries
+and scripts. tididi-cnf uses `--mode compile` and `--mode mc`, respectively.
+
 ## Instances
 
 Each competition from 2020 through 2025 has 200 track-1 instances. The 2026
@@ -74,7 +79,7 @@ all) on the same kind of machine under the same memory limit:
   `tididi --mode compile --save-tdd <file> --time-limit-ms 120000 --mem-limit-mb 61440 <instance>`,
   on the instance without its `c t mc` line, since compilation takes no task.
 - [Panini](https://github.com/meelgroup/KCBox),
-  [D4v2](https://github.com/crillab/d4v2) and
+  [D4](https://github.com/crillab/d4v2) and
   [GPMC](https://github.com/System-Verification-Lab/GPMC), built from their
   repositories' main branches, GPMC in its d-DNNF mode with variable
   elimination off so that its circuit keeps every variable, and
@@ -85,16 +90,16 @@ and a separate checker, reading the circuit back, found that it accounts for
 every variable, including documented free or fixed variables, and that its
 model count is the one the compiler reported. An UNSAT answer represents the
 constant-false circuit and is accepted without reading a circuit file.
-D4v2 reports no count, so its time is its own run, without the check. On one
-instance of 2025, Panini's circuit and count differ from the count of
-tididi-cnf and of Ganak; it counts as not compiled there.
+D4 in compilation mode reports no count, so its time is its own run, without
+the check. On one instance of 2025, Panini's circuit and count differ from
+the count of tididi-cnf and of Ganak; it counts as not compiled there.
 On the one-variable tautology `mc2020_track1_000`, Panini reports two
 models but its circuit reads back as one; this validation failure also
 counts as not compiled.
 c2d exits with SIGSEGV on `mc2020_track1_000` and `mc2026_track1_125`
 (2026 public). On `mc2020_track1_089`, `mc2020_track1_121` and
 `mc2020_track1_168`, its circuit and self-reported counts agree with each
-other but differ from tididi-cnf compiling and counting, Ganak, d4 and Cara.
+other but differ from tididi-cnf compiling and counting, Ganak, D4 and Cara.
 These invocations count as not compiled.
 
 Compiled counts are also compared with stored model-counting results and
@@ -102,7 +107,19 @@ other compilers wherever these supply a count. Validation checks variable
 coverage and agreement of the available counts.
 
 The [README comparison](../README.md#compared-with-logic-circuit-compilers)
-gives the per-set compilation totals and cactus plot.
+shows the cactus plot. The per-set compilation totals are:
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-logic-compile-120s.csv -->
+
+| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
+| Panini | 112 | 60 | 98 | 102 | 57 | 55 | 53 | 41 | 578 |
+| D4 (compiler) | 59 | 56 | 98 | 79 | 52 | 48 | 55 | 40 | 487 |
+| GPMC (compiler) | 84 | 50 | 92 | 76 | 49 | 48 | 50 | 33 | 482 |
+| c2d | 79 | 44 | 66 | 57 | 36 | 30 | 44 | 31 | 387 |
+
+<!-- end of evaluation table -->
 
 ### Original 2025–2026 compilation supplement
 
@@ -120,8 +137,8 @@ representatives. It is retained separately from the full-corpus comparison.
 | --- | ---: | ---: | ---: | ---: |
 | tididi-cnf | **73** | **59** | **49** | **181** |
 | Panini | 55 | 53 | 41 | 149 |
-| D4v2 | 48 | 55 | 40 | 143 |
-| GPMC | 48 | 50 | 33 | 131 |
+| D4 (compiler) | 48 | 55 | 40 | 143 |
+| GPMC (compiler) | 48 | 50 | 33 | 131 |
 | c2d | 30 | 44 | 31 | 105 |
 
 <!-- end of evaluation table -->
@@ -134,7 +151,7 @@ representatives. It is retained separately from the full-corpus comparison.
   ([time and memory limits](limits.md)).
 - The 2026 competition's entries in its exact category, as submitted, each
   run by its own script for the track of the run: Ganak, which entered one
-  configuration for two minutes and another for an hour, and d4, GPMC and
+  configuration for two minutes and another for an hour, and D4, GPMC and
   Cara, which entered one script for both. The entries in the approximate and
   heuristic categories do not promise exact counts and are left out.
 
@@ -165,8 +182,8 @@ original representative inputs. It remains available on the evaluation page.
 | --- | ---: | ---: | ---: | ---: |
 | tididi-cnf | 82 | 60 | **53** | 195 |
 | Ganak | **87** | **61** | 49 | **197** |
-| d4 | 65 | 53 | 44 | 162 |
-| GPMC | 56 | 53 | 40 | 149 |
+| D4 (counter) | 65 | 53 | 44 | 162 |
+| GPMC (counter) | 56 | 53 | 40 | 149 |
 | Cara | 54 | 52 | 39 | 145 |
 
 <!-- end of evaluation table -->
@@ -187,8 +204,8 @@ counts as unsolved for every solver; that leaves 67 of the 100 to run.
 | --- | ---: |
 | tididi-cnf | 61 |
 | Ganak | **62** |
-| d4 | **62** |
-| GPMC | 54 |
+| D4 (counter) | **62** |
+| GPMC (counter) | 54 |
 | Cara | 58 |
 
 <!-- end of evaluation table -->
@@ -207,14 +224,14 @@ instances, the entries in the exact category solved, in two minutes (track
 
 | Solver | 120 s | 3600 s |
 | --- | ---: | ---: |
-| d4 | 42 | **63** |
+| D4 (counter) | 42 | **63** |
 | Ganak | **48** | 62 |
 | Cara | 38 | 59 |
-| GPMC | 38 | 57 |
+| GPMC (counter) | 38 | 57 |
 | TiDiDi | 46 | 56 |
 
 Its machines and ours differ, so these numbers and the ones above do not
-compare one to one: on ours, d4 solves one instance fewer in an hour, Cara
+compare one to one: on ours, D4 solves one instance fewer in an hour, Cara
 one and GPMC three, and tididi-cnf 0.1.0 solves 53 of these instances in
 120 s and 61 in an hour.
 
