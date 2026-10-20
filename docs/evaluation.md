@@ -2,33 +2,52 @@
 
 The [evaluation in the README](../README.md#evaluation) compares tididi-cnf
 with the exact model counters entered in the 2026
-[Model Counting Competition](https://mccompetition.org/), and with four d-DNNF
-compilers, on the instances of the competition's track 1, unweighted model
-counting, from 2025 and 2026. This page says how it was measured. The result
-of every run is in
-[`evaluation/mcc-track1-120s.csv`](evaluation/mcc-track1-120s.csv), for an
-hour per instance in
-[`evaluation/mcc-track1-3600s.csv`](evaluation/mcc-track1-3600s.csv) and for
-compilation in
-[`evaluation/mcc-track1-compile-120s.csv`](evaluation/mcc-track1-compile-120s.csv):
-the set, the instance, the solver, whether it finished in time and after how
-many seconds. The
-[evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
-shows these runs by set, by pair of solvers and by instance; it reads the
-files of runs that [`evaluation/datasets.json`](evaluation/datasets.json)
-lists, and its source is beside them.
+[Model Counting Competition](https://mccompetition.org/). Its primary
+comparison covers all 1,400 track-1 entries from 2020–2026 at two minutes per
+instance. The separate compilation comparison covers the 400 entries from
+2025–2026, and the one-hour comparison covers the 100 private entries of
+2026.
 
-The measurements use the [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-cnf/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
-including the dependency revisions recorded there.
+The per-instance results are available as CSV:
+
+- [Model counting, 2020–2026, two minutes](evaluation/mcc-track1-2020-2026-120s.csv).
+- [Model counting, 2025–2026, two minutes](evaluation/mcc-track1-120s.csv).
+- [Compilation, 2025–2026, two minutes](evaluation/mcc-track1-compile-120s.csv).
+- [Model counting, 2026 private, one hour](evaluation/mcc-track1-3600s.csv).
+
+Each file gives the set, instance, solver, whether it finished and its elapsed
+time. The [evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
+opens with the full-corpus two-minute comparison. It reads the files listed
+in [`evaluation/datasets.json`](evaluation/datasets.json), and its source is
+beside them.
+
+All model counting measurements use the
+[0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-cnf/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
+including its recorded dependency revisions. The full-corpus comparison
+extends those measurements with the same binary and settings; it is not a
+new measurement of later release commits.
 
 ## Instances
 
-Track 1 of the 2025 competition has 200 instances. The 2026 competition
-published 100 instances in advance and scored the entries on 100 others,
-which it published afterwards; the tables call them the public and the
-private set. Every set is counted in full. Ten instances of 2025 and the 2026
-public set repeat another instance there, identical but for a comment line;
-each formula was run once, and its repeat takes its result.
+Each competition from 2020 through 2025 has 200 track-1 instances. The 2026
+competition published 100 in advance and scored the entries on 100 others,
+which it published afterwards; the tables call these the public and private
+sets. Every competition set is counted in full. No solvability filter is
+applied to the two-minute comparison.
+
+The 1,400 entries contain 1,153 distinct formulas. Formula identity uses the
+signed clause multiset, declared variable count and task directives, ignoring
+comments and clause or literal ordering. Each formula has one representative
+input for all solvers. Selection prefers an already measured input and then
+the first competition key; it does not depend on solve outcomes. Repeated
+entries take that input's result, including its time, and retain their places
+in each competition set's denominator.
+
+The separate 2025–2026 comparison below retains its original representative
+inputs: ten repeated entries take their twins' results. The full-corpus
+comparison reuses those measurements for 381 formulas and measures the
+remaining 772 formulas with the same binary, machine type, limits and worker
+count.
 
 ## Solvers
 
@@ -52,31 +71,27 @@ solver printed its count within the time. Every count agrees with the count of
 each other solver that finished the instance and, on the private set, with the
 competition's.
 
-## One hour
+Cara's submitted wrapper fails on `mc2023_track1_052`: the multiplier it
+passes from Arjun to Cara exceeds the operating system's argument limit.
+That invocation counts as unsolved. The submitted scripts and binaries are
+unchanged.
 
-The competition's main track, track 1, allows an hour per instance. On the
-100 private instances, the five solvers ran for an hour each on the same kind
-of machine under the same limits, side by side: 8 runs of each at a time, 40
-in all, so that every solver ran under the same load. An instance that no
-entry in the exact category solved in either track of the competition, and
-that tididi-cnf had not solved in an hour before, was not run again and
-counts as unsolved for every solver; that leaves 67 of the 100 to run.
+## Recent competition sets, two minutes
 
-<!-- evaluation table: generated from docs/evaluation/mcc-track1-3600s.csv -->
+This separate comparison covers the 400 entries from 2025 and 2026 with its
+original representative inputs. It remains available on the evaluation page.
 
-| Solver | MCC 2026 private (100) |
-| --- | ---: |
-| tididi-cnf | 61 |
-| Ganak | **62** |
-| d4 | **62** |
-| GPMC | 54 |
-| Cara | 58 |
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-120s.csv -->
+
+| Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
+| --- | ---: | ---: | ---: | ---: |
+| tididi-cnf | 82 | 60 | **53** | 195 |
+| Ganak | **87** | **61** | 49 | **197** |
+| d4 | 65 | 53 | 44 | 162 |
+| GPMC | 56 | 53 | 40 | 149 |
+| Cara | 54 | 52 | 39 | 145 |
 
 <!-- end of evaluation table -->
-
-Given an hour on its own (48 runs at a time, a 30,000 MiB address-space
-limit), tididi-cnf solves 120 of the 200 instances of 2025 and 69 of the
-100 public instances of 2026.
 
 ## Compilation
 
@@ -114,6 +129,32 @@ tididi-cnf and of Ganak; it counts as not compiled there.
 | c2d | 30 | 44 | 31 | 105 |
 
 <!-- end of evaluation table -->
+
+## One hour
+
+The competition's main track, track 1, allows an hour per instance. On the
+100 private instances, the five solvers ran for an hour each on the same kind
+of machine under the same limits, side by side: 8 runs of each at a time, 40
+in all, so that every solver ran under the same load. An instance that no
+entry in the exact category solved in either track of the competition, and
+that tididi-cnf had not solved in an hour before, was not run again and
+counts as unsolved for every solver; that leaves 67 of the 100 to run.
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-3600s.csv -->
+
+| Solver | MCC 2026 private (100) |
+| --- | ---: |
+| tididi-cnf | 61 |
+| Ganak | **62** |
+| d4 | **62** |
+| GPMC | 54 |
+| Cara | 58 |
+
+<!-- end of evaluation table -->
+
+Given an hour on its own (48 runs at a time, a 30,000 MiB address-space
+limit), tididi-cnf solves 120 of the 200 instances of 2025 and 69 of the
+100 public instances of 2026.
 
 ## The competition's own results
 

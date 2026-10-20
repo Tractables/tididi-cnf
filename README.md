@@ -32,33 +32,46 @@ tool, `tididi`, and a Rust library, `tididi_cnf`.
 ## Evaluation
 
 tididi-cnf and the exact counters entered in the 2026
-[Model Counting Competition](https://mccompetition.org/) ran on the
-competition's exact counting instances of 2025 and 2026, two minutes each, on
-the same machine under the same limits. For any time limit from two
-seconds to 90 seconds, tididi-cnf solves more instances within it than any
-of them. At two minutes Ganak is two instances ahead overall, and
-tididi-cnf leads on the private set, the 100 instances the 2026
-competition was scored on:
+[Model Counting Competition](https://mccompetition.org/) ran on all 1,400
+track-1 entries from 2020–2026, two minutes per instance, on the same machine
+under the same limits. Every competition entry is included; repeated formulas
+use one fixed representative for every solver.
 
 <p align="center">
-  <img src="docs/evaluation/cactus-120s.svg" width="760"
-       alt="Cactus plot of instances solved against time per instance, up to two minutes, for tididi-cnf, Ganak, d4, GPMC and Cara">
+  <img src="docs/evaluation/cactus-2020-2026-120s.svg" width="760"
+       alt="Cactus plot of all 1,400 MCC 2020–2026 entries solved against time per instance, up to two minutes, for tididi-cnf, Ganak, d4, GPMC and Cara">
 </p>
 
-<!-- evaluation table: generated from docs/evaluation/mcc-track1-120s.csv -->
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-120s.csv -->
 
-| Solver | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (400) |
-| --- | ---: | ---: | ---: | ---: |
-| tididi-cnf | 82 | 60 | **53** | 195 |
-| Ganak | **87** | **61** | 49 | **197** |
-| d4 | 65 | 53 | 44 | 162 |
-| GPMC | 56 | 53 | 40 | 149 |
-| Cara | 54 | 52 | 39 | 145 |
+| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| tididi-cnf | **144** | 91 | 134 | 124 | **82** | 82 | 60 | **53** | 770 |
+| Ganak | 142 | **102** | **141** | **129** | 81 | **87** | **61** | 49 | **792** |
+| d4 | 123 | 66 | 123 | 94 | 61 | 65 | 53 | 44 | 629 |
+| GPMC | 93 | 58 | 123 | 94 | 60 | 56 | 53 | 40 | 577 |
+| Cara | 90 | 36 | 110 | 83 | 53 | 54 | 52 | 39 | 517 |
 
 <!-- end of evaluation table -->
 
+As a compiler, writing a circuit that can be queried afterwards,
+tididi-cnf compiles 181 of the 400 instances from 2025 and 2026 in two
+minutes each. Of four d-DNNF compilers run beside it, Panini compiles 149,
+D4v2 143, GPMC 131
+and c2d 105, and from three seconds on, tididi-cnf compiles the most within
+any time limit:
+
+<p align="center">
+  <img src="docs/evaluation/cactus-compile-120s.svg" width="760"
+       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-cnf, Panini, D4v2, GPMC and c2d">
+</p>
+
+<details>
+<summary>One-hour model counting results</summary>
+
 The competition's main track allows an hour per instance. Run the same way
-for an hour each on the private set, tididi-cnf solves at least as many
+for an hour each on the 100 private instances of 2026, tididi-cnf solves
+at least as many
 instances as any of them within any time limit from three seconds to 18 minutes;
 over the full hour, d4 and Ganak solve 62, tididi-cnf 61, Cara 58 and
 GPMC 54:
@@ -71,21 +84,14 @@ GPMC 54:
 Given an hour, tididi-cnf also solves 120 of the 200 instances of 2025 and
 69 of the 100 public ones of 2026.
 
-As a compiler, writing a circuit that can be queried afterwards,
-tididi-cnf compiles 181 of the same 400 instances in two minutes each. Of
-four d-DNNF compilers run beside it, Panini compiles 149, D4v2 143, GPMC 131
-and c2d 105, and from three seconds on, tididi-cnf compiles the most within
-any time limit:
+</details>
 
-<p align="center">
-  <img src="docs/evaluation/cactus-compile-120s.svg" width="760"
-       alt="Cactus plot of instances compiled against time per instance, up to two minutes, for tididi-cnf, Panini, D4v2, GPMC and c2d">
-</p>
-
-The [evaluation](docs/evaluation.md) says how this was measured, with the
-result of every run and the competition's own results, and the
+The [evaluation](docs/evaluation.md) documents the measured source snapshot,
+formula selection and limits. It includes the separate 2025–2026 comparison,
+the one-hour results and every measured run. The
 [evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
-shows every run by set, by pair of solvers and by instance.
+opens with the full-corpus two-minute comparison and lets you inspect results
+by set, by pair of solvers and by instance.
 
 ## What it answers
 
