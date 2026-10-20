@@ -282,3 +282,8 @@ C++ solvers vitri vendors.
 [Worked examples]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/examples/index.html
 [API reference]: https://tractables.github.io/tididi-cnf/tididi_cnf/
 [architecture reference]: https://tractables.github.io/tididi-cnf/tididi_cnf/guide/architecture/index.html
+
+## Acknowledgements
+
+This material is based upon work supported by the Defense Advanced Research
+Projects Agency (DARPA) under Agreement No. HR0011269E224.
