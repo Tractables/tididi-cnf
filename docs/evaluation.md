@@ -255,6 +255,22 @@ representatives. It is retained separately from the full-corpus comparison.
 
 <!-- end of evaluation table -->
 
+## Model counting, two minutes
+
+All 1,400 MCC 2020–2026 track-1 entries, with 120 s per instance:
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-120s.csv -->
+
+| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| tididi-cnf | **144** | 91 | 134 | 124 | **82** | 82 | 60 | **53** | 770 |
+| Ganak | 142 | **102** | **141** | **129** | 81 | **87** | **61** | 49 | **792** |
+| D4 (counter) | 123 | 66 | 123 | 94 | 61 | 65 | 53 | 44 | 629 |
+| GPMC (counter) | 93 | 58 | 123 | 94 | 60 | 56 | 53 | 40 | 577 |
+| Cara | 90 | 36 | 110 | 83 | 53 | 54 | 52 | 39 | 517 |
+
+<!-- end of evaluation table -->
+
 ## Model-counting solvers
 
 - tididi-cnf 0.1.0, as
