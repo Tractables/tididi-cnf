@@ -41,6 +41,22 @@ settings. These are not new measurements of later release commits.
 The September supplements measure an earlier development snapshot. Compare
 tools within each comparison: their source and machines are recorded separately.
 
+The three panels measure different results:
+
+| Comparison | Timed result | Correctness checks after timing |
+| --- | --- | --- |
+| Decision-diagram compilation in memory | Process finishes with a materialized diagram | Available exact counts are compared with stored references; diagrams are not read back |
+| Saved logic-circuit compilation | Process finishes after writing its circuit | Circuit is read back, variable coverage checked and available exact counts compared |
+| Model counting | Process finishes with an exact count | Available counts are compared with other tools and competition references |
+
+Even for tididi-cnf, the compiler panels are separate measurements. The
+saved-circuit run also writes the diagram and its vtree. The campaigns
+additionally differ in prepared clause order, hardware, concurrency, outer
+memory and stack limits. Their totals therefore need not agree; the
+difference does not isolate the cost of saving a diagram. A shared compiler
+curve would require a new campaign with the same operational inputs,
+completion requirement and machine settings.
+
 The labels “D4 (compiler)” and “D4 (counter)” distinguish the task being
 measured; GPMC is labelled the same way. Compilation uses the repository
 builds and modes below; counting uses the competition's submitted binaries
@@ -95,6 +111,12 @@ variable numbering and SDD uses its official default initial tree. These
 fallbacks preserve coverage of every formula. The input clauses are not
 preprocessed for the packages.
 
+tididi-cnf receives the same prepared clause sequence. It ignores the order
+comments, but the clauses have been sorted during preparation. The saved-
+circuit campaign instead preserves the original clause sequence, removing
+only task directives that compilation does not accept. Shared formula
+identity does not imply byte-identical operational inputs across campaigns.
+
 The formula groups use Intel Xeon Gold 5220 (133 formulas), Xeon Platinum
 8488C (887 formulas across two machines) and Xeon Platinum 8375C
 (133 formulas), all with TSC clocks.
@@ -133,8 +155,8 @@ shows the cactus plot. The per-set compilation totals are:
 | tididi-cnf | **125** | **86** | **118** | **116** | **76** | **80** | **59** | **50** | **710** |
 | OxiDD | 22 | 9 | 27 | 4 | 25 | 20 | 25 | 21 | 153 |
 | BuDDy | 23 | 10 | 28 | 4 | 26 | 20 | 25 | 21 | 157 |
-| CUDD | 18 | 8 | 26 | 3 | 25 | 19 | 24 | 21 | 144 |
-| Sylvan | 17 | 7 | 25 | 3 | 25 | 20 | 24 | 21 | 142 |
+| CUDD (static) | 18 | 8 | 26 | 3 | 25 | 19 | 24 | 21 | 144 |
+| Sylvan (static) | 17 | 7 | 25 | 3 | 25 | 20 | 24 | 21 | 142 |
 | lib-bdd | 18 | 8 | 26 | 3 | 25 | 20 | 25 | 21 | 146 |
 | SDD (fixed) | 8 | 3 | 19 | 4 | 12 | 9 | 19 | 19 | 93 |
 | SDD (dynamic) | 9 | 6 | 30 | 12 | 15 | 14 | 23 | 19 | 128 |
@@ -159,13 +181,29 @@ all) on the same kind of machine under the same memory limit:
   elimination off so that its circuit keeps every variable, and
   [c2d](http://reasoning.cs.ucla.edu/c2d/) 2.20.
 
+The measured executables have these SHA-256 fingerprints:
+
+| Compiler | Executable SHA-256 |
+| --- | --- |
+| Panini | `b209afacef898ca461ee37890dd069e3f36a9b2179d52ca6a17844ca279f26e1` |
+| D4 | `24d5efb8e96896bf5c43d918f180773c6b771900ee57a152cd37834dc0eaddff` |
+| GPMC | `c1c8c3e06811d907e74845b2602077ae4ec05323e517eb59bb0c88e4fcc182ce` |
+| c2d | `ba2e7589f508847f1ce21d7310b39d011d6f4ed6b5cd8eff9cf015ba788f71b0` |
+
+The retained measurement receipts do not record the Panini, D4 or GPMC
+source commits. The hashes identify the measured binaries;
+the repository links above identify the projects and do not specify
+reproducible source builds for these measurements.
+
 An instance is compiled when the compiler wrote its circuit within the time
 and a separate checker, reading the circuit back, found that it accounts for
 every variable, including documented free or fixed variables, and that its
 model count is the one the compiler reported. An UNSAT answer represents the
 constant-false circuit and is accepted without reading a circuit file.
-D4 in compilation mode reports no count, so its time is its own run, without
-the check. On one instance of 2025, Panini's circuit and count differ from
+Every plotted time is the compiler process's wall time, including output
+writing and excluding the subsequent checker. D4 in compilation mode
+reports no count, so the checker supplies it; that checker time is also
+excluded. On one instance of 2025, Panini's circuit and count differ from
 the count of tididi-cnf and of Ganak; it counts as not compiled there.
 On the one-variable tautology `mc2020_track1_000`, Panini reports two
 models but its circuit reads back as one; this validation failure also

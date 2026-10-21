@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
-<title id="t">Instances solved within a time limit, MCC 2020–2026 track 1, logic-circuit compilation, 120 s</title>
+<title id="t">Instances solved within a time limit, MCC 2020–2026 track 1, saved logic-circuit compilation, 120 s</title>
 <desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, linear, up to 120 s). tididi-cnf solves 700; Panini solves 578; D4 (compiler) solves 487; GPMC (compiler) solves 482; c2d solves 387.</desc>
 <style>
 .canvas{fill:#fff}.ink{fill:#1b2430}.muted{fill:#5d6877}.grid{stroke:#dce2ea}.axis{stroke:#5d6877}.c0{stroke:#2774AE}.f0{fill:#2774AE}.c1{stroke:#6A3D9A}.f1{fill:#6A3D9A}.c2{stroke:#009E73}.f2{fill:#009E73}.c3{stroke:#CC79A7}.f3{fill:#CC79A7}.c4{stroke:#6B7280}.f4{fill:#6B7280}

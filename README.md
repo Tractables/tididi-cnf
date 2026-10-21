@@ -37,12 +37,17 @@ model counters. All three primary comparisons use every MCC 2020–2026
 track-1 entry: 1,400 entries representing 1,153 distinct formulas, with the
 same input representative for every tool and two minutes per instance. The plots use
 linear time horizontally, starting at 200 ms, and instances completed
-vertically; higher is better.
+vertically; higher is better. The compiler panels measure diagrams in memory
+and saved circuits in separate campaigns. Their input ordering, machines and
+resource settings differ, so tididi-cnf's totals can differ between them.
 
 ### Compared with bottom-up decision-diagram compilers
 
 tididi-cnf runs beside OxiDD, BuDDy, CUDD, Sylvan, lib-bdd and SDD in fixed
-and dynamic modes. This comparison measures diagrams compiled in memory.
+and dynamic modes. This comparison measures diagrams compiled in memory,
+including the compiler process's startup and preprocessing.
+The BDD packages use static variable ordering; SDD is measured with and
+without dynamic vtree search.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-dd-compile-120s.svg" width="760"
@@ -54,8 +59,9 @@ and dynamic modes. This comparison measures diagrams compiled in memory.
 ### Compared with logic-circuit compilers
 
 tididi-cnf compiles the most entries within two minutes in this comparison
-with Panini, D4, GPMC and c2d. Each written circuit is read back and counted
-independently.
+with Panini, D4, GPMC and c2d. This comparison includes writing the compiled
+circuit within the time limit. Each written circuit is then read back and
+counted independently, outside the compilation clock.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-logic-compile-120s.svg" width="760"

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
-<title id="t">Instances solved within a time limit, MCC 2020–2026 track 1, bottom-up decision-diagram compilation, 120 s</title>
-<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, linear, up to 120 s). tididi-cnf solves 710; OxiDD solves 153; BuDDy solves 157; CUDD solves 144; Sylvan solves 142; lib-bdd solves 146; SDD (fixed) solves 93; SDD (dynamic) solves 128.</desc>
+<title id="t">Instances solved within a time limit, MCC 2020–2026 track 1, decision-diagram compilation in memory, 120 s</title>
+<desc id="d">Cactus plot: for each solver, the number of instances solved (vertical) within a time (horizontal, linear, up to 120 s). tididi-cnf solves 710; OxiDD solves 153; BuDDy solves 157; CUDD (static) solves 144; Sylvan (static) solves 142; lib-bdd solves 146; SDD (fixed) solves 93; SDD (dynamic) solves 128.</desc>
 <style>
 .canvas{fill:#fff}.ink{fill:#1b2430}.muted{fill:#5d6877}.grid{stroke:#dce2ea}.axis{stroke:#5d6877}.c0{stroke:#2774AE}.f0{fill:#2774AE}.c1{stroke:#6A3D9A}.f1{fill:#6A3D9A}.c2{stroke:#CC79A7}.f2{fill:#CC79A7}.c3{stroke:#D55E00}.f3{fill:#D55E00}.c4{stroke:#009E73}.f4{fill:#009E73}.c5{stroke:#6B7280}.f5{fill:#6B7280}.c6{stroke:#8C6D31}.f6{fill:#8C6D31}.c7{stroke:#E69F00}.f7{fill:#E69F00}
 @media (prefers-color-scheme: dark){.canvas{fill:#0d1117}.ink{fill:#e6edf3}.muted{fill:#9da7b3}.grid{stroke:#30363d}.axis{stroke:#9da7b3}.c0{stroke:#58A6FF}.f0{fill:#58A6FF}.c1{stroke:#B39DDB}.f1{fill:#B39DDB}.c2{stroke:#E0A3C8}.f2{fill:#E0A3C8}.c3{stroke:#F0884A}.f3{fill:#F0884A}.c4{stroke:#3FC59A}.f4{fill:#3FC59A}.c5{stroke:#B0B6BF}.f5{fill:#B0B6BF}.c6{stroke:#C9A66B}.f6{fill:#C9A66B}.c7{stroke:#F2BE4A}.f7{fill:#F2BE4A}}
@@ -81,10 +81,10 @@
 <text class="ink" x="564" y="132.0" font-size="13">BuDDy</text>
 <text class="ink" x="744" y="132.0" font-size="13" text-anchor="end">157</text>
 <line class="c3" x1="534" x2="556" y1="152.0" y2="152.0" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="564" y="156.0" font-size="13">CUDD</text>
+<text class="ink" x="564" y="156.0" font-size="13">CUDD (static)</text>
 <text class="ink" x="744" y="156.0" font-size="13" text-anchor="end">144</text>
 <line class="c4" x1="534" x2="556" y1="176.0" y2="176.0" stroke-width="1.75" stroke-linecap="round"/>
-<text class="ink" x="564" y="180.0" font-size="13">Sylvan</text>
+<text class="ink" x="564" y="180.0" font-size="13">Sylvan (static)</text>
 <text class="ink" x="744" y="180.0" font-size="13" text-anchor="end">142</text>
 <line class="c5" x1="534" x2="556" y1="200.0" y2="200.0" stroke-width="1.75" stroke-linecap="round"/>
 <text class="ink" x="564" y="204.0" font-size="13">lib-bdd</text>
