@@ -1,8 +1,8 @@
 # Evaluation
 
 The [evaluation in the README](../README.md#how-well-does-it-work) compares
-tididi-cnf first with logic-circuit compilers, then model counters.
-Both primary comparisons use every MCC
+tididi-cnf first with bottom-up decision-diagram compilers, then logic-circuit
+compilers and model counters. All three primary comparisons use every MCC
 2020–2026 track-1 entry: 1,400 entries representing 1,153 distinct formulas,
 with the same representative input for every tool and 120 s per instance.
 The September experiments and the original 2025–2026 comparison remain
@@ -10,6 +10,7 @@ supplements. The one-hour comparison covers the 100 private entries of 2026.
 
 The per-instance results are available as CSV:
 
+- [Bottom-up decision-diagram compilation, 2020–2026, two minutes](evaluation/mcc-track1-2020-2026-dd-compile-120s.csv).
 - [Logic-circuit compilation, 2020–2026, two minutes](evaluation/mcc-track1-2020-2026-logic-compile-120s.csv).
 - [Model counting, 2020–2026, two minutes](evaluation/mcc-track1-2020-2026-120s.csv).
 - [Model counting, 2026 private, one hour](evaluation/mcc-track1-3600s.csv).
@@ -23,12 +24,12 @@ Supplementary CSVs:
 
 Each file gives the set, instance, solver, whether it finished and its elapsed
 time. The [evaluation page](https://tractables.github.io/tididi-cnf/evaluation/)
-opens with logic-circuit compilation. It reads the files listed
+opens with bottom-up decision-diagram compilation. It reads the files listed
 in [`evaluation/datasets.json`](evaluation/datasets.json), and its source is
 beside them.
 
 The cactus plots put time per instance on a linear horizontal axis starting
-at 200 ms, and instances solved within that time on the vertical axis.
+at 200 ms, and instances completed within that time on the vertical axis.
 The interactive page also offers a logarithmic time scale. Higher is better;
 each curve continues to the time limit so its final height shows its total.
 
@@ -38,7 +39,7 @@ including its recorded dependency revisions. The logic-circuit and counting
 comparisons extend the original measurements with the same binary and
 settings. These are not new measurements of later release commits.
 The September supplements measure an earlier development snapshot. Compare
-tools within each comparison: their source and machine are recorded separately.
+tools within each comparison: their source and machines are recorded separately.
 
 The labels “D4 (compiler)” and “D4 (counter)” distinguish the task being
 measured; GPMC is labelled the same way. Compilation uses the repository
@@ -63,9 +64,81 @@ in each competition set's denominator.
 
 The separate 2025–2026 comparison below retains its original representative
 inputs: ten repeated entries take their twins' results. The full-corpus
-comparison reuses those measurements for 381 formulas and measures the
-remaining 772 formulas with the same binary, machine type, limits and worker
-count.
+logic-circuit and counting comparisons reuse those measurements for 381
+formulas and measure the remaining 772 with the same binary, machine type,
+limits and worker count.
+
+## Bottom-up decision-diagram compilation
+
+All eight tools compile the same 1,153 representative formulas, covering
+every one of the 1,400 competition entries, with 120 s per invocation:
+
+- tididi-cnf uses `--mode compile --time-limit-ms 120000 --mem-limit-mb 61440`,
+  with its default function-preserving simplification and portfolio vtree
+  selection. It ignores the input's ordering comments; its own preprocessing,
+  tree selection and model count are included in its time.
+- OxiDD, BuDDy, CUDD, Sylvan and lib-bdd use
+  [bdd-benchmark](https://github.com/SSoelvsten/bdd-benchmark/tree/3c521e16ada406d37ae5f960096a567a41df33b9)
+  at that pinned revision, with its recorded package revisions. OxiDD 0.11.2
+  (`9158645e`), CUDD 3.0.0 plus 20 commits (`538810a`) and Sylvan 1.9.0
+  (`8ddb68e3`) use complement edges; BuDDy (`5aca063a`) and lib-bdd-ffi
+  (`0c9481b4`) use plain BDDs. Clauses are conjoined in a balanced tree with
+  a static variable order and no dynamic reordering.
+- [PySDD](https://github.com/wannesm/PySDD) 1.0.6 supplies the official SDD
+  command line. “SDD (fixed)” disables dynamic vtree search with `-r 0`;
+  “SDD (dynamic)” uses its default search settings.
+
+The BDD variable and clause orders are prepared outside the timed run with
+public vitri's FORCE heuristic. Both SDD modes start from the same exported
+FORCE vtree when preparation succeeds. If it fails, BDDs retain the original
+variable numbering and SDD uses its official default initial tree. These
+fallbacks preserve coverage of every formula. The input clauses are not
+preprocessed for the packages.
+
+The formula groups use Intel Xeon Gold 5220 (133 formulas), Xeon Platinum
+8488C (887 formulas across two machines) and Xeon Platinum 8375C
+(133 formulas), all with TSC clocks.
+All eight tools for a formula run on the same host under matched limits;
+timings across hosts are not calibrated. Each invocation uses one CPU,
+120 s wall time, a 64 GiB address-space cap and a 1 GiB stack. TDD and BDD
+tools have a 60 GiB internal memory budget; SDD has no separate internal
+memory setting. BDD runs request transparent huge pages for allocations
+through glibc malloc. Timings
+contaminated by other work are rejected and repeated.
+
+Time runs from process launch to exit, including startup, parsing and
+compilation, rather than only a package's reported apply time. Diagrams
+must be materialized in memory; serialization is not required. This differs
+from the saved-circuit logic comparison below. A successful exit must also
+report a completed diagram with a nonnegative final size or node count.
+SDD must print its successful compilation footer, including both its size
+and node count. Constant true and false diagrams count as completed.
+Stack overflows, variable-range errors and other failed invocations remain
+failures.
+
+The 600 completed tididi-cnf invocations report exact integer counts; 592
+agree with independent stored references, and eight have no stored reference.
+Large fixed-width counts reported by the packages are not treated
+as exact validation evidence. Completion and size checks do not establish
+full equivalence between a CNF and its compiled diagram.
+
+The [README comparison](../README.md#compared-with-bottom-up-decision-diagram-compilers)
+shows the cactus plot. The per-set compilation totals are:
+
+<!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-dd-compile-120s.csv -->
+
+| Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| tididi-cnf | **125** | **86** | **118** | **116** | **76** | **80** | **59** | **50** | **710** |
+| OxiDD | 22 | 9 | 27 | 4 | 25 | 20 | 25 | 21 | 153 |
+| BuDDy | 23 | 10 | 28 | 4 | 26 | 20 | 25 | 21 | 157 |
+| CUDD | 18 | 8 | 26 | 3 | 25 | 19 | 24 | 21 | 144 |
+| Sylvan | 17 | 7 | 25 | 3 | 25 | 20 | 24 | 21 | 142 |
+| lib-bdd | 18 | 8 | 26 | 3 | 25 | 20 | 25 | 21 | 146 |
+| SDD (fixed) | 8 | 3 | 19 | 4 | 12 | 9 | 19 | 19 | 93 |
+| SDD (dynamic) | 9 | 6 | 30 | 12 | 15 | 14 | 23 | 19 | 128 |
+
+<!-- end of evaluation table -->
 
 ## Logic-circuit compilation
 

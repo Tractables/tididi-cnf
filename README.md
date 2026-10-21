@@ -32,12 +32,24 @@ tool, `tididi`, and a Rust library, `tididi_cnf`.
 
 ## How well does it work?
 
-We compare compilation into reusable circuits first, then model counting.
-Both primary comparisons use every MCC 2020–2026 track-1 entry:
-1,400 entries representing 1,153 distinct formulas, with the same input
-representative for every tool and two minutes per instance. The plots use
+We compare bottom-up decision-diagram compilers, logic-circuit compilers and
+model counters. All three primary comparisons use every MCC 2020–2026
+track-1 entry: 1,400 entries representing 1,153 distinct formulas, with the
+same input representative for every tool and two minutes per instance. The plots use
 linear time horizontally, starting at 200 ms, and instances completed
 vertically; higher is better.
+
+### Compared with bottom-up decision-diagram compilers
+
+tididi-cnf runs beside OxiDD, BuDDy, CUDD, Sylvan, lib-bdd and SDD in fixed
+and dynamic modes. This comparison measures diagrams compiled in memory.
+
+<p align="center">
+  <img src="docs/evaluation/cactus-2020-2026-dd-compile-120s.svg" width="760"
+       alt="Cactus plot of the 1,400 MCC 2020–2026 entries compiled against time per instance, up to two minutes, by tididi-cnf, five BDD packages and SDD in fixed and dynamic modes">
+</p>
+
+[Detailed results and method](docs/evaluation.md#bottom-up-decision-diagram-compilation).
 
 ### Compared with logic-circuit compilers
 
@@ -100,7 +112,7 @@ Given an hour, tididi-cnf also solves 120 of the 200 instances of 2025 and
 The [evaluation method](docs/evaluation.md) documents each comparison's
 source, formula selection and limits. The
 [interactive evaluation](https://tractables.github.io/tididi-cnf/evaluation/)
-starts with logic-circuit compilation and lets you inspect every
+starts with bottom-up decision-diagram compilation and lets you inspect every
 comparison by set, pair of tools and instance.
 
 ## What it answers
