@@ -133,7 +133,7 @@ and [WebAssembly](bindings/wasm/README.md).
 
 Apache License 2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)).
 Citation details are in [CITATION.cff](CITATION.cff).
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development.
+See [contributing](.github/CONTRIBUTING.md) and the [changelog](docs/changelog.md) for development.
 
 ## Acknowledgements
 

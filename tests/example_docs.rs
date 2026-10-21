@@ -1,6 +1,6 @@
 //! Keep the worked examples' excerpts tied to the programs they come from, and
 //! the README's library example tied to the crate's tested one.
-//! `scripts/check_docs.py` runs those programs and compares their output.
+//! `.github/scripts/check_docs.py` runs those programs and compares their output.
 
 /// Compare Rust excerpts without indentation introduced by their surrounding scope.
 fn normalized(source: &str) -> String {

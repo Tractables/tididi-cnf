@@ -28,7 +28,7 @@ include = [
     "/docs/evaluation/cactus-2020-2026-logic-compile-120s.svg",
     "/docs/evaluation/cactus-2020-2026-120s.svg",
     "/docs/evaluation/cactus-3600s.svg",
-    "/CHANGELOG.md",
+    "/docs/changelog.md",
     "/LICENSE",
     "/NOTICE",
     # The worked examples' programs.
@@ -76,8 +76,8 @@ tikv-jemalloc-sys = "0.6"
 [profile.release]
 lto = "fat"
 codegen-units = 1
-# `panic` stays `unwind`, the default, as the Behaviour rules in CONTRIBUTING.md
-# require.
+# `panic` stays `unwind`, the default, as the Behaviour rules in
+# .github/CONTRIBUTING.md require.
 
 # An optimized build that keeps every `debug_assert!` and overflow check live,
 # for a bug that only shows on an instance too large for a debug build:

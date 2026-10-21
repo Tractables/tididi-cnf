@@ -19,7 +19,6 @@ on:
       - .github/workflows/release.yml
       - .github/actions/**
       - .github/scripts/**
-      - scripts/dependency-path.py
       - Cargo.toml
       - Cargo.lock
   workflow_dispatch:
@@ -83,9 +82,9 @@ jobs:
           mkdir -p "dist/$name"
           cp "target/$TARGET/release/tididi" LICENSE NOTICE "dist/$name"
           notices="dist/$name/notices"
-          vitri=$(python3 scripts/dependency-path.py vitri)
-          tididi=$(python3 scripts/dependency-path.py tididi)
-          jemalloc=$(python3 scripts/dependency-path.py tikv-jemalloc-sys)
+          vitri=$(python3 .github/scripts/dependency-path.py vitri)
+          tididi=$(python3 .github/scripts/dependency-path.py tididi)
+          jemalloc=$(python3 .github/scripts/dependency-path.py tikv-jemalloc-sys)
           bash "$vitri/.github/scripts/collect-notices.sh" "$notices/vitri"
           mkdir -p "$notices/tididi" "$notices/jemalloc"
           cp "$tididi/LICENSE" "$notices/tididi/"

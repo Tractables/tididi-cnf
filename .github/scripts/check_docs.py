@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run what the documentation shows and compare it with the documented output.
 
-Usage: python3 scripts/check_docs.py [--self-test]
+Usage: python3 .github/scripts/check_docs.py [--self-test]
 
 Two kinds of page are checked, from the repository root:
 
@@ -28,7 +28,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 BLOCK = re.compile(r"^```([^\n]*)\n(.*?)^```[ \t]*$", re.M | re.S)
 LABELS = {"\n\nOutput:\n\n": "stdout", "\n\nStderr:\n\n": "stderr"}
 

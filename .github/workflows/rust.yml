@@ -30,7 +30,7 @@ jobs:
     # committed Cargo.lock, so CI tests the dependency versions the repository
     # names, with the toolchain rust-toolchain.toml pins.
     - name: Verify
-      run: bash scripts/verify.sh
+      run: bash .github/scripts/verify.sh
 
   # The `rust-version` in Cargo.toml is a promise to anyone building with an
   # older toolchain, and the job above builds with the pinned, newer one. This

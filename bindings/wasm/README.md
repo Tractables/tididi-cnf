@@ -49,7 +49,7 @@ for Emscripten into a prefix that `VITRI_EMSCRIPTEN_PREFIX` names
 vitri's `emscripten-prefix.sh` builds that prefix:
 
 ```sh
-vitri=$(python3 scripts/dependency-path.py vitri)
+vitri=$(python3 .github/scripts/dependency-path.py vitri)
 rustup target add wasm32-unknown-emscripten
 "$vitri/bindings/wasm/emscripten-prefix.sh" target/gmp target/emscripten-prefix
 export VITRI_EMSCRIPTEN_PREFIX=$PWD/target/emscripten-prefix
@@ -78,7 +78,7 @@ The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
 environment, which a native build of vitri refuses:
 
 ```sh
-vitri=$(python3 scripts/dependency-path.py vitri)
+vitri=$(python3 .github/scripts/dependency-path.py vitri)
 node --experimental-vm-modules bindings/wasm/app-test.mjs
 env -u VITRI_EMSCRIPTEN_PREFIX cargo build --release --bin tididi
 node bindings/wasm/smoke.mjs bindings/wasm/site/tididi_cnf.js . target/release/tididi

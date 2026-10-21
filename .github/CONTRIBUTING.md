@@ -1,19 +1,19 @@
 # Contributing
 
-Build prerequisites: [`docs/building.md`](docs/building.md).
+Build prerequisites: [`docs/building.md`](../docs/building.md).
 
 ## Checks
 
-Before opening a pull request, run:
+From the repository root, run before opening a pull request:
 
 ```sh
-bash scripts/verify.sh
+bash .github/scripts/verify.sh
 ```
 
 - The script builds the crate in the debug and release profiles
   `--locked`, against the committed `Cargo.lock`, runs Clippy and rustdoc
   with warnings denied, runs the crate's tests and doctests, and runs
-  `scripts/check_docs.py` after its self-test: every worked example's
+  `.github/scripts/check_docs.py` after its self-test: every worked example's
   program, and every command the README and the user guide follow with its
   output, against that output. Each step has a 30-minute limit, and the
   script stops at the first failure with its exit status.
@@ -31,12 +31,12 @@ in `Cargo.toml`.
 
 ## Worked examples
 
-Each worked example, a page in [`docs/examples/`](docs/examples/), has a
+Each worked example, a page in [`docs/examples/`](../docs/examples/), has a
 runnable program, `examples/<name>.rs`, and every excerpt on the page is taken
 from it: change the program and the page together, and mark each excerpt with
 the `tested-example` class. A printing excerpt is followed by `Output:` and a
 `text` block. `tests/example_docs.rs` checks the excerpts against the program;
-`scripts/check_docs.py` runs each program and checks that those blocks occur
+`.github/scripts/check_docs.py` runs each program and checks that those blocks occur
 in its output, and runs the `sh` blocks of the README and `docs/*.md` against
 the `Output:` or `Stderr:` block that follows them. Build with
 `cargo build --release` first.
@@ -145,10 +145,10 @@ rule below is a form of it. Review a change against this list before it lands.
 - Docs describe current behaviour: what exists, what to watch out for, what is
   guaranteed. No development history or numbers that go stale (test counts,
   runtimes, sizes). Measured results appear in one place, the
-  [evaluation](docs/evaluation.md) and the README section built from the same
+  [evaluation](../docs/evaluation.md) and the README section built from the same
   data, which name the release, machine and limits they measured and are
   rebuilt for each release.
-- [`docs/architecture.md`](docs/architecture.md) maps the source, states the
+- [`docs/architecture.md`](../docs/architecture.md) maps the source, states the
   invariants and links the design pages. A new public module gets a row in
   its module table, which `tests/source_layout.rs` checks; a change to a
   mechanism updates its page in the same commit.
@@ -162,7 +162,7 @@ rule below is a form of it. Review a change against this list before it lands.
 Set the new version in `Cargo.toml`, in each binding's `Cargo.toml` under
 `bindings/` and in `CITATION.cff`, then run `cargo update --workspace` in the
 repository root and in each binding, so that every `Cargo.lock` follows.
-Rename the `## Unreleased` heading in [`CHANGELOG.md`](CHANGELOG.md) to the
+Rename the `## Unreleased` heading in [`docs/changelog.md`](../docs/changelog.md) to the
 version, and move the worked examples' `blob/v<version>/` program links to the
 new tag. CI refuses a file that still names the old version.
 

@@ -18,7 +18,7 @@ on:
     paths:
       - "bindings/wasm/**"
       - "bindings/parity.txt"
-      - "scripts/dependency-path.py"
+      - ".github/scripts/dependency-path.py"
       - ".github/workflows/wasm.yml"
       - "src/**"
       - "tests/data/*.cnf"
@@ -41,7 +41,7 @@ jobs:
       # These page checks need no module, so they run before the long build.
       - name: Check page state, markup and stylesheets
         run: |
-          vitri=$(python3 scripts/dependency-path.py vitri)
+          vitri=$(python3 .github/scripts/dependency-path.py vitri)
           node --experimental-vm-modules bindings/wasm/app-test.mjs
           node "$vitri/bindings/wasm/page-check.mjs" bindings/wasm/index.html bindings/wasm/styles.css
           node "$vitri/bindings/wasm/page-check.mjs" docs/evaluation/index.html docs/evaluation/page.css
@@ -81,7 +81,7 @@ jobs:
       - name: Build GMP and MPFR for Emscripten
         run: |
           set -eux
-          vitri=$(python3 scripts/dependency-path.py vitri)
+          vitri=$(python3 .github/scripts/dependency-path.py vitri)
           work=$RUNNER_TEMP/gmp
           prefix=$RUNNER_TEMP/emscripten-prefix
           "$vitri/bindings/wasm/emscripten-prefix.sh" "$work" "$prefix"

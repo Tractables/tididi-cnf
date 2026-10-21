@@ -27,7 +27,7 @@ fi
 out=$1
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
-vitri=$(python3 "$root/scripts/dependency-path.py" vitri)
+vitri=$(python3 "$root/.github/scripts/dependency-path.py" vitri)
 
 mkdir -p "$out"
 cp "$here"/index.html "$here"/styles.css "$here"/*.js "$root"/docs/logo.svg "$out/"

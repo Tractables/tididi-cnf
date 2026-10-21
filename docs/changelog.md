@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep contributor guidance and developer scripts under `.github/`, and
+  release history in `docs/changelog.md`.
+
 - Fetch the diagram library and vitri through Cargo, without Git submodules
   or an embedded `vendor/` directory. Use the released goatd dependency
   without a workspace patch.

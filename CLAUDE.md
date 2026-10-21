@@ -8,10 +8,10 @@ the `tididi_cnf` library, their tests and documentation, and the C, Python
 and WebAssembly bindings under `bindings/`. Every tracked file and every commit
 is public.
 
-**[CONTRIBUTING.md](CONTRIBUTING.md) binds in full**: the checks, the code and
+**[CONTRIBUTING.md](.github/CONTRIBUTING.md) binds in full**: the checks, the code and
 test rules, and the doc and commit conventions. On top of it:
 
-- Run `bash scripts/verify.sh` before reporting a change done.
+- Run `bash .github/scripts/verify.sh` before reporting a change done.
 - Cargo manages the diagram library and vitri. Keep dependency updates in
   `Cargo.toml` and the committed lockfiles; no recursive clone is needed.
 - For a bug fix, confirm the regression test fails on the parent commit

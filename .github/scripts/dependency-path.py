@@ -8,7 +8,7 @@ import sys
 
 if len(sys.argv) != 2:
     sys.exit("usage: dependency-path.py <package>")
-root = Path(__file__).resolve().parent.parent
+root = Path(__file__).resolve().parents[2]
 result = subprocess.run(
     ["cargo", "metadata", "--locked", "--format-version", "1"],
     cwd=root, check=True, stdout=subprocess.PIPE, text=True,

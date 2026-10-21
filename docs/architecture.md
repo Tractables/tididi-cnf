@@ -187,7 +187,7 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
 <!-- Absolute links: rustdoc renders this page as the crate's `architecture`
 module (src/guide.rs), where a relative link would not resolve. -->
 [algorithms]: https://github.com/Tractables/tididi-cnf/blob/main/docs/algorithms.md
-[contributing-code]: https://github.com/Tractables/tididi-cnf/blob/main/CONTRIBUTING.md#code
+[contributing-code]: https://github.com/Tractables/tididi-cnf/blob/main/.github/CONTRIBUTING.md#code
 [library-integration]: https://github.com/Tractables/tididi-cnf/blob/main/docs/library-integration.md
 [library-invariants]: https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants
 [marginal-tdd-levels]: https://github.com/Tractables/tididi-cnf/blob/main/docs/marginal-tdd-levels.md
