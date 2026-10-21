@@ -116,8 +116,9 @@ and node count. Constant true and false diagrams count as completed.
 Stack overflows, variable-range errors and other failed invocations remain
 failures.
 
-The 600 completed tididi-cnf invocations report exact integer counts; 592
-agree with independent stored references, and eight have no stored reference.
+The 600 completed tididi-cnf invocations report exact integer counts. Of
+these, 553 agree with stored exact counts from other tools, 39 agree only
+with earlier tididi-cnf runs, and eight have no stored reference.
 Large fixed-width counts reported by the packages are not treated
 as exact validation evidence. Completion and size checks do not establish
 full equivalence between a CNF and its compiled diagram.
