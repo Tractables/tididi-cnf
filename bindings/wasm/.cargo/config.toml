@@ -13,7 +13,7 @@ AR_wasm32_unknown_emscripten = "emar"
 CXXFLAGS_wasm32_unknown_emscripten = "-fwasm-exceptions -fPIC"
 
 # Link settings for emcc, as vitri's own browser build sets them
-# (vendor/vitri/bindings/wasm/.cargo/config.toml says why each is there).
+# (vitri's bindings/wasm/.cargo/config.toml documents each setting).
 [target.wasm32-unknown-emscripten]
 rustflags = [
   # vitri links GMP as the side modules libgmp.so and libgmpxx.so, which only a

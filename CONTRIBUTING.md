@@ -10,26 +10,23 @@ Before opening a pull request, run:
 bash scripts/verify.sh
 ```
 
-- The script builds the workspace in the debug and release profiles
+- The script builds the crate in the debug and release profiles
   `--locked`, against the committed `Cargo.lock`, runs Clippy and rustdoc
-  with warnings denied, runs the workspace tests and doctests, and runs
+  with warnings denied, runs the crate's tests and doctests, and runs
   `scripts/check_docs.py` after its self-test: every worked example's
   program, and every command the README and the user guide follow with its
   output, against that output. Each step has a 30-minute limit, and the
   script stops at the first failure with its exit status.
-- `--workspace` is not optional. The workspace is this package plus the
-  library under `tididi/`, and only `--workspace` is sure to build and test
-  both.
 - The release build has debug assertions off, which catches an item gated on
   them that ungated code still names.
 - The tests run one at a time, in the script and in the thorough tier,
   because they call vitri in-process and vitri is not known to be safe to
   enter from two threads at once. The thorough tier adds the long tests:
-  `cargo test --workspace -- --include-ignored --test-threads=1`.
+  `cargo test -- --include-ignored --test-threads=1`.
 
 CI runs this same script. It also checks that every file naming the release
 version names the same one (`.github/scripts/check-versions.py` lists them),
-and compiles the workspace with the oldest supported Rust, the `rust-version`
+and compiles the crate with the oldest supported Rust, the `rust-version`
 in `Cargo.toml`.
 
 ## Worked examples
@@ -87,8 +84,8 @@ rule below is a form of it. Review a change against this list before it lands.
 - Diagram representation and operations belong in
   [tididi](https://github.com/Tractables/tididi); CNF parsing, preprocessing and
   vtree construction belong in vitri. A copy of one of their rules here is a
-  defect: change them there first, and move the submodule pointer forward in a
-  commit of its own.
+  defect: change them there first, then update the Cargo dependency and lockfiles
+  here.
 
 **Behaviour**
 

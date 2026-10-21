@@ -45,8 +45,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
 
       # The documentation is the artifact, so warnings are denied: a broken
       # intra-doc link fails the job rather than shipping.

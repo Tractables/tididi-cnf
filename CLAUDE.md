@@ -12,8 +12,8 @@ is public.
 test rules, and the doc and commit conventions. On top of it:
 
 - Run `bash scripts/verify.sh` before reporting a change done.
-- The diagram library (`tididi/`) and vitri (`vendor/vitri/`) are submodules;
-  run `git submodule update --init --recursive` before the first build.
+- Cargo manages the diagram library and vitri. Keep dependency updates in
+  `Cargo.toml` and the committed lockfiles; no recursive clone is needed.
 - For a bug fix, confirm the regression test fails on the parent commit
   before writing the fix.
 - Set a timeout on any run over an unfamiliar formula.

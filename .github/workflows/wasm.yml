@@ -10,8 +10,7 @@ name: Web build
 # Not per push: the build compiles GMP, MPFR and vitri's vendored C++ stack
 # from source. Pull requests run it when they change the binding, what it
 # compiles against or the instances it runs on. The Emscripten side follows
-# vitri's own web build (vendor/vitri/.github/workflows/wasm.yml) and runs
-# vitri's scripts for it.
+# vitri's own web build and uses the scripts in its Cargo source.
 on:
   workflow_call:
   workflow_dispatch:
@@ -19,13 +18,12 @@ on:
     paths:
       - "bindings/wasm/**"
       - "bindings/parity.txt"
+      - "scripts/dependency-path.py"
       - ".github/workflows/wasm.yml"
       - "src/**"
       - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "tididi"
-      - "vendor/vitri"
 
 env:
   CARGO_TERM_COLOR: always
@@ -39,15 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
 
       # These page checks need no module, so they run before the long build.
       - name: Check page state, markup and stylesheets
         run: |
+          vitri=$(python3 scripts/dependency-path.py vitri)
           node --experimental-vm-modules bindings/wasm/app-test.mjs
-          node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
-          node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
+          node "$vitri/bindings/wasm/page-check.mjs" bindings/wasm/index.html bindings/wasm/styles.css
+          node "$vitri/bindings/wasm/page-check.mjs" docs/evaluation/index.html docs/evaluation/page.css
 
       # The packages the native build needs, and m4, which GMP's configure
       # runs for the side modules.
@@ -84,11 +81,12 @@ jobs:
       - name: Build GMP and MPFR for Emscripten
         run: |
           set -eux
+          vitri=$(python3 scripts/dependency-path.py vitri)
           work=$RUNNER_TEMP/gmp
           prefix=$RUNNER_TEMP/emscripten-prefix
-          vendor/vitri/bindings/wasm/emscripten-prefix.sh "$work" "$prefix"
+          "$vitri/bindings/wasm/emscripten-prefix.sh" "$work" "$prefix"
           mkdir -p bindings/wasm/site
-          cp "$(vendor/vitri/.github/scripts/gmp.sh fetch "$work")" bindings/wasm/site/
+          cp "$("$vitri/.github/scripts/gmp.sh" fetch "$work")" bindings/wasm/site/
           echo "VITRI_EMSCRIPTEN_PREFIX=$prefix" >> "$GITHUB_ENV"
 
       - name: Build

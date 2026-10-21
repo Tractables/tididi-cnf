@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-      with:
-        submodules: recursive
 
     # Every file that names the release version names the same one; the
     # release workflow makes the same check against the tag.
@@ -36,14 +34,12 @@ jobs:
 
   # The `rust-version` in Cargo.toml is a promise to anyone building with an
   # older toolchain, and the job above builds with the pinned, newer one. This
-  # job compiles the workspace with the declared minimum, so raising the real
+  # job compiles the crate with the declared minimum, so raising the real
   # minimum fails here instead of in a downstream build.
   msrv:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
-      with:
-        submodules: recursive
 
     - uses: ./.github/actions/install-prereqs
 
@@ -62,4 +58,4 @@ jobs:
     # code, and codegen is covered above. `--all-targets` carries it to the
     # binary, the tests and the examples.
     - name: Check
-      run: cargo "+$MSRV" check --locked --workspace --all-targets
+      run: cargo "+$MSRV" check --locked --all-targets

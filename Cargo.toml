@@ -24,10 +24,10 @@ include = [
     "/README.md",
     # The logo and the figures the README shows.
     "/docs/logo.svg",
-    "/docs/switches-tdd.svg",
-    "/docs/evaluation/cactus-120s.svg",
+    "/docs/evaluation/cactus-2020-2026-dd-compile-120s.svg",
+    "/docs/evaluation/cactus-2020-2026-logic-compile-120s.svg",
+    "/docs/evaluation/cactus-2020-2026-120s.svg",
     "/docs/evaluation/cactus-3600s.svg",
-    "/docs/evaluation/cactus-compile-120s.svg",
     "/CHANGELOG.md",
     "/LICENSE",
     "/NOTICE",
@@ -43,16 +43,6 @@ include = [
     "/tests/data/queens5.cnf",
 ]
 
-[workspace]
-# tididi: pure TDD core (types, apply, minimize, counting, vtree structure).
-members = ["tididi"]
-# Bare `cargo test` and `cargo check` follow default-members, so without this
-# list they would cover the root package alone and skip the library's tests.
-default-members = [".", "tididi"]
-# vitri is a path dependency rather than a member, so `cargo test --workspace`
-# leaves its tests to its own repository.
-exclude = ["vendor/vitri"]
-
 # The package is `tididi-cnf` and its library `tididi_cnf`; the binary is
 # `tididi`.
 [[bin]]
@@ -60,10 +50,11 @@ name = "tididi"
 path = "src/main.rs"
 
 [dependencies]
-tididi = { version = "0.1.0", path = "tididi" }
+tididi = "0.1.0"
 # vitri builds the C++ CaDiCaL and Arjun stack, and takes FlowCutter from the
-# goatd crate.
-vitri = { version = "0.2.0", path = "vendor/vitri" }
+# goatd crate. The Git source also supplies browser and release build tools
+# omitted from its registry package.
+vitri = { version = "0.3.0", git = "https://github.com/Tractables/vitri", rev = "2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338" }
 num-bigint = "0.4"
 num-rational = "0.4"
 num-traits = "0.2"
@@ -101,13 +92,5 @@ opt-level = 1
 
 [dev-dependencies]
 # The library's oracles and generators (`tididi::test_helpers`) for this
-# crate's tests, including a `cargo test -p tididi-cnf` that does not build
-# the library's own tests beside it.
-tididi = { version = "0.1.0", path = "tididi", features = ["testing"] }
-
-# vitri takes goatd from crates.io. Until goatd's next release reaches
-# crates.io, the build uses goatd's main, which vitri's requirement accepts.
-# Each binding's manifest carries the same patch, since a patch reaches only
-# its own workspace.
-[patch.crates-io]
-goatd = { git = "https://github.com/Tractables/goatd", rev = "e237c1afabcf9feb3047bef58efd0113a6005ea7" }
+# crate's tests. The library runs its own tests in its repository.
+tididi = { version = "0.1.0", features = ["testing"] }

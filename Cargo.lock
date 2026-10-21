@@ -90,8 +90,9 @@ dependencies = [
 
 [[package]]
 name = "goatd"
-version = "0.2.1"
-source = "git+https://github.com/Tractables/goatd?rev=e237c1afabcf9feb3047bef58efd0113a6005ea7#e237c1afabcf9feb3047bef58efd0113a6005ea7"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fd36c0dbc0e470c1f355664efd11c037bbd23906b115e2a1157b4d0f3eba18d"
 dependencies = [
  "cc",
  "libc",
@@ -344,6 +345,8 @@ dependencies = [
 [[package]]
 name = "tididi"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa1d5262a718cc67d17e2691245c7d7eb8549ad451cbaee0696a9e0b724f24d5"
 dependencies = [
  "itoa",
  "num-bigint",
@@ -351,7 +354,6 @@ dependencies = [
  "num-traits",
  "rustc-hash",
  "smallvec",
- "tididi",
 ]
 
 [[package]]
@@ -417,7 +419,8 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "vitri"
-version = "0.2.0"
+version = "0.3.0"
+source = "git+https://github.com/Tractables/vitri?rev=2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338#2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338"
 dependencies = [
  "goatd",
  "libc",

@@ -85,7 +85,7 @@ Requires Linux, Rust and a C++20 toolchain; see the
 [build prerequisites](docs/building.md).
 
 ```sh
-git clone --recurse-submodules https://github.com/Tractables/tididi-cnf
+git clone https://github.com/Tractables/tididi-cnf
 cd tididi-cnf
 cargo build --release
 ```

@@ -49,8 +49,9 @@ for Emscripten into a prefix that `VITRI_EMSCRIPTEN_PREFIX` names
 vitri's `emscripten-prefix.sh` builds that prefix:
 
 ```sh
+vitri=$(python3 scripts/dependency-path.py vitri)
 rustup target add wasm32-unknown-emscripten
-vendor/vitri/bindings/wasm/emscripten-prefix.sh target/gmp target/emscripten-prefix
+"$vitri/bindings/wasm/emscripten-prefix.sh" target/gmp target/emscripten-prefix
 export VITRI_EMSCRIPTEN_PREFIX=$PWD/target/emscripten-prefix
 (cd bindings/wasm && cargo build --release)
 bindings/wasm/site.sh bindings/wasm/site "$VITRI_EMSCRIPTEN_PREFIX"
@@ -77,11 +78,12 @@ The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
 environment, which a native build of vitri refuses:
 
 ```sh
+vitri=$(python3 scripts/dependency-path.py vitri)
 node --experimental-vm-modules bindings/wasm/app-test.mjs
 env -u VITRI_EMSCRIPTEN_PREFIX cargo build --release --bin tididi
 node bindings/wasm/smoke.mjs bindings/wasm/site/tididi_cnf.js . target/release/tididi
-node vendor/vitri/bindings/wasm/page-check.mjs bindings/wasm/index.html bindings/wasm/styles.css
-node vendor/vitri/bindings/wasm/page-check.mjs docs/evaluation/index.html docs/evaluation/page.css
+node "$vitri/bindings/wasm/page-check.mjs" bindings/wasm/index.html bindings/wasm/styles.css
+node "$vitri/bindings/wasm/page-check.mjs" docs/evaluation/index.html docs/evaluation/page.css
 ```
 
 ## Cache stamps

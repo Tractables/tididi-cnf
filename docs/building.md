@@ -1,18 +1,17 @@
 # Building
 
 ```sh
-git clone --recurse-submodules https://github.com/Tractables/tididi-cnf
+git clone https://github.com/Tractables/tididi-cnf
 cd tididi-cnf
 cargo build --release
 ```
 
-The binary is `target/release/tididi`. The diagram library (`tididi/`) and
-vitri (`vendor/vitri/`) are git submodules, and the build needs both; in a
-clone made without them, `git submodule update --init --recursive` fetches
-them. Until the next release of [goatd](https://github.com/Tractables/goatd),
-vitri's tree-decomposition dependency, a patch in `Cargo.toml` builds against
-goatd's main, which Cargo fetches from GitHub. The binary builds and runs on
-Linux only, as the native build of [vitri](https://github.com/Tractables/vitri)
+The binary is `target/release/tididi`. Cargo fetches the diagram library,
+vitri and their dependencies; no submodules or separate dependency checkouts
+are needed. `Cargo.lock` records the versions and source revisions used by
+`cargo build --release --locked`. Vitri uses a fixed Git revision because
+its browser build helpers are not included in its crates.io package.
+The binary builds and runs on Linux only, as the native build of [vitri](https://github.com/Tractables/vitri)
 does, and [`bindings/wasm`](../bindings/wasm/README.md) builds the library for
 WebAssembly through Emscripten.
 
@@ -48,22 +47,17 @@ RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo build --release
 
 ## Use from another Rust crate
 
-The crate is not on crates.io yet. Add it through git, together with the
-goatd revision used by this release, to your application's root `Cargo.toml`:
+The crate is not on crates.io yet. Add it through Git in your application's
+`Cargo.toml`:
 
 ```toml
 [dependencies]
 tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }
-
-[patch.crates-io]
-goatd = { git = "https://github.com/Tractables/goatd", rev = "e237c1afabcf9feb3047bef58efd0113a6005ea7" }
 ```
 
-Cargo applies patches from the consuming workspace's root manifest only;
-the patch in this repository does not reach your application. Until the
-next goatd release, include this patch to build with the dependency revision
-tested here. The native toolchain and system packages above are also needed
-when building the library.
+The native toolchain and system packages above are also needed when building
+the library. Cargo resolves the same dependencies for the command-line tool,
+the library and the bindings.
 
 ## Documentation builds
 

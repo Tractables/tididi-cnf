@@ -18,8 +18,6 @@ on:
       - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "tididi"
-      - "vendor/vitri"
   workflow_dispatch:
 
 env:
@@ -36,8 +34,6 @@ jobs:
         working-directory: bindings/c
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: ./.github/actions/install-prereqs
       - name: Cache Cargo builds
         uses: Swatinem/rust-cache@v2

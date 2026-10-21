@@ -1,6 +1,0 @@
-[submodule "tididi"]
-	path = tididi
-	url = https://github.com/Tractables/tididi.git
-[submodule "vendor/vitri"]
-	path = vendor/vitri
-	url = https://github.com/Tractables/vitri.git

@@ -18,8 +18,8 @@ make it: `cli::run_cli`, the only entry the binary calls, parses argv, calls
 `solve`, prints what it answered or the error that stopped it, and returns
 the exit status, and `count` calls `solve` with the caller's mode and limits.
 The C, Python and WebAssembly bindings under `bindings/`, crates of their own
-outside the workspace, call `count` and convert its arguments and answer; they
-hold no logic of their own. One run goes:
+in separate Cargo packages, call `count` and convert its arguments and answer;
+they hold no logic of their own. One run goes:
 
 1. **Arguments to `Config`.** `cli::parse_args` turns argv into a `Cli` — the
    `--mode` flag, the `Limits`, the `Settings` and where the answer goes.
@@ -128,14 +128,14 @@ for the driver to record.
 
 | § | Paper section | Implements |
 |---|--------------|------------|
-| §3 | TDD definition | `tididi/src/diagram/` — data structures |
-| §3 | Determinism | `tididi/src/diagram/` — invariants |
-| §4 | Apply/conjunction | `tididi/src/apply/` — conjunction and clause conjunction |
-| §4 | Negation | `tididi/src/apply/negate.rs` |
-| §5 | Minimization | `tididi/src/reduce/` |
+| §3 | TDD definition | [tididi diagrams](https://github.com/Tractables/tididi/tree/main/src/diagram/) — data structures |
+| §3 | Determinism | [tididi diagrams](https://github.com/Tractables/tididi/tree/main/src/diagram/) — invariants |
+| §4 | Apply/conjunction | [tididi conjunction](https://github.com/Tractables/tididi/tree/main/src/apply/) — conjunction and clause conjunction |
+| §4 | Negation | [tididi negation](https://github.com/Tractables/tididi/tree/main/src/apply/negate.rs) |
+| §5 | Minimization | [tididi reduction](https://github.com/Tractables/tididi/tree/main/src/reduce/) |
 | §6 | Bottom-up compilation | `src/compile/` |
-| §6 | Clause to TDD | `tididi/src/apply/conjoin_clause/` |
-| §6 | Formula → vtree | vitri's constructors (`vendor/vitri/src/decompose/`), requested by `src/vtree.rs` |
+| §6 | Clause to TDD | [tididi clause conjunction](https://github.com/Tractables/tididi/tree/main/src/apply/conjoin_clause/) |
+| §6 | Formula → vtree | vitri's constructors ([Vitri decomposition](https://github.com/Tractables/vitri/tree/main/src/decompose/)), requested by `src/vtree.rs` |
 
 ## The library boundary
 

@@ -23,7 +23,7 @@ OUT := target/c
 SHARED := $(RELEASE)/libtididi_cnf_c.so
 STATIC := $(RELEASE)/libtididi_cnf_c.a
 # The binary the conformance tests compare counts with, built from the same
-# checkout by the workspace above.
+# checkout by the compiler package.
 TIDIDI := $(ROOT)/target/release/tididi
 
 # The system libraries a static link needs. tididi-cnf-c.pc.in is the one

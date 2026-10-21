@@ -4,7 +4,7 @@
 #     site.sh <out-dir> [emscripten-prefix]
 #
 # <out-dir> receives the page: index.html, styles.css, the scripts, vitri's
-# reader of the .vtree format, vendor/vitri/bindings/wasm/vtree.js, the
+# reader of the .vtree format from its Cargo dependency, the
 # crate's logo, docs/logo.svg, and the example formulas examples.js names,
 # from tests/data/. Its evaluation/ receives the evaluation page from
 # docs/evaluation/: index.html, its stylesheet and scripts, and the results it
@@ -27,10 +27,11 @@ fi
 out=$1
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
+vitri=$(python3 "$root/scripts/dependency-path.py" vitri)
 
 mkdir -p "$out"
 cp "$here"/index.html "$here"/styles.css "$here"/*.js "$root"/docs/logo.svg "$out/"
-cp "$root"/vendor/vitri/bindings/wasm/vtree.js "$out/"
+cp "$vitri/bindings/wasm/vtree.js" "$out/"
 mkdir -p "$out/evaluation"
 cp "$root"/docs/evaluation/index.html "$root"/docs/evaluation/*.{css,js,json,csv} "$out/evaluation/"
 for example in $(grep -o '"[A-Za-z0-9_]*\.cnf"' "$here/examples.js" | tr -d '"'); do
@@ -43,5 +44,5 @@ if [ "$#" -eq 2 ]; then
     "$prefix"/lib/libgmp.so "$prefix"/lib/libgmpxx.so "$out/"
   mkdir -p "$out/notices"
   cp "$root"/LICENSE "$root"/NOTICE "$out/notices/"
-  "$root/vendor/vitri/.github/scripts/collect-notices.sh" "$out/notices/vitri" "$prefix"
+  "$vitri/.github/scripts/collect-notices.sh" "$out/notices/vitri" "$prefix"
 fi

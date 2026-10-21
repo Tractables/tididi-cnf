@@ -18,8 +18,6 @@ on:
       - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
-      - "tididi"
-      - "vendor/vitri"
   workflow_dispatch:
 
 env:
@@ -33,8 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: ./.github/actions/install-prereqs
       - uses: actions/setup-python@v5
         with:
