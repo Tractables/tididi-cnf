@@ -98,74 +98,21 @@ series measures all 1,153 representatives afresh.
 
 ## Bottom-up decision-diagram compilation
 
-All eight tools compile the same 1,153 representative formulas, covering
-every one of the 1,400 competition entries, with 120 s per invocation:
+**1,400 MCC entries, 120 s, one CPU and 60 GiB per instance.**
+All tools use the same 1,153 representative formulas.
 
-- tididi-cnf uses `--mode compile --mem-limit-mb 61440` and a
-  `--time-limit-ms` equal to the remaining end-to-end budget,
-  with its default function-preserving simplification and portfolio vtree
-  selection. It ignores the input's ordering comments; its own preprocessing,
-  tree selection and model count are included in its time.
-- OxiDD, BuDDy, CUDD, Sylvan and lib-bdd use
-  [bdd-benchmark](https://github.com/SSoelvsten/bdd-benchmark/tree/3c521e16ada406d37ae5f960096a567a41df33b9)
-  at that pinned revision, with its recorded package revisions. OxiDD 0.11.2
-  (`9158645e`), CUDD 3.0.0 plus 20 commits (`538810a`) and Sylvan 1.9.0
-  (`8ddb68e3`) use complement edges; BuDDy (`5aca063a`) and lib-bdd-ffi
-  (`0c9481b4`) use plain BDDs. Clauses are conjoined in a balanced tree with
-  a static variable order and no dynamic reordering.
-- [PySDD](https://github.com/wannesm/PySDD) 1.0.6 supplies the official SDD
-  command line. “SDD (fixed)” disables dynamic vtree search with `-r 0`;
-  “SDD (dynamic)” uses its default search settings.
+- **BDDs:** FORCE variable and clause orders, then balanced conjunction;
+  the current BDD measurements use static orders.
+- **SDDs:** a FORCE initial vtree, with search disabled (fixed) or enabled
+  (dynamic). Ordering preparation is outside the timer for both BDDs and SDDs.
+- **tididi-cnf:** original clause order and default preprocessing/tree selection;
+  the same saved, independently checked circuits in both compiler comparisons.
 
-The BDD variable and clause orders are prepared outside the timed run with
-public vitri's FORCE heuristic. Both SDD modes start from the same exported
-FORCE vtree when preparation succeeds. If it fails, BDDs retain the original
-variable numbering and SDD uses its official default initial tree. These
-fallbacks preserve coverage of every formula. The input clauses are not
-preprocessed for the packages.
+If FORCE preparation fails, BDDs retain the original variable numbering and
+SDDs use their default initial tree. All failures remain in the denominator.
 
-tididi-cnf retains the original clause sequence, removing only task
-directives that compilation does not accept. Its results are the same saved-
-circuit measurements used in the logic-circuit comparison below. The BDD
-and SDD packages retain their own ordering heuristics.
-
-The native package measurements use two AWS `r7i.48xlarge` machines with
-Xeon Platinum 8488C CPUs, TSC clocks and 1.5 TiB RAM each, with 21 instances
-running at a time on each machine. The shared tididi-cnf measurements use
-the same machine type and worker allocation, with one configuration running
-at a time and saved circuits on dedicated gp3 disk storage. Each invocation
-uses one CPU, 120 s wall time, a 60 GiB address-space cap and a 1 GiB stack.
-One paired measurement, `mc2026_track1_190` in the private 2026 set, was
-repeated alone after a post-timer cleanup failure. Both configurations timed
-out in the repeat; those replacement records are used, with the failed run retained
-in the measurement archive. The replacement had one active instance rather
-than the full suite's 21.
-BDD tools receive a 60 GiB internal memory
-budget; SDD has no separate internal memory setting. BDD runs request
-transparent huge pages for allocations through glibc malloc. Resource
-samples and timing audits are retained; contaminated timing sources are
-rejected.
-
-Time runs from process launch to exit, including startup, parsing and
-compilation; tididi-cnf's clock additionally includes the input preparation
-described above. BDD and SDD
-diagrams must be materialized in memory; their serialization is not required.
-tididi-cnf also saves its circuit, as in the logic-circuit comparison. A
-successful native package exit must report a completed diagram with a
-nonnegative final size or node count.
-SDD must print its successful compilation footer, including both its size
-and node count. Constant true and false diagrams count as completed.
-Stack overflows, variable-range errors and other failed invocations remain
-failures.
-
-Every successful tididi-cnf circuit passes the independent saved-circuit
-checks described below. Large fixed-width counts reported by the native
-packages are not treated as exact validation evidence. Completion, size
-checks and count agreement do not establish full equivalence between a CNF
-and its compiled diagram.
-
-The [README comparison](../README.md#compared-with-bottom-up-decision-diagram-compilers)
-shows the cactus plot. The per-set compilation totals are:
+[Plot](../README.md#compared-with-bottom-up-decision-diagram-compilers) ·
+[Per-instance CSV](evaluation/mcc-track1-2020-2026-dd-compile-120s.csv)
 
 <!-- evaluation table: generated from docs/evaluation/mcc-track1-2020-2026-dd-compile-120s.csv -->
 
@@ -181,6 +128,40 @@ shows the cactus plot. The per-set compilation totals are:
 | SDD (dynamic) | 9 | 6 | 31 | 12 | 15 | 14 | 22 | 19 | 128 |
 
 <!-- end of evaluation table -->
+
+<details>
+<summary>Builds, timing and validation details</summary>
+
+The BDD harness is
+[bdd-benchmark](https://github.com/SSoelvsten/bdd-benchmark/tree/3c521e16ada406d37ae5f960096a567a41df33b9).
+OxiDD 0.11.2 (`9158645e`), CUDD 3.0.0 + 20 commits (`538810a`) and
+Sylvan 1.9.0 (`8ddb68e3`) use complement edges; BuDDy (`5aca063a`) and
+lib-bdd-ffi (`0c9481b4`) use plain BDDs.
+[PySDD](https://github.com/wannesm/PySDD) 1.0.6 supplies the official SDD CLI:
+fixed uses `-r 0`, dynamic uses default search settings.
+
+Public vitri prepares the FORCE orders and vtrees without preprocessing the
+packages' clauses. tididi-cnf ignores ordering comments and includes its own
+preprocessing, tree selection, model count and circuit writing in the timer;
+`--time-limit-ms` receives the budget remaining after input normalization.
+
+Runs use two `r7i.48xlarge` machines (Xeon Platinum 8488C, TSC clocks,
+1.5 TiB RAM), 21 instances per machine and a 1 GiB stack. The 60 GiB limit is
+an address-space cap; BDD packages and tididi-cnf also receive a 60 GiB internal
+budget. SDD has no separate internal budget. BDD allocations request transparent
+huge pages. tididi-cnf writes to dedicated gp3 disk storage. Contaminated timing
+sources are rejected. One paired tididi-cnf measurement, private 2026 instance
+190, was repeated alone after a post-timer cleanup failure; both replacement
+runs timed out, and the original failure is retained in the archive.
+
+Time covers process startup, parsing and compilation; tididi-cnf additionally
+includes normalization, as described above. BDD/SDD diagrams must materialize
+in memory and report successful completion and nonnegative size; serialization
+is not required. Constant true/false diagrams count as completed. Saved TDD
+circuits are checked after timing. Native fixed-width counts are not treated
+as exact evidence, and these checks do not prove full Boolean equivalence.
+
+</details>
 
 ## Logic-circuit compilation
 
