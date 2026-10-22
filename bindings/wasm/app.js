@@ -281,9 +281,9 @@ const runner = new Runner("worker.js" + stamp, {
   },
   started() {
     const started = performance.now();
-    statusLine.textContent = "Counting.";
+    statusLine.textContent = "Running.";
     ticking = setInterval(() => {
-      statusLine.textContent = `Counting, ${Math.round((performance.now() - started) / 1000)} s.`;
+      statusLine.textContent = `Running, ${Math.round((performance.now() - started) / 1000)} s.`;
     }, 1000);
     element("run").hidden = true;
     element("cancel").hidden = false;

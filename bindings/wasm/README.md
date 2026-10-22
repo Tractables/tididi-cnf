@@ -3,8 +3,12 @@
 **<https://tractables.github.io/tididi-cnf/>**
 
 A page that runs tididi-cnf in the tab. Drop in a DIMACS CNF — or paste
-one, open a file, or pick an example — and it counts the formula's models:
+one, open a file, or pick an example — and choose circuit compilation or a
+counting task:
 
+- circuit compilation builds a TDD over every original variable and reports
+  its model count; select `compile` explicitly or leave the task automatic
+  for a formula without a task declaration,
 - the model count, the weighted count, or either one projected onto the
   formula's show variables, as its `c t` line declares or as the task picked
   on the page, with the weights and the show variables read from its
@@ -21,6 +25,13 @@ one, open a file, or pick an example — and it counts the formula's models:
   then each variable's probability, or its share of the models, under
   evidence pinned on the page, evaluated from the diagram.
 
+The larger examples include eight queens, a 100-variable grid of nonadjacent
+occupied squares, and a 108-variable wireless network. The network's projected
+task counts feasible site activations once each, regardless of the hidden
+radio-switch assignments. Its projected weighted task gives the probability
+of an interference-free activation pattern. The smaller examples retain the
+step-by-step drawing.
+
 The count is the one the `tididi` binary prints on the same formula and task:
 the page calls the crate's `tididi_cnf::count`. A time limit is the
 binary's `--time-limit-ms`. There is no memory limit: the module's memory
@@ -30,7 +41,7 @@ the settings, so a result can be linked to. Nothing is uploaded and nothing is
 fetched from another site: the formula never leaves the browser.
 
 Editing the formula or settings while a run is in progress leaves its
-answer and drawing marked as belonging to the previous input. Count again
+answer and drawing marked as belonging to the previous input. Run again
 to update them.
 
 The drawing compiles the formula as it is written, without the preprocessing
@@ -67,7 +78,8 @@ examples are fetched, so they have to come from a server.
 
 `smoke.mjs` runs the built module on the page's examples and on the
 instances [`bindings/parity.txt`](../parity.txt) lists, and compares each
-answer with the native binary's on the same file, then draws the small
+answer with the native binary's on the same file and any independently known
+count listed in `examples.js`, then draws the small
 examples and checks each step's diagram against enumeration; vitri's
 `page-check.mjs` checks `index.html` against `styles.css`, and the
 evaluation page's `index.html` against `page.css`. The web build workflow

@@ -54,6 +54,7 @@
         <label for="task">Task</label>
         <select id="task">
           <option value="">As the formula declares</option>
+          <option value="compile">compile: circuit compilation</option>
           <option value="mc">mc: model count</option>
           <option value="wmc">wmc: weighted count</option>
           <option value="pmc">pmc: projected count</option>
@@ -67,7 +68,7 @@
       <p class="note">A formula with no <code>c t</code> line is compiled,
       and its models counted. A task picked here must agree with the
       formula's <code>c t</code> line.</p>
-      <button id="run" type="submit" disabled>Count</button>
+      <button id="run" type="submit" disabled>Run</button>
       <button id="cancel" type="button" hidden>Cancel</button>
       <p id="status" role="status">Loading tididi-cnf.</p>
     </form>
@@ -81,7 +82,7 @@
     <span id="stale" class="note" hidden>This result is for an earlier input or
     earlier settings.</span>
   </div>
-  <div id="summary" class="summary"><p class="note">Press Count.</p></div>
+  <div id="summary" class="summary"><p class="note">Press Run.</p></div>
 
   <details id="record-box" hidden>
     <summary>The run's record, as <code>tididi --stats</code> writes it</summary>

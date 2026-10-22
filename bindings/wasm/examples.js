@@ -1,6 +1,7 @@
 // The row of examples: a key, which is how the address bar names one, the
-// name on its button, and its file, one of the formulas under tests/data/,
-// which site.sh puts beside the page. The page opens on the first. The smoke
+// name on its button, its file under tests/data/, and an independently
+// calculated expected count when one is supplied. site.sh puts the formula
+// files beside the page. The page opens on the first. The smoke
 // test counts each of them and compares the count with the native binary's,
 // and checks the drawing of each small enough to draw.
 
@@ -10,9 +11,11 @@ export const EXAMPLES = [
   ["queens4", "four queens", "queens4.cnf"],
   ["pigeons4", "four pigeons, three holes", "pigeon4_3.cnf"],
   ["queens", "six queens", "queens6.cnf"],
+  ["queens8", "eight queens", "queens8.cnf", "92"],
+  ["grid", "10 × 10 exclusion grid", "grid10.cnf", "2030049051145980050"],
   ["pigeons", "eight pigeons, seven holes", "pigeon8_7.cnf"],
-  ["projected", "projected", "pmc_tiny.cnf"],
-  ["projected-weighted", "projected and weighted", "pwmc_arjun_defined_weight.cnf"],
+  ["projected", "wireless configurations", "wireless6_projected.cnf", "5598861"],
+  ["projected-weighted", "wireless activation probability", "wireless6_probability.cnf", "2525856086739112849047552/14551915228366851806640625"],
 ];
 
 // This file's version stamp (see README.md), passed on to the files it

@@ -10,7 +10,7 @@ export const ANSWER_LABELS = {
 };
 
 export const MODE_NAMES = {
-  compile: "compile, then count the diagram's models",
+  compile: "circuit compilation",
   mc: "model counting",
   wmc: "weighted model counting, in double precision",
   pmc: "projected model counting",

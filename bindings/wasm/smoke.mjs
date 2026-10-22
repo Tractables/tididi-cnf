@@ -49,6 +49,7 @@ function nativeAnswer(file, args) {
   const stdout = childProcess.execFileSync(nativePath, [...args, "--stats", "-", file], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: 60000,
   });
   const [answerLine, recordLine] = stdout.trim().split("\n");
   return { count: answerLine.slice(answerLine.indexOf(": ") + 2), stats: JSON.parse(recordLine) };
@@ -56,7 +57,7 @@ function nativeAnswer(file, args) {
 
 // The module's answer on `file` under `mode` is the native binary's under the
 // matching `--mode`.
-function checkParity(compiler, name, file, mode, timeLimitMs = 0) {
+function checkParity(compiler, name, file, mode, timeLimitMs = 0, expected) {
   const label = `${name}${mode === null ? "" : `, task ${mode}`}`;
   const started = Date.now();
   const module = compiler.count(fs.readFileSync(file, "utf8"), mode, timeLimitMs);
@@ -65,6 +66,7 @@ function checkParity(compiler, name, file, mode, timeLimitMs = 0) {
   const native = nativeAnswer(file, mode === null ? [] : ["--mode", mode]);
   console.log(`${label}: ${module.mode} ${module.count} in ${Date.now() - started} ms`);
   check(module.count === native.count, `${label}: the module counts ${module.count}, the binary ${native.count}`);
+  if (expected !== undefined) check(module.count === expected, `${label}: expected ${expected}, got ${module.count}`);
   check(module.mode === native.stats.mode, `${label}: the module ran ${module.mode}, the binary ${native.stats.mode}`);
   check(module.stats.mode === module.mode, `${label}: the record says mode ${module.stats.mode}`);
   check(module.satisfiable === native.stats.satisfiable, `${label}: the verdicts differ`);
@@ -92,7 +94,7 @@ function checkRefused(compiler, label, dimacs, mode, kind) {
 const compiler = tididiCnfAbi(await createTididiCnf());
 const file = (name) => path.join(repository, "tests", "data", name);
 
-for (const [, name, example] of EXAMPLES) checkParity(compiler, `${example} (${name})`, file(example), null);
+for (const [, name, example, expected] of EXAMPLES) checkParity(compiler, `${example} (${name})`, file(example), null, 60000, expected);
 
 // The instances every binding is checked on, each under the mode it names.
 const parity = fs.readFileSync(path.join(repository, "bindings", "parity.txt"), "utf8");
