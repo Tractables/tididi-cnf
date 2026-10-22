@@ -1,0 +1,2001 @@
+set,instance,solver,solved,seconds
+MCC 2025,mc2025_track1_000,tididi-cnf,no,
+MCC 2025,mc2025_track1_000,Ganak,no,
+MCC 2025,mc2025_track1_000,D4 (counter),no,
+MCC 2025,mc2025_track1_000,GPMC (counter),no,
+MCC 2025,mc2025_track1_000,Cara,no,
+MCC 2025,mc2025_track1_001,tididi-cnf,no,
+MCC 2025,mc2025_track1_001,Ganak,no,
+MCC 2025,mc2025_track1_001,D4 (counter),no,
+MCC 2025,mc2025_track1_001,GPMC (counter),no,
+MCC 2025,mc2025_track1_001,Cara,no,
+MCC 2025,mc2025_track1_002,tididi-cnf,no,
+MCC 2025,mc2025_track1_002,Ganak,no,
+MCC 2025,mc2025_track1_002,D4 (counter),no,
+MCC 2025,mc2025_track1_002,GPMC (counter),no,
+MCC 2025,mc2025_track1_002,Cara,no,
+MCC 2025,mc2025_track1_003,tididi-cnf,yes,49.47
+MCC 2025,mc2025_track1_003,Ganak,no,
+MCC 2025,mc2025_track1_003,D4 (counter),no,
+MCC 2025,mc2025_track1_003,GPMC (counter),yes,65.03
+MCC 2025,mc2025_track1_003,Cara,no,
+MCC 2025,mc2025_track1_004,tididi-cnf,yes,0.90
+MCC 2025,mc2025_track1_004,Ganak,no,
+MCC 2025,mc2025_track1_004,D4 (counter),no,
+MCC 2025,mc2025_track1_004,GPMC (counter),no,
+MCC 2025,mc2025_track1_004,Cara,no,
+MCC 2025,mc2025_track1_005,tididi-cnf,yes,0.75
+MCC 2025,mc2025_track1_005,Ganak,yes,90.53
+MCC 2025,mc2025_track1_005,D4 (counter),no,
+MCC 2025,mc2025_track1_005,GPMC (counter),no,
+MCC 2025,mc2025_track1_005,Cara,yes,13.09
+MCC 2025,mc2025_track1_006,tididi-cnf,no,
+MCC 2025,mc2025_track1_006,Ganak,no,
+MCC 2025,mc2025_track1_006,D4 (counter),no,
+MCC 2025,mc2025_track1_006,GPMC (counter),no,
+MCC 2025,mc2025_track1_006,Cara,no,
+MCC 2025,mc2025_track1_007,tididi-cnf,yes,38.18
+MCC 2025,mc2025_track1_007,Ganak,no,
+MCC 2025,mc2025_track1_007,D4 (counter),no,
+MCC 2025,mc2025_track1_007,GPMC (counter),no,
+MCC 2025,mc2025_track1_007,Cara,no,
+MCC 2025,mc2025_track1_008,tididi-cnf,no,
+MCC 2025,mc2025_track1_008,Ganak,no,
+MCC 2025,mc2025_track1_008,D4 (counter),no,
+MCC 2025,mc2025_track1_008,GPMC (counter),no,
+MCC 2025,mc2025_track1_008,Cara,no,
+MCC 2025,mc2025_track1_009,tididi-cnf,no,
+MCC 2025,mc2025_track1_009,Ganak,no,
+MCC 2025,mc2025_track1_009,D4 (counter),no,
+MCC 2025,mc2025_track1_009,GPMC (counter),no,
+MCC 2025,mc2025_track1_009,Cara,no,
+MCC 2025,mc2025_track1_010,tididi-cnf,yes,1.99
+MCC 2025,mc2025_track1_010,Ganak,yes,2.25
+MCC 2025,mc2025_track1_010,D4 (counter),yes,26.73
+MCC 2025,mc2025_track1_010,GPMC (counter),yes,15.64
+MCC 2025,mc2025_track1_010,Cara,no,
+MCC 2025,mc2025_track1_011,tididi-cnf,no,
+MCC 2025,mc2025_track1_011,Ganak,no,
+MCC 2025,mc2025_track1_011,D4 (counter),no,
+MCC 2025,mc2025_track1_011,GPMC (counter),no,
+MCC 2025,mc2025_track1_011,Cara,no,
+MCC 2025,mc2025_track1_012,tididi-cnf,yes,4.45
+MCC 2025,mc2025_track1_012,Ganak,yes,3.61
+MCC 2025,mc2025_track1_012,D4 (counter),yes,11.94
+MCC 2025,mc2025_track1_012,GPMC (counter),yes,46.00
+MCC 2025,mc2025_track1_012,Cara,no,
+MCC 2025,mc2025_track1_013,tididi-cnf,yes,6.00
+MCC 2025,mc2025_track1_013,Ganak,no,
+MCC 2025,mc2025_track1_013,D4 (counter),no,
+MCC 2025,mc2025_track1_013,GPMC (counter),no,
+MCC 2025,mc2025_track1_013,Cara,no,
+MCC 2025,mc2025_track1_014,tididi-cnf,yes,1.59
+MCC 2025,mc2025_track1_014,Ganak,yes,0.74
+MCC 2025,mc2025_track1_014,D4 (counter),yes,1.77
+MCC 2025,mc2025_track1_014,GPMC (counter),no,
+MCC 2025,mc2025_track1_014,Cara,yes,0.77
+MCC 2025,mc2025_track1_015,tididi-cnf,yes,22.44
+MCC 2025,mc2025_track1_015,Ganak,yes,110.84
+MCC 2025,mc2025_track1_015,D4 (counter),no,
+MCC 2025,mc2025_track1_015,GPMC (counter),yes,84.19
+MCC 2025,mc2025_track1_015,Cara,no,
+MCC 2025,mc2025_track1_016,tididi-cnf,yes,0.94
+MCC 2025,mc2025_track1_016,Ganak,yes,0.36
+MCC 2025,mc2025_track1_016,D4 (counter),yes,0.68
+MCC 2025,mc2025_track1_016,GPMC (counter),yes,1.53
+MCC 2025,mc2025_track1_016,Cara,yes,1.31
+MCC 2025,mc2025_track1_017,tididi-cnf,yes,2.59
+MCC 2025,mc2025_track1_017,Ganak,yes,1.93
+MCC 2025,mc2025_track1_017,D4 (counter),yes,24.34
+MCC 2025,mc2025_track1_017,GPMC (counter),no,
+MCC 2025,mc2025_track1_017,Cara,yes,21.34
+MCC 2025,mc2025_track1_018,tididi-cnf,yes,50.25
+MCC 2025,mc2025_track1_018,Ganak,no,
+MCC 2025,mc2025_track1_018,D4 (counter),no,
+MCC 2025,mc2025_track1_018,GPMC (counter),no,
+MCC 2025,mc2025_track1_018,Cara,no,
+MCC 2025,mc2025_track1_019,tididi-cnf,yes,2.59
+MCC 2025,mc2025_track1_019,Ganak,yes,4.02
+MCC 2025,mc2025_track1_019,D4 (counter),yes,38.88
+MCC 2025,mc2025_track1_019,GPMC (counter),no,
+MCC 2025,mc2025_track1_019,Cara,no,
+MCC 2025,mc2025_track1_020,tididi-cnf,yes,1.94
+MCC 2025,mc2025_track1_020,Ganak,yes,30.49
+MCC 2025,mc2025_track1_020,D4 (counter),yes,95.70
+MCC 2025,mc2025_track1_020,GPMC (counter),no,
+MCC 2025,mc2025_track1_020,Cara,no,
+MCC 2025,mc2025_track1_021,tididi-cnf,yes,87.08
+MCC 2025,mc2025_track1_021,Ganak,no,
+MCC 2025,mc2025_track1_021,D4 (counter),no,
+MCC 2025,mc2025_track1_021,GPMC (counter),no,
+MCC 2025,mc2025_track1_021,Cara,no,
+MCC 2025,mc2025_track1_022,tididi-cnf,yes,25.91
+MCC 2025,mc2025_track1_022,Ganak,no,
+MCC 2025,mc2025_track1_022,D4 (counter),no,
+MCC 2025,mc2025_track1_022,GPMC (counter),no,
+MCC 2025,mc2025_track1_022,Cara,no,
+MCC 2025,mc2025_track1_023,tididi-cnf,no,
+MCC 2025,mc2025_track1_023,Ganak,no,
+MCC 2025,mc2025_track1_023,D4 (counter),no,
+MCC 2025,mc2025_track1_023,GPMC (counter),no,
+MCC 2025,mc2025_track1_023,Cara,no,
+MCC 2025,mc2025_track1_024,tididi-cnf,yes,3.13
+MCC 2025,mc2025_track1_024,Ganak,yes,31.36
+MCC 2025,mc2025_track1_024,D4 (counter),yes,85.97
+MCC 2025,mc2025_track1_024,GPMC (counter),no,
+MCC 2025,mc2025_track1_024,Cara,no,
+MCC 2025,mc2025_track1_025,tididi-cnf,yes,0.92
+MCC 2025,mc2025_track1_025,Ganak,yes,2.03
+MCC 2025,mc2025_track1_025,D4 (counter),yes,7.21
+MCC 2025,mc2025_track1_025,GPMC (counter),yes,15.38
+MCC 2025,mc2025_track1_025,Cara,yes,21.82
+MCC 2025,mc2025_track1_026,tididi-cnf,no,
+MCC 2025,mc2025_track1_026,Ganak,no,
+MCC 2025,mc2025_track1_026,D4 (counter),no,
+MCC 2025,mc2025_track1_026,GPMC (counter),no,
+MCC 2025,mc2025_track1_026,Cara,no,
+MCC 2025,mc2025_track1_027,tididi-cnf,yes,0.87
+MCC 2025,mc2025_track1_027,Ganak,yes,2.65
+MCC 2025,mc2025_track1_027,D4 (counter),yes,19.17
+MCC 2025,mc2025_track1_027,GPMC (counter),yes,46.50
+MCC 2025,mc2025_track1_027,Cara,yes,41.22
+MCC 2025,mc2025_track1_028,tididi-cnf,no,
+MCC 2025,mc2025_track1_028,Ganak,no,
+MCC 2025,mc2025_track1_028,D4 (counter),no,
+MCC 2025,mc2025_track1_028,GPMC (counter),no,
+MCC 2025,mc2025_track1_028,Cara,no,
+MCC 2025,mc2025_track1_029,tididi-cnf,yes,2.03
+MCC 2025,mc2025_track1_029,Ganak,yes,6.81
+MCC 2025,mc2025_track1_029,D4 (counter),yes,4.28
+MCC 2025,mc2025_track1_029,GPMC (counter),yes,14.40
+MCC 2025,mc2025_track1_029,Cara,no,
+MCC 2025,mc2025_track1_030,tididi-cnf,no,
+MCC 2025,mc2025_track1_030,Ganak,no,
+MCC 2025,mc2025_track1_030,D4 (counter),no,
+MCC 2025,mc2025_track1_030,GPMC (counter),no,
+MCC 2025,mc2025_track1_030,Cara,no,
+MCC 2025,mc2025_track1_031,tididi-cnf,no,
+MCC 2025,mc2025_track1_031,Ganak,no,
+MCC 2025,mc2025_track1_031,D4 (counter),no,
+MCC 2025,mc2025_track1_031,GPMC (counter),no,
+MCC 2025,mc2025_track1_031,Cara,no,
+MCC 2025,mc2025_track1_032,tididi-cnf,no,
+MCC 2025,mc2025_track1_032,Ganak,no,
+MCC 2025,mc2025_track1_032,D4 (counter),no,
+MCC 2025,mc2025_track1_032,GPMC (counter),no,
+MCC 2025,mc2025_track1_032,Cara,no,
+MCC 2025,mc2025_track1_033,tididi-cnf,no,
+MCC 2025,mc2025_track1_033,Ganak,no,
+MCC 2025,mc2025_track1_033,D4 (counter),no,
+MCC 2025,mc2025_track1_033,GPMC (counter),no,
+MCC 2025,mc2025_track1_033,Cara,no,
+MCC 2025,mc2025_track1_034,tididi-cnf,no,
+MCC 2025,mc2025_track1_034,Ganak,no,
+MCC 2025,mc2025_track1_034,D4 (counter),no,
+MCC 2025,mc2025_track1_034,GPMC (counter),no,
+MCC 2025,mc2025_track1_034,Cara,no,
+MCC 2025,mc2025_track1_035,tididi-cnf,no,
+MCC 2025,mc2025_track1_035,Ganak,no,
+MCC 2025,mc2025_track1_035,D4 (counter),no,
+MCC 2025,mc2025_track1_035,GPMC (counter),no,
+MCC 2025,mc2025_track1_035,Cara,no,
+MCC 2025,mc2025_track1_036,tididi-cnf,no,
+MCC 2025,mc2025_track1_036,Ganak,no,
+MCC 2025,mc2025_track1_036,D4 (counter),no,
+MCC 2025,mc2025_track1_036,GPMC (counter),no,
+MCC 2025,mc2025_track1_036,Cara,no,
+MCC 2025,mc2025_track1_037,tididi-cnf,no,
+MCC 2025,mc2025_track1_037,Ganak,no,
+MCC 2025,mc2025_track1_037,D4 (counter),no,
+MCC 2025,mc2025_track1_037,GPMC (counter),no,
+MCC 2025,mc2025_track1_037,Cara,no,
+MCC 2025,mc2025_track1_038,tididi-cnf,no,
+MCC 2025,mc2025_track1_038,Ganak,no,
+MCC 2025,mc2025_track1_038,D4 (counter),no,
+MCC 2025,mc2025_track1_038,GPMC (counter),no,
+MCC 2025,mc2025_track1_038,Cara,no,
+MCC 2025,mc2025_track1_039,tididi-cnf,no,
+MCC 2025,mc2025_track1_039,Ganak,no,
+MCC 2025,mc2025_track1_039,D4 (counter),no,
+MCC 2025,mc2025_track1_039,GPMC (counter),no,
+MCC 2025,mc2025_track1_039,Cara,no,
+MCC 2025,mc2025_track1_040,tididi-cnf,no,
+MCC 2025,mc2025_track1_040,Ganak,no,
+MCC 2025,mc2025_track1_040,D4 (counter),no,
+MCC 2025,mc2025_track1_040,GPMC (counter),no,
+MCC 2025,mc2025_track1_040,Cara,no,
+MCC 2025,mc2025_track1_041,tididi-cnf,yes,2.23
+MCC 2025,mc2025_track1_041,Ganak,yes,64.86
+MCC 2025,mc2025_track1_041,D4 (counter),yes,44.98
+MCC 2025,mc2025_track1_041,GPMC (counter),yes,83.66
+MCC 2025,mc2025_track1_041,Cara,no,
+MCC 2025,mc2025_track1_042,tididi-cnf,yes,0.32
+MCC 2025,mc2025_track1_042,Ganak,yes,0.24
+MCC 2025,mc2025_track1_042,D4 (counter),yes,0.26
+MCC 2025,mc2025_track1_042,GPMC (counter),yes,0.12
+MCC 2025,mc2025_track1_042,Cara,yes,0.23
+MCC 2025,mc2025_track1_043,tididi-cnf,yes,0.57
+MCC 2025,mc2025_track1_043,Ganak,yes,0.49
+MCC 2025,mc2025_track1_043,D4 (counter),yes,1.34
+MCC 2025,mc2025_track1_043,GPMC (counter),yes,0.34
+MCC 2025,mc2025_track1_043,Cara,yes,0.56
+MCC 2025,mc2025_track1_044,tididi-cnf,yes,0.47
+MCC 2025,mc2025_track1_044,Ganak,yes,0.20
+MCC 2025,mc2025_track1_044,D4 (counter),yes,0.23
+MCC 2025,mc2025_track1_044,GPMC (counter),yes,0.05
+MCC 2025,mc2025_track1_044,Cara,yes,0.74
+MCC 2025,mc2025_track1_045,tididi-cnf,no,
+MCC 2025,mc2025_track1_045,Ganak,no,
+MCC 2025,mc2025_track1_045,D4 (counter),no,
+MCC 2025,mc2025_track1_045,GPMC (counter),no,
+MCC 2025,mc2025_track1_045,Cara,no,
+MCC 2025,mc2025_track1_046,tididi-cnf,no,
+MCC 2025,mc2025_track1_046,Ganak,no,
+MCC 2025,mc2025_track1_046,D4 (counter),no,
+MCC 2025,mc2025_track1_046,GPMC (counter),no,
+MCC 2025,mc2025_track1_046,Cara,no,
+MCC 2025,mc2025_track1_047,tididi-cnf,no,
+MCC 2025,mc2025_track1_047,Ganak,no,
+MCC 2025,mc2025_track1_047,D4 (counter),no,
+MCC 2025,mc2025_track1_047,GPMC (counter),no,
+MCC 2025,mc2025_track1_047,Cara,no,
+MCC 2025,mc2025_track1_048,tididi-cnf,no,
+MCC 2025,mc2025_track1_048,Ganak,no,
+MCC 2025,mc2025_track1_048,D4 (counter),no,
+MCC 2025,mc2025_track1_048,GPMC (counter),no,
+MCC 2025,mc2025_track1_048,Cara,no,
+MCC 2025,mc2025_track1_049,tididi-cnf,no,
+MCC 2025,mc2025_track1_049,Ganak,no,
+MCC 2025,mc2025_track1_049,D4 (counter),no,
+MCC 2025,mc2025_track1_049,GPMC (counter),no,
+MCC 2025,mc2025_track1_049,Cara,no,
+MCC 2025,mc2025_track1_050,tididi-cnf,no,
+MCC 2025,mc2025_track1_050,Ganak,no,
+MCC 2025,mc2025_track1_050,D4 (counter),no,
+MCC 2025,mc2025_track1_050,GPMC (counter),no,
+MCC 2025,mc2025_track1_050,Cara,no,
+MCC 2025,mc2025_track1_051,tididi-cnf,no,
+MCC 2025,mc2025_track1_051,Ganak,no,
+MCC 2025,mc2025_track1_051,D4 (counter),no,
+MCC 2025,mc2025_track1_051,GPMC (counter),no,
+MCC 2025,mc2025_track1_051,Cara,no,
+MCC 2025,mc2025_track1_052,tididi-cnf,no,
+MCC 2025,mc2025_track1_052,Ganak,no,
+MCC 2025,mc2025_track1_052,D4 (counter),no,
+MCC 2025,mc2025_track1_052,GPMC (counter),no,
+MCC 2025,mc2025_track1_052,Cara,no,
+MCC 2025,mc2025_track1_053,tididi-cnf,no,
+MCC 2025,mc2025_track1_053,Ganak,yes,67.58
+MCC 2025,mc2025_track1_053,D4 (counter),no,
+MCC 2025,mc2025_track1_053,GPMC (counter),no,
+MCC 2025,mc2025_track1_053,Cara,yes,54.99
+MCC 2025,mc2025_track1_054,tididi-cnf,no,
+MCC 2025,mc2025_track1_054,Ganak,yes,3.95
+MCC 2025,mc2025_track1_054,D4 (counter),yes,14.51
+MCC 2025,mc2025_track1_054,GPMC (counter),yes,4.12
+MCC 2025,mc2025_track1_054,Cara,yes,57.98
+MCC 2025,mc2025_track1_055,tididi-cnf,no,
+MCC 2025,mc2025_track1_055,Ganak,no,
+MCC 2025,mc2025_track1_055,D4 (counter),no,
+MCC 2025,mc2025_track1_055,GPMC (counter),no,
+MCC 2025,mc2025_track1_055,Cara,no,
+MCC 2025,mc2025_track1_056,tididi-cnf,no,
+MCC 2025,mc2025_track1_056,Ganak,no,
+MCC 2025,mc2025_track1_056,D4 (counter),no,
+MCC 2025,mc2025_track1_056,GPMC (counter),no,
+MCC 2025,mc2025_track1_056,Cara,no,
+MCC 2025,mc2025_track1_057,tididi-cnf,no,
+MCC 2025,mc2025_track1_057,Ganak,no,
+MCC 2025,mc2025_track1_057,D4 (counter),no,
+MCC 2025,mc2025_track1_057,GPMC (counter),no,
+MCC 2025,mc2025_track1_057,Cara,no,
+MCC 2025,mc2025_track1_058,tididi-cnf,no,
+MCC 2025,mc2025_track1_058,Ganak,no,
+MCC 2025,mc2025_track1_058,D4 (counter),no,
+MCC 2025,mc2025_track1_058,GPMC (counter),no,
+MCC 2025,mc2025_track1_058,Cara,no,
+MCC 2025,mc2025_track1_059,tididi-cnf,no,
+MCC 2025,mc2025_track1_059,Ganak,no,
+MCC 2025,mc2025_track1_059,D4 (counter),no,
+MCC 2025,mc2025_track1_059,GPMC (counter),no,
+MCC 2025,mc2025_track1_059,Cara,no,
+MCC 2025,mc2025_track1_060,tididi-cnf,no,
+MCC 2025,mc2025_track1_060,Ganak,no,
+MCC 2025,mc2025_track1_060,D4 (counter),no,
+MCC 2025,mc2025_track1_060,GPMC (counter),no,
+MCC 2025,mc2025_track1_060,Cara,no,
+MCC 2025,mc2025_track1_061,tididi-cnf,no,
+MCC 2025,mc2025_track1_061,Ganak,no,
+MCC 2025,mc2025_track1_061,D4 (counter),no,
+MCC 2025,mc2025_track1_061,GPMC (counter),no,
+MCC 2025,mc2025_track1_061,Cara,no,
+MCC 2025,mc2025_track1_062,tididi-cnf,no,
+MCC 2025,mc2025_track1_062,Ganak,no,
+MCC 2025,mc2025_track1_062,D4 (counter),no,
+MCC 2025,mc2025_track1_062,GPMC (counter),no,
+MCC 2025,mc2025_track1_062,Cara,no,
+MCC 2025,mc2025_track1_063,tididi-cnf,no,
+MCC 2025,mc2025_track1_063,Ganak,no,
+MCC 2025,mc2025_track1_063,D4 (counter),no,
+MCC 2025,mc2025_track1_063,GPMC (counter),no,
+MCC 2025,mc2025_track1_063,Cara,no,
+MCC 2025,mc2025_track1_064,tididi-cnf,yes,0.07
+MCC 2025,mc2025_track1_064,Ganak,yes,0.03
+MCC 2025,mc2025_track1_064,D4 (counter),yes,0.07
+MCC 2025,mc2025_track1_064,GPMC (counter),yes,0.05
+MCC 2025,mc2025_track1_064,Cara,yes,0.04
+MCC 2025,mc2025_track1_065,tididi-cnf,yes,0.07
+MCC 2025,mc2025_track1_065,Ganak,yes,0.03
+MCC 2025,mc2025_track1_065,D4 (counter),yes,0.06
+MCC 2025,mc2025_track1_065,GPMC (counter),yes,0.03
+MCC 2025,mc2025_track1_065,Cara,yes,0.04
+MCC 2025,mc2025_track1_066,tididi-cnf,yes,0.04
+MCC 2025,mc2025_track1_066,Ganak,yes,0.02
+MCC 2025,mc2025_track1_066,D4 (counter),yes,0.06
+MCC 2025,mc2025_track1_066,GPMC (counter),yes,0.02
+MCC 2025,mc2025_track1_066,Cara,yes,0.04
+MCC 2025,mc2025_track1_067,tididi-cnf,yes,0.07
+MCC 2025,mc2025_track1_067,Ganak,yes,0.03
+MCC 2025,mc2025_track1_067,D4 (counter),yes,0.09
+MCC 2025,mc2025_track1_067,GPMC (counter),yes,0.03
+MCC 2025,mc2025_track1_067,Cara,yes,0.05
+MCC 2025,mc2025_track1_068,tididi-cnf,yes,0.04
+MCC 2025,mc2025_track1_068,Ganak,yes,0.02
+MCC 2025,mc2025_track1_068,D4 (counter),yes,0.07
+MCC 2025,mc2025_track1_068,GPMC (counter),yes,0.02
+MCC 2025,mc2025_track1_068,Cara,yes,0.04
+MCC 2025,mc2025_track1_069,tididi-cnf,yes,1.37
+MCC 2025,mc2025_track1_069,Ganak,yes,0.54
+MCC 2025,mc2025_track1_069,D4 (counter),yes,0.98
+MCC 2025,mc2025_track1_069,GPMC (counter),yes,0.20
+MCC 2025,mc2025_track1_069,Cara,yes,2.52
+MCC 2025,mc2025_track1_070,tididi-cnf,yes,6.74
+MCC 2025,mc2025_track1_070,Ganak,yes,5.79
+MCC 2025,mc2025_track1_070,D4 (counter),yes,5.29
+MCC 2025,mc2025_track1_070,GPMC (counter),yes,21.22
+MCC 2025,mc2025_track1_070,Cara,yes,4.47
+MCC 2025,mc2025_track1_071,tididi-cnf,yes,1.07
+MCC 2025,mc2025_track1_071,Ganak,yes,0.35
+MCC 2025,mc2025_track1_071,D4 (counter),yes,0.62
+MCC 2025,mc2025_track1_071,GPMC (counter),yes,0.11
+MCC 2025,mc2025_track1_071,Cara,yes,2.30
+MCC 2025,mc2025_track1_072,tididi-cnf,yes,10.40
+MCC 2025,mc2025_track1_072,Ganak,yes,6.43
+MCC 2025,mc2025_track1_072,D4 (counter),no,
+MCC 2025,mc2025_track1_072,GPMC (counter),yes,5.85
+MCC 2025,mc2025_track1_072,Cara,yes,12.68
+MCC 2025,mc2025_track1_073,tididi-cnf,yes,2.13
+MCC 2025,mc2025_track1_073,Ganak,yes,0.88
+MCC 2025,mc2025_track1_073,D4 (counter),yes,1.44
+MCC 2025,mc2025_track1_073,GPMC (counter),yes,0.24
+MCC 2025,mc2025_track1_073,Cara,yes,3.15
+MCC 2025,mc2025_track1_074,tididi-cnf,yes,1.07
+MCC 2025,mc2025_track1_074,Ganak,yes,0.40
+MCC 2025,mc2025_track1_074,D4 (counter),yes,0.47
+MCC 2025,mc2025_track1_074,GPMC (counter),yes,0.12
+MCC 2025,mc2025_track1_074,Cara,yes,1.26
+MCC 2025,mc2025_track1_075,tididi-cnf,yes,29.81
+MCC 2025,mc2025_track1_075,Ganak,yes,40.55
+MCC 2025,mc2025_track1_075,D4 (counter),yes,79.89
+MCC 2025,mc2025_track1_075,GPMC (counter),no,
+MCC 2025,mc2025_track1_075,Cara,no,
+MCC 2025,mc2025_track1_076,tididi-cnf,yes,4.13
+MCC 2025,mc2025_track1_076,Ganak,yes,8.39
+MCC 2025,mc2025_track1_076,D4 (counter),yes,18.06
+MCC 2025,mc2025_track1_076,GPMC (counter),no,
+MCC 2025,mc2025_track1_076,Cara,yes,26.20
+MCC 2025,mc2025_track1_077,tididi-cnf,yes,24.03
+MCC 2025,mc2025_track1_077,Ganak,yes,41.66
+MCC 2025,mc2025_track1_077,D4 (counter),yes,112.06
+MCC 2025,mc2025_track1_077,GPMC (counter),no,
+MCC 2025,mc2025_track1_077,Cara,no,
+MCC 2025,mc2025_track1_078,tididi-cnf,yes,1.52
+MCC 2025,mc2025_track1_078,Ganak,yes,4.13
+MCC 2025,mc2025_track1_078,D4 (counter),yes,2.27
+MCC 2025,mc2025_track1_078,GPMC (counter),yes,30.40
+MCC 2025,mc2025_track1_078,Cara,yes,7.95
+MCC 2025,mc2025_track1_079,tididi-cnf,yes,103.18
+MCC 2025,mc2025_track1_079,Ganak,no,
+MCC 2025,mc2025_track1_079,D4 (counter),no,
+MCC 2025,mc2025_track1_079,GPMC (counter),no,
+MCC 2025,mc2025_track1_079,Cara,no,
+MCC 2025,mc2025_track1_080,tididi-cnf,no,
+MCC 2025,mc2025_track1_080,Ganak,no,
+MCC 2025,mc2025_track1_080,D4 (counter),no,
+MCC 2025,mc2025_track1_080,GPMC (counter),no,
+MCC 2025,mc2025_track1_080,Cara,no,
+MCC 2025,mc2025_track1_081,tididi-cnf,no,
+MCC 2025,mc2025_track1_081,Ganak,no,
+MCC 2025,mc2025_track1_081,D4 (counter),no,
+MCC 2025,mc2025_track1_081,GPMC (counter),no,
+MCC 2025,mc2025_track1_081,Cara,no,
+MCC 2025,mc2025_track1_082,tididi-cnf,no,
+MCC 2025,mc2025_track1_082,Ganak,no,
+MCC 2025,mc2025_track1_082,D4 (counter),no,
+MCC 2025,mc2025_track1_082,GPMC (counter),no,
+MCC 2025,mc2025_track1_082,Cara,no,
+MCC 2025,mc2025_track1_083,tididi-cnf,no,
+MCC 2025,mc2025_track1_083,Ganak,no,
+MCC 2025,mc2025_track1_083,D4 (counter),no,
+MCC 2025,mc2025_track1_083,GPMC (counter),no,
+MCC 2025,mc2025_track1_083,Cara,no,
+MCC 2025,mc2025_track1_084,tididi-cnf,no,
+MCC 2025,mc2025_track1_084,Ganak,no,
+MCC 2025,mc2025_track1_084,D4 (counter),no,
+MCC 2025,mc2025_track1_084,GPMC (counter),no,
+MCC 2025,mc2025_track1_084,Cara,no,
+MCC 2025,mc2025_track1_085,tididi-cnf,no,
+MCC 2025,mc2025_track1_085,Ganak,no,
+MCC 2025,mc2025_track1_085,D4 (counter),no,
+MCC 2025,mc2025_track1_085,GPMC (counter),no,
+MCC 2025,mc2025_track1_085,Cara,no,
+MCC 2025,mc2025_track1_086,tididi-cnf,no,
+MCC 2025,mc2025_track1_086,Ganak,no,
+MCC 2025,mc2025_track1_086,D4 (counter),no,
+MCC 2025,mc2025_track1_086,GPMC (counter),no,
+MCC 2025,mc2025_track1_086,Cara,no,
+MCC 2025,mc2025_track1_087,tididi-cnf,no,
+MCC 2025,mc2025_track1_087,Ganak,no,
+MCC 2025,mc2025_track1_087,D4 (counter),no,
+MCC 2025,mc2025_track1_087,GPMC (counter),no,
+MCC 2025,mc2025_track1_087,Cara,no,
+MCC 2025,mc2025_track1_088,tididi-cnf,no,
+MCC 2025,mc2025_track1_088,Ganak,no,
+MCC 2025,mc2025_track1_088,D4 (counter),no,
+MCC 2025,mc2025_track1_088,GPMC (counter),no,
+MCC 2025,mc2025_track1_088,Cara,no,
+MCC 2025,mc2025_track1_089,tididi-cnf,no,
+MCC 2025,mc2025_track1_089,Ganak,no,
+MCC 2025,mc2025_track1_089,D4 (counter),no,
+MCC 2025,mc2025_track1_089,GPMC (counter),no,
+MCC 2025,mc2025_track1_089,Cara,no,
+MCC 2025,mc2025_track1_090,tididi-cnf,no,
+MCC 2025,mc2025_track1_090,Ganak,no,
+MCC 2025,mc2025_track1_090,D4 (counter),no,
+MCC 2025,mc2025_track1_090,GPMC (counter),no,
+MCC 2025,mc2025_track1_090,Cara,no,
+MCC 2025,mc2025_track1_091,tididi-cnf,no,
+MCC 2025,mc2025_track1_091,Ganak,no,
+MCC 2025,mc2025_track1_091,D4 (counter),no,
+MCC 2025,mc2025_track1_091,GPMC (counter),no,
+MCC 2025,mc2025_track1_091,Cara,no,
+MCC 2025,mc2025_track1_092,tididi-cnf,no,
+MCC 2025,mc2025_track1_092,Ganak,no,
+MCC 2025,mc2025_track1_092,D4 (counter),no,
+MCC 2025,mc2025_track1_092,GPMC (counter),no,
+MCC 2025,mc2025_track1_092,Cara,no,
+MCC 2025,mc2025_track1_093,tididi-cnf,yes,31.16
+MCC 2025,mc2025_track1_093,Ganak,yes,10.56
+MCC 2025,mc2025_track1_093,D4 (counter),yes,60.16
+MCC 2025,mc2025_track1_093,GPMC (counter),yes,23.78
+MCC 2025,mc2025_track1_093,Cara,yes,88.47
+MCC 2025,mc2025_track1_094,tididi-cnf,no,
+MCC 2025,mc2025_track1_094,Ganak,no,
+MCC 2025,mc2025_track1_094,D4 (counter),no,
+MCC 2025,mc2025_track1_094,GPMC (counter),no,
+MCC 2025,mc2025_track1_094,Cara,no,
+MCC 2025,mc2025_track1_095,tididi-cnf,yes,31.01
+MCC 2025,mc2025_track1_095,Ganak,yes,7.97
+MCC 2025,mc2025_track1_095,D4 (counter),yes,38.45
+MCC 2025,mc2025_track1_095,GPMC (counter),yes,13.84
+MCC 2025,mc2025_track1_095,Cara,yes,80.51
+MCC 2025,mc2025_track1_096,tididi-cnf,yes,5.14
+MCC 2025,mc2025_track1_096,Ganak,yes,6.99
+MCC 2025,mc2025_track1_096,D4 (counter),yes,35.05
+MCC 2025,mc2025_track1_096,GPMC (counter),yes,4.68
+MCC 2025,mc2025_track1_096,Cara,yes,9.79
+MCC 2025,mc2025_track1_097,tididi-cnf,no,
+MCC 2025,mc2025_track1_097,Ganak,yes,5.21
+MCC 2025,mc2025_track1_097,D4 (counter),yes,36.89
+MCC 2025,mc2025_track1_097,GPMC (counter),yes,5.41
+MCC 2025,mc2025_track1_097,Cara,yes,31.30
+MCC 2025,mc2025_track1_098,tididi-cnf,no,
+MCC 2025,mc2025_track1_098,Ganak,yes,6.26
+MCC 2025,mc2025_track1_098,D4 (counter),yes,38.30
+MCC 2025,mc2025_track1_098,GPMC (counter),yes,5.18
+MCC 2025,mc2025_track1_098,Cara,yes,24.70
+MCC 2025,mc2025_track1_099,tididi-cnf,yes,5.34
+MCC 2025,mc2025_track1_099,Ganak,yes,2.11
+MCC 2025,mc2025_track1_099,D4 (counter),yes,19.54
+MCC 2025,mc2025_track1_099,GPMC (counter),yes,12.16
+MCC 2025,mc2025_track1_099,Cara,yes,8.91
+MCC 2025,mc2025_track1_100,tididi-cnf,no,
+MCC 2025,mc2025_track1_100,Ganak,no,
+MCC 2025,mc2025_track1_100,D4 (counter),no,
+MCC 2025,mc2025_track1_100,GPMC (counter),no,
+MCC 2025,mc2025_track1_100,Cara,no,
+MCC 2025,mc2025_track1_101,tididi-cnf,no,
+MCC 2025,mc2025_track1_101,Ganak,yes,61.94
+MCC 2025,mc2025_track1_101,D4 (counter),no,
+MCC 2025,mc2025_track1_101,GPMC (counter),no,
+MCC 2025,mc2025_track1_101,Cara,no,
+MCC 2025,mc2025_track1_102,tididi-cnf,no,
+MCC 2025,mc2025_track1_102,Ganak,no,
+MCC 2025,mc2025_track1_102,D4 (counter),no,
+MCC 2025,mc2025_track1_102,GPMC (counter),no,
+MCC 2025,mc2025_track1_102,Cara,no,
+MCC 2025,mc2025_track1_103,tididi-cnf,no,
+MCC 2025,mc2025_track1_103,Ganak,no,
+MCC 2025,mc2025_track1_103,D4 (counter),no,
+MCC 2025,mc2025_track1_103,GPMC (counter),no,
+MCC 2025,mc2025_track1_103,Cara,no,
+MCC 2025,mc2025_track1_104,tididi-cnf,no,
+MCC 2025,mc2025_track1_104,Ganak,no,
+MCC 2025,mc2025_track1_104,D4 (counter),no,
+MCC 2025,mc2025_track1_104,GPMC (counter),no,
+MCC 2025,mc2025_track1_104,Cara,no,
+MCC 2025,mc2025_track1_105,tididi-cnf,no,
+MCC 2025,mc2025_track1_105,Ganak,no,
+MCC 2025,mc2025_track1_105,D4 (counter),no,
+MCC 2025,mc2025_track1_105,GPMC (counter),no,
+MCC 2025,mc2025_track1_105,Cara,no,
+MCC 2025,mc2025_track1_106,tididi-cnf,yes,26.70
+MCC 2025,mc2025_track1_106,Ganak,yes,35.71
+MCC 2025,mc2025_track1_106,D4 (counter),no,
+MCC 2025,mc2025_track1_106,GPMC (counter),no,
+MCC 2025,mc2025_track1_106,Cara,no,
+MCC 2025,mc2025_track1_107,tididi-cnf,yes,13.30
+MCC 2025,mc2025_track1_107,Ganak,yes,10.52
+MCC 2025,mc2025_track1_107,D4 (counter),yes,80.29
+MCC 2025,mc2025_track1_107,GPMC (counter),yes,17.78
+MCC 2025,mc2025_track1_107,Cara,yes,25.34
+MCC 2025,mc2025_track1_108,tididi-cnf,yes,15.96
+MCC 2025,mc2025_track1_108,Ganak,yes,22.16
+MCC 2025,mc2025_track1_108,D4 (counter),no,
+MCC 2025,mc2025_track1_108,GPMC (counter),no,
+MCC 2025,mc2025_track1_108,Cara,yes,99.83
+MCC 2025,mc2025_track1_109,tididi-cnf,yes,14.26
+MCC 2025,mc2025_track1_109,Ganak,yes,16.53
+MCC 2025,mc2025_track1_109,D4 (counter),no,
+MCC 2025,mc2025_track1_109,GPMC (counter),yes,41.24
+MCC 2025,mc2025_track1_109,Cara,yes,50.31
+MCC 2025,mc2025_track1_110,tididi-cnf,no,
+MCC 2025,mc2025_track1_110,Ganak,yes,91.66
+MCC 2025,mc2025_track1_110,D4 (counter),no,
+MCC 2025,mc2025_track1_110,GPMC (counter),no,
+MCC 2025,mc2025_track1_110,Cara,no,
+MCC 2025,mc2025_track1_111,tididi-cnf,yes,79.30
+MCC 2025,mc2025_track1_111,Ganak,yes,89.89
+MCC 2025,mc2025_track1_111,D4 (counter),no,
+MCC 2025,mc2025_track1_111,GPMC (counter),no,
+MCC 2025,mc2025_track1_111,Cara,no,
+MCC 2025,mc2025_track1_112,tididi-cnf,yes,48.50
+MCC 2025,mc2025_track1_112,Ganak,yes,52.86
+MCC 2025,mc2025_track1_112,D4 (counter),no,
+MCC 2025,mc2025_track1_112,GPMC (counter),no,
+MCC 2025,mc2025_track1_112,Cara,no,
+MCC 2025,mc2025_track1_113,tididi-cnf,yes,1.63
+MCC 2025,mc2025_track1_113,Ganak,yes,6.92
+MCC 2025,mc2025_track1_113,D4 (counter),yes,4.78
+MCC 2025,mc2025_track1_113,GPMC (counter),yes,8.47
+MCC 2025,mc2025_track1_113,Cara,yes,3.66
+MCC 2025,mc2025_track1_114,tididi-cnf,no,
+MCC 2025,mc2025_track1_114,Ganak,no,
+MCC 2025,mc2025_track1_114,D4 (counter),no,
+MCC 2025,mc2025_track1_114,GPMC (counter),no,
+MCC 2025,mc2025_track1_114,Cara,no,
+MCC 2025,mc2025_track1_115,tididi-cnf,yes,55.98
+MCC 2025,mc2025_track1_115,Ganak,yes,56.40
+MCC 2025,mc2025_track1_115,D4 (counter),no,
+MCC 2025,mc2025_track1_115,GPMC (counter),no,
+MCC 2025,mc2025_track1_115,Cara,no,
+MCC 2025,mc2025_track1_116,tididi-cnf,yes,3.78
+MCC 2025,mc2025_track1_116,Ganak,yes,7.88
+MCC 2025,mc2025_track1_116,D4 (counter),yes,28.91
+MCC 2025,mc2025_track1_116,GPMC (counter),yes,11.18
+MCC 2025,mc2025_track1_116,Cara,yes,7.21
+MCC 2025,mc2025_track1_117,tididi-cnf,no,
+MCC 2025,mc2025_track1_117,Ganak,no,
+MCC 2025,mc2025_track1_117,D4 (counter),no,
+MCC 2025,mc2025_track1_117,GPMC (counter),no,
+MCC 2025,mc2025_track1_117,Cara,no,
+MCC 2025,mc2025_track1_118,tididi-cnf,no,
+MCC 2025,mc2025_track1_118,Ganak,no,
+MCC 2025,mc2025_track1_118,D4 (counter),no,
+MCC 2025,mc2025_track1_118,GPMC (counter),no,
+MCC 2025,mc2025_track1_118,Cara,no,
+MCC 2025,mc2025_track1_119,tididi-cnf,no,
+MCC 2025,mc2025_track1_119,Ganak,no,
+MCC 2025,mc2025_track1_119,D4 (counter),no,
+MCC 2025,mc2025_track1_119,GPMC (counter),no,
+MCC 2025,mc2025_track1_119,Cara,no,
+MCC 2025,mc2025_track1_120,tididi-cnf,no,
+MCC 2025,mc2025_track1_120,Ganak,no,
+MCC 2025,mc2025_track1_120,D4 (counter),no,
+MCC 2025,mc2025_track1_120,GPMC (counter),no,
+MCC 2025,mc2025_track1_120,Cara,no,
+MCC 2025,mc2025_track1_121,tididi-cnf,yes,46.45
+MCC 2025,mc2025_track1_121,Ganak,no,
+MCC 2025,mc2025_track1_121,D4 (counter),no,
+MCC 2025,mc2025_track1_121,GPMC (counter),yes,4.09
+MCC 2025,mc2025_track1_121,Cara,no,
+MCC 2025,mc2025_track1_122,tididi-cnf,no,
+MCC 2025,mc2025_track1_122,Ganak,no,
+MCC 2025,mc2025_track1_122,D4 (counter),no,
+MCC 2025,mc2025_track1_122,GPMC (counter),no,
+MCC 2025,mc2025_track1_122,Cara,no,
+MCC 2025,mc2025_track1_123,tididi-cnf,no,
+MCC 2025,mc2025_track1_123,Ganak,yes,16.37
+MCC 2025,mc2025_track1_123,D4 (counter),no,
+MCC 2025,mc2025_track1_123,GPMC (counter),yes,66.97
+MCC 2025,mc2025_track1_123,Cara,yes,90.42
+MCC 2025,mc2025_track1_124,tididi-cnf,no,
+MCC 2025,mc2025_track1_124,Ganak,yes,64.70
+MCC 2025,mc2025_track1_124,D4 (counter),no,
+MCC 2025,mc2025_track1_124,GPMC (counter),no,
+MCC 2025,mc2025_track1_124,Cara,no,
+MCC 2025,mc2025_track1_125,tididi-cnf,no,
+MCC 2025,mc2025_track1_125,Ganak,yes,18.23
+MCC 2025,mc2025_track1_125,D4 (counter),no,
+MCC 2025,mc2025_track1_125,GPMC (counter),yes,113.08
+MCC 2025,mc2025_track1_125,Cara,yes,93.49
+MCC 2025,mc2025_track1_126,tididi-cnf,no,
+MCC 2025,mc2025_track1_126,Ganak,no,
+MCC 2025,mc2025_track1_126,D4 (counter),no,
+MCC 2025,mc2025_track1_126,GPMC (counter),no,
+MCC 2025,mc2025_track1_126,Cara,no,
+MCC 2025,mc2025_track1_127,tididi-cnf,no,
+MCC 2025,mc2025_track1_127,Ganak,no,
+MCC 2025,mc2025_track1_127,D4 (counter),no,
+MCC 2025,mc2025_track1_127,GPMC (counter),no,
+MCC 2025,mc2025_track1_127,Cara,no,
+MCC 2025,mc2025_track1_128,tididi-cnf,yes,50.26
+MCC 2025,mc2025_track1_128,Ganak,no,
+MCC 2025,mc2025_track1_128,D4 (counter),no,
+MCC 2025,mc2025_track1_128,GPMC (counter),no,
+MCC 2025,mc2025_track1_128,Cara,no,
+MCC 2025,mc2025_track1_129,tididi-cnf,no,
+MCC 2025,mc2025_track1_129,Ganak,no,
+MCC 2025,mc2025_track1_129,D4 (counter),no,
+MCC 2025,mc2025_track1_129,GPMC (counter),no,
+MCC 2025,mc2025_track1_129,Cara,no,
+MCC 2025,mc2025_track1_130,tididi-cnf,yes,7.95
+MCC 2025,mc2025_track1_130,Ganak,yes,23.14
+MCC 2025,mc2025_track1_130,D4 (counter),no,
+MCC 2025,mc2025_track1_130,GPMC (counter),no,
+MCC 2025,mc2025_track1_130,Cara,no,
+MCC 2025,mc2025_track1_131,tididi-cnf,yes,4.13
+MCC 2025,mc2025_track1_131,Ganak,yes,20.27
+MCC 2025,mc2025_track1_131,D4 (counter),yes,118.43
+MCC 2025,mc2025_track1_131,GPMC (counter),no,
+MCC 2025,mc2025_track1_131,Cara,no,
+MCC 2025,mc2025_track1_132,tididi-cnf,yes,6.54
+MCC 2025,mc2025_track1_132,Ganak,yes,6.13
+MCC 2025,mc2025_track1_132,D4 (counter),yes,24.52
+MCC 2025,mc2025_track1_132,GPMC (counter),no,
+MCC 2025,mc2025_track1_132,Cara,yes,6.21
+MCC 2025,mc2025_track1_133,tididi-cnf,no,
+MCC 2025,mc2025_track1_133,Ganak,no,
+MCC 2025,mc2025_track1_133,D4 (counter),no,
+MCC 2025,mc2025_track1_133,GPMC (counter),no,
+MCC 2025,mc2025_track1_133,Cara,no,
+MCC 2025,mc2025_track1_134,tididi-cnf,no,
+MCC 2025,mc2025_track1_134,Ganak,no,
+MCC 2025,mc2025_track1_134,D4 (counter),no,
+MCC 2025,mc2025_track1_134,GPMC (counter),no,
+MCC 2025,mc2025_track1_134,Cara,no,
+MCC 2025,mc2025_track1_135,tididi-cnf,no,
+MCC 2025,mc2025_track1_135,Ganak,no,
+MCC 2025,mc2025_track1_135,D4 (counter),no,
+MCC 2025,mc2025_track1_135,GPMC (counter),no,
+MCC 2025,mc2025_track1_135,Cara,no,
+MCC 2025,mc2025_track1_136,tididi-cnf,yes,4.53
+MCC 2025,mc2025_track1_136,Ganak,no,
+MCC 2025,mc2025_track1_136,D4 (counter),yes,41.82
+MCC 2025,mc2025_track1_136,GPMC (counter),no,
+MCC 2025,mc2025_track1_136,Cara,no,
+MCC 2025,mc2025_track1_137,tididi-cnf,yes,11.70
+MCC 2025,mc2025_track1_137,Ganak,yes,14.75
+MCC 2025,mc2025_track1_137,D4 (counter),yes,46.44
+MCC 2025,mc2025_track1_137,GPMC (counter),no,
+MCC 2025,mc2025_track1_137,Cara,yes,49.77
+MCC 2025,mc2025_track1_138,tididi-cnf,yes,0.37
+MCC 2025,mc2025_track1_138,Ganak,yes,0.29
+MCC 2025,mc2025_track1_138,D4 (counter),yes,13.97
+MCC 2025,mc2025_track1_138,GPMC (counter),yes,2.54
+MCC 2025,mc2025_track1_138,Cara,yes,0.56
+MCC 2025,mc2025_track1_139,tididi-cnf,yes,8.85
+MCC 2025,mc2025_track1_139,Ganak,no,
+MCC 2025,mc2025_track1_139,D4 (counter),yes,57.45
+MCC 2025,mc2025_track1_139,GPMC (counter),no,
+MCC 2025,mc2025_track1_139,Cara,no,
+MCC 2025,mc2025_track1_140,tididi-cnf,yes,1.58
+MCC 2025,mc2025_track1_140,Ganak,yes,22.72
+MCC 2025,mc2025_track1_140,D4 (counter),yes,13.35
+MCC 2025,mc2025_track1_140,GPMC (counter),no,
+MCC 2025,mc2025_track1_140,Cara,no,
+MCC 2025,mc2025_track1_141,tididi-cnf,yes,1.48
+MCC 2025,mc2025_track1_141,Ganak,yes,19.57
+MCC 2025,mc2025_track1_141,D4 (counter),yes,16.77
+MCC 2025,mc2025_track1_141,GPMC (counter),no,
+MCC 2025,mc2025_track1_141,Cara,no,
+MCC 2025,mc2025_track1_142,tididi-cnf,yes,9.85
+MCC 2025,mc2025_track1_142,Ganak,yes,10.95
+MCC 2025,mc2025_track1_142,D4 (counter),yes,71.38
+MCC 2025,mc2025_track1_142,GPMC (counter),no,
+MCC 2025,mc2025_track1_142,Cara,yes,12.46
+MCC 2025,mc2025_track1_143,tididi-cnf,yes,3.43
+MCC 2025,mc2025_track1_143,Ganak,yes,7.79
+MCC 2025,mc2025_track1_143,D4 (counter),yes,10.59
+MCC 2025,mc2025_track1_143,GPMC (counter),no,
+MCC 2025,mc2025_track1_143,Cara,no,
+MCC 2025,mc2025_track1_144,tididi-cnf,no,
+MCC 2025,mc2025_track1_144,Ganak,yes,26.31
+MCC 2025,mc2025_track1_144,D4 (counter),no,
+MCC 2025,mc2025_track1_144,GPMC (counter),yes,116.85
+MCC 2025,mc2025_track1_144,Cara,no,
+MCC 2025,mc2025_track1_145,tididi-cnf,yes,0.37
+MCC 2025,mc2025_track1_145,Ganak,yes,0.59
+MCC 2025,mc2025_track1_145,D4 (counter),yes,0.83
+MCC 2025,mc2025_track1_145,GPMC (counter),yes,0.34
+MCC 2025,mc2025_track1_145,Cara,yes,0.88
+MCC 2025,mc2025_track1_146,tididi-cnf,no,
+MCC 2025,mc2025_track1_146,Ganak,no,
+MCC 2025,mc2025_track1_146,D4 (counter),no,
+MCC 2025,mc2025_track1_146,GPMC (counter),no,
+MCC 2025,mc2025_track1_146,Cara,no,
+MCC 2025,mc2025_track1_147,tididi-cnf,yes,1.78
+MCC 2025,mc2025_track1_147,Ganak,no,
+MCC 2025,mc2025_track1_147,D4 (counter),yes,4.46
+MCC 2025,mc2025_track1_147,GPMC (counter),no,
+MCC 2025,mc2025_track1_147,Cara,no,
+MCC 2025,mc2025_track1_148,tididi-cnf,no,
+MCC 2025,mc2025_track1_148,Ganak,no,
+MCC 2025,mc2025_track1_148,D4 (counter),no,
+MCC 2025,mc2025_track1_148,GPMC (counter),no,
+MCC 2025,mc2025_track1_148,Cara,no,
+MCC 2025,mc2025_track1_149,tididi-cnf,no,
+MCC 2025,mc2025_track1_149,Ganak,no,
+MCC 2025,mc2025_track1_149,D4 (counter),no,
+MCC 2025,mc2025_track1_149,GPMC (counter),no,
+MCC 2025,mc2025_track1_149,Cara,no,
+MCC 2025,mc2025_track1_150,tididi-cnf,no,
+MCC 2025,mc2025_track1_150,Ganak,yes,41.15
+MCC 2025,mc2025_track1_150,D4 (counter),yes,50.66
+MCC 2025,mc2025_track1_150,GPMC (counter),yes,37.24
+MCC 2025,mc2025_track1_150,Cara,no,
+MCC 2025,mc2025_track1_151,tididi-cnf,no,
+MCC 2025,mc2025_track1_151,Ganak,yes,29.07
+MCC 2025,mc2025_track1_151,D4 (counter),no,
+MCC 2025,mc2025_track1_151,GPMC (counter),yes,62.00
+MCC 2025,mc2025_track1_151,Cara,no,
+MCC 2025,mc2025_track1_152,tididi-cnf,no,
+MCC 2025,mc2025_track1_152,Ganak,no,
+MCC 2025,mc2025_track1_152,D4 (counter),no,
+MCC 2025,mc2025_track1_152,GPMC (counter),no,
+MCC 2025,mc2025_track1_152,Cara,no,
+MCC 2025,mc2025_track1_153,tididi-cnf,no,
+MCC 2025,mc2025_track1_153,Ganak,yes,51.06
+MCC 2025,mc2025_track1_153,D4 (counter),yes,59.32
+MCC 2025,mc2025_track1_153,GPMC (counter),yes,39.30
+MCC 2025,mc2025_track1_153,Cara,yes,95.67
+MCC 2025,mc2025_track1_154,tididi-cnf,no,
+MCC 2025,mc2025_track1_154,Ganak,no,
+MCC 2025,mc2025_track1_154,D4 (counter),no,
+MCC 2025,mc2025_track1_154,GPMC (counter),no,
+MCC 2025,mc2025_track1_154,Cara,no,
+MCC 2025,mc2025_track1_155,tididi-cnf,yes,4.58
+MCC 2025,mc2025_track1_155,Ganak,yes,2.93
+MCC 2025,mc2025_track1_155,D4 (counter),yes,18.97
+MCC 2025,mc2025_track1_155,GPMC (counter),yes,1.53
+MCC 2025,mc2025_track1_155,Cara,yes,36.72
+MCC 2025,mc2025_track1_156,tididi-cnf,no,
+MCC 2025,mc2025_track1_156,Ganak,no,
+MCC 2025,mc2025_track1_156,D4 (counter),no,
+MCC 2025,mc2025_track1_156,GPMC (counter),no,
+MCC 2025,mc2025_track1_156,Cara,no,
+MCC 2025,mc2025_track1_157,tididi-cnf,no,
+MCC 2025,mc2025_track1_157,Ganak,no,
+MCC 2025,mc2025_track1_157,D4 (counter),no,
+MCC 2025,mc2025_track1_157,GPMC (counter),no,
+MCC 2025,mc2025_track1_157,Cara,no,
+MCC 2025,mc2025_track1_158,tididi-cnf,no,
+MCC 2025,mc2025_track1_158,Ganak,no,
+MCC 2025,mc2025_track1_158,D4 (counter),no,
+MCC 2025,mc2025_track1_158,GPMC (counter),no,
+MCC 2025,mc2025_track1_158,Cara,no,
+MCC 2025,mc2025_track1_159,tididi-cnf,yes,0.37
+MCC 2025,mc2025_track1_159,Ganak,yes,0.26
+MCC 2025,mc2025_track1_159,D4 (counter),yes,0.47
+MCC 2025,mc2025_track1_159,GPMC (counter),yes,0.90
+MCC 2025,mc2025_track1_159,Cara,yes,6.64
+MCC 2025,mc2025_track1_160,tididi-cnf,yes,2.68
+MCC 2025,mc2025_track1_160,Ganak,yes,1.19
+MCC 2025,mc2025_track1_160,D4 (counter),yes,4.80
+MCC 2025,mc2025_track1_160,GPMC (counter),yes,2.56
+MCC 2025,mc2025_track1_160,Cara,yes,25.83
+MCC 2025,mc2025_track1_161,tididi-cnf,no,
+MCC 2025,mc2025_track1_161,Ganak,no,
+MCC 2025,mc2025_track1_161,D4 (counter),no,
+MCC 2025,mc2025_track1_161,GPMC (counter),no,
+MCC 2025,mc2025_track1_161,Cara,no,
+MCC 2025,mc2025_track1_162,tididi-cnf,no,
+MCC 2025,mc2025_track1_162,Ganak,no,
+MCC 2025,mc2025_track1_162,D4 (counter),no,
+MCC 2025,mc2025_track1_162,GPMC (counter),no,
+MCC 2025,mc2025_track1_162,Cara,no,
+MCC 2025,mc2025_track1_163,tididi-cnf,no,
+MCC 2025,mc2025_track1_163,Ganak,no,
+MCC 2025,mc2025_track1_163,D4 (counter),no,
+MCC 2025,mc2025_track1_163,GPMC (counter),no,
+MCC 2025,mc2025_track1_163,Cara,no,
+MCC 2025,mc2025_track1_164,tididi-cnf,no,
+MCC 2025,mc2025_track1_164,Ganak,no,
+MCC 2025,mc2025_track1_164,D4 (counter),no,
+MCC 2025,mc2025_track1_164,GPMC (counter),no,
+MCC 2025,mc2025_track1_164,Cara,no,
+MCC 2025,mc2025_track1_165,tididi-cnf,no,
+MCC 2025,mc2025_track1_165,Ganak,no,
+MCC 2025,mc2025_track1_165,D4 (counter),no,
+MCC 2025,mc2025_track1_165,GPMC (counter),no,
+MCC 2025,mc2025_track1_165,Cara,no,
+MCC 2025,mc2025_track1_166,tididi-cnf,yes,24.93
+MCC 2025,mc2025_track1_166,Ganak,yes,105.94
+MCC 2025,mc2025_track1_166,D4 (counter),no,
+MCC 2025,mc2025_track1_166,GPMC (counter),no,
+MCC 2025,mc2025_track1_166,Cara,no,
+MCC 2025,mc2025_track1_167,tididi-cnf,no,
+MCC 2025,mc2025_track1_167,Ganak,yes,19.03
+MCC 2025,mc2025_track1_167,D4 (counter),yes,35.60
+MCC 2025,mc2025_track1_167,GPMC (counter),yes,57.22
+MCC 2025,mc2025_track1_167,Cara,no,
+MCC 2025,mc2025_track1_168,tididi-cnf,no,
+MCC 2025,mc2025_track1_168,Ganak,yes,46.66
+MCC 2025,mc2025_track1_168,D4 (counter),no,
+MCC 2025,mc2025_track1_168,GPMC (counter),yes,17.53
+MCC 2025,mc2025_track1_168,Cara,no,
+MCC 2025,mc2025_track1_169,tididi-cnf,no,
+MCC 2025,mc2025_track1_169,Ganak,yes,55.54
+MCC 2025,mc2025_track1_169,D4 (counter),no,
+MCC 2025,mc2025_track1_169,GPMC (counter),yes,21.14
+MCC 2025,mc2025_track1_169,Cara,no,
+MCC 2025,mc2025_track1_170,tididi-cnf,no,
+MCC 2025,mc2025_track1_170,Ganak,no,
+MCC 2025,mc2025_track1_170,D4 (counter),no,
+MCC 2025,mc2025_track1_170,GPMC (counter),no,
+MCC 2025,mc2025_track1_170,Cara,no,
+MCC 2025,mc2025_track1_171,tididi-cnf,yes,28.35
+MCC 2025,mc2025_track1_171,Ganak,yes,18.29
+MCC 2025,mc2025_track1_171,D4 (counter),yes,59.95
+MCC 2025,mc2025_track1_171,GPMC (counter),yes,13.29
+MCC 2025,mc2025_track1_171,Cara,yes,83.52
+MCC 2025,mc2025_track1_172,tididi-cnf,no,
+MCC 2025,mc2025_track1_172,Ganak,no,
+MCC 2025,mc2025_track1_172,D4 (counter),no,
+MCC 2025,mc2025_track1_172,GPMC (counter),no,
+MCC 2025,mc2025_track1_172,Cara,no,
+MCC 2025,mc2025_track1_173,tididi-cnf,yes,38.23
+MCC 2025,mc2025_track1_173,Ganak,yes,35.53
+MCC 2025,mc2025_track1_173,D4 (counter),yes,78.09
+MCC 2025,mc2025_track1_173,GPMC (counter),yes,25.63
+MCC 2025,mc2025_track1_173,Cara,no,
+MCC 2025,mc2025_track1_174,tididi-cnf,no,
+MCC 2025,mc2025_track1_174,Ganak,no,
+MCC 2025,mc2025_track1_174,D4 (counter),no,
+MCC 2025,mc2025_track1_174,GPMC (counter),no,
+MCC 2025,mc2025_track1_174,Cara,no,
+MCC 2025,mc2025_track1_175,tididi-cnf,no,
+MCC 2025,mc2025_track1_175,Ganak,yes,71.01
+MCC 2025,mc2025_track1_175,D4 (counter),yes,118.33
+MCC 2025,mc2025_track1_175,GPMC (counter),no,
+MCC 2025,mc2025_track1_175,Cara,no,
+MCC 2025,mc2025_track1_176,tididi-cnf,no,
+MCC 2025,mc2025_track1_176,Ganak,yes,11.48
+MCC 2025,mc2025_track1_176,D4 (counter),yes,22.59
+MCC 2025,mc2025_track1_176,GPMC (counter),yes,30.90
+MCC 2025,mc2025_track1_176,Cara,no,
+MCC 2025,mc2025_track1_177,tididi-cnf,yes,16.27
+MCC 2025,mc2025_track1_177,Ganak,yes,28.50
+MCC 2025,mc2025_track1_177,D4 (counter),no,
+MCC 2025,mc2025_track1_177,GPMC (counter),no,
+MCC 2025,mc2025_track1_177,Cara,yes,97.20
+MCC 2025,mc2025_track1_178,tididi-cnf,yes,7.34
+MCC 2025,mc2025_track1_178,Ganak,yes,12.80
+MCC 2025,mc2025_track1_178,D4 (counter),yes,49.68
+MCC 2025,mc2025_track1_178,GPMC (counter),yes,46.69
+MCC 2025,mc2025_track1_178,Cara,yes,16.41
+MCC 2025,mc2025_track1_179,tididi-cnf,yes,24.60
+MCC 2025,mc2025_track1_179,Ganak,yes,47.09
+MCC 2025,mc2025_track1_179,D4 (counter),no,
+MCC 2025,mc2025_track1_179,GPMC (counter),no,
+MCC 2025,mc2025_track1_179,Cara,no,
+MCC 2025,mc2025_track1_180,tididi-cnf,yes,75.03
+MCC 2025,mc2025_track1_180,Ganak,no,
+MCC 2025,mc2025_track1_180,D4 (counter),no,
+MCC 2025,mc2025_track1_180,GPMC (counter),no,
+MCC 2025,mc2025_track1_180,Cara,no,
+MCC 2025,mc2025_track1_181,tididi-cnf,no,
+MCC 2025,mc2025_track1_181,Ganak,no,
+MCC 2025,mc2025_track1_181,D4 (counter),no,
+MCC 2025,mc2025_track1_181,GPMC (counter),no,
+MCC 2025,mc2025_track1_181,Cara,no,
+MCC 2025,mc2025_track1_182,tididi-cnf,yes,1.18
+MCC 2025,mc2025_track1_182,Ganak,yes,7.60
+MCC 2025,mc2025_track1_182,D4 (counter),yes,4.55
+MCC 2025,mc2025_track1_182,GPMC (counter),yes,12.72
+MCC 2025,mc2025_track1_182,Cara,yes,3.96
+MCC 2025,mc2025_track1_183,tididi-cnf,yes,6.64
+MCC 2025,mc2025_track1_183,Ganak,yes,7.83
+MCC 2025,mc2025_track1_183,D4 (counter),yes,30.12
+MCC 2025,mc2025_track1_183,GPMC (counter),yes,21.60
+MCC 2025,mc2025_track1_183,Cara,yes,11.16
+MCC 2025,mc2025_track1_184,tididi-cnf,yes,10.70
+MCC 2025,mc2025_track1_184,Ganak,yes,44.14
+MCC 2025,mc2025_track1_184,D4 (counter),no,
+MCC 2025,mc2025_track1_184,GPMC (counter),no,
+MCC 2025,mc2025_track1_184,Cara,yes,88.36
+MCC 2025,mc2025_track1_185,tididi-cnf,yes,27.10
+MCC 2025,mc2025_track1_185,Ganak,no,
+MCC 2025,mc2025_track1_185,D4 (counter),no,
+MCC 2025,mc2025_track1_185,GPMC (counter),no,
+MCC 2025,mc2025_track1_185,Cara,no,
+MCC 2025,mc2025_track1_186,tididi-cnf,no,
+MCC 2025,mc2025_track1_186,Ganak,yes,11.48
+MCC 2025,mc2025_track1_186,D4 (counter),yes,96.89
+MCC 2025,mc2025_track1_186,GPMC (counter),no,
+MCC 2025,mc2025_track1_186,Cara,yes,42.93
+MCC 2025,mc2025_track1_187,tididi-cnf,no,
+MCC 2025,mc2025_track1_187,Ganak,no,
+MCC 2025,mc2025_track1_187,D4 (counter),no,
+MCC 2025,mc2025_track1_187,GPMC (counter),no,
+MCC 2025,mc2025_track1_187,Cara,no,
+MCC 2025,mc2025_track1_188,tididi-cnf,no,
+MCC 2025,mc2025_track1_188,Ganak,no,
+MCC 2025,mc2025_track1_188,D4 (counter),no,
+MCC 2025,mc2025_track1_188,GPMC (counter),no,
+MCC 2025,mc2025_track1_188,Cara,no,
+MCC 2025,mc2025_track1_189,tididi-cnf,no,
+MCC 2025,mc2025_track1_189,Ganak,no,
+MCC 2025,mc2025_track1_189,D4 (counter),no,
+MCC 2025,mc2025_track1_189,GPMC (counter),no,
+MCC 2025,mc2025_track1_189,Cara,yes,52.02
+MCC 2025,mc2025_track1_190,tididi-cnf,no,
+MCC 2025,mc2025_track1_190,Ganak,yes,44.58
+MCC 2025,mc2025_track1_190,D4 (counter),no,
+MCC 2025,mc2025_track1_190,GPMC (counter),no,
+MCC 2025,mc2025_track1_190,Cara,no,
+MCC 2025,mc2025_track1_191,tididi-cnf,no,
+MCC 2025,mc2025_track1_191,Ganak,no,
+MCC 2025,mc2025_track1_191,D4 (counter),no,
+MCC 2025,mc2025_track1_191,GPMC (counter),no,
+MCC 2025,mc2025_track1_191,Cara,no,
+MCC 2025,mc2025_track1_192,tididi-cnf,no,
+MCC 2025,mc2025_track1_192,Ganak,no,
+MCC 2025,mc2025_track1_192,D4 (counter),no,
+MCC 2025,mc2025_track1_192,GPMC (counter),no,
+MCC 2025,mc2025_track1_192,Cara,no,
+MCC 2025,mc2025_track1_193,tididi-cnf,no,
+MCC 2025,mc2025_track1_193,Ganak,no,
+MCC 2025,mc2025_track1_193,D4 (counter),no,
+MCC 2025,mc2025_track1_193,GPMC (counter),no,
+MCC 2025,mc2025_track1_193,Cara,no,
+MCC 2025,mc2025_track1_194,tididi-cnf,no,
+MCC 2025,mc2025_track1_194,Ganak,no,
+MCC 2025,mc2025_track1_194,D4 (counter),no,
+MCC 2025,mc2025_track1_194,GPMC (counter),no,
+MCC 2025,mc2025_track1_194,Cara,no,
+MCC 2025,mc2025_track1_195,tididi-cnf,no,
+MCC 2025,mc2025_track1_195,Ganak,no,
+MCC 2025,mc2025_track1_195,D4 (counter),no,
+MCC 2025,mc2025_track1_195,GPMC (counter),no,
+MCC 2025,mc2025_track1_195,Cara,no,
+MCC 2025,mc2025_track1_196,tididi-cnf,no,
+MCC 2025,mc2025_track1_196,Ganak,no,
+MCC 2025,mc2025_track1_196,D4 (counter),no,
+MCC 2025,mc2025_track1_196,GPMC (counter),no,
+MCC 2025,mc2025_track1_196,Cara,no,
+MCC 2025,mc2025_track1_197,tididi-cnf,no,
+MCC 2025,mc2025_track1_197,Ganak,no,
+MCC 2025,mc2025_track1_197,D4 (counter),no,
+MCC 2025,mc2025_track1_197,GPMC (counter),no,
+MCC 2025,mc2025_track1_197,Cara,no,
+MCC 2025,mc2025_track1_198,tididi-cnf,no,
+MCC 2025,mc2025_track1_198,Ganak,no,
+MCC 2025,mc2025_track1_198,D4 (counter),no,
+MCC 2025,mc2025_track1_198,GPMC (counter),no,
+MCC 2025,mc2025_track1_198,Cara,no,
+MCC 2025,mc2025_track1_199,tididi-cnf,no,
+MCC 2025,mc2025_track1_199,Ganak,no,
+MCC 2025,mc2025_track1_199,D4 (counter),no,
+MCC 2025,mc2025_track1_199,GPMC (counter),no,
+MCC 2025,mc2025_track1_199,Cara,no,
+MCC 2026 public,mc2026_track1_001,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_001,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_001,D4 (counter),yes,0.06
+MCC 2026 public,mc2026_track1_001,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_001,Cara,yes,0.04
+MCC 2026 public,mc2026_track1_003,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_003,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_003,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_003,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_003,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_005,tididi-cnf,yes,0.04
+MCC 2026 public,mc2026_track1_005,Ganak,yes,0.02
+MCC 2026 public,mc2026_track1_005,D4 (counter),yes,0.34
+MCC 2026 public,mc2026_track1_005,GPMC (counter),yes,0.19
+MCC 2026 public,mc2026_track1_005,Cara,yes,0.17
+MCC 2026 public,mc2026_track1_007,tididi-cnf,yes,2.08
+MCC 2026 public,mc2026_track1_007,Ganak,yes,1.29
+MCC 2026 public,mc2026_track1_007,D4 (counter),yes,53.39
+MCC 2026 public,mc2026_track1_007,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_007,Cara,yes,0.74
+MCC 2026 public,mc2026_track1_009,tididi-cnf,yes,0.42
+MCC 2026 public,mc2026_track1_009,Ganak,yes,0.61
+MCC 2026 public,mc2026_track1_009,D4 (counter),no,
+MCC 2026 public,mc2026_track1_009,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_009,Cara,yes,0.64
+MCC 2026 public,mc2026_track1_011,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_011,Ganak,no,
+MCC 2026 public,mc2026_track1_011,D4 (counter),no,
+MCC 2026 public,mc2026_track1_011,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_011,Cara,no,
+MCC 2026 public,mc2026_track1_013,tididi-cnf,yes,1.78
+MCC 2026 public,mc2026_track1_013,Ganak,yes,3.78
+MCC 2026 public,mc2026_track1_013,D4 (counter),yes,2.84
+MCC 2026 public,mc2026_track1_013,GPMC (counter),yes,4.56
+MCC 2026 public,mc2026_track1_013,Cara,no,
+MCC 2026 public,mc2026_track1_015,tididi-cnf,yes,0.67
+MCC 2026 public,mc2026_track1_015,Ganak,yes,0.30
+MCC 2026 public,mc2026_track1_015,D4 (counter),yes,0.41
+MCC 2026 public,mc2026_track1_015,GPMC (counter),yes,0.10
+MCC 2026 public,mc2026_track1_015,Cara,yes,4.05
+MCC 2026 public,mc2026_track1_017,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_017,Ganak,no,
+MCC 2026 public,mc2026_track1_017,D4 (counter),no,
+MCC 2026 public,mc2026_track1_017,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_017,Cara,no,
+MCC 2026 public,mc2026_track1_019,tididi-cnf,yes,1.08
+MCC 2026 public,mc2026_track1_019,Ganak,yes,0.49
+MCC 2026 public,mc2026_track1_019,D4 (counter),yes,0.85
+MCC 2026 public,mc2026_track1_019,GPMC (counter),yes,0.79
+MCC 2026 public,mc2026_track1_019,Cara,yes,0.62
+MCC 2026 public,mc2026_track1_021,tididi-cnf,yes,25.91
+MCC 2026 public,mc2026_track1_021,Ganak,no,
+MCC 2026 public,mc2026_track1_021,D4 (counter),no,
+MCC 2026 public,mc2026_track1_021,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_021,Cara,no,
+MCC 2026 public,mc2026_track1_023,tididi-cnf,yes,0.17
+MCC 2026 public,mc2026_track1_023,Ganak,yes,0.06
+MCC 2026 public,mc2026_track1_023,D4 (counter),yes,0.13
+MCC 2026 public,mc2026_track1_023,GPMC (counter),yes,0.07
+MCC 2026 public,mc2026_track1_023,Cara,yes,0.27
+MCC 2026 public,mc2026_track1_025,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_025,Ganak,no,
+MCC 2026 public,mc2026_track1_025,D4 (counter),no,
+MCC 2026 public,mc2026_track1_025,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_025,Cara,no,
+MCC 2026 public,mc2026_track1_027,tididi-cnf,yes,68.96
+MCC 2026 public,mc2026_track1_027,Ganak,yes,117.28
+MCC 2026 public,mc2026_track1_027,D4 (counter),no,
+MCC 2026 public,mc2026_track1_027,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_027,Cara,no,
+MCC 2026 public,mc2026_track1_029,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_029,Ganak,no,
+MCC 2026 public,mc2026_track1_029,D4 (counter),no,
+MCC 2026 public,mc2026_track1_029,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_029,Cara,no,
+MCC 2026 public,mc2026_track1_031,tididi-cnf,yes,2.88
+MCC 2026 public,mc2026_track1_031,Ganak,yes,7.00
+MCC 2026 public,mc2026_track1_031,D4 (counter),yes,8.98
+MCC 2026 public,mc2026_track1_031,GPMC (counter),yes,31.62
+MCC 2026 public,mc2026_track1_031,Cara,no,
+MCC 2026 public,mc2026_track1_033,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_033,Ganak,no,
+MCC 2026 public,mc2026_track1_033,D4 (counter),no,
+MCC 2026 public,mc2026_track1_033,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_033,Cara,no,
+MCC 2026 public,mc2026_track1_035,tididi-cnf,yes,4.23
+MCC 2026 public,mc2026_track1_035,Ganak,yes,7.02
+MCC 2026 public,mc2026_track1_035,D4 (counter),yes,12.14
+MCC 2026 public,mc2026_track1_035,GPMC (counter),yes,13.33
+MCC 2026 public,mc2026_track1_035,Cara,yes,30.79
+MCC 2026 public,mc2026_track1_037,tididi-cnf,yes,0.32
+MCC 2026 public,mc2026_track1_037,Ganak,yes,0.17
+MCC 2026 public,mc2026_track1_037,D4 (counter),yes,0.48
+MCC 2026 public,mc2026_track1_037,GPMC (counter),yes,0.25
+MCC 2026 public,mc2026_track1_037,Cara,yes,1.09
+MCC 2026 public,mc2026_track1_039,tididi-cnf,yes,1.52
+MCC 2026 public,mc2026_track1_039,Ganak,yes,1.28
+MCC 2026 public,mc2026_track1_039,D4 (counter),yes,5.12
+MCC 2026 public,mc2026_track1_039,GPMC (counter),yes,8.20
+MCC 2026 public,mc2026_track1_039,Cara,yes,1.73
+MCC 2026 public,mc2026_track1_041,tididi-cnf,yes,0.32
+MCC 2026 public,mc2026_track1_041,Ganak,yes,0.14
+MCC 2026 public,mc2026_track1_041,D4 (counter),yes,0.20
+MCC 2026 public,mc2026_track1_041,GPMC (counter),yes,0.09
+MCC 2026 public,mc2026_track1_041,Cara,yes,0.17
+MCC 2026 public,mc2026_track1_043,tididi-cnf,yes,0.12
+MCC 2026 public,mc2026_track1_043,Ganak,yes,0.06
+MCC 2026 public,mc2026_track1_043,D4 (counter),yes,0.08
+MCC 2026 public,mc2026_track1_043,GPMC (counter),yes,0.04
+MCC 2026 public,mc2026_track1_043,Cara,yes,0.09
+MCC 2026 public,mc2026_track1_045,tididi-cnf,yes,2.63
+MCC 2026 public,mc2026_track1_045,Ganak,yes,1.76
+MCC 2026 public,mc2026_track1_045,D4 (counter),yes,12.13
+MCC 2026 public,mc2026_track1_045,GPMC (counter),yes,4.43
+MCC 2026 public,mc2026_track1_045,Cara,yes,2.57
+MCC 2026 public,mc2026_track1_047,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_047,Ganak,no,
+MCC 2026 public,mc2026_track1_047,D4 (counter),no,
+MCC 2026 public,mc2026_track1_047,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_047,Cara,no,
+MCC 2026 public,mc2026_track1_049,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_049,Ganak,no,
+MCC 2026 public,mc2026_track1_049,D4 (counter),no,
+MCC 2026 public,mc2026_track1_049,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_049,Cara,no,
+MCC 2026 public,mc2026_track1_051,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_051,Ganak,no,
+MCC 2026 public,mc2026_track1_051,D4 (counter),no,
+MCC 2026 public,mc2026_track1_051,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_051,Cara,no,
+MCC 2026 public,mc2026_track1_053,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_053,Ganak,no,
+MCC 2026 public,mc2026_track1_053,D4 (counter),no,
+MCC 2026 public,mc2026_track1_053,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_053,Cara,no,
+MCC 2026 public,mc2026_track1_055,tididi-cnf,yes,0.04
+MCC 2026 public,mc2026_track1_055,Ganak,yes,0.02
+MCC 2026 public,mc2026_track1_055,D4 (counter),yes,0.05
+MCC 2026 public,mc2026_track1_055,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_055,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_057,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_057,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_057,D4 (counter),yes,0.06
+MCC 2026 public,mc2026_track1_057,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_057,Cara,yes,0.04
+MCC 2026 public,mc2026_track1_059,tididi-cnf,yes,0.04
+MCC 2026 public,mc2026_track1_059,Ganak,yes,0.02
+MCC 2026 public,mc2026_track1_059,D4 (counter),yes,0.05
+MCC 2026 public,mc2026_track1_059,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_059,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_061,tididi-cnf,yes,0.01
+MCC 2026 public,mc2026_track1_061,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_061,D4 (counter),yes,0.06
+MCC 2026 public,mc2026_track1_061,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_061,Cara,yes,0.05
+MCC 2026 public,mc2026_track1_063,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_063,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_063,D4 (counter),yes,0.06
+MCC 2026 public,mc2026_track1_063,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_063,Cara,yes,0.04
+MCC 2026 public,mc2026_track1_065,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_065,Ganak,yes,0.05
+MCC 2026 public,mc2026_track1_065,D4 (counter),yes,0.06
+MCC 2026 public,mc2026_track1_065,GPMC (counter),yes,0.03
+MCC 2026 public,mc2026_track1_065,Cara,yes,0.07
+MCC 2026 public,mc2026_track1_067,tididi-cnf,yes,3.18
+MCC 2026 public,mc2026_track1_067,Ganak,yes,7.80
+MCC 2026 public,mc2026_track1_067,D4 (counter),yes,3.20
+MCC 2026 public,mc2026_track1_067,GPMC (counter),yes,79.35
+MCC 2026 public,mc2026_track1_067,Cara,no,
+MCC 2026 public,mc2026_track1_069,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_069,Ganak,no,
+MCC 2026 public,mc2026_track1_069,D4 (counter),no,
+MCC 2026 public,mc2026_track1_069,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_069,Cara,no,
+MCC 2026 public,mc2026_track1_071,tididi-cnf,yes,90.76
+MCC 2026 public,mc2026_track1_071,Ganak,yes,2.37
+MCC 2026 public,mc2026_track1_071,D4 (counter),yes,4.41
+MCC 2026 public,mc2026_track1_071,GPMC (counter),yes,1.09
+MCC 2026 public,mc2026_track1_071,Cara,yes,6.74
+MCC 2026 public,mc2026_track1_073,tididi-cnf,yes,0.17
+MCC 2026 public,mc2026_track1_073,Ganak,yes,0.28
+MCC 2026 public,mc2026_track1_073,D4 (counter),yes,0.68
+MCC 2026 public,mc2026_track1_073,GPMC (counter),yes,0.88
+MCC 2026 public,mc2026_track1_073,Cara,yes,0.97
+MCC 2026 public,mc2026_track1_075,tididi-cnf,yes,0.52
+MCC 2026 public,mc2026_track1_075,Ganak,yes,0.43
+MCC 2026 public,mc2026_track1_075,D4 (counter),yes,1.17
+MCC 2026 public,mc2026_track1_075,GPMC (counter),yes,0.55
+MCC 2026 public,mc2026_track1_075,Cara,yes,1.75
+MCC 2026 public,mc2026_track1_077,tididi-cnf,yes,1.88
+MCC 2026 public,mc2026_track1_077,Ganak,yes,1.73
+MCC 2026 public,mc2026_track1_077,D4 (counter),yes,6.26
+MCC 2026 public,mc2026_track1_077,GPMC (counter),yes,3.21
+MCC 2026 public,mc2026_track1_077,Cara,yes,14.39
+MCC 2026 public,mc2026_track1_079,tididi-cnf,yes,6.89
+MCC 2026 public,mc2026_track1_079,Ganak,yes,27.42
+MCC 2026 public,mc2026_track1_079,D4 (counter),yes,27.33
+MCC 2026 public,mc2026_track1_079,GPMC (counter),yes,15.88
+MCC 2026 public,mc2026_track1_079,Cara,yes,80.59
+MCC 2026 public,mc2026_track1_081,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_081,Ganak,no,
+MCC 2026 public,mc2026_track1_081,D4 (counter),no,
+MCC 2026 public,mc2026_track1_081,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_081,Cara,no,
+MCC 2026 public,mc2026_track1_083,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_083,Ganak,no,
+MCC 2026 public,mc2026_track1_083,D4 (counter),no,
+MCC 2026 public,mc2026_track1_083,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_083,Cara,no,
+MCC 2026 public,mc2026_track1_085,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_085,Ganak,no,
+MCC 2026 public,mc2026_track1_085,D4 (counter),no,
+MCC 2026 public,mc2026_track1_085,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_085,Cara,no,
+MCC 2026 public,mc2026_track1_087,tididi-cnf,yes,0.22
+MCC 2026 public,mc2026_track1_087,Ganak,yes,0.19
+MCC 2026 public,mc2026_track1_087,D4 (counter),yes,0.99
+MCC 2026 public,mc2026_track1_087,GPMC (counter),yes,29.61
+MCC 2026 public,mc2026_track1_087,Cara,yes,1.19
+MCC 2026 public,mc2026_track1_089,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_089,Ganak,yes,0.04
+MCC 2026 public,mc2026_track1_089,D4 (counter),yes,0.14
+MCC 2026 public,mc2026_track1_089,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_089,Cara,yes,0.06
+MCC 2026 public,mc2026_track1_091,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_091,Ganak,yes,0.12
+MCC 2026 public,mc2026_track1_091,D4 (counter),yes,0.56
+MCC 2026 public,mc2026_track1_091,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_091,Cara,yes,0.14
+MCC 2026 public,mc2026_track1_093,tididi-cnf,yes,0.01
+MCC 2026 public,mc2026_track1_093,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_093,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_093,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_093,Cara,yes,0.02
+MCC 2026 public,mc2026_track1_095,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_095,Ganak,yes,61.94
+MCC 2026 public,mc2026_track1_095,D4 (counter),no,
+MCC 2026 public,mc2026_track1_095,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_095,Cara,no,
+MCC 2026 public,mc2026_track1_097,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_097,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_097,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_097,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_097,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_099,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_099,Ganak,yes,44.64
+MCC 2026 public,mc2026_track1_099,D4 (counter),no,
+MCC 2026 public,mc2026_track1_099,GPMC (counter),yes,77.48
+MCC 2026 public,mc2026_track1_099,Cara,no,
+MCC 2026 public,mc2026_track1_101,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_101,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_101,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_101,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_101,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_103,tididi-cnf,yes,0.01
+MCC 2026 public,mc2026_track1_103,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_103,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_103,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_103,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_105,tididi-cnf,yes,0.22
+MCC 2026 public,mc2026_track1_105,Ganak,yes,0.10
+MCC 2026 public,mc2026_track1_105,D4 (counter),yes,0.11
+MCC 2026 public,mc2026_track1_105,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_105,Cara,yes,0.12
+MCC 2026 public,mc2026_track1_107,tididi-cnf,yes,2.13
+MCC 2026 public,mc2026_track1_107,Ganak,yes,0.29
+MCC 2026 public,mc2026_track1_107,D4 (counter),yes,0.42
+MCC 2026 public,mc2026_track1_107,GPMC (counter),yes,0.19
+MCC 2026 public,mc2026_track1_107,Cara,yes,2.52
+MCC 2026 public,mc2026_track1_109,tididi-cnf,yes,0.57
+MCC 2026 public,mc2026_track1_109,Ganak,yes,0.14
+MCC 2026 public,mc2026_track1_109,D4 (counter),yes,0.12
+MCC 2026 public,mc2026_track1_109,GPMC (counter),yes,0.08
+MCC 2026 public,mc2026_track1_109,Cara,yes,0.13
+MCC 2026 public,mc2026_track1_111,tididi-cnf,yes,2.48
+MCC 2026 public,mc2026_track1_111,Ganak,yes,0.28
+MCC 2026 public,mc2026_track1_111,D4 (counter),yes,0.42
+MCC 2026 public,mc2026_track1_111,GPMC (counter),yes,0.18
+MCC 2026 public,mc2026_track1_111,Cara,yes,3.33
+MCC 2026 public,mc2026_track1_113,tididi-cnf,yes,2.83
+MCC 2026 public,mc2026_track1_113,Ganak,yes,0.28
+MCC 2026 public,mc2026_track1_113,D4 (counter),yes,0.37
+MCC 2026 public,mc2026_track1_113,GPMC (counter),yes,0.18
+MCC 2026 public,mc2026_track1_113,Cara,yes,1.80
+MCC 2026 public,mc2026_track1_115,tididi-cnf,yes,1.12
+MCC 2026 public,mc2026_track1_115,Ganak,yes,1.23
+MCC 2026 public,mc2026_track1_115,D4 (counter),yes,4.29
+MCC 2026 public,mc2026_track1_115,GPMC (counter),yes,3.21
+MCC 2026 public,mc2026_track1_115,Cara,yes,2.18
+MCC 2026 public,mc2026_track1_117,tididi-cnf,yes,0.57
+MCC 2026 public,mc2026_track1_117,Ganak,yes,0.46
+MCC 2026 public,mc2026_track1_117,D4 (counter),yes,1.43
+MCC 2026 public,mc2026_track1_117,GPMC (counter),yes,0.59
+MCC 2026 public,mc2026_track1_117,Cara,yes,0.63
+MCC 2026 public,mc2026_track1_119,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_119,Ganak,yes,68.69
+MCC 2026 public,mc2026_track1_119,D4 (counter),no,
+MCC 2026 public,mc2026_track1_119,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_119,Cara,no,
+MCC 2026 public,mc2026_track1_121,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_121,Ganak,yes,51.93
+MCC 2026 public,mc2026_track1_121,D4 (counter),no,
+MCC 2026 public,mc2026_track1_121,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_121,Cara,no,
+MCC 2026 public,mc2026_track1_123,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_123,Ganak,yes,3.84
+MCC 2026 public,mc2026_track1_123,D4 (counter),yes,40.60
+MCC 2026 public,mc2026_track1_123,GPMC (counter),yes,0.07
+MCC 2026 public,mc2026_track1_123,Cara,yes,2.62
+MCC 2026 public,mc2026_track1_125,tididi-cnf,yes,0.01
+MCC 2026 public,mc2026_track1_125,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_125,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_125,GPMC (counter),yes,0.01
+MCC 2026 public,mc2026_track1_125,Cara,yes,0.02
+MCC 2026 public,mc2026_track1_127,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_127,Ganak,no,
+MCC 2026 public,mc2026_track1_127,D4 (counter),no,
+MCC 2026 public,mc2026_track1_127,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_127,Cara,no,
+MCC 2026 public,mc2026_track1_129,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_129,Ganak,yes,16.37
+MCC 2026 public,mc2026_track1_129,D4 (counter),no,
+MCC 2026 public,mc2026_track1_129,GPMC (counter),yes,66.97
+MCC 2026 public,mc2026_track1_129,Cara,yes,90.42
+MCC 2026 public,mc2026_track1_131,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_131,Ganak,no,
+MCC 2026 public,mc2026_track1_131,D4 (counter),no,
+MCC 2026 public,mc2026_track1_131,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_131,Cara,no,
+MCC 2026 public,mc2026_track1_133,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_133,Ganak,yes,18.23
+MCC 2026 public,mc2026_track1_133,D4 (counter),no,
+MCC 2026 public,mc2026_track1_133,GPMC (counter),yes,113.08
+MCC 2026 public,mc2026_track1_133,Cara,yes,93.49
+MCC 2026 public,mc2026_track1_135,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_135,Ganak,yes,0.11
+MCC 2026 public,mc2026_track1_135,D4 (counter),yes,0.12
+MCC 2026 public,mc2026_track1_135,GPMC (counter),yes,0.19
+MCC 2026 public,mc2026_track1_135,Cara,yes,0.21
+MCC 2026 public,mc2026_track1_137,tididi-cnf,yes,1.12
+MCC 2026 public,mc2026_track1_137,Ganak,yes,2.51
+MCC 2026 public,mc2026_track1_137,D4 (counter),yes,3.01
+MCC 2026 public,mc2026_track1_137,GPMC (counter),yes,50.42
+MCC 2026 public,mc2026_track1_137,Cara,yes,12.46
+MCC 2026 public,mc2026_track1_139,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_139,Ganak,no,
+MCC 2026 public,mc2026_track1_139,D4 (counter),no,
+MCC 2026 public,mc2026_track1_139,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_139,Cara,no,
+MCC 2026 public,mc2026_track1_141,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_141,Ganak,no,
+MCC 2026 public,mc2026_track1_141,D4 (counter),no,
+MCC 2026 public,mc2026_track1_141,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_141,Cara,no,
+MCC 2026 public,mc2026_track1_143,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_143,Ganak,no,
+MCC 2026 public,mc2026_track1_143,D4 (counter),no,
+MCC 2026 public,mc2026_track1_143,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_143,Cara,no,
+MCC 2026 public,mc2026_track1_145,tididi-cnf,yes,72.36
+MCC 2026 public,mc2026_track1_145,Ganak,yes,88.72
+MCC 2026 public,mc2026_track1_145,D4 (counter),yes,80.54
+MCC 2026 public,mc2026_track1_145,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_145,Cara,no,
+MCC 2026 public,mc2026_track1_147,tididi-cnf,yes,34.62
+MCC 2026 public,mc2026_track1_147,Ganak,no,
+MCC 2026 public,mc2026_track1_147,D4 (counter),no,
+MCC 2026 public,mc2026_track1_147,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_147,Cara,no,
+MCC 2026 public,mc2026_track1_149,tididi-cnf,yes,20.23
+MCC 2026 public,mc2026_track1_149,Ganak,yes,25.44
+MCC 2026 public,mc2026_track1_149,D4 (counter),yes,20.91
+MCC 2026 public,mc2026_track1_149,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_149,Cara,yes,59.46
+MCC 2026 public,mc2026_track1_151,tididi-cnf,yes,34.67
+MCC 2026 public,mc2026_track1_151,Ganak,no,
+MCC 2026 public,mc2026_track1_151,D4 (counter),no,
+MCC 2026 public,mc2026_track1_151,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_151,Cara,no,
+MCC 2026 public,mc2026_track1_153,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_153,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_153,D4 (counter),yes,0.05
+MCC 2026 public,mc2026_track1_153,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_153,Cara,yes,0.05
+MCC 2026 public,mc2026_track1_155,tididi-cnf,yes,0.07
+MCC 2026 public,mc2026_track1_155,Ganak,yes,0.03
+MCC 2026 public,mc2026_track1_155,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_155,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_155,Cara,yes,0.04
+MCC 2026 public,mc2026_track1_157,tididi-cnf,yes,1.07
+MCC 2026 public,mc2026_track1_157,Ganak,yes,0.28
+MCC 2026 public,mc2026_track1_157,D4 (counter),yes,0.36
+MCC 2026 public,mc2026_track1_157,GPMC (counter),yes,0.16
+MCC 2026 public,mc2026_track1_157,Cara,yes,1.39
+MCC 2026 public,mc2026_track1_159,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_159,Ganak,no,
+MCC 2026 public,mc2026_track1_159,D4 (counter),no,
+MCC 2026 public,mc2026_track1_159,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_159,Cara,no,
+MCC 2026 public,mc2026_track1_161,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_161,Ganak,no,
+MCC 2026 public,mc2026_track1_161,D4 (counter),no,
+MCC 2026 public,mc2026_track1_161,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_161,Cara,no,
+MCC 2026 public,mc2026_track1_163,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_163,Ganak,no,
+MCC 2026 public,mc2026_track1_163,D4 (counter),no,
+MCC 2026 public,mc2026_track1_163,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_163,Cara,no,
+MCC 2026 public,mc2026_track1_165,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_165,Ganak,no,
+MCC 2026 public,mc2026_track1_165,D4 (counter),no,
+MCC 2026 public,mc2026_track1_165,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_165,Cara,no,
+MCC 2026 public,mc2026_track1_167,tididi-cnf,yes,0.04
+MCC 2026 public,mc2026_track1_167,Ganak,yes,0.01
+MCC 2026 public,mc2026_track1_167,D4 (counter),yes,0.04
+MCC 2026 public,mc2026_track1_167,GPMC (counter),yes,0.02
+MCC 2026 public,mc2026_track1_167,Cara,yes,0.03
+MCC 2026 public,mc2026_track1_169,tididi-cnf,yes,19.42
+MCC 2026 public,mc2026_track1_169,Ganak,no,
+MCC 2026 public,mc2026_track1_169,D4 (counter),no,
+MCC 2026 public,mc2026_track1_169,GPMC (counter),yes,103.65
+MCC 2026 public,mc2026_track1_169,Cara,no,
+MCC 2026 public,mc2026_track1_171,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_171,Ganak,no,
+MCC 2026 public,mc2026_track1_171,D4 (counter),no,
+MCC 2026 public,mc2026_track1_171,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_171,Cara,no,
+MCC 2026 public,mc2026_track1_173,tididi-cnf,yes,33.01
+MCC 2026 public,mc2026_track1_173,Ganak,no,
+MCC 2026 public,mc2026_track1_173,D4 (counter),no,
+MCC 2026 public,mc2026_track1_173,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_173,Cara,no,
+MCC 2026 public,mc2026_track1_175,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_175,Ganak,no,
+MCC 2026 public,mc2026_track1_175,D4 (counter),no,
+MCC 2026 public,mc2026_track1_175,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_175,Cara,no,
+MCC 2026 public,mc2026_track1_177,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_177,Ganak,no,
+MCC 2026 public,mc2026_track1_177,D4 (counter),no,
+MCC 2026 public,mc2026_track1_177,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_177,Cara,no,
+MCC 2026 public,mc2026_track1_179,tididi-cnf,yes,0.47
+MCC 2026 public,mc2026_track1_179,Ganak,yes,0.24
+MCC 2026 public,mc2026_track1_179,D4 (counter),yes,0.29
+MCC 2026 public,mc2026_track1_179,GPMC (counter),yes,0.14
+MCC 2026 public,mc2026_track1_179,Cara,yes,2.99
+MCC 2026 public,mc2026_track1_181,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_181,Ganak,no,
+MCC 2026 public,mc2026_track1_181,D4 (counter),no,
+MCC 2026 public,mc2026_track1_181,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_181,Cara,no,
+MCC 2026 public,mc2026_track1_183,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_183,Ganak,no,
+MCC 2026 public,mc2026_track1_183,D4 (counter),no,
+MCC 2026 public,mc2026_track1_183,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_183,Cara,no,
+MCC 2026 public,mc2026_track1_185,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_185,Ganak,no,
+MCC 2026 public,mc2026_track1_185,D4 (counter),no,
+MCC 2026 public,mc2026_track1_185,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_185,Cara,no,
+MCC 2026 public,mc2026_track1_187,tididi-cnf,yes,15.41
+MCC 2026 public,mc2026_track1_187,Ganak,yes,9.57
+MCC 2026 public,mc2026_track1_187,D4 (counter),yes,83.49
+MCC 2026 public,mc2026_track1_187,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_187,Cara,yes,18.82
+MCC 2026 public,mc2026_track1_189,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_189,Ganak,no,
+MCC 2026 public,mc2026_track1_189,D4 (counter),no,
+MCC 2026 public,mc2026_track1_189,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_189,Cara,no,
+MCC 2026 public,mc2026_track1_191,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_191,Ganak,no,
+MCC 2026 public,mc2026_track1_191,D4 (counter),no,
+MCC 2026 public,mc2026_track1_191,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_191,Cara,no,
+MCC 2026 public,mc2026_track1_193,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_193,Ganak,no,
+MCC 2026 public,mc2026_track1_193,D4 (counter),no,
+MCC 2026 public,mc2026_track1_193,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_193,Cara,no,
+MCC 2026 public,mc2026_track1_195,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_195,Ganak,no,
+MCC 2026 public,mc2026_track1_195,D4 (counter),no,
+MCC 2026 public,mc2026_track1_195,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_195,Cara,no,
+MCC 2026 public,mc2026_track1_197,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_197,Ganak,no,
+MCC 2026 public,mc2026_track1_197,D4 (counter),no,
+MCC 2026 public,mc2026_track1_197,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_197,Cara,no,
+MCC 2026 public,mc2026_track1_199,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_199,Ganak,no,
+MCC 2026 public,mc2026_track1_199,D4 (counter),no,
+MCC 2026 public,mc2026_track1_199,GPMC (counter),no,
+MCC 2026 public,mc2026_track1_199,Cara,no,
+MCC 2026 private,mc2026_track1_000,tididi-cnf,yes,0.06
+MCC 2026 private,mc2026_track1_000,Ganak,yes,0.01
+MCC 2026 private,mc2026_track1_000,D4 (counter),yes,0.04
+MCC 2026 private,mc2026_track1_000,GPMC (counter),yes,0.02
+MCC 2026 private,mc2026_track1_000,Cara,yes,0.03
+MCC 2026 private,mc2026_track1_002,tididi-cnf,yes,0.09
+MCC 2026 private,mc2026_track1_002,Ganak,yes,0.02
+MCC 2026 private,mc2026_track1_002,D4 (counter),yes,0.04
+MCC 2026 private,mc2026_track1_002,GPMC (counter),yes,0.02
+MCC 2026 private,mc2026_track1_002,Cara,yes,0.04
+MCC 2026 private,mc2026_track1_004,tididi-cnf,yes,2.60
+MCC 2026 private,mc2026_track1_004,Ganak,yes,22.23
+MCC 2026 private,mc2026_track1_004,D4 (counter),yes,10.94
+MCC 2026 private,mc2026_track1_004,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_004,Cara,yes,1.22
+MCC 2026 private,mc2026_track1_006,tididi-cnf,yes,3.80
+MCC 2026 private,mc2026_track1_006,Ganak,yes,1.94
+MCC 2026 private,mc2026_track1_006,D4 (counter),yes,16.92
+MCC 2026 private,mc2026_track1_006,GPMC (counter),yes,1.35
+MCC 2026 private,mc2026_track1_006,Cara,yes,20.15
+MCC 2026 private,mc2026_track1_008,tididi-cnf,yes,3.23
+MCC 2026 private,mc2026_track1_008,Ganak,yes,7.72
+MCC 2026 private,mc2026_track1_008,D4 (counter),no,
+MCC 2026 private,mc2026_track1_008,GPMC (counter),yes,4.11
+MCC 2026 private,mc2026_track1_008,Cara,no,
+MCC 2026 private,mc2026_track1_010,tididi-cnf,yes,2.29
+MCC 2026 private,mc2026_track1_010,Ganak,yes,4.69
+MCC 2026 private,mc2026_track1_010,D4 (counter),yes,42.22
+MCC 2026 private,mc2026_track1_010,GPMC (counter),yes,17.43
+MCC 2026 private,mc2026_track1_010,Cara,no,
+MCC 2026 private,mc2026_track1_012,tididi-cnf,yes,43.24
+MCC 2026 private,mc2026_track1_012,Ganak,no,
+MCC 2026 private,mc2026_track1_012,D4 (counter),no,
+MCC 2026 private,mc2026_track1_012,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_012,Cara,no,
+MCC 2026 private,mc2026_track1_014,tididi-cnf,yes,1.89
+MCC 2026 private,mc2026_track1_014,Ganak,yes,8.23
+MCC 2026 private,mc2026_track1_014,D4 (counter),yes,9.28
+MCC 2026 private,mc2026_track1_014,GPMC (counter),yes,6.46
+MCC 2026 private,mc2026_track1_014,Cara,no,
+MCC 2026 private,mc2026_track1_016,tididi-cnf,yes,24.80
+MCC 2026 private,mc2026_track1_016,Ganak,yes,75.90
+MCC 2026 private,mc2026_track1_016,D4 (counter),no,
+MCC 2026 private,mc2026_track1_016,GPMC (counter),yes,77.53
+MCC 2026 private,mc2026_track1_016,Cara,no,
+MCC 2026 private,mc2026_track1_018,tididi-cnf,yes,25.44
+MCC 2026 private,mc2026_track1_018,Ganak,yes,72.25
+MCC 2026 private,mc2026_track1_018,D4 (counter),no,
+MCC 2026 private,mc2026_track1_018,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_018,Cara,no,
+MCC 2026 private,mc2026_track1_020,tididi-cnf,yes,24.59
+MCC 2026 private,mc2026_track1_020,Ganak,no,
+MCC 2026 private,mc2026_track1_020,D4 (counter),no,
+MCC 2026 private,mc2026_track1_020,GPMC (counter),yes,103.47
+MCC 2026 private,mc2026_track1_020,Cara,no,
+MCC 2026 private,mc2026_track1_022,tididi-cnf,yes,1.99
+MCC 2026 private,mc2026_track1_022,Ganak,yes,30.92
+MCC 2026 private,mc2026_track1_022,D4 (counter),yes,96.19
+MCC 2026 private,mc2026_track1_022,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_022,Cara,no,
+MCC 2026 private,mc2026_track1_024,tididi-cnf,yes,3.00
+MCC 2026 private,mc2026_track1_024,Ganak,yes,32.02
+MCC 2026 private,mc2026_track1_024,D4 (counter),yes,87.20
+MCC 2026 private,mc2026_track1_024,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_024,Cara,no,
+MCC 2026 private,mc2026_track1_026,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_026,Ganak,no,
+MCC 2026 private,mc2026_track1_026,D4 (counter),no,
+MCC 2026 private,mc2026_track1_026,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_026,Cara,no,
+MCC 2026 private,mc2026_track1_028,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_028,Ganak,no,
+MCC 2026 private,mc2026_track1_028,D4 (counter),no,
+MCC 2026 private,mc2026_track1_028,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_028,Cara,no,
+MCC 2026 private,mc2026_track1_030,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_030,Ganak,no,
+MCC 2026 private,mc2026_track1_030,D4 (counter),no,
+MCC 2026 private,mc2026_track1_030,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_030,Cara,no,
+MCC 2026 private,mc2026_track1_032,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_032,Ganak,no,
+MCC 2026 private,mc2026_track1_032,D4 (counter),no,
+MCC 2026 private,mc2026_track1_032,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_032,Cara,no,
+MCC 2026 private,mc2026_track1_034,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_034,Ganak,no,
+MCC 2026 private,mc2026_track1_034,D4 (counter),no,
+MCC 2026 private,mc2026_track1_034,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_034,Cara,no,
+MCC 2026 private,mc2026_track1_036,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_036,Ganak,no,
+MCC 2026 private,mc2026_track1_036,D4 (counter),no,
+MCC 2026 private,mc2026_track1_036,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_036,Cara,no,
+MCC 2026 private,mc2026_track1_038,tididi-cnf,yes,0.29
+MCC 2026 private,mc2026_track1_038,Ganak,yes,0.11
+MCC 2026 private,mc2026_track1_038,D4 (counter),yes,0.19
+MCC 2026 private,mc2026_track1_038,GPMC (counter),yes,0.04
+MCC 2026 private,mc2026_track1_038,Cara,yes,0.32
+MCC 2026 private,mc2026_track1_040,tididi-cnf,yes,0.19
+MCC 2026 private,mc2026_track1_040,Ganak,yes,0.11
+MCC 2026 private,mc2026_track1_040,D4 (counter),yes,0.17
+MCC 2026 private,mc2026_track1_040,GPMC (counter),yes,0.07
+MCC 2026 private,mc2026_track1_040,Cara,yes,0.23
+MCC 2026 private,mc2026_track1_042,tididi-cnf,yes,0.14
+MCC 2026 private,mc2026_track1_042,Ganak,yes,0.07
+MCC 2026 private,mc2026_track1_042,D4 (counter),yes,0.08
+MCC 2026 private,mc2026_track1_042,GPMC (counter),yes,0.03
+MCC 2026 private,mc2026_track1_042,Cara,yes,0.12
+MCC 2026 private,mc2026_track1_044,tididi-cnf,yes,0.04
+MCC 2026 private,mc2026_track1_044,Ganak,yes,0.02
+MCC 2026 private,mc2026_track1_044,D4 (counter),yes,0.04
+MCC 2026 private,mc2026_track1_044,GPMC (counter),yes,0.02
+MCC 2026 private,mc2026_track1_044,Cara,yes,0.04
+MCC 2026 private,mc2026_track1_046,tididi-cnf,yes,0.04
+MCC 2026 private,mc2026_track1_046,Ganak,yes,0.02
+MCC 2026 private,mc2026_track1_046,D4 (counter),yes,0.04
+MCC 2026 private,mc2026_track1_046,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_046,Cara,yes,0.03
+MCC 2026 private,mc2026_track1_048,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_048,Ganak,no,
+MCC 2026 private,mc2026_track1_048,D4 (counter),no,
+MCC 2026 private,mc2026_track1_048,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_048,Cara,no,
+MCC 2026 private,mc2026_track1_050,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_050,Ganak,no,
+MCC 2026 private,mc2026_track1_050,D4 (counter),no,
+MCC 2026 private,mc2026_track1_050,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_050,Cara,no,
+MCC 2026 private,mc2026_track1_052,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_052,Ganak,no,
+MCC 2026 private,mc2026_track1_052,D4 (counter),no,
+MCC 2026 private,mc2026_track1_052,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_052,Cara,no,
+MCC 2026 private,mc2026_track1_054,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_054,Ganak,no,
+MCC 2026 private,mc2026_track1_054,D4 (counter),no,
+MCC 2026 private,mc2026_track1_054,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_054,Cara,no,
+MCC 2026 private,mc2026_track1_056,tididi-cnf,yes,0.02
+MCC 2026 private,mc2026_track1_056,Ganak,yes,0.07
+MCC 2026 private,mc2026_track1_056,D4 (counter),yes,0.10
+MCC 2026 private,mc2026_track1_056,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_056,Cara,yes,0.07
+MCC 2026 private,mc2026_track1_058,tididi-cnf,yes,0.07
+MCC 2026 private,mc2026_track1_058,Ganak,yes,0.03
+MCC 2026 private,mc2026_track1_058,D4 (counter),yes,0.07
+MCC 2026 private,mc2026_track1_058,GPMC (counter),yes,0.03
+MCC 2026 private,mc2026_track1_058,Cara,yes,0.04
+MCC 2026 private,mc2026_track1_060,tididi-cnf,yes,0.01
+MCC 2026 private,mc2026_track1_060,Ganak,yes,0.03
+MCC 2026 private,mc2026_track1_060,D4 (counter),yes,0.06
+MCC 2026 private,mc2026_track1_060,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_060,Cara,yes,0.04
+MCC 2026 private,mc2026_track1_062,tididi-cnf,yes,0.02
+MCC 2026 private,mc2026_track1_062,Ganak,yes,0.05
+MCC 2026 private,mc2026_track1_062,D4 (counter),yes,0.08
+MCC 2026 private,mc2026_track1_062,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_062,Cara,yes,0.06
+MCC 2026 private,mc2026_track1_064,tididi-cnf,yes,0.01
+MCC 2026 private,mc2026_track1_064,Ganak,yes,0.02
+MCC 2026 private,mc2026_track1_064,D4 (counter),yes,0.05
+MCC 2026 private,mc2026_track1_064,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_064,Cara,yes,0.03
+MCC 2026 private,mc2026_track1_066,tididi-cnf,yes,1.47
+MCC 2026 private,mc2026_track1_066,Ganak,yes,4.85
+MCC 2026 private,mc2026_track1_066,D4 (counter),yes,5.97
+MCC 2026 private,mc2026_track1_066,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_066,Cara,yes,10.32
+MCC 2026 private,mc2026_track1_068,tididi-cnf,yes,0.17
+MCC 2026 private,mc2026_track1_068,Ganak,yes,0.12
+MCC 2026 private,mc2026_track1_068,D4 (counter),yes,0.10
+MCC 2026 private,mc2026_track1_068,GPMC (counter),yes,0.04
+MCC 2026 private,mc2026_track1_068,Cara,yes,0.12
+MCC 2026 private,mc2026_track1_070,tididi-cnf,yes,57.56
+MCC 2026 private,mc2026_track1_070,Ganak,no,
+MCC 2026 private,mc2026_track1_070,D4 (counter),no,
+MCC 2026 private,mc2026_track1_070,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_070,Cara,no,
+MCC 2026 private,mc2026_track1_072,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_072,Ganak,no,
+MCC 2026 private,mc2026_track1_072,D4 (counter),no,
+MCC 2026 private,mc2026_track1_072,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_072,Cara,no,
+MCC 2026 private,mc2026_track1_074,tididi-cnf,yes,0.22
+MCC 2026 private,mc2026_track1_074,Ganak,yes,0.18
+MCC 2026 private,mc2026_track1_074,D4 (counter),yes,0.65
+MCC 2026 private,mc2026_track1_074,GPMC (counter),yes,0.30
+MCC 2026 private,mc2026_track1_074,Cara,yes,1.32
+MCC 2026 private,mc2026_track1_076,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_076,Ganak,no,
+MCC 2026 private,mc2026_track1_076,D4 (counter),no,
+MCC 2026 private,mc2026_track1_076,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_076,Cara,no,
+MCC 2026 private,mc2026_track1_078,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_078,Ganak,no,
+MCC 2026 private,mc2026_track1_078,D4 (counter),no,
+MCC 2026 private,mc2026_track1_078,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_078,Cara,no,
+MCC 2026 private,mc2026_track1_080,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_080,Ganak,no,
+MCC 2026 private,mc2026_track1_080,D4 (counter),no,
+MCC 2026 private,mc2026_track1_080,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_080,Cara,no,
+MCC 2026 private,mc2026_track1_082,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_082,Ganak,no,
+MCC 2026 private,mc2026_track1_082,D4 (counter),no,
+MCC 2026 private,mc2026_track1_082,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_082,Cara,no,
+MCC 2026 private,mc2026_track1_084,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_084,Ganak,no,
+MCC 2026 private,mc2026_track1_084,D4 (counter),no,
+MCC 2026 private,mc2026_track1_084,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_084,Cara,no,
+MCC 2026 private,mc2026_track1_086,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_086,Ganak,no,
+MCC 2026 private,mc2026_track1_086,D4 (counter),no,
+MCC 2026 private,mc2026_track1_086,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_086,Cara,no,
+MCC 2026 private,mc2026_track1_088,tididi-cnf,yes,0.04
+MCC 2026 private,mc2026_track1_088,Ganak,yes,0.17
+MCC 2026 private,mc2026_track1_088,D4 (counter),yes,0.08
+MCC 2026 private,mc2026_track1_088,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_088,Cara,yes,0.34
+MCC 2026 private,mc2026_track1_090,tididi-cnf,yes,0.02
+MCC 2026 private,mc2026_track1_090,Ganak,yes,0.04
+MCC 2026 private,mc2026_track1_090,D4 (counter),yes,0.19
+MCC 2026 private,mc2026_track1_090,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_090,Cara,yes,0.06
+MCC 2026 private,mc2026_track1_092,tididi-cnf,yes,0.12
+MCC 2026 private,mc2026_track1_092,Ganak,yes,0.29
+MCC 2026 private,mc2026_track1_092,D4 (counter),yes,2.36
+MCC 2026 private,mc2026_track1_092,GPMC (counter),yes,0.04
+MCC 2026 private,mc2026_track1_092,Cara,yes,0.36
+MCC 2026 private,mc2026_track1_094,tididi-cnf,yes,0.01
+MCC 2026 private,mc2026_track1_094,Ganak,yes,0.01
+MCC 2026 private,mc2026_track1_094,D4 (counter),yes,0.04
+MCC 2026 private,mc2026_track1_094,GPMC (counter),yes,0.01
+MCC 2026 private,mc2026_track1_094,Cara,yes,0.03
+MCC 2026 private,mc2026_track1_096,tididi-cnf,yes,0.97
+MCC 2026 private,mc2026_track1_096,Ganak,yes,3.95
+MCC 2026 private,mc2026_track1_096,D4 (counter),yes,0.43
+MCC 2026 private,mc2026_track1_096,GPMC (counter),yes,1.04
+MCC 2026 private,mc2026_track1_096,Cara,yes,5.13
+MCC 2026 private,mc2026_track1_098,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_098,Ganak,no,
+MCC 2026 private,mc2026_track1_098,D4 (counter),no,
+MCC 2026 private,mc2026_track1_098,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_098,Cara,no,
+MCC 2026 private,mc2026_track1_100,tididi-cnf,yes,0.22
+MCC 2026 private,mc2026_track1_100,Ganak,yes,0.07
+MCC 2026 private,mc2026_track1_100,D4 (counter),yes,0.11
+MCC 2026 private,mc2026_track1_100,GPMC (counter),yes,0.02
+MCC 2026 private,mc2026_track1_100,Cara,yes,0.09
+MCC 2026 private,mc2026_track1_102,tididi-cnf,yes,0.12
+MCC 2026 private,mc2026_track1_102,Ganak,yes,0.03
+MCC 2026 private,mc2026_track1_102,D4 (counter),yes,0.07
+MCC 2026 private,mc2026_track1_102,GPMC (counter),yes,0.02
+MCC 2026 private,mc2026_track1_102,Cara,yes,0.06
+MCC 2026 private,mc2026_track1_104,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_104,Ganak,no,
+MCC 2026 private,mc2026_track1_104,D4 (counter),no,
+MCC 2026 private,mc2026_track1_104,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_104,Cara,no,
+MCC 2026 private,mc2026_track1_106,tididi-cnf,yes,1.07
+MCC 2026 private,mc2026_track1_106,Ganak,yes,0.25
+MCC 2026 private,mc2026_track1_106,D4 (counter),yes,0.40
+MCC 2026 private,mc2026_track1_106,GPMC (counter),yes,0.17
+MCC 2026 private,mc2026_track1_106,Cara,yes,1.84
+MCC 2026 private,mc2026_track1_108,tididi-cnf,yes,1.07
+MCC 2026 private,mc2026_track1_108,Ganak,yes,0.26
+MCC 2026 private,mc2026_track1_108,D4 (counter),yes,0.41
+MCC 2026 private,mc2026_track1_108,GPMC (counter),yes,0.17
+MCC 2026 private,mc2026_track1_108,Cara,yes,1.57
+MCC 2026 private,mc2026_track1_110,tididi-cnf,yes,1.17
+MCC 2026 private,mc2026_track1_110,Ganak,yes,0.29
+MCC 2026 private,mc2026_track1_110,D4 (counter),yes,0.50
+MCC 2026 private,mc2026_track1_110,GPMC (counter),yes,0.20
+MCC 2026 private,mc2026_track1_110,Cara,yes,1.84
+MCC 2026 private,mc2026_track1_112,tididi-cnf,yes,1.17
+MCC 2026 private,mc2026_track1_112,Ganak,yes,0.29
+MCC 2026 private,mc2026_track1_112,D4 (counter),yes,0.49
+MCC 2026 private,mc2026_track1_112,GPMC (counter),yes,0.19
+MCC 2026 private,mc2026_track1_112,Cara,yes,1.52
+MCC 2026 private,mc2026_track1_114,tididi-cnf,yes,1.38
+MCC 2026 private,mc2026_track1_114,Ganak,yes,0.36
+MCC 2026 private,mc2026_track1_114,D4 (counter),yes,0.51
+MCC 2026 private,mc2026_track1_114,GPMC (counter),yes,0.22
+MCC 2026 private,mc2026_track1_114,Cara,yes,3.85
+MCC 2026 private,mc2026_track1_116,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_116,Ganak,no,
+MCC 2026 private,mc2026_track1_116,D4 (counter),no,
+MCC 2026 private,mc2026_track1_116,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_116,Cara,no,
+MCC 2026 private,mc2026_track1_118,tididi-cnf,yes,42.58
+MCC 2026 private,mc2026_track1_118,Ganak,yes,19.91
+MCC 2026 private,mc2026_track1_118,D4 (counter),no,
+MCC 2026 private,mc2026_track1_118,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_118,Cara,yes,96.64
+MCC 2026 private,mc2026_track1_120,tididi-cnf,yes,8.55
+MCC 2026 private,mc2026_track1_120,Ganak,yes,9.32
+MCC 2026 private,mc2026_track1_120,D4 (counter),yes,28.68
+MCC 2026 private,mc2026_track1_120,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_120,Cara,yes,15.99
+MCC 2026 private,mc2026_track1_122,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_122,Ganak,no,
+MCC 2026 private,mc2026_track1_122,D4 (counter),no,
+MCC 2026 private,mc2026_track1_122,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_122,Cara,no,
+MCC 2026 private,mc2026_track1_124,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_124,Ganak,no,
+MCC 2026 private,mc2026_track1_124,D4 (counter),no,
+MCC 2026 private,mc2026_track1_124,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_124,Cara,no,
+MCC 2026 private,mc2026_track1_126,tididi-cnf,yes,0.07
+MCC 2026 private,mc2026_track1_126,Ganak,yes,0.05
+MCC 2026 private,mc2026_track1_126,D4 (counter),yes,0.07
+MCC 2026 private,mc2026_track1_126,GPMC (counter),yes,0.03
+MCC 2026 private,mc2026_track1_126,Cara,yes,0.07
+MCC 2026 private,mc2026_track1_128,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_128,Ganak,yes,65.46
+MCC 2026 private,mc2026_track1_128,D4 (counter),no,
+MCC 2026 private,mc2026_track1_128,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_128,Cara,no,
+MCC 2026 private,mc2026_track1_130,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_130,Ganak,no,
+MCC 2026 private,mc2026_track1_130,D4 (counter),no,
+MCC 2026 private,mc2026_track1_130,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_130,Cara,no,
+MCC 2026 private,mc2026_track1_132,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_132,Ganak,no,
+MCC 2026 private,mc2026_track1_132,D4 (counter),no,
+MCC 2026 private,mc2026_track1_132,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_132,Cara,no,
+MCC 2026 private,mc2026_track1_134,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_134,Ganak,yes,88.99
+MCC 2026 private,mc2026_track1_134,D4 (counter),no,
+MCC 2026 private,mc2026_track1_134,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_134,Cara,no,
+MCC 2026 private,mc2026_track1_136,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_136,Ganak,no,
+MCC 2026 private,mc2026_track1_136,D4 (counter),no,
+MCC 2026 private,mc2026_track1_136,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_136,Cara,no,
+MCC 2026 private,mc2026_track1_138,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_138,Ganak,no,
+MCC 2026 private,mc2026_track1_138,D4 (counter),no,
+MCC 2026 private,mc2026_track1_138,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_138,Cara,no,
+MCC 2026 private,mc2026_track1_140,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_140,Ganak,no,
+MCC 2026 private,mc2026_track1_140,D4 (counter),no,
+MCC 2026 private,mc2026_track1_140,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_140,Cara,no,
+MCC 2026 private,mc2026_track1_142,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_142,Ganak,no,
+MCC 2026 private,mc2026_track1_142,D4 (counter),no,
+MCC 2026 private,mc2026_track1_142,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_142,Cara,no,
+MCC 2026 private,mc2026_track1_144,tididi-cnf,yes,56.77
+MCC 2026 private,mc2026_track1_144,Ganak,yes,85.52
+MCC 2026 private,mc2026_track1_144,D4 (counter),yes,90.66
+MCC 2026 private,mc2026_track1_144,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_144,Cara,no,
+MCC 2026 private,mc2026_track1_146,tididi-cnf,yes,3.13
+MCC 2026 private,mc2026_track1_146,Ganak,yes,7.61
+MCC 2026 private,mc2026_track1_146,D4 (counter),yes,3.20
+MCC 2026 private,mc2026_track1_146,GPMC (counter),yes,3.39
+MCC 2026 private,mc2026_track1_146,Cara,yes,5.18
+MCC 2026 private,mc2026_track1_148,tididi-cnf,yes,2.58
+MCC 2026 private,mc2026_track1_148,Ganak,yes,8.08
+MCC 2026 private,mc2026_track1_148,D4 (counter),yes,2.76
+MCC 2026 private,mc2026_track1_148,GPMC (counter),yes,6.52
+MCC 2026 private,mc2026_track1_148,Cara,yes,3.98
+MCC 2026 private,mc2026_track1_150,tididi-cnf,yes,3.33
+MCC 2026 private,mc2026_track1_150,Ganak,yes,6.77
+MCC 2026 private,mc2026_track1_150,D4 (counter),yes,3.97
+MCC 2026 private,mc2026_track1_150,GPMC (counter),yes,4.77
+MCC 2026 private,mc2026_track1_150,Cara,yes,11.32
+MCC 2026 private,mc2026_track1_152,tididi-cnf,yes,2.73
+MCC 2026 private,mc2026_track1_152,Ganak,yes,7.16
+MCC 2026 private,mc2026_track1_152,D4 (counter),yes,4.58
+MCC 2026 private,mc2026_track1_152,GPMC (counter),yes,5.77
+MCC 2026 private,mc2026_track1_152,Cara,yes,5.99
+MCC 2026 private,mc2026_track1_154,tididi-cnf,yes,0.12
+MCC 2026 private,mc2026_track1_154,Ganak,yes,0.07
+MCC 2026 private,mc2026_track1_154,D4 (counter),yes,0.07
+MCC 2026 private,mc2026_track1_154,GPMC (counter),yes,0.04
+MCC 2026 private,mc2026_track1_154,Cara,yes,0.08
+MCC 2026 private,mc2026_track1_156,tididi-cnf,yes,26.94
+MCC 2026 private,mc2026_track1_156,Ganak,yes,16.69
+MCC 2026 private,mc2026_track1_156,D4 (counter),yes,62.55
+MCC 2026 private,mc2026_track1_156,GPMC (counter),yes,0.93
+MCC 2026 private,mc2026_track1_156,Cara,yes,21.64
+MCC 2026 private,mc2026_track1_158,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_158,Ganak,no,
+MCC 2026 private,mc2026_track1_158,D4 (counter),no,
+MCC 2026 private,mc2026_track1_158,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_158,Cara,no,
+MCC 2026 private,mc2026_track1_160,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_160,Ganak,no,
+MCC 2026 private,mc2026_track1_160,D4 (counter),no,
+MCC 2026 private,mc2026_track1_160,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_160,Cara,no,
+MCC 2026 private,mc2026_track1_162,tididi-cnf,yes,5.79
+MCC 2026 private,mc2026_track1_162,Ganak,yes,2.14
+MCC 2026 private,mc2026_track1_162,D4 (counter),yes,18.61
+MCC 2026 private,mc2026_track1_162,GPMC (counter),yes,11.94
+MCC 2026 private,mc2026_track1_162,Cara,yes,4.12
+MCC 2026 private,mc2026_track1_164,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_164,Ganak,no,
+MCC 2026 private,mc2026_track1_164,D4 (counter),no,
+MCC 2026 private,mc2026_track1_164,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_164,Cara,no,
+MCC 2026 private,mc2026_track1_166,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_166,Ganak,no,
+MCC 2026 private,mc2026_track1_166,D4 (counter),no,
+MCC 2026 private,mc2026_track1_166,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_166,Cara,no,
+MCC 2026 private,mc2026_track1_168,tididi-cnf,yes,50.69
+MCC 2026 private,mc2026_track1_168,Ganak,no,
+MCC 2026 private,mc2026_track1_168,D4 (counter),no,
+MCC 2026 private,mc2026_track1_168,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_168,Cara,no,
+MCC 2026 private,mc2026_track1_170,tididi-cnf,yes,20.37
+MCC 2026 private,mc2026_track1_170,Ganak,no,
+MCC 2026 private,mc2026_track1_170,D4 (counter),yes,78.40
+MCC 2026 private,mc2026_track1_170,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_170,Cara,no,
+MCC 2026 private,mc2026_track1_172,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_172,Ganak,no,
+MCC 2026 private,mc2026_track1_172,D4 (counter),no,
+MCC 2026 private,mc2026_track1_172,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_172,Cara,no,
+MCC 2026 private,mc2026_track1_174,tididi-cnf,yes,73.12
+MCC 2026 private,mc2026_track1_174,Ganak,no,
+MCC 2026 private,mc2026_track1_174,D4 (counter),no,
+MCC 2026 private,mc2026_track1_174,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_174,Cara,no,
+MCC 2026 private,mc2026_track1_176,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_176,Ganak,no,
+MCC 2026 private,mc2026_track1_176,D4 (counter),no,
+MCC 2026 private,mc2026_track1_176,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_176,Cara,no,
+MCC 2026 private,mc2026_track1_178,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_178,Ganak,no,
+MCC 2026 private,mc2026_track1_178,D4 (counter),no,
+MCC 2026 private,mc2026_track1_178,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_178,Cara,no,
+MCC 2026 private,mc2026_track1_180,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_180,Ganak,no,
+MCC 2026 private,mc2026_track1_180,D4 (counter),no,
+MCC 2026 private,mc2026_track1_180,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_180,Cara,no,
+MCC 2026 private,mc2026_track1_182,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_182,Ganak,no,
+MCC 2026 private,mc2026_track1_182,D4 (counter),no,
+MCC 2026 private,mc2026_track1_182,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_182,Cara,no,
+MCC 2026 private,mc2026_track1_184,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_184,Ganak,no,
+MCC 2026 private,mc2026_track1_184,D4 (counter),no,
+MCC 2026 private,mc2026_track1_184,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_184,Cara,no,
+MCC 2026 private,mc2026_track1_186,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_186,Ganak,no,
+MCC 2026 private,mc2026_track1_186,D4 (counter),no,
+MCC 2026 private,mc2026_track1_186,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_186,Cara,no,
+MCC 2026 private,mc2026_track1_188,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_188,Ganak,no,
+MCC 2026 private,mc2026_track1_188,D4 (counter),no,
+MCC 2026 private,mc2026_track1_188,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_188,Cara,no,
+MCC 2026 private,mc2026_track1_190,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_190,Ganak,no,
+MCC 2026 private,mc2026_track1_190,D4 (counter),no,
+MCC 2026 private,mc2026_track1_190,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_190,Cara,no,
+MCC 2026 private,mc2026_track1_192,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_192,Ganak,no,
+MCC 2026 private,mc2026_track1_192,D4 (counter),no,
+MCC 2026 private,mc2026_track1_192,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_192,Cara,no,
+MCC 2026 private,mc2026_track1_194,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_194,Ganak,no,
+MCC 2026 private,mc2026_track1_194,D4 (counter),no,
+MCC 2026 private,mc2026_track1_194,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_194,Cara,no,
+MCC 2026 private,mc2026_track1_196,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_196,Ganak,no,
+MCC 2026 private,mc2026_track1_196,D4 (counter),no,
+MCC 2026 private,mc2026_track1_196,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_196,Cara,no,
+MCC 2026 private,mc2026_track1_198,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_198,Ganak,no,
+MCC 2026 private,mc2026_track1_198,D4 (counter),no,
+MCC 2026 private,mc2026_track1_198,GPMC (counter),no,
+MCC 2026 private,mc2026_track1_198,Cara,no,

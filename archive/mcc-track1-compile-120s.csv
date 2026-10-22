@@ -1,0 +1,2001 @@
+set,instance,solver,solved,seconds
+MCC 2025,mc2025_track1_000,tididi-cnf,no,
+MCC 2025,mc2025_track1_000,Panini,no,
+MCC 2025,mc2025_track1_000,D4 (compiler),no,
+MCC 2025,mc2025_track1_000,GPMC (compiler),no,
+MCC 2025,mc2025_track1_000,c2d,no,
+MCC 2025,mc2025_track1_001,tididi-cnf,no,
+MCC 2025,mc2025_track1_001,Panini,no,
+MCC 2025,mc2025_track1_001,D4 (compiler),no,
+MCC 2025,mc2025_track1_001,GPMC (compiler),no,
+MCC 2025,mc2025_track1_001,c2d,no,
+MCC 2025,mc2025_track1_002,tididi-cnf,no,
+MCC 2025,mc2025_track1_002,Panini,no,
+MCC 2025,mc2025_track1_002,D4 (compiler),no,
+MCC 2025,mc2025_track1_002,GPMC (compiler),no,
+MCC 2025,mc2025_track1_002,c2d,no,
+MCC 2025,mc2025_track1_003,tididi-cnf,no,
+MCC 2025,mc2025_track1_003,Panini,no,
+MCC 2025,mc2025_track1_003,D4 (compiler),no,
+MCC 2025,mc2025_track1_003,GPMC (compiler),yes,5.82
+MCC 2025,mc2025_track1_003,c2d,no,
+MCC 2025,mc2025_track1_004,tididi-cnf,yes,2.68
+MCC 2025,mc2025_track1_004,Panini,no,
+MCC 2025,mc2025_track1_004,D4 (compiler),no,
+MCC 2025,mc2025_track1_004,GPMC (compiler),no,
+MCC 2025,mc2025_track1_004,c2d,no,
+MCC 2025,mc2025_track1_005,tididi-cnf,yes,2.78
+MCC 2025,mc2025_track1_005,Panini,no,
+MCC 2025,mc2025_track1_005,D4 (compiler),no,
+MCC 2025,mc2025_track1_005,GPMC (compiler),no,
+MCC 2025,mc2025_track1_005,c2d,no,
+MCC 2025,mc2025_track1_006,tididi-cnf,no,
+MCC 2025,mc2025_track1_006,Panini,no,
+MCC 2025,mc2025_track1_006,D4 (compiler),no,
+MCC 2025,mc2025_track1_006,GPMC (compiler),no,
+MCC 2025,mc2025_track1_006,c2d,no,
+MCC 2025,mc2025_track1_007,tididi-cnf,no,
+MCC 2025,mc2025_track1_007,Panini,no,
+MCC 2025,mc2025_track1_007,D4 (compiler),no,
+MCC 2025,mc2025_track1_007,GPMC (compiler),no,
+MCC 2025,mc2025_track1_007,c2d,no,
+MCC 2025,mc2025_track1_008,tididi-cnf,no,
+MCC 2025,mc2025_track1_008,Panini,no,
+MCC 2025,mc2025_track1_008,D4 (compiler),no,
+MCC 2025,mc2025_track1_008,GPMC (compiler),no,
+MCC 2025,mc2025_track1_008,c2d,no,
+MCC 2025,mc2025_track1_009,tididi-cnf,no,
+MCC 2025,mc2025_track1_009,Panini,no,
+MCC 2025,mc2025_track1_009,D4 (compiler),no,
+MCC 2025,mc2025_track1_009,GPMC (compiler),no,
+MCC 2025,mc2025_track1_009,c2d,no,
+MCC 2025,mc2025_track1_010,tididi-cnf,yes,2.48
+MCC 2025,mc2025_track1_010,Panini,yes,16.93
+MCC 2025,mc2025_track1_010,D4 (compiler),yes,20.58
+MCC 2025,mc2025_track1_010,GPMC (compiler),yes,36.24
+MCC 2025,mc2025_track1_010,c2d,yes,25.50
+MCC 2025,mc2025_track1_011,tididi-cnf,no,
+MCC 2025,mc2025_track1_011,Panini,no,
+MCC 2025,mc2025_track1_011,D4 (compiler),yes,11.09
+MCC 2025,mc2025_track1_011,GPMC (compiler),no,
+MCC 2025,mc2025_track1_011,c2d,no,
+MCC 2025,mc2025_track1_012,tididi-cnf,yes,1.73
+MCC 2025,mc2025_track1_012,Panini,yes,37.34
+MCC 2025,mc2025_track1_012,D4 (compiler),yes,7.25
+MCC 2025,mc2025_track1_012,GPMC (compiler),yes,10.79
+MCC 2025,mc2025_track1_012,c2d,yes,13.37
+MCC 2025,mc2025_track1_013,tididi-cnf,yes,4.04
+MCC 2025,mc2025_track1_013,Panini,no,
+MCC 2025,mc2025_track1_013,D4 (compiler),no,
+MCC 2025,mc2025_track1_013,GPMC (compiler),no,
+MCC 2025,mc2025_track1_013,c2d,no,
+MCC 2025,mc2025_track1_014,tididi-cnf,yes,1.53
+MCC 2025,mc2025_track1_014,Panini,yes,1.16
+MCC 2025,mc2025_track1_014,D4 (compiler),yes,0.14
+MCC 2025,mc2025_track1_014,GPMC (compiler),yes,0.07
+MCC 2025,mc2025_track1_014,c2d,yes,0.14
+MCC 2025,mc2025_track1_015,tididi-cnf,yes,10.95
+MCC 2025,mc2025_track1_015,Panini,no,
+MCC 2025,mc2025_track1_015,D4 (compiler),no,
+MCC 2025,mc2025_track1_015,GPMC (compiler),no,
+MCC 2025,mc2025_track1_015,c2d,no,
+MCC 2025,mc2025_track1_016,tididi-cnf,yes,1.13
+MCC 2025,mc2025_track1_016,Panini,yes,0.58
+MCC 2025,mc2025_track1_016,D4 (compiler),yes,0.12
+MCC 2025,mc2025_track1_016,GPMC (compiler),yes,0.06
+MCC 2025,mc2025_track1_016,c2d,yes,0.09
+MCC 2025,mc2025_track1_017,tididi-cnf,yes,50.61
+MCC 2025,mc2025_track1_017,Panini,yes,41.52
+MCC 2025,mc2025_track1_017,D4 (compiler),no,
+MCC 2025,mc2025_track1_017,GPMC (compiler),no,
+MCC 2025,mc2025_track1_017,c2d,no,
+MCC 2025,mc2025_track1_018,tididi-cnf,no,
+MCC 2025,mc2025_track1_018,Panini,no,
+MCC 2025,mc2025_track1_018,D4 (compiler),no,
+MCC 2025,mc2025_track1_018,GPMC (compiler),no,
+MCC 2025,mc2025_track1_018,c2d,no,
+MCC 2025,mc2025_track1_019,tididi-cnf,yes,2.98
+MCC 2025,mc2025_track1_019,Panini,yes,10.83
+MCC 2025,mc2025_track1_019,D4 (compiler),yes,30.92
+MCC 2025,mc2025_track1_019,GPMC (compiler),yes,4.30
+MCC 2025,mc2025_track1_019,c2d,yes,2.28
+MCC 2025,mc2025_track1_020,tididi-cnf,yes,9.50
+MCC 2025,mc2025_track1_020,Panini,no,
+MCC 2025,mc2025_track1_020,D4 (compiler),no,
+MCC 2025,mc2025_track1_020,GPMC (compiler),no,
+MCC 2025,mc2025_track1_020,c2d,no,
+MCC 2025,mc2025_track1_021,tididi-cnf,no,
+MCC 2025,mc2025_track1_021,Panini,no,
+MCC 2025,mc2025_track1_021,D4 (compiler),no,
+MCC 2025,mc2025_track1_021,GPMC (compiler),no,
+MCC 2025,mc2025_track1_021,c2d,no,
+MCC 2025,mc2025_track1_022,tididi-cnf,yes,34.57
+MCC 2025,mc2025_track1_022,Panini,no,
+MCC 2025,mc2025_track1_022,D4 (compiler),no,
+MCC 2025,mc2025_track1_022,GPMC (compiler),no,
+MCC 2025,mc2025_track1_022,c2d,no,
+MCC 2025,mc2025_track1_023,tididi-cnf,no,
+MCC 2025,mc2025_track1_023,Panini,no,
+MCC 2025,mc2025_track1_023,D4 (compiler),no,
+MCC 2025,mc2025_track1_023,GPMC (compiler),no,
+MCC 2025,mc2025_track1_023,c2d,no,
+MCC 2025,mc2025_track1_024,tididi-cnf,yes,39.23
+MCC 2025,mc2025_track1_024,Panini,no,
+MCC 2025,mc2025_track1_024,D4 (compiler),no,
+MCC 2025,mc2025_track1_024,GPMC (compiler),no,
+MCC 2025,mc2025_track1_024,c2d,no,
+MCC 2025,mc2025_track1_025,tididi-cnf,yes,0.88
+MCC 2025,mc2025_track1_025,Panini,no,
+MCC 2025,mc2025_track1_025,D4 (compiler),yes,10.21
+MCC 2025,mc2025_track1_025,GPMC (compiler),yes,35.31
+MCC 2025,mc2025_track1_025,c2d,yes,34.75
+MCC 2025,mc2025_track1_026,tididi-cnf,no,
+MCC 2025,mc2025_track1_026,Panini,no,
+MCC 2025,mc2025_track1_026,D4 (compiler),no,
+MCC 2025,mc2025_track1_026,GPMC (compiler),no,
+MCC 2025,mc2025_track1_026,c2d,no,
+MCC 2025,mc2025_track1_027,tididi-cnf,yes,1.83
+MCC 2025,mc2025_track1_027,Panini,no,
+MCC 2025,mc2025_track1_027,D4 (compiler),yes,27.07
+MCC 2025,mc2025_track1_027,GPMC (compiler),yes,99.03
+MCC 2025,mc2025_track1_027,c2d,yes,32.53
+MCC 2025,mc2025_track1_028,tididi-cnf,no,
+MCC 2025,mc2025_track1_028,Panini,no,
+MCC 2025,mc2025_track1_028,D4 (compiler),no,
+MCC 2025,mc2025_track1_028,GPMC (compiler),no,
+MCC 2025,mc2025_track1_028,c2d,no,
+MCC 2025,mc2025_track1_029,tididi-cnf,yes,2.48
+MCC 2025,mc2025_track1_029,Panini,yes,4.90
+MCC 2025,mc2025_track1_029,D4 (compiler),yes,4.76
+MCC 2025,mc2025_track1_029,GPMC (compiler),yes,5.94
+MCC 2025,mc2025_track1_029,c2d,no,
+MCC 2025,mc2025_track1_030,tididi-cnf,no,
+MCC 2025,mc2025_track1_030,Panini,no,
+MCC 2025,mc2025_track1_030,D4 (compiler),no,
+MCC 2025,mc2025_track1_030,GPMC (compiler),no,
+MCC 2025,mc2025_track1_030,c2d,no,
+MCC 2025,mc2025_track1_031,tididi-cnf,no,
+MCC 2025,mc2025_track1_031,Panini,no,
+MCC 2025,mc2025_track1_031,D4 (compiler),no,
+MCC 2025,mc2025_track1_031,GPMC (compiler),no,
+MCC 2025,mc2025_track1_031,c2d,no,
+MCC 2025,mc2025_track1_032,tididi-cnf,no,
+MCC 2025,mc2025_track1_032,Panini,no,
+MCC 2025,mc2025_track1_032,D4 (compiler),no,
+MCC 2025,mc2025_track1_032,GPMC (compiler),no,
+MCC 2025,mc2025_track1_032,c2d,no,
+MCC 2025,mc2025_track1_033,tididi-cnf,no,
+MCC 2025,mc2025_track1_033,Panini,no,
+MCC 2025,mc2025_track1_033,D4 (compiler),no,
+MCC 2025,mc2025_track1_033,GPMC (compiler),no,
+MCC 2025,mc2025_track1_033,c2d,no,
+MCC 2025,mc2025_track1_034,tididi-cnf,no,
+MCC 2025,mc2025_track1_034,Panini,no,
+MCC 2025,mc2025_track1_034,D4 (compiler),no,
+MCC 2025,mc2025_track1_034,GPMC (compiler),no,
+MCC 2025,mc2025_track1_034,c2d,no,
+MCC 2025,mc2025_track1_035,tididi-cnf,no,
+MCC 2025,mc2025_track1_035,Panini,no,
+MCC 2025,mc2025_track1_035,D4 (compiler),no,
+MCC 2025,mc2025_track1_035,GPMC (compiler),no,
+MCC 2025,mc2025_track1_035,c2d,no,
+MCC 2025,mc2025_track1_036,tididi-cnf,no,
+MCC 2025,mc2025_track1_036,Panini,no,
+MCC 2025,mc2025_track1_036,D4 (compiler),no,
+MCC 2025,mc2025_track1_036,GPMC (compiler),no,
+MCC 2025,mc2025_track1_036,c2d,no,
+MCC 2025,mc2025_track1_037,tididi-cnf,no,
+MCC 2025,mc2025_track1_037,Panini,no,
+MCC 2025,mc2025_track1_037,D4 (compiler),no,
+MCC 2025,mc2025_track1_037,GPMC (compiler),no,
+MCC 2025,mc2025_track1_037,c2d,no,
+MCC 2025,mc2025_track1_038,tididi-cnf,no,
+MCC 2025,mc2025_track1_038,Panini,no,
+MCC 2025,mc2025_track1_038,D4 (compiler),no,
+MCC 2025,mc2025_track1_038,GPMC (compiler),no,
+MCC 2025,mc2025_track1_038,c2d,no,
+MCC 2025,mc2025_track1_039,tididi-cnf,no,
+MCC 2025,mc2025_track1_039,Panini,no,
+MCC 2025,mc2025_track1_039,D4 (compiler),no,
+MCC 2025,mc2025_track1_039,GPMC (compiler),no,
+MCC 2025,mc2025_track1_039,c2d,no,
+MCC 2025,mc2025_track1_040,tididi-cnf,no,
+MCC 2025,mc2025_track1_040,Panini,no,
+MCC 2025,mc2025_track1_040,D4 (compiler),no,
+MCC 2025,mc2025_track1_040,GPMC (compiler),no,
+MCC 2025,mc2025_track1_040,c2d,no,
+MCC 2025,mc2025_track1_041,tididi-cnf,no,
+MCC 2025,mc2025_track1_041,Panini,no,
+MCC 2025,mc2025_track1_041,D4 (compiler),no,
+MCC 2025,mc2025_track1_041,GPMC (compiler),no,
+MCC 2025,mc2025_track1_041,c2d,yes,70.79
+MCC 2025,mc2025_track1_042,tididi-cnf,yes,0.83
+MCC 2025,mc2025_track1_042,Panini,yes,0.94
+MCC 2025,mc2025_track1_042,D4 (compiler),yes,0.09
+MCC 2025,mc2025_track1_042,GPMC (compiler),yes,0.05
+MCC 2025,mc2025_track1_042,c2d,yes,0.07
+MCC 2025,mc2025_track1_043,tididi-cnf,yes,1.53
+MCC 2025,mc2025_track1_043,Panini,yes,1.12
+MCC 2025,mc2025_track1_043,D4 (compiler),yes,0.41
+MCC 2025,mc2025_track1_043,GPMC (compiler),yes,0.14
+MCC 2025,mc2025_track1_043,c2d,yes,0.20
+MCC 2025,mc2025_track1_044,tididi-cnf,yes,0.53
+MCC 2025,mc2025_track1_044,Panini,yes,0.46
+MCC 2025,mc2025_track1_044,D4 (compiler),yes,0.11
+MCC 2025,mc2025_track1_044,GPMC (compiler),yes,0.06
+MCC 2025,mc2025_track1_044,c2d,yes,0.06
+MCC 2025,mc2025_track1_045,tididi-cnf,no,
+MCC 2025,mc2025_track1_045,Panini,no,
+MCC 2025,mc2025_track1_045,D4 (compiler),no,
+MCC 2025,mc2025_track1_045,GPMC (compiler),no,
+MCC 2025,mc2025_track1_045,c2d,no,
+MCC 2025,mc2025_track1_046,tididi-cnf,no,
+MCC 2025,mc2025_track1_046,Panini,no,
+MCC 2025,mc2025_track1_046,D4 (compiler),no,
+MCC 2025,mc2025_track1_046,GPMC (compiler),no,
+MCC 2025,mc2025_track1_046,c2d,no,
+MCC 2025,mc2025_track1_047,tididi-cnf,no,
+MCC 2025,mc2025_track1_047,Panini,no,
+MCC 2025,mc2025_track1_047,D4 (compiler),no,
+MCC 2025,mc2025_track1_047,GPMC (compiler),no,
+MCC 2025,mc2025_track1_047,c2d,no,
+MCC 2025,mc2025_track1_048,tididi-cnf,no,
+MCC 2025,mc2025_track1_048,Panini,no,
+MCC 2025,mc2025_track1_048,D4 (compiler),no,
+MCC 2025,mc2025_track1_048,GPMC (compiler),no,
+MCC 2025,mc2025_track1_048,c2d,no,
+MCC 2025,mc2025_track1_049,tididi-cnf,no,
+MCC 2025,mc2025_track1_049,Panini,no,
+MCC 2025,mc2025_track1_049,D4 (compiler),no,
+MCC 2025,mc2025_track1_049,GPMC (compiler),no,
+MCC 2025,mc2025_track1_049,c2d,no,
+MCC 2025,mc2025_track1_050,tididi-cnf,no,
+MCC 2025,mc2025_track1_050,Panini,no,
+MCC 2025,mc2025_track1_050,D4 (compiler),no,
+MCC 2025,mc2025_track1_050,GPMC (compiler),no,
+MCC 2025,mc2025_track1_050,c2d,no,
+MCC 2025,mc2025_track1_051,tididi-cnf,no,
+MCC 2025,mc2025_track1_051,Panini,no,
+MCC 2025,mc2025_track1_051,D4 (compiler),no,
+MCC 2025,mc2025_track1_051,GPMC (compiler),no,
+MCC 2025,mc2025_track1_051,c2d,no,
+MCC 2025,mc2025_track1_052,tididi-cnf,yes,98.15
+MCC 2025,mc2025_track1_052,Panini,no,
+MCC 2025,mc2025_track1_052,D4 (compiler),no,
+MCC 2025,mc2025_track1_052,GPMC (compiler),no,
+MCC 2025,mc2025_track1_052,c2d,no,
+MCC 2025,mc2025_track1_053,tididi-cnf,yes,66.67
+MCC 2025,mc2025_track1_053,Panini,no,
+MCC 2025,mc2025_track1_053,D4 (compiler),no,
+MCC 2025,mc2025_track1_053,GPMC (compiler),no,
+MCC 2025,mc2025_track1_053,c2d,yes,77.45
+MCC 2025,mc2025_track1_054,tididi-cnf,no,
+MCC 2025,mc2025_track1_054,Panini,yes,4.12
+MCC 2025,mc2025_track1_054,D4 (compiler),yes,4.07
+MCC 2025,mc2025_track1_054,GPMC (compiler),yes,19.09
+MCC 2025,mc2025_track1_054,c2d,yes,51.98
+MCC 2025,mc2025_track1_055,tididi-cnf,no,
+MCC 2025,mc2025_track1_055,Panini,no,
+MCC 2025,mc2025_track1_055,D4 (compiler),no,
+MCC 2025,mc2025_track1_055,GPMC (compiler),no,
+MCC 2025,mc2025_track1_055,c2d,no,
+MCC 2025,mc2025_track1_056,tididi-cnf,no,
+MCC 2025,mc2025_track1_056,Panini,no,
+MCC 2025,mc2025_track1_056,D4 (compiler),no,
+MCC 2025,mc2025_track1_056,GPMC (compiler),no,
+MCC 2025,mc2025_track1_056,c2d,no,
+MCC 2025,mc2025_track1_057,tididi-cnf,no,
+MCC 2025,mc2025_track1_057,Panini,no,
+MCC 2025,mc2025_track1_057,D4 (compiler),no,
+MCC 2025,mc2025_track1_057,GPMC (compiler),no,
+MCC 2025,mc2025_track1_057,c2d,no,
+MCC 2025,mc2025_track1_058,tididi-cnf,no,
+MCC 2025,mc2025_track1_058,Panini,no,
+MCC 2025,mc2025_track1_058,D4 (compiler),no,
+MCC 2025,mc2025_track1_058,GPMC (compiler),no,
+MCC 2025,mc2025_track1_058,c2d,no,
+MCC 2025,mc2025_track1_059,tididi-cnf,no,
+MCC 2025,mc2025_track1_059,Panini,no,
+MCC 2025,mc2025_track1_059,D4 (compiler),no,
+MCC 2025,mc2025_track1_059,GPMC (compiler),no,
+MCC 2025,mc2025_track1_059,c2d,no,
+MCC 2025,mc2025_track1_060,tididi-cnf,no,
+MCC 2025,mc2025_track1_060,Panini,no,
+MCC 2025,mc2025_track1_060,D4 (compiler),no,
+MCC 2025,mc2025_track1_060,GPMC (compiler),no,
+MCC 2025,mc2025_track1_060,c2d,no,
+MCC 2025,mc2025_track1_061,tididi-cnf,no,
+MCC 2025,mc2025_track1_061,Panini,no,
+MCC 2025,mc2025_track1_061,D4 (compiler),no,
+MCC 2025,mc2025_track1_061,GPMC (compiler),no,
+MCC 2025,mc2025_track1_061,c2d,no,
+MCC 2025,mc2025_track1_062,tididi-cnf,no,
+MCC 2025,mc2025_track1_062,Panini,no,
+MCC 2025,mc2025_track1_062,D4 (compiler),no,
+MCC 2025,mc2025_track1_062,GPMC (compiler),no,
+MCC 2025,mc2025_track1_062,c2d,no,
+MCC 2025,mc2025_track1_063,tididi-cnf,no,
+MCC 2025,mc2025_track1_063,Panini,no,
+MCC 2025,mc2025_track1_063,D4 (compiler),no,
+MCC 2025,mc2025_track1_063,GPMC (compiler),no,
+MCC 2025,mc2025_track1_063,c2d,no,
+MCC 2025,mc2025_track1_064,tididi-cnf,yes,0.43
+MCC 2025,mc2025_track1_064,Panini,yes,0.44
+MCC 2025,mc2025_track1_064,D4 (compiler),yes,0.04
+MCC 2025,mc2025_track1_064,GPMC (compiler),yes,0.07
+MCC 2025,mc2025_track1_064,c2d,yes,0.04
+MCC 2025,mc2025_track1_065,tididi-cnf,yes,0.33
+MCC 2025,mc2025_track1_065,Panini,yes,0.42
+MCC 2025,mc2025_track1_065,D4 (compiler),yes,0.04
+MCC 2025,mc2025_track1_065,GPMC (compiler),yes,0.03
+MCC 2025,mc2025_track1_065,c2d,yes,0.03
+MCC 2025,mc2025_track1_066,tididi-cnf,yes,0.28
+MCC 2025,mc2025_track1_066,Panini,yes,0.39
+MCC 2025,mc2025_track1_066,D4 (compiler),yes,0.03
+MCC 2025,mc2025_track1_066,GPMC (compiler),yes,0.03
+MCC 2025,mc2025_track1_066,c2d,yes,0.02
+MCC 2025,mc2025_track1_067,tididi-cnf,yes,0.43
+MCC 2025,mc2025_track1_067,Panini,yes,0.44
+MCC 2025,mc2025_track1_067,D4 (compiler),yes,0.04
+MCC 2025,mc2025_track1_067,GPMC (compiler),yes,0.04
+MCC 2025,mc2025_track1_067,c2d,yes,0.04
+MCC 2025,mc2025_track1_068,tididi-cnf,yes,0.23
+MCC 2025,mc2025_track1_068,Panini,yes,0.39
+MCC 2025,mc2025_track1_068,D4 (compiler),yes,0.03
+MCC 2025,mc2025_track1_068,GPMC (compiler),yes,0.03
+MCC 2025,mc2025_track1_068,c2d,yes,0.02
+MCC 2025,mc2025_track1_069,tididi-cnf,yes,1.18
+MCC 2025,mc2025_track1_069,Panini,yes,0.63
+MCC 2025,mc2025_track1_069,D4 (compiler),yes,0.24
+MCC 2025,mc2025_track1_069,GPMC (compiler),yes,0.08
+MCC 2025,mc2025_track1_069,c2d,yes,0.42
+MCC 2025,mc2025_track1_070,tididi-cnf,yes,7.55
+MCC 2025,mc2025_track1_070,Panini,yes,5.47
+MCC 2025,mc2025_track1_070,D4 (compiler),yes,6.08
+MCC 2025,mc2025_track1_070,GPMC (compiler),yes,26.65
+MCC 2025,mc2025_track1_070,c2d,no,
+MCC 2025,mc2025_track1_071,tididi-cnf,yes,0.88
+MCC 2025,mc2025_track1_071,Panini,yes,0.52
+MCC 2025,mc2025_track1_071,D4 (compiler),yes,0.14
+MCC 2025,mc2025_track1_071,GPMC (compiler),yes,0.06
+MCC 2025,mc2025_track1_071,c2d,yes,0.20
+MCC 2025,mc2025_track1_072,tididi-cnf,yes,41.69
+MCC 2025,mc2025_track1_072,Panini,yes,45.73
+MCC 2025,mc2025_track1_072,D4 (compiler),no,
+MCC 2025,mc2025_track1_072,GPMC (compiler),yes,9.94
+MCC 2025,mc2025_track1_072,c2d,no,
+MCC 2025,mc2025_track1_073,tididi-cnf,yes,1.68
+MCC 2025,mc2025_track1_073,Panini,yes,0.89
+MCC 2025,mc2025_track1_073,D4 (compiler),yes,0.30
+MCC 2025,mc2025_track1_073,GPMC (compiler),yes,0.12
+MCC 2025,mc2025_track1_073,c2d,yes,0.16
+MCC 2025,mc2025_track1_074,tididi-cnf,yes,0.73
+MCC 2025,mc2025_track1_074,Panini,yes,0.56
+MCC 2025,mc2025_track1_074,D4 (compiler),yes,0.10
+MCC 2025,mc2025_track1_074,GPMC (compiler),yes,0.06
+MCC 2025,mc2025_track1_074,c2d,yes,0.09
+MCC 2025,mc2025_track1_075,tididi-cnf,yes,34.67
+MCC 2025,mc2025_track1_075,Panini,no,
+MCC 2025,mc2025_track1_075,D4 (compiler),no,
+MCC 2025,mc2025_track1_075,GPMC (compiler),no,
+MCC 2025,mc2025_track1_075,c2d,no,
+MCC 2025,mc2025_track1_076,tididi-cnf,yes,5.45
+MCC 2025,mc2025_track1_076,Panini,no,
+MCC 2025,mc2025_track1_076,D4 (compiler),yes,111.18
+MCC 2025,mc2025_track1_076,GPMC (compiler),no,
+MCC 2025,mc2025_track1_076,c2d,no,
+MCC 2025,mc2025_track1_077,tididi-cnf,yes,28.21
+MCC 2025,mc2025_track1_077,Panini,no,
+MCC 2025,mc2025_track1_077,D4 (compiler),no,
+MCC 2025,mc2025_track1_077,GPMC (compiler),no,
+MCC 2025,mc2025_track1_077,c2d,no,
+MCC 2025,mc2025_track1_078,tididi-cnf,yes,1.73
+MCC 2025,mc2025_track1_078,Panini,yes,12.98
+MCC 2025,mc2025_track1_078,D4 (compiler),yes,13.03
+MCC 2025,mc2025_track1_078,GPMC (compiler),yes,78.23
+MCC 2025,mc2025_track1_078,c2d,no,
+MCC 2025,mc2025_track1_079,tididi-cnf,no,
+MCC 2025,mc2025_track1_079,Panini,no,
+MCC 2025,mc2025_track1_079,D4 (compiler),no,
+MCC 2025,mc2025_track1_079,GPMC (compiler),no,
+MCC 2025,mc2025_track1_079,c2d,no,
+MCC 2025,mc2025_track1_080,tididi-cnf,no,
+MCC 2025,mc2025_track1_080,Panini,no,
+MCC 2025,mc2025_track1_080,D4 (compiler),no,
+MCC 2025,mc2025_track1_080,GPMC (compiler),no,
+MCC 2025,mc2025_track1_080,c2d,no,
+MCC 2025,mc2025_track1_081,tididi-cnf,no,
+MCC 2025,mc2025_track1_081,Panini,no,
+MCC 2025,mc2025_track1_081,D4 (compiler),no,
+MCC 2025,mc2025_track1_081,GPMC (compiler),no,
+MCC 2025,mc2025_track1_081,c2d,no,
+MCC 2025,mc2025_track1_082,tididi-cnf,no,
+MCC 2025,mc2025_track1_082,Panini,no,
+MCC 2025,mc2025_track1_082,D4 (compiler),no,
+MCC 2025,mc2025_track1_082,GPMC (compiler),no,
+MCC 2025,mc2025_track1_082,c2d,no,
+MCC 2025,mc2025_track1_083,tididi-cnf,no,
+MCC 2025,mc2025_track1_083,Panini,no,
+MCC 2025,mc2025_track1_083,D4 (compiler),no,
+MCC 2025,mc2025_track1_083,GPMC (compiler),no,
+MCC 2025,mc2025_track1_083,c2d,no,
+MCC 2025,mc2025_track1_084,tididi-cnf,no,
+MCC 2025,mc2025_track1_084,Panini,no,
+MCC 2025,mc2025_track1_084,D4 (compiler),no,
+MCC 2025,mc2025_track1_084,GPMC (compiler),no,
+MCC 2025,mc2025_track1_084,c2d,no,
+MCC 2025,mc2025_track1_085,tididi-cnf,no,
+MCC 2025,mc2025_track1_085,Panini,no,
+MCC 2025,mc2025_track1_085,D4 (compiler),no,
+MCC 2025,mc2025_track1_085,GPMC (compiler),no,
+MCC 2025,mc2025_track1_085,c2d,no,
+MCC 2025,mc2025_track1_086,tididi-cnf,no,
+MCC 2025,mc2025_track1_086,Panini,no,
+MCC 2025,mc2025_track1_086,D4 (compiler),no,
+MCC 2025,mc2025_track1_086,GPMC (compiler),no,
+MCC 2025,mc2025_track1_086,c2d,no,
+MCC 2025,mc2025_track1_087,tididi-cnf,no,
+MCC 2025,mc2025_track1_087,Panini,no,
+MCC 2025,mc2025_track1_087,D4 (compiler),no,
+MCC 2025,mc2025_track1_087,GPMC (compiler),no,
+MCC 2025,mc2025_track1_087,c2d,no,
+MCC 2025,mc2025_track1_088,tididi-cnf,no,
+MCC 2025,mc2025_track1_088,Panini,no,
+MCC 2025,mc2025_track1_088,D4 (compiler),no,
+MCC 2025,mc2025_track1_088,GPMC (compiler),no,
+MCC 2025,mc2025_track1_088,c2d,no,
+MCC 2025,mc2025_track1_089,tididi-cnf,no,
+MCC 2025,mc2025_track1_089,Panini,no,
+MCC 2025,mc2025_track1_089,D4 (compiler),no,
+MCC 2025,mc2025_track1_089,GPMC (compiler),no,
+MCC 2025,mc2025_track1_089,c2d,no,
+MCC 2025,mc2025_track1_090,tididi-cnf,no,
+MCC 2025,mc2025_track1_090,Panini,no,
+MCC 2025,mc2025_track1_090,D4 (compiler),no,
+MCC 2025,mc2025_track1_090,GPMC (compiler),no,
+MCC 2025,mc2025_track1_090,c2d,no,
+MCC 2025,mc2025_track1_091,tididi-cnf,no,
+MCC 2025,mc2025_track1_091,Panini,no,
+MCC 2025,mc2025_track1_091,D4 (compiler),no,
+MCC 2025,mc2025_track1_091,GPMC (compiler),no,
+MCC 2025,mc2025_track1_091,c2d,no,
+MCC 2025,mc2025_track1_092,tididi-cnf,no,
+MCC 2025,mc2025_track1_092,Panini,no,
+MCC 2025,mc2025_track1_092,D4 (compiler),no,
+MCC 2025,mc2025_track1_092,GPMC (compiler),no,
+MCC 2025,mc2025_track1_092,c2d,no,
+MCC 2025,mc2025_track1_093,tididi-cnf,yes,3.69
+MCC 2025,mc2025_track1_093,Panini,yes,20.11
+MCC 2025,mc2025_track1_093,D4 (compiler),yes,53.90
+MCC 2025,mc2025_track1_093,GPMC (compiler),no,
+MCC 2025,mc2025_track1_093,c2d,yes,75.05
+MCC 2025,mc2025_track1_094,tididi-cnf,no,
+MCC 2025,mc2025_track1_094,Panini,no,
+MCC 2025,mc2025_track1_094,D4 (compiler),no,
+MCC 2025,mc2025_track1_094,GPMC (compiler),no,
+MCC 2025,mc2025_track1_094,c2d,no,
+MCC 2025,mc2025_track1_095,tididi-cnf,yes,3.64
+MCC 2025,mc2025_track1_095,Panini,yes,57.20
+MCC 2025,mc2025_track1_095,D4 (compiler),yes,66.33
+MCC 2025,mc2025_track1_095,GPMC (compiler),no,
+MCC 2025,mc2025_track1_095,c2d,yes,79.51
+MCC 2025,mc2025_track1_096,tididi-cnf,yes,7.75
+MCC 2025,mc2025_track1_096,Panini,yes,16.41
+MCC 2025,mc2025_track1_096,D4 (compiler),no,
+MCC 2025,mc2025_track1_096,GPMC (compiler),yes,6.73
+MCC 2025,mc2025_track1_096,c2d,no,
+MCC 2025,mc2025_track1_097,tididi-cnf,yes,20.59
+MCC 2025,mc2025_track1_097,Panini,yes,57.47
+MCC 2025,mc2025_track1_097,D4 (compiler),yes,20.94
+MCC 2025,mc2025_track1_097,GPMC (compiler),yes,94.66
+MCC 2025,mc2025_track1_097,c2d,no,
+MCC 2025,mc2025_track1_098,tididi-cnf,no,
+MCC 2025,mc2025_track1_098,Panini,yes,48.27
+MCC 2025,mc2025_track1_098,D4 (compiler),yes,15.79
+MCC 2025,mc2025_track1_098,GPMC (compiler),yes,64.88
+MCC 2025,mc2025_track1_098,c2d,no,
+MCC 2025,mc2025_track1_099,tididi-cnf,yes,2.74
+MCC 2025,mc2025_track1_099,Panini,no,
+MCC 2025,mc2025_track1_099,D4 (compiler),no,
+MCC 2025,mc2025_track1_099,GPMC (compiler),yes,35.92
+MCC 2025,mc2025_track1_099,c2d,no,
+MCC 2025,mc2025_track1_100,tididi-cnf,no,
+MCC 2025,mc2025_track1_100,Panini,no,
+MCC 2025,mc2025_track1_100,D4 (compiler),no,
+MCC 2025,mc2025_track1_100,GPMC (compiler),no,
+MCC 2025,mc2025_track1_100,c2d,no,
+MCC 2025,mc2025_track1_101,tididi-cnf,yes,5.54
+MCC 2025,mc2025_track1_101,Panini,no,
+MCC 2025,mc2025_track1_101,D4 (compiler),no,
+MCC 2025,mc2025_track1_101,GPMC (compiler),no,
+MCC 2025,mc2025_track1_101,c2d,no,
+MCC 2025,mc2025_track1_102,tididi-cnf,no,
+MCC 2025,mc2025_track1_102,Panini,no,
+MCC 2025,mc2025_track1_102,D4 (compiler),no,
+MCC 2025,mc2025_track1_102,GPMC (compiler),no,
+MCC 2025,mc2025_track1_102,c2d,no,
+MCC 2025,mc2025_track1_103,tididi-cnf,no,
+MCC 2025,mc2025_track1_103,Panini,no,
+MCC 2025,mc2025_track1_103,D4 (compiler),no,
+MCC 2025,mc2025_track1_103,GPMC (compiler),no,
+MCC 2025,mc2025_track1_103,c2d,no,
+MCC 2025,mc2025_track1_104,tididi-cnf,no,
+MCC 2025,mc2025_track1_104,Panini,no,
+MCC 2025,mc2025_track1_104,D4 (compiler),no,
+MCC 2025,mc2025_track1_104,GPMC (compiler),no,
+MCC 2025,mc2025_track1_104,c2d,no,
+MCC 2025,mc2025_track1_105,tididi-cnf,no,
+MCC 2025,mc2025_track1_105,Panini,no,
+MCC 2025,mc2025_track1_105,D4 (compiler),no,
+MCC 2025,mc2025_track1_105,GPMC (compiler),no,
+MCC 2025,mc2025_track1_105,c2d,no,
+MCC 2025,mc2025_track1_106,tididi-cnf,yes,27.25
+MCC 2025,mc2025_track1_106,Panini,no,
+MCC 2025,mc2025_track1_106,D4 (compiler),no,
+MCC 2025,mc2025_track1_106,GPMC (compiler),no,
+MCC 2025,mc2025_track1_106,c2d,no,
+MCC 2025,mc2025_track1_107,tididi-cnf,yes,15.57
+MCC 2025,mc2025_track1_107,Panini,yes,22.31
+MCC 2025,mc2025_track1_107,D4 (compiler),no,
+MCC 2025,mc2025_track1_107,GPMC (compiler),no,
+MCC 2025,mc2025_track1_107,c2d,no,
+MCC 2025,mc2025_track1_108,tididi-cnf,yes,21.34
+MCC 2025,mc2025_track1_108,Panini,yes,36.46
+MCC 2025,mc2025_track1_108,D4 (compiler),no,
+MCC 2025,mc2025_track1_108,GPMC (compiler),no,
+MCC 2025,mc2025_track1_108,c2d,no,
+MCC 2025,mc2025_track1_109,tididi-cnf,yes,20.89
+MCC 2025,mc2025_track1_109,Panini,yes,19.42
+MCC 2025,mc2025_track1_109,D4 (compiler),no,
+MCC 2025,mc2025_track1_109,GPMC (compiler),no,
+MCC 2025,mc2025_track1_109,c2d,no,
+MCC 2025,mc2025_track1_110,tididi-cnf,no,
+MCC 2025,mc2025_track1_110,Panini,no,
+MCC 2025,mc2025_track1_110,D4 (compiler),no,
+MCC 2025,mc2025_track1_110,GPMC (compiler),no,
+MCC 2025,mc2025_track1_110,c2d,no,
+MCC 2025,mc2025_track1_111,tididi-cnf,no,
+MCC 2025,mc2025_track1_111,Panini,no,
+MCC 2025,mc2025_track1_111,D4 (compiler),no,
+MCC 2025,mc2025_track1_111,GPMC (compiler),no,
+MCC 2025,mc2025_track1_111,c2d,no,
+MCC 2025,mc2025_track1_112,tididi-cnf,yes,60.51
+MCC 2025,mc2025_track1_112,Panini,no,
+MCC 2025,mc2025_track1_112,D4 (compiler),no,
+MCC 2025,mc2025_track1_112,GPMC (compiler),no,
+MCC 2025,mc2025_track1_112,c2d,no,
+MCC 2025,mc2025_track1_113,tididi-cnf,yes,2.74
+MCC 2025,mc2025_track1_113,Panini,yes,2.08
+MCC 2025,mc2025_track1_113,D4 (compiler),yes,5.35
+MCC 2025,mc2025_track1_113,GPMC (compiler),no,
+MCC 2025,mc2025_track1_113,c2d,yes,23.62
+MCC 2025,mc2025_track1_114,tididi-cnf,no,
+MCC 2025,mc2025_track1_114,Panini,no,
+MCC 2025,mc2025_track1_114,D4 (compiler),no,
+MCC 2025,mc2025_track1_114,GPMC (compiler),no,
+MCC 2025,mc2025_track1_114,c2d,no,
+MCC 2025,mc2025_track1_115,tididi-cnf,yes,66.29
+MCC 2025,mc2025_track1_115,Panini,no,
+MCC 2025,mc2025_track1_115,D4 (compiler),no,
+MCC 2025,mc2025_track1_115,GPMC (compiler),no,
+MCC 2025,mc2025_track1_115,c2d,no,
+MCC 2025,mc2025_track1_116,tididi-cnf,yes,7.15
+MCC 2025,mc2025_track1_116,Panini,yes,9.39
+MCC 2025,mc2025_track1_116,D4 (compiler),no,
+MCC 2025,mc2025_track1_116,GPMC (compiler),yes,8.92
+MCC 2025,mc2025_track1_116,c2d,yes,57.95
+MCC 2025,mc2025_track1_117,tididi-cnf,no,
+MCC 2025,mc2025_track1_117,Panini,no,
+MCC 2025,mc2025_track1_117,D4 (compiler),no,
+MCC 2025,mc2025_track1_117,GPMC (compiler),no,
+MCC 2025,mc2025_track1_117,c2d,no,
+MCC 2025,mc2025_track1_118,tididi-cnf,no,
+MCC 2025,mc2025_track1_118,Panini,no,
+MCC 2025,mc2025_track1_118,D4 (compiler),no,
+MCC 2025,mc2025_track1_118,GPMC (compiler),no,
+MCC 2025,mc2025_track1_118,c2d,no,
+MCC 2025,mc2025_track1_119,tididi-cnf,no,
+MCC 2025,mc2025_track1_119,Panini,no,
+MCC 2025,mc2025_track1_119,D4 (compiler),no,
+MCC 2025,mc2025_track1_119,GPMC (compiler),no,
+MCC 2025,mc2025_track1_119,c2d,no,
+MCC 2025,mc2025_track1_120,tididi-cnf,no,
+MCC 2025,mc2025_track1_120,Panini,no,
+MCC 2025,mc2025_track1_120,D4 (compiler),no,
+MCC 2025,mc2025_track1_120,GPMC (compiler),no,
+MCC 2025,mc2025_track1_120,c2d,no,
+MCC 2025,mc2025_track1_121,tididi-cnf,no,
+MCC 2025,mc2025_track1_121,Panini,no,
+MCC 2025,mc2025_track1_121,D4 (compiler),no,
+MCC 2025,mc2025_track1_121,GPMC (compiler),no,
+MCC 2025,mc2025_track1_121,c2d,no,
+MCC 2025,mc2025_track1_122,tididi-cnf,no,
+MCC 2025,mc2025_track1_122,Panini,no,
+MCC 2025,mc2025_track1_122,D4 (compiler),no,
+MCC 2025,mc2025_track1_122,GPMC (compiler),no,
+MCC 2025,mc2025_track1_122,c2d,no,
+MCC 2025,mc2025_track1_123,tididi-cnf,no,
+MCC 2025,mc2025_track1_123,Panini,yes,11.53
+MCC 2025,mc2025_track1_123,D4 (compiler),yes,24.76
+MCC 2025,mc2025_track1_123,GPMC (compiler),no,
+MCC 2025,mc2025_track1_123,c2d,no,
+MCC 2025,mc2025_track1_124,tididi-cnf,no,
+MCC 2025,mc2025_track1_124,Panini,yes,85.30
+MCC 2025,mc2025_track1_124,D4 (compiler),no,
+MCC 2025,mc2025_track1_124,GPMC (compiler),no,
+MCC 2025,mc2025_track1_124,c2d,no,
+MCC 2025,mc2025_track1_125,tididi-cnf,no,
+MCC 2025,mc2025_track1_125,Panini,yes,12.96
+MCC 2025,mc2025_track1_125,D4 (compiler),yes,28.70
+MCC 2025,mc2025_track1_125,GPMC (compiler),no,
+MCC 2025,mc2025_track1_125,c2d,no,
+MCC 2025,mc2025_track1_126,tididi-cnf,no,
+MCC 2025,mc2025_track1_126,Panini,no,
+MCC 2025,mc2025_track1_126,D4 (compiler),no,
+MCC 2025,mc2025_track1_126,GPMC (compiler),no,
+MCC 2025,mc2025_track1_126,c2d,no,
+MCC 2025,mc2025_track1_127,tididi-cnf,no,
+MCC 2025,mc2025_track1_127,Panini,no,
+MCC 2025,mc2025_track1_127,D4 (compiler),no,
+MCC 2025,mc2025_track1_127,GPMC (compiler),no,
+MCC 2025,mc2025_track1_127,c2d,no,
+MCC 2025,mc2025_track1_128,tididi-cnf,no,
+MCC 2025,mc2025_track1_128,Panini,no,
+MCC 2025,mc2025_track1_128,D4 (compiler),no,
+MCC 2025,mc2025_track1_128,GPMC (compiler),no,
+MCC 2025,mc2025_track1_128,c2d,no,
+MCC 2025,mc2025_track1_129,tididi-cnf,no,
+MCC 2025,mc2025_track1_129,Panini,no,
+MCC 2025,mc2025_track1_129,D4 (compiler),no,
+MCC 2025,mc2025_track1_129,GPMC (compiler),no,
+MCC 2025,mc2025_track1_129,c2d,no,
+MCC 2025,mc2025_track1_130,tididi-cnf,no,
+MCC 2025,mc2025_track1_130,Panini,no,
+MCC 2025,mc2025_track1_130,D4 (compiler),no,
+MCC 2025,mc2025_track1_130,GPMC (compiler),no,
+MCC 2025,mc2025_track1_130,c2d,no,
+MCC 2025,mc2025_track1_131,tididi-cnf,no,
+MCC 2025,mc2025_track1_131,Panini,no,
+MCC 2025,mc2025_track1_131,D4 (compiler),no,
+MCC 2025,mc2025_track1_131,GPMC (compiler),no,
+MCC 2025,mc2025_track1_131,c2d,no,
+MCC 2025,mc2025_track1_132,tididi-cnf,yes,13.31
+MCC 2025,mc2025_track1_132,Panini,no,
+MCC 2025,mc2025_track1_132,D4 (compiler),no,
+MCC 2025,mc2025_track1_132,GPMC (compiler),no,
+MCC 2025,mc2025_track1_132,c2d,no,
+MCC 2025,mc2025_track1_133,tididi-cnf,no,
+MCC 2025,mc2025_track1_133,Panini,no,
+MCC 2025,mc2025_track1_133,D4 (compiler),no,
+MCC 2025,mc2025_track1_133,GPMC (compiler),no,
+MCC 2025,mc2025_track1_133,c2d,no,
+MCC 2025,mc2025_track1_134,tididi-cnf,no,
+MCC 2025,mc2025_track1_134,Panini,no,
+MCC 2025,mc2025_track1_134,D4 (compiler),no,
+MCC 2025,mc2025_track1_134,GPMC (compiler),no,
+MCC 2025,mc2025_track1_134,c2d,no,
+MCC 2025,mc2025_track1_135,tididi-cnf,no,
+MCC 2025,mc2025_track1_135,Panini,no,
+MCC 2025,mc2025_track1_135,D4 (compiler),no,
+MCC 2025,mc2025_track1_135,GPMC (compiler),no,
+MCC 2025,mc2025_track1_135,c2d,no,
+MCC 2025,mc2025_track1_136,tididi-cnf,no,
+MCC 2025,mc2025_track1_136,Panini,no,
+MCC 2025,mc2025_track1_136,D4 (compiler),no,
+MCC 2025,mc2025_track1_136,GPMC (compiler),no,
+MCC 2025,mc2025_track1_136,c2d,no,
+MCC 2025,mc2025_track1_137,tididi-cnf,no,
+MCC 2025,mc2025_track1_137,Panini,no,
+MCC 2025,mc2025_track1_137,D4 (compiler),no,
+MCC 2025,mc2025_track1_137,GPMC (compiler),no,
+MCC 2025,mc2025_track1_137,c2d,no,
+MCC 2025,mc2025_track1_138,tididi-cnf,yes,3.59
+MCC 2025,mc2025_track1_138,Panini,yes,30.38
+MCC 2025,mc2025_track1_138,D4 (compiler),no,
+MCC 2025,mc2025_track1_138,GPMC (compiler),yes,36.51
+MCC 2025,mc2025_track1_138,c2d,yes,90.81
+MCC 2025,mc2025_track1_139,tididi-cnf,no,
+MCC 2025,mc2025_track1_139,Panini,no,
+MCC 2025,mc2025_track1_139,D4 (compiler),no,
+MCC 2025,mc2025_track1_139,GPMC (compiler),no,
+MCC 2025,mc2025_track1_139,c2d,no,
+MCC 2025,mc2025_track1_140,tididi-cnf,yes,4.19
+MCC 2025,mc2025_track1_140,Panini,no,
+MCC 2025,mc2025_track1_140,D4 (compiler),no,
+MCC 2025,mc2025_track1_140,GPMC (compiler),no,
+MCC 2025,mc2025_track1_140,c2d,no,
+MCC 2025,mc2025_track1_141,tididi-cnf,no,
+MCC 2025,mc2025_track1_141,Panini,no,
+MCC 2025,mc2025_track1_141,D4 (compiler),no,
+MCC 2025,mc2025_track1_141,GPMC (compiler),no,
+MCC 2025,mc2025_track1_141,c2d,no,
+MCC 2025,mc2025_track1_142,tididi-cnf,yes,12.81
+MCC 2025,mc2025_track1_142,Panini,no,
+MCC 2025,mc2025_track1_142,D4 (compiler),no,
+MCC 2025,mc2025_track1_142,GPMC (compiler),no,
+MCC 2025,mc2025_track1_142,c2d,yes,3.84
+MCC 2025,mc2025_track1_143,tididi-cnf,no,
+MCC 2025,mc2025_track1_143,Panini,no,
+MCC 2025,mc2025_track1_143,D4 (compiler),no,
+MCC 2025,mc2025_track1_143,GPMC (compiler),no,
+MCC 2025,mc2025_track1_143,c2d,no,
+MCC 2025,mc2025_track1_144,tididi-cnf,no,
+MCC 2025,mc2025_track1_144,Panini,no,
+MCC 2025,mc2025_track1_144,D4 (compiler),no,
+MCC 2025,mc2025_track1_144,GPMC (compiler),no,
+MCC 2025,mc2025_track1_144,c2d,no,
+MCC 2025,mc2025_track1_145,tididi-cnf,yes,0.78
+MCC 2025,mc2025_track1_145,Panini,yes,2.48
+MCC 2025,mc2025_track1_145,D4 (compiler),no,
+MCC 2025,mc2025_track1_145,GPMC (compiler),yes,0.45
+MCC 2025,mc2025_track1_145,c2d,no,
+MCC 2025,mc2025_track1_146,tididi-cnf,no,
+MCC 2025,mc2025_track1_146,Panini,no,
+MCC 2025,mc2025_track1_146,D4 (compiler),no,
+MCC 2025,mc2025_track1_146,GPMC (compiler),no,
+MCC 2025,mc2025_track1_146,c2d,no,
+MCC 2025,mc2025_track1_147,tididi-cnf,yes,1.43
+MCC 2025,mc2025_track1_147,Panini,yes,1.27
+MCC 2025,mc2025_track1_147,D4 (compiler),no,
+MCC 2025,mc2025_track1_147,GPMC (compiler),no,
+MCC 2025,mc2025_track1_147,c2d,no,
+MCC 2025,mc2025_track1_148,tididi-cnf,no,
+MCC 2025,mc2025_track1_148,Panini,no,
+MCC 2025,mc2025_track1_148,D4 (compiler),no,
+MCC 2025,mc2025_track1_148,GPMC (compiler),no,
+MCC 2025,mc2025_track1_148,c2d,no,
+MCC 2025,mc2025_track1_149,tididi-cnf,no,
+MCC 2025,mc2025_track1_149,Panini,no,
+MCC 2025,mc2025_track1_149,D4 (compiler),no,
+MCC 2025,mc2025_track1_149,GPMC (compiler),no,
+MCC 2025,mc2025_track1_149,c2d,no,
+MCC 2025,mc2025_track1_150,tididi-cnf,yes,41.97
+MCC 2025,mc2025_track1_150,Panini,no,
+MCC 2025,mc2025_track1_150,D4 (compiler),yes,75.77
+MCC 2025,mc2025_track1_150,GPMC (compiler),yes,84.05
+MCC 2025,mc2025_track1_150,c2d,no,
+MCC 2025,mc2025_track1_151,tididi-cnf,yes,116.61
+MCC 2025,mc2025_track1_151,Panini,yes,27.89
+MCC 2025,mc2025_track1_151,D4 (compiler),no,
+MCC 2025,mc2025_track1_151,GPMC (compiler),yes,102.89
+MCC 2025,mc2025_track1_151,c2d,no,
+MCC 2025,mc2025_track1_152,tididi-cnf,no,
+MCC 2025,mc2025_track1_152,Panini,no,
+MCC 2025,mc2025_track1_152,D4 (compiler),no,
+MCC 2025,mc2025_track1_152,GPMC (compiler),no,
+MCC 2025,mc2025_track1_152,c2d,no,
+MCC 2025,mc2025_track1_153,tididi-cnf,yes,69.82
+MCC 2025,mc2025_track1_153,Panini,yes,81.50
+MCC 2025,mc2025_track1_153,D4 (compiler),yes,71.63
+MCC 2025,mc2025_track1_153,GPMC (compiler),yes,88.85
+MCC 2025,mc2025_track1_153,c2d,no,
+MCC 2025,mc2025_track1_154,tididi-cnf,no,
+MCC 2025,mc2025_track1_154,Panini,no,
+MCC 2025,mc2025_track1_154,D4 (compiler),no,
+MCC 2025,mc2025_track1_154,GPMC (compiler),no,
+MCC 2025,mc2025_track1_154,c2d,no,
+MCC 2025,mc2025_track1_155,tididi-cnf,yes,5.59
+MCC 2025,mc2025_track1_155,Panini,yes,1.09
+MCC 2025,mc2025_track1_155,D4 (compiler),yes,4.36
+MCC 2025,mc2025_track1_155,GPMC (compiler),yes,1.70
+MCC 2025,mc2025_track1_155,c2d,yes,11.67
+MCC 2025,mc2025_track1_156,tididi-cnf,no,
+MCC 2025,mc2025_track1_156,Panini,no,
+MCC 2025,mc2025_track1_156,D4 (compiler),no,
+MCC 2025,mc2025_track1_156,GPMC (compiler),no,
+MCC 2025,mc2025_track1_156,c2d,no,
+MCC 2025,mc2025_track1_157,tididi-cnf,no,
+MCC 2025,mc2025_track1_157,Panini,no,
+MCC 2025,mc2025_track1_157,D4 (compiler),no,
+MCC 2025,mc2025_track1_157,GPMC (compiler),no,
+MCC 2025,mc2025_track1_157,c2d,no,
+MCC 2025,mc2025_track1_158,tididi-cnf,no,
+MCC 2025,mc2025_track1_158,Panini,no,
+MCC 2025,mc2025_track1_158,D4 (compiler),no,
+MCC 2025,mc2025_track1_158,GPMC (compiler),no,
+MCC 2025,mc2025_track1_158,c2d,no,
+MCC 2025,mc2025_track1_159,tididi-cnf,yes,0.43
+MCC 2025,mc2025_track1_159,Panini,yes,1.22
+MCC 2025,mc2025_track1_159,D4 (compiler),yes,38.09
+MCC 2025,mc2025_track1_159,GPMC (compiler),yes,2.06
+MCC 2025,mc2025_track1_159,c2d,no,
+MCC 2025,mc2025_track1_160,tididi-cnf,yes,2.18
+MCC 2025,mc2025_track1_160,Panini,no,
+MCC 2025,mc2025_track1_160,D4 (compiler),yes,69.75
+MCC 2025,mc2025_track1_160,GPMC (compiler),yes,5.92
+MCC 2025,mc2025_track1_160,c2d,no,
+MCC 2025,mc2025_track1_161,tididi-cnf,no,
+MCC 2025,mc2025_track1_161,Panini,no,
+MCC 2025,mc2025_track1_161,D4 (compiler),no,
+MCC 2025,mc2025_track1_161,GPMC (compiler),no,
+MCC 2025,mc2025_track1_161,c2d,no,
+MCC 2025,mc2025_track1_162,tididi-cnf,no,
+MCC 2025,mc2025_track1_162,Panini,no,
+MCC 2025,mc2025_track1_162,D4 (compiler),no,
+MCC 2025,mc2025_track1_162,GPMC (compiler),no,
+MCC 2025,mc2025_track1_162,c2d,no,
+MCC 2025,mc2025_track1_163,tididi-cnf,no,
+MCC 2025,mc2025_track1_163,Panini,no,
+MCC 2025,mc2025_track1_163,D4 (compiler),no,
+MCC 2025,mc2025_track1_163,GPMC (compiler),no,
+MCC 2025,mc2025_track1_163,c2d,no,
+MCC 2025,mc2025_track1_164,tididi-cnf,no,
+MCC 2025,mc2025_track1_164,Panini,no,
+MCC 2025,mc2025_track1_164,D4 (compiler),no,
+MCC 2025,mc2025_track1_164,GPMC (compiler),no,
+MCC 2025,mc2025_track1_164,c2d,no,
+MCC 2025,mc2025_track1_165,tididi-cnf,no,
+MCC 2025,mc2025_track1_165,Panini,no,
+MCC 2025,mc2025_track1_165,D4 (compiler),no,
+MCC 2025,mc2025_track1_165,GPMC (compiler),no,
+MCC 2025,mc2025_track1_165,c2d,no,
+MCC 2025,mc2025_track1_166,tididi-cnf,yes,5.09
+MCC 2025,mc2025_track1_166,Panini,no,
+MCC 2025,mc2025_track1_166,D4 (compiler),no,
+MCC 2025,mc2025_track1_166,GPMC (compiler),no,
+MCC 2025,mc2025_track1_166,c2d,no,
+MCC 2025,mc2025_track1_167,tididi-cnf,no,
+MCC 2025,mc2025_track1_167,Panini,no,
+MCC 2025,mc2025_track1_167,D4 (compiler),yes,54.16
+MCC 2025,mc2025_track1_167,GPMC (compiler),no,
+MCC 2025,mc2025_track1_167,c2d,no,
+MCC 2025,mc2025_track1_168,tididi-cnf,no,
+MCC 2025,mc2025_track1_168,Panini,yes,31.24
+MCC 2025,mc2025_track1_168,D4 (compiler),yes,11.59
+MCC 2025,mc2025_track1_168,GPMC (compiler),yes,20.23
+MCC 2025,mc2025_track1_168,c2d,no,
+MCC 2025,mc2025_track1_169,tididi-cnf,no,
+MCC 2025,mc2025_track1_169,Panini,yes,41.60
+MCC 2025,mc2025_track1_169,D4 (compiler),yes,14.85
+MCC 2025,mc2025_track1_169,GPMC (compiler),yes,26.73
+MCC 2025,mc2025_track1_169,c2d,no,
+MCC 2025,mc2025_track1_170,tididi-cnf,no,
+MCC 2025,mc2025_track1_170,Panini,no,
+MCC 2025,mc2025_track1_170,D4 (compiler),no,
+MCC 2025,mc2025_track1_170,GPMC (compiler),no,
+MCC 2025,mc2025_track1_170,c2d,no,
+MCC 2025,mc2025_track1_171,tididi-cnf,yes,31.66
+MCC 2025,mc2025_track1_171,Panini,yes,23.69
+MCC 2025,mc2025_track1_171,D4 (compiler),yes,14.02
+MCC 2025,mc2025_track1_171,GPMC (compiler),yes,22.76
+MCC 2025,mc2025_track1_171,c2d,no,
+MCC 2025,mc2025_track1_172,tididi-cnf,no,
+MCC 2025,mc2025_track1_172,Panini,no,
+MCC 2025,mc2025_track1_172,D4 (compiler),no,
+MCC 2025,mc2025_track1_172,GPMC (compiler),no,
+MCC 2025,mc2025_track1_172,c2d,no,
+MCC 2025,mc2025_track1_173,tididi-cnf,yes,43.55
+MCC 2025,mc2025_track1_173,Panini,yes,40.72
+MCC 2025,mc2025_track1_173,D4 (compiler),yes,20.58
+MCC 2025,mc2025_track1_173,GPMC (compiler),yes,35.54
+MCC 2025,mc2025_track1_173,c2d,no,
+MCC 2025,mc2025_track1_174,tididi-cnf,no,
+MCC 2025,mc2025_track1_174,Panini,no,
+MCC 2025,mc2025_track1_174,D4 (compiler),no,
+MCC 2025,mc2025_track1_174,GPMC (compiler),no,
+MCC 2025,mc2025_track1_174,c2d,no,
+MCC 2025,mc2025_track1_175,tididi-cnf,no,
+MCC 2025,mc2025_track1_175,Panini,no,
+MCC 2025,mc2025_track1_175,D4 (compiler),no,
+MCC 2025,mc2025_track1_175,GPMC (compiler),no,
+MCC 2025,mc2025_track1_175,c2d,no,
+MCC 2025,mc2025_track1_176,tididi-cnf,no,
+MCC 2025,mc2025_track1_176,Panini,no,
+MCC 2025,mc2025_track1_176,D4 (compiler),yes,32.86
+MCC 2025,mc2025_track1_176,GPMC (compiler),yes,70.92
+MCC 2025,mc2025_track1_176,c2d,no,
+MCC 2025,mc2025_track1_177,tididi-cnf,yes,23.79
+MCC 2025,mc2025_track1_177,Panini,yes,29.53
+MCC 2025,mc2025_track1_177,D4 (compiler),no,
+MCC 2025,mc2025_track1_177,GPMC (compiler),no,
+MCC 2025,mc2025_track1_177,c2d,no,
+MCC 2025,mc2025_track1_178,tididi-cnf,yes,11.56
+MCC 2025,mc2025_track1_178,Panini,yes,18.84
+MCC 2025,mc2025_track1_178,D4 (compiler),no,
+MCC 2025,mc2025_track1_178,GPMC (compiler),no,
+MCC 2025,mc2025_track1_178,c2d,no,
+MCC 2025,mc2025_track1_179,tididi-cnf,yes,38.44
+MCC 2025,mc2025_track1_179,Panini,yes,95.12
+MCC 2025,mc2025_track1_179,D4 (compiler),no,
+MCC 2025,mc2025_track1_179,GPMC (compiler),no,
+MCC 2025,mc2025_track1_179,c2d,no,
+MCC 2025,mc2025_track1_180,tididi-cnf,no,
+MCC 2025,mc2025_track1_180,Panini,no,
+MCC 2025,mc2025_track1_180,D4 (compiler),no,
+MCC 2025,mc2025_track1_180,GPMC (compiler),no,
+MCC 2025,mc2025_track1_180,c2d,no,
+MCC 2025,mc2025_track1_181,tididi-cnf,no,
+MCC 2025,mc2025_track1_181,Panini,no,
+MCC 2025,mc2025_track1_181,D4 (compiler),no,
+MCC 2025,mc2025_track1_181,GPMC (compiler),no,
+MCC 2025,mc2025_track1_181,c2d,no,
+MCC 2025,mc2025_track1_182,tididi-cnf,yes,2.13
+MCC 2025,mc2025_track1_182,Panini,yes,1.93
+MCC 2025,mc2025_track1_182,D4 (compiler),yes,5.31
+MCC 2025,mc2025_track1_182,GPMC (compiler),yes,19.44
+MCC 2025,mc2025_track1_182,c2d,yes,45.19
+MCC 2025,mc2025_track1_183,tididi-cnf,yes,9.20
+MCC 2025,mc2025_track1_183,Panini,yes,8.34
+MCC 2025,mc2025_track1_183,D4 (compiler),yes,91.13
+MCC 2025,mc2025_track1_183,GPMC (compiler),yes,16.68
+MCC 2025,mc2025_track1_183,c2d,no,
+MCC 2025,mc2025_track1_184,tididi-cnf,yes,40.85
+MCC 2025,mc2025_track1_184,Panini,yes,51.36
+MCC 2025,mc2025_track1_184,D4 (compiler),yes,83.14
+MCC 2025,mc2025_track1_184,GPMC (compiler),yes,63.48
+MCC 2025,mc2025_track1_184,c2d,no,
+MCC 2025,mc2025_track1_185,tididi-cnf,yes,92.68
+MCC 2025,mc2025_track1_185,Panini,no,
+MCC 2025,mc2025_track1_185,D4 (compiler),no,
+MCC 2025,mc2025_track1_185,GPMC (compiler),no,
+MCC 2025,mc2025_track1_185,c2d,no,
+MCC 2025,mc2025_track1_186,tididi-cnf,no,
+MCC 2025,mc2025_track1_186,Panini,yes,35.91
+MCC 2025,mc2025_track1_186,D4 (compiler),yes,29.42
+MCC 2025,mc2025_track1_186,GPMC (compiler),yes,29.76
+MCC 2025,mc2025_track1_186,c2d,no,
+MCC 2025,mc2025_track1_187,tididi-cnf,no,
+MCC 2025,mc2025_track1_187,Panini,no,
+MCC 2025,mc2025_track1_187,D4 (compiler),no,
+MCC 2025,mc2025_track1_187,GPMC (compiler),no,
+MCC 2025,mc2025_track1_187,c2d,no,
+MCC 2025,mc2025_track1_188,tididi-cnf,no,
+MCC 2025,mc2025_track1_188,Panini,no,
+MCC 2025,mc2025_track1_188,D4 (compiler),no,
+MCC 2025,mc2025_track1_188,GPMC (compiler),no,
+MCC 2025,mc2025_track1_188,c2d,no,
+MCC 2025,mc2025_track1_189,tididi-cnf,yes,114.69
+MCC 2025,mc2025_track1_189,Panini,no,
+MCC 2025,mc2025_track1_189,D4 (compiler),no,
+MCC 2025,mc2025_track1_189,GPMC (compiler),no,
+MCC 2025,mc2025_track1_189,c2d,no,
+MCC 2025,mc2025_track1_190,tididi-cnf,no,
+MCC 2025,mc2025_track1_190,Panini,yes,58.83
+MCC 2025,mc2025_track1_190,D4 (compiler),yes,48.79
+MCC 2025,mc2025_track1_190,GPMC (compiler),yes,85.37
+MCC 2025,mc2025_track1_190,c2d,no,
+MCC 2025,mc2025_track1_191,tididi-cnf,no,
+MCC 2025,mc2025_track1_191,Panini,no,
+MCC 2025,mc2025_track1_191,D4 (compiler),no,
+MCC 2025,mc2025_track1_191,GPMC (compiler),no,
+MCC 2025,mc2025_track1_191,c2d,no,
+MCC 2025,mc2025_track1_192,tididi-cnf,no,
+MCC 2025,mc2025_track1_192,Panini,no,
+MCC 2025,mc2025_track1_192,D4 (compiler),no,
+MCC 2025,mc2025_track1_192,GPMC (compiler),no,
+MCC 2025,mc2025_track1_192,c2d,no,
+MCC 2025,mc2025_track1_193,tididi-cnf,no,
+MCC 2025,mc2025_track1_193,Panini,no,
+MCC 2025,mc2025_track1_193,D4 (compiler),no,
+MCC 2025,mc2025_track1_193,GPMC (compiler),no,
+MCC 2025,mc2025_track1_193,c2d,no,
+MCC 2025,mc2025_track1_194,tididi-cnf,no,
+MCC 2025,mc2025_track1_194,Panini,no,
+MCC 2025,mc2025_track1_194,D4 (compiler),no,
+MCC 2025,mc2025_track1_194,GPMC (compiler),no,
+MCC 2025,mc2025_track1_194,c2d,no,
+MCC 2025,mc2025_track1_195,tididi-cnf,no,
+MCC 2025,mc2025_track1_195,Panini,no,
+MCC 2025,mc2025_track1_195,D4 (compiler),no,
+MCC 2025,mc2025_track1_195,GPMC (compiler),no,
+MCC 2025,mc2025_track1_195,c2d,no,
+MCC 2025,mc2025_track1_196,tididi-cnf,no,
+MCC 2025,mc2025_track1_196,Panini,no,
+MCC 2025,mc2025_track1_196,D4 (compiler),no,
+MCC 2025,mc2025_track1_196,GPMC (compiler),no,
+MCC 2025,mc2025_track1_196,c2d,no,
+MCC 2025,mc2025_track1_197,tididi-cnf,no,
+MCC 2025,mc2025_track1_197,Panini,no,
+MCC 2025,mc2025_track1_197,D4 (compiler),no,
+MCC 2025,mc2025_track1_197,GPMC (compiler),no,
+MCC 2025,mc2025_track1_197,c2d,no,
+MCC 2025,mc2025_track1_198,tididi-cnf,no,
+MCC 2025,mc2025_track1_198,Panini,no,
+MCC 2025,mc2025_track1_198,D4 (compiler),no,
+MCC 2025,mc2025_track1_198,GPMC (compiler),no,
+MCC 2025,mc2025_track1_198,c2d,no,
+MCC 2025,mc2025_track1_199,tididi-cnf,no,
+MCC 2025,mc2025_track1_199,Panini,no,
+MCC 2025,mc2025_track1_199,D4 (compiler),no,
+MCC 2025,mc2025_track1_199,GPMC (compiler),no,
+MCC 2025,mc2025_track1_199,c2d,no,
+MCC 2026 public,mc2026_track1_001,tididi-cnf,yes,0.08
+MCC 2026 public,mc2026_track1_001,Panini,yes,0.40
+MCC 2026 public,mc2026_track1_001,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_001,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_001,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_003,tididi-cnf,yes,0.05
+MCC 2026 public,mc2026_track1_003,Panini,yes,0.40
+MCC 2026 public,mc2026_track1_003,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_003,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_003,c2d,yes,0.01
+MCC 2026 public,mc2026_track1_005,tididi-cnf,yes,0.05
+MCC 2026 public,mc2026_track1_005,Panini,yes,0.42
+MCC 2026 public,mc2026_track1_005,D4 (compiler),yes,0.32
+MCC 2026 public,mc2026_track1_005,GPMC (compiler),yes,0.12
+MCC 2026 public,mc2026_track1_005,c2d,yes,0.35
+MCC 2026 public,mc2026_track1_007,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_007,Panini,no,
+MCC 2026 public,mc2026_track1_007,D4 (compiler),yes,108.59
+MCC 2026 public,mc2026_track1_007,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_007,c2d,no,
+MCC 2026 public,mc2026_track1_009,tididi-cnf,yes,1.08
+MCC 2026 public,mc2026_track1_009,Panini,no,
+MCC 2026 public,mc2026_track1_009,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_009,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_009,c2d,yes,96.65
+MCC 2026 public,mc2026_track1_011,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_011,Panini,no,
+MCC 2026 public,mc2026_track1_011,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_011,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_011,c2d,no,
+MCC 2026 public,mc2026_track1_013,tididi-cnf,yes,3.24
+MCC 2026 public,mc2026_track1_013,Panini,yes,5.62
+MCC 2026 public,mc2026_track1_013,D4 (compiler),yes,10.04
+MCC 2026 public,mc2026_track1_013,GPMC (compiler),yes,4.22
+MCC 2026 public,mc2026_track1_013,c2d,yes,2.31
+MCC 2026 public,mc2026_track1_015,tididi-cnf,yes,0.98
+MCC 2026 public,mc2026_track1_015,Panini,yes,0.77
+MCC 2026 public,mc2026_track1_015,D4 (compiler),yes,0.38
+MCC 2026 public,mc2026_track1_015,GPMC (compiler),yes,0.14
+MCC 2026 public,mc2026_track1_015,c2d,yes,0.12
+MCC 2026 public,mc2026_track1_017,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_017,Panini,no,
+MCC 2026 public,mc2026_track1_017,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_017,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_017,c2d,no,
+MCC 2026 public,mc2026_track1_019,tididi-cnf,yes,3.99
+MCC 2026 public,mc2026_track1_019,Panini,yes,0.97
+MCC 2026 public,mc2026_track1_019,D4 (compiler),yes,4.48
+MCC 2026 public,mc2026_track1_019,GPMC (compiler),yes,0.16
+MCC 2026 public,mc2026_track1_019,c2d,no,
+MCC 2026 public,mc2026_track1_021,tididi-cnf,yes,34.57
+MCC 2026 public,mc2026_track1_021,Panini,no,
+MCC 2026 public,mc2026_track1_021,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_021,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_021,c2d,no,
+MCC 2026 public,mc2026_track1_023,tididi-cnf,yes,0.18
+MCC 2026 public,mc2026_track1_023,Panini,yes,0.66
+MCC 2026 public,mc2026_track1_023,D4 (compiler),yes,0.17
+MCC 2026 public,mc2026_track1_023,GPMC (compiler),yes,0.15
+MCC 2026 public,mc2026_track1_023,c2d,yes,0.20
+MCC 2026 public,mc2026_track1_025,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_025,Panini,no,
+MCC 2026 public,mc2026_track1_025,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_025,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_025,c2d,no,
+MCC 2026 public,mc2026_track1_027,tididi-cnf,yes,85.72
+MCC 2026 public,mc2026_track1_027,Panini,no,
+MCC 2026 public,mc2026_track1_027,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_027,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_027,c2d,no,
+MCC 2026 public,mc2026_track1_029,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_029,Panini,no,
+MCC 2026 public,mc2026_track1_029,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_029,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_029,c2d,no,
+MCC 2026 public,mc2026_track1_031,tididi-cnf,yes,3.64
+MCC 2026 public,mc2026_track1_031,Panini,yes,15.72
+MCC 2026 public,mc2026_track1_031,D4 (compiler),yes,8.16
+MCC 2026 public,mc2026_track1_031,GPMC (compiler),yes,38.34
+MCC 2026 public,mc2026_track1_031,c2d,no,
+MCC 2026 public,mc2026_track1_033,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_033,Panini,no,
+MCC 2026 public,mc2026_track1_033,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_033,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_033,c2d,no,
+MCC 2026 public,mc2026_track1_035,tididi-cnf,yes,7.25
+MCC 2026 public,mc2026_track1_035,Panini,yes,18.31
+MCC 2026 public,mc2026_track1_035,D4 (compiler),yes,47.79
+MCC 2026 public,mc2026_track1_035,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_035,c2d,no,
+MCC 2026 public,mc2026_track1_037,tididi-cnf,yes,1.24
+MCC 2026 public,mc2026_track1_037,Panini,yes,0.88
+MCC 2026 public,mc2026_track1_037,D4 (compiler),yes,0.66
+MCC 2026 public,mc2026_track1_037,GPMC (compiler),yes,0.75
+MCC 2026 public,mc2026_track1_037,c2d,yes,0.96
+MCC 2026 public,mc2026_track1_039,tididi-cnf,yes,15.02
+MCC 2026 public,mc2026_track1_039,Panini,yes,0.88
+MCC 2026 public,mc2026_track1_039,D4 (compiler),yes,1.42
+MCC 2026 public,mc2026_track1_039,GPMC (compiler),yes,19.51
+MCC 2026 public,mc2026_track1_039,c2d,yes,45.49
+MCC 2026 public,mc2026_track1_041,tididi-cnf,yes,0.23
+MCC 2026 public,mc2026_track1_041,Panini,yes,0.41
+MCC 2026 public,mc2026_track1_041,D4 (compiler),yes,0.18
+MCC 2026 public,mc2026_track1_041,GPMC (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_041,c2d,yes,0.26
+MCC 2026 public,mc2026_track1_043,tididi-cnf,yes,0.23
+MCC 2026 public,mc2026_track1_043,Panini,yes,0.41
+MCC 2026 public,mc2026_track1_043,D4 (compiler),yes,0.14
+MCC 2026 public,mc2026_track1_043,GPMC (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_043,c2d,yes,0.20
+MCC 2026 public,mc2026_track1_045,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_045,Panini,yes,1.22
+MCC 2026 public,mc2026_track1_045,D4 (compiler),yes,3.69
+MCC 2026 public,mc2026_track1_045,GPMC (compiler),yes,14.41
+MCC 2026 public,mc2026_track1_045,c2d,yes,43.45
+MCC 2026 public,mc2026_track1_047,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_047,Panini,no,
+MCC 2026 public,mc2026_track1_047,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_047,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_047,c2d,no,
+MCC 2026 public,mc2026_track1_049,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_049,Panini,no,
+MCC 2026 public,mc2026_track1_049,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_049,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_049,c2d,no,
+MCC 2026 public,mc2026_track1_051,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_051,Panini,no,
+MCC 2026 public,mc2026_track1_051,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_051,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_051,c2d,no,
+MCC 2026 public,mc2026_track1_053,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_053,Panini,no,
+MCC 2026 public,mc2026_track1_053,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_053,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_053,c2d,no,
+MCC 2026 public,mc2026_track1_055,tididi-cnf,yes,0.23
+MCC 2026 public,mc2026_track1_055,Panini,yes,0.41
+MCC 2026 public,mc2026_track1_055,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_055,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_055,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_057,tididi-cnf,yes,0.33
+MCC 2026 public,mc2026_track1_057,Panini,yes,0.42
+MCC 2026 public,mc2026_track1_057,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_057,GPMC (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_057,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_059,tididi-cnf,yes,0.18
+MCC 2026 public,mc2026_track1_059,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_059,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_059,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_059,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_061,tididi-cnf,yes,0.03
+MCC 2026 public,mc2026_track1_061,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_061,D4 (compiler),yes,0.04
+MCC 2026 public,mc2026_track1_061,GPMC (compiler),yes,0.01
+MCC 2026 public,mc2026_track1_061,c2d,yes,0.04
+MCC 2026 public,mc2026_track1_063,tididi-cnf,yes,0.33
+MCC 2026 public,mc2026_track1_063,Panini,yes,0.43
+MCC 2026 public,mc2026_track1_063,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_063,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_063,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_065,tididi-cnf,yes,0.13
+MCC 2026 public,mc2026_track1_065,Panini,yes,0.41
+MCC 2026 public,mc2026_track1_065,D4 (compiler),yes,0.05
+MCC 2026 public,mc2026_track1_065,GPMC (compiler),yes,0.04
+MCC 2026 public,mc2026_track1_065,c2d,yes,0.05
+MCC 2026 public,mc2026_track1_067,tididi-cnf,yes,3.74
+MCC 2026 public,mc2026_track1_067,Panini,yes,45.48
+MCC 2026 public,mc2026_track1_067,D4 (compiler),yes,26.51
+MCC 2026 public,mc2026_track1_067,GPMC (compiler),yes,85.63
+MCC 2026 public,mc2026_track1_067,c2d,no,
+MCC 2026 public,mc2026_track1_069,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_069,Panini,no,
+MCC 2026 public,mc2026_track1_069,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_069,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_069,c2d,no,
+MCC 2026 public,mc2026_track1_071,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_071,Panini,yes,2.08
+MCC 2026 public,mc2026_track1_071,D4 (compiler),yes,3.04
+MCC 2026 public,mc2026_track1_071,GPMC (compiler),yes,1.83
+MCC 2026 public,mc2026_track1_071,c2d,no,
+MCC 2026 public,mc2026_track1_073,tididi-cnf,yes,0.18
+MCC 2026 public,mc2026_track1_073,Panini,yes,0.61
+MCC 2026 public,mc2026_track1_073,D4 (compiler),yes,1.46
+MCC 2026 public,mc2026_track1_073,GPMC (compiler),yes,0.86
+MCC 2026 public,mc2026_track1_073,c2d,yes,2.47
+MCC 2026 public,mc2026_track1_075,tididi-cnf,yes,0.68
+MCC 2026 public,mc2026_track1_075,Panini,yes,10.12
+MCC 2026 public,mc2026_track1_075,D4 (compiler),yes,2.06
+MCC 2026 public,mc2026_track1_075,GPMC (compiler),yes,1.27
+MCC 2026 public,mc2026_track1_075,c2d,yes,4.41
+MCC 2026 public,mc2026_track1_077,tididi-cnf,yes,1.73
+MCC 2026 public,mc2026_track1_077,Panini,yes,110.87
+MCC 2026 public,mc2026_track1_077,D4 (compiler),yes,12.52
+MCC 2026 public,mc2026_track1_077,GPMC (compiler),yes,7.80
+MCC 2026 public,mc2026_track1_077,c2d,yes,32.67
+MCC 2026 public,mc2026_track1_079,tididi-cnf,yes,6.19
+MCC 2026 public,mc2026_track1_079,Panini,no,
+MCC 2026 public,mc2026_track1_079,D4 (compiler),yes,79.01
+MCC 2026 public,mc2026_track1_079,GPMC (compiler),yes,36.60
+MCC 2026 public,mc2026_track1_079,c2d,no,
+MCC 2026 public,mc2026_track1_081,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_081,Panini,no,
+MCC 2026 public,mc2026_track1_081,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_081,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_081,c2d,no,
+MCC 2026 public,mc2026_track1_083,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_083,Panini,no,
+MCC 2026 public,mc2026_track1_083,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_083,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_083,c2d,no,
+MCC 2026 public,mc2026_track1_085,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_085,Panini,no,
+MCC 2026 public,mc2026_track1_085,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_085,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_085,c2d,no,
+MCC 2026 public,mc2026_track1_087,tididi-cnf,yes,0.23
+MCC 2026 public,mc2026_track1_087,Panini,yes,93.70
+MCC 2026 public,mc2026_track1_087,D4 (compiler),yes,0.61
+MCC 2026 public,mc2026_track1_087,GPMC (compiler),yes,57.23
+MCC 2026 public,mc2026_track1_087,c2d,yes,0.83
+MCC 2026 public,mc2026_track1_089,tididi-cnf,yes,0.03
+MCC 2026 public,mc2026_track1_089,Panini,yes,0.46
+MCC 2026 public,mc2026_track1_089,D4 (compiler),yes,0.14
+MCC 2026 public,mc2026_track1_089,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_089,c2d,yes,0.13
+MCC 2026 public,mc2026_track1_091,tididi-cnf,yes,0.08
+MCC 2026 public,mc2026_track1_091,Panini,yes,0.51
+MCC 2026 public,mc2026_track1_091,D4 (compiler),yes,1.14
+MCC 2026 public,mc2026_track1_091,GPMC (compiler),yes,0.04
+MCC 2026 public,mc2026_track1_091,c2d,yes,0.79
+MCC 2026 public,mc2026_track1_093,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_093,Panini,yes,0.37
+MCC 2026 public,mc2026_track1_093,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_093,GPMC (compiler),yes,0.01
+MCC 2026 public,mc2026_track1_093,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_095,tididi-cnf,yes,5.54
+MCC 2026 public,mc2026_track1_095,Panini,no,
+MCC 2026 public,mc2026_track1_095,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_095,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_095,c2d,no,
+MCC 2026 public,mc2026_track1_097,tididi-cnf,yes,0.05
+MCC 2026 public,mc2026_track1_097,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_097,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_097,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_097,c2d,yes,0.03
+MCC 2026 public,mc2026_track1_099,tididi-cnf,yes,50.41
+MCC 2026 public,mc2026_track1_099,Panini,yes,104.88
+MCC 2026 public,mc2026_track1_099,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_099,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_099,c2d,no,
+MCC 2026 public,mc2026_track1_101,tididi-cnf,yes,0.05
+MCC 2026 public,mc2026_track1_101,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_101,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_101,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_101,c2d,yes,0.03
+MCC 2026 public,mc2026_track1_103,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_103,Panini,yes,0.38
+MCC 2026 public,mc2026_track1_103,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_103,GPMC (compiler),yes,0.01
+MCC 2026 public,mc2026_track1_103,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_105,tididi-cnf,yes,0.23
+MCC 2026 public,mc2026_track1_105,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_105,D4 (compiler),yes,0.04
+MCC 2026 public,mc2026_track1_105,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_105,c2d,yes,0.04
+MCC 2026 public,mc2026_track1_107,tididi-cnf,yes,1.08
+MCC 2026 public,mc2026_track1_107,Panini,yes,0.55
+MCC 2026 public,mc2026_track1_107,D4 (compiler),yes,0.67
+MCC 2026 public,mc2026_track1_107,GPMC (compiler),yes,0.58
+MCC 2026 public,mc2026_track1_107,c2d,yes,1.03
+MCC 2026 public,mc2026_track1_109,tididi-cnf,yes,0.48
+MCC 2026 public,mc2026_track1_109,Panini,yes,0.40
+MCC 2026 public,mc2026_track1_109,D4 (compiler),yes,0.10
+MCC 2026 public,mc2026_track1_109,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_109,c2d,yes,0.05
+MCC 2026 public,mc2026_track1_111,tididi-cnf,yes,1.18
+MCC 2026 public,mc2026_track1_111,Panini,yes,0.70
+MCC 2026 public,mc2026_track1_111,D4 (compiler),yes,0.61
+MCC 2026 public,mc2026_track1_111,GPMC (compiler),yes,0.25
+MCC 2026 public,mc2026_track1_111,c2d,yes,0.84
+MCC 2026 public,mc2026_track1_113,tididi-cnf,yes,1.28
+MCC 2026 public,mc2026_track1_113,Panini,yes,0.60
+MCC 2026 public,mc2026_track1_113,D4 (compiler),yes,1.07
+MCC 2026 public,mc2026_track1_113,GPMC (compiler),yes,0.37
+MCC 2026 public,mc2026_track1_113,c2d,yes,0.97
+MCC 2026 public,mc2026_track1_115,tididi-cnf,yes,2.53
+MCC 2026 public,mc2026_track1_115,Panini,yes,2.00
+MCC 2026 public,mc2026_track1_115,D4 (compiler),yes,1.75
+MCC 2026 public,mc2026_track1_115,GPMC (compiler),yes,2.49
+MCC 2026 public,mc2026_track1_115,c2d,yes,5.71
+MCC 2026 public,mc2026_track1_117,tididi-cnf,yes,1.38
+MCC 2026 public,mc2026_track1_117,Panini,yes,0.87
+MCC 2026 public,mc2026_track1_117,D4 (compiler),yes,0.41
+MCC 2026 public,mc2026_track1_117,GPMC (compiler),yes,0.55
+MCC 2026 public,mc2026_track1_117,c2d,yes,0.50
+MCC 2026 public,mc2026_track1_119,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_119,Panini,no,
+MCC 2026 public,mc2026_track1_119,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_119,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_119,c2d,no,
+MCC 2026 public,mc2026_track1_121,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_121,Panini,no,
+MCC 2026 public,mc2026_track1_121,D4 (compiler),yes,64.84
+MCC 2026 public,mc2026_track1_121,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_121,c2d,no,
+MCC 2026 public,mc2026_track1_123,tididi-cnf,yes,0.08
+MCC 2026 public,mc2026_track1_123,Panini,yes,0.46
+MCC 2026 public,mc2026_track1_123,D4 (compiler),yes,17.10
+MCC 2026 public,mc2026_track1_123,GPMC (compiler),yes,0.09
+MCC 2026 public,mc2026_track1_123,c2d,yes,51.69
+MCC 2026 public,mc2026_track1_125,tididi-cnf,yes,0.02
+MCC 2026 public,mc2026_track1_125,Panini,yes,0.38
+MCC 2026 public,mc2026_track1_125,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_125,GPMC (compiler),yes,0.01
+MCC 2026 public,mc2026_track1_125,c2d,no,
+MCC 2026 public,mc2026_track1_127,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_127,Panini,no,
+MCC 2026 public,mc2026_track1_127,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_127,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_127,c2d,no,
+MCC 2026 public,mc2026_track1_129,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_129,Panini,yes,11.53
+MCC 2026 public,mc2026_track1_129,D4 (compiler),yes,24.76
+MCC 2026 public,mc2026_track1_129,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_129,c2d,no,
+MCC 2026 public,mc2026_track1_131,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_131,Panini,no,
+MCC 2026 public,mc2026_track1_131,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_131,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_131,c2d,no,
+MCC 2026 public,mc2026_track1_133,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_133,Panini,yes,12.96
+MCC 2026 public,mc2026_track1_133,D4 (compiler),yes,28.70
+MCC 2026 public,mc2026_track1_133,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_133,c2d,no,
+MCC 2026 public,mc2026_track1_135,tididi-cnf,yes,0.33
+MCC 2026 public,mc2026_track1_135,Panini,yes,0.51
+MCC 2026 public,mc2026_track1_135,D4 (compiler),yes,0.47
+MCC 2026 public,mc2026_track1_135,GPMC (compiler),yes,0.12
+MCC 2026 public,mc2026_track1_135,c2d,yes,0.41
+MCC 2026 public,mc2026_track1_137,tididi-cnf,yes,2.03
+MCC 2026 public,mc2026_track1_137,Panini,yes,2.74
+MCC 2026 public,mc2026_track1_137,D4 (compiler),yes,12.03
+MCC 2026 public,mc2026_track1_137,GPMC (compiler),yes,7.21
+MCC 2026 public,mc2026_track1_137,c2d,yes,70.64
+MCC 2026 public,mc2026_track1_139,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_139,Panini,no,
+MCC 2026 public,mc2026_track1_139,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_139,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_139,c2d,no,
+MCC 2026 public,mc2026_track1_141,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_141,Panini,no,
+MCC 2026 public,mc2026_track1_141,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_141,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_141,c2d,no,
+MCC 2026 public,mc2026_track1_143,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_143,Panini,no,
+MCC 2026 public,mc2026_track1_143,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_143,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_143,c2d,no,
+MCC 2026 public,mc2026_track1_145,tididi-cnf,yes,86.07
+MCC 2026 public,mc2026_track1_145,Panini,no,
+MCC 2026 public,mc2026_track1_145,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_145,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_145,c2d,no,
+MCC 2026 public,mc2026_track1_147,tididi-cnf,yes,17.78
+MCC 2026 public,mc2026_track1_147,Panini,no,
+MCC 2026 public,mc2026_track1_147,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_147,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_147,c2d,no,
+MCC 2026 public,mc2026_track1_149,tididi-cnf,yes,23.44
+MCC 2026 public,mc2026_track1_149,Panini,yes,49.61
+MCC 2026 public,mc2026_track1_149,D4 (compiler),yes,69.09
+MCC 2026 public,mc2026_track1_149,GPMC (compiler),yes,91.75
+MCC 2026 public,mc2026_track1_149,c2d,no,
+MCC 2026 public,mc2026_track1_151,tididi-cnf,yes,16.22
+MCC 2026 public,mc2026_track1_151,Panini,no,
+MCC 2026 public,mc2026_track1_151,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_151,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_151,c2d,no,
+MCC 2026 public,mc2026_track1_153,tididi-cnf,yes,0.04
+MCC 2026 public,mc2026_track1_153,Panini,yes,0.40
+MCC 2026 public,mc2026_track1_153,D4 (compiler),yes,0.90
+MCC 2026 public,mc2026_track1_153,GPMC (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_153,c2d,yes,0.92
+MCC 2026 public,mc2026_track1_155,tididi-cnf,yes,0.08
+MCC 2026 public,mc2026_track1_155,Panini,yes,0.39
+MCC 2026 public,mc2026_track1_155,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_155,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_155,c2d,yes,0.02
+MCC 2026 public,mc2026_track1_157,tididi-cnf,yes,2.13
+MCC 2026 public,mc2026_track1_157,Panini,yes,0.57
+MCC 2026 public,mc2026_track1_157,D4 (compiler),yes,0.56
+MCC 2026 public,mc2026_track1_157,GPMC (compiler),yes,0.22
+MCC 2026 public,mc2026_track1_157,c2d,yes,0.66
+MCC 2026 public,mc2026_track1_159,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_159,Panini,no,
+MCC 2026 public,mc2026_track1_159,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_159,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_159,c2d,no,
+MCC 2026 public,mc2026_track1_161,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_161,Panini,no,
+MCC 2026 public,mc2026_track1_161,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_161,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_161,c2d,no,
+MCC 2026 public,mc2026_track1_163,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_163,Panini,no,
+MCC 2026 public,mc2026_track1_163,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_163,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_163,c2d,no,
+MCC 2026 public,mc2026_track1_165,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_165,Panini,no,
+MCC 2026 public,mc2026_track1_165,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_165,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_165,c2d,no,
+MCC 2026 public,mc2026_track1_167,tididi-cnf,yes,0.03
+MCC 2026 public,mc2026_track1_167,Panini,yes,0.40
+MCC 2026 public,mc2026_track1_167,D4 (compiler),yes,0.03
+MCC 2026 public,mc2026_track1_167,GPMC (compiler),yes,0.02
+MCC 2026 public,mc2026_track1_167,c2d,yes,0.01
+MCC 2026 public,mc2026_track1_169,tididi-cnf,yes,4.29
+MCC 2026 public,mc2026_track1_169,Panini,no,
+MCC 2026 public,mc2026_track1_169,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_169,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_169,c2d,yes,46.25
+MCC 2026 public,mc2026_track1_171,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_171,Panini,no,
+MCC 2026 public,mc2026_track1_171,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_171,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_171,c2d,no,
+MCC 2026 public,mc2026_track1_173,tididi-cnf,yes,87.14
+MCC 2026 public,mc2026_track1_173,Panini,no,
+MCC 2026 public,mc2026_track1_173,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_173,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_173,c2d,no,
+MCC 2026 public,mc2026_track1_175,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_175,Panini,no,
+MCC 2026 public,mc2026_track1_175,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_175,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_175,c2d,no,
+MCC 2026 public,mc2026_track1_177,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_177,Panini,no,
+MCC 2026 public,mc2026_track1_177,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_177,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_177,c2d,no,
+MCC 2026 public,mc2026_track1_179,tididi-cnf,yes,0.53
+MCC 2026 public,mc2026_track1_179,Panini,yes,0.83
+MCC 2026 public,mc2026_track1_179,D4 (compiler),yes,12.13
+MCC 2026 public,mc2026_track1_179,GPMC (compiler),yes,0.24
+MCC 2026 public,mc2026_track1_179,c2d,yes,4.06
+MCC 2026 public,mc2026_track1_181,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_181,Panini,no,
+MCC 2026 public,mc2026_track1_181,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_181,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_181,c2d,no,
+MCC 2026 public,mc2026_track1_183,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_183,Panini,no,
+MCC 2026 public,mc2026_track1_183,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_183,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_183,c2d,no,
+MCC 2026 public,mc2026_track1_185,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_185,Panini,no,
+MCC 2026 public,mc2026_track1_185,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_185,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_185,c2d,no,
+MCC 2026 public,mc2026_track1_187,tididi-cnf,yes,6.75
+MCC 2026 public,mc2026_track1_187,Panini,yes,15.19
+MCC 2026 public,mc2026_track1_187,D4 (compiler),yes,18.07
+MCC 2026 public,mc2026_track1_187,GPMC (compiler),yes,34.72
+MCC 2026 public,mc2026_track1_187,c2d,no,
+MCC 2026 public,mc2026_track1_189,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_189,Panini,no,
+MCC 2026 public,mc2026_track1_189,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_189,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_189,c2d,no,
+MCC 2026 public,mc2026_track1_191,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_191,Panini,no,
+MCC 2026 public,mc2026_track1_191,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_191,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_191,c2d,no,
+MCC 2026 public,mc2026_track1_193,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_193,Panini,no,
+MCC 2026 public,mc2026_track1_193,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_193,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_193,c2d,no,
+MCC 2026 public,mc2026_track1_195,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_195,Panini,no,
+MCC 2026 public,mc2026_track1_195,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_195,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_195,c2d,no,
+MCC 2026 public,mc2026_track1_197,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_197,Panini,no,
+MCC 2026 public,mc2026_track1_197,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_197,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_197,c2d,no,
+MCC 2026 public,mc2026_track1_199,tididi-cnf,no,
+MCC 2026 public,mc2026_track1_199,Panini,no,
+MCC 2026 public,mc2026_track1_199,D4 (compiler),no,
+MCC 2026 public,mc2026_track1_199,GPMC (compiler),no,
+MCC 2026 public,mc2026_track1_199,c2d,no,
+MCC 2026 private,mc2026_track1_000,tididi-cnf,yes,0.08
+MCC 2026 private,mc2026_track1_000,Panini,yes,0.40
+MCC 2026 private,mc2026_track1_000,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_000,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_000,c2d,yes,0.02
+MCC 2026 private,mc2026_track1_002,tididi-cnf,yes,0.08
+MCC 2026 private,mc2026_track1_002,Panini,yes,0.40
+MCC 2026 private,mc2026_track1_002,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_002,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_002,c2d,yes,0.01
+MCC 2026 private,mc2026_track1_004,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_004,Panini,no,
+MCC 2026 private,mc2026_track1_004,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_004,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_004,c2d,no,
+MCC 2026 private,mc2026_track1_006,tididi-cnf,yes,75.56
+MCC 2026 private,mc2026_track1_006,Panini,yes,0.48
+MCC 2026 private,mc2026_track1_006,D4 (compiler),yes,0.74
+MCC 2026 private,mc2026_track1_006,GPMC (compiler),yes,0.68
+MCC 2026 private,mc2026_track1_006,c2d,yes,1.10
+MCC 2026 private,mc2026_track1_008,tididi-cnf,yes,6.05
+MCC 2026 private,mc2026_track1_008,Panini,yes,1.89
+MCC 2026 private,mc2026_track1_008,D4 (compiler),yes,4.76
+MCC 2026 private,mc2026_track1_008,GPMC (compiler),yes,1.35
+MCC 2026 private,mc2026_track1_008,c2d,no,
+MCC 2026 private,mc2026_track1_010,tididi-cnf,yes,2.69
+MCC 2026 private,mc2026_track1_010,Panini,yes,18.93
+MCC 2026 private,mc2026_track1_010,D4 (compiler),yes,24.39
+MCC 2026 private,mc2026_track1_010,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_010,c2d,yes,23.13
+MCC 2026 private,mc2026_track1_012,tididi-cnf,yes,25.09
+MCC 2026 private,mc2026_track1_012,Panini,no,
+MCC 2026 private,mc2026_track1_012,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_012,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_012,c2d,no,
+MCC 2026 private,mc2026_track1_014,tididi-cnf,yes,3.44
+MCC 2026 private,mc2026_track1_014,Panini,yes,7.79
+MCC 2026 private,mc2026_track1_014,D4 (compiler),yes,13.33
+MCC 2026 private,mc2026_track1_014,GPMC (compiler),yes,10.86
+MCC 2026 private,mc2026_track1_014,c2d,yes,4.75
+MCC 2026 private,mc2026_track1_016,tididi-cnf,yes,11.71
+MCC 2026 private,mc2026_track1_016,Panini,no,
+MCC 2026 private,mc2026_track1_016,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_016,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_016,c2d,no,
+MCC 2026 private,mc2026_track1_018,tididi-cnf,yes,11.71
+MCC 2026 private,mc2026_track1_018,Panini,no,
+MCC 2026 private,mc2026_track1_018,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_018,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_018,c2d,no,
+MCC 2026 private,mc2026_track1_020,tididi-cnf,yes,11.56
+MCC 2026 private,mc2026_track1_020,Panini,no,
+MCC 2026 private,mc2026_track1_020,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_020,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_020,c2d,no,
+MCC 2026 private,mc2026_track1_022,tididi-cnf,yes,9.96
+MCC 2026 private,mc2026_track1_022,Panini,no,
+MCC 2026 private,mc2026_track1_022,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_022,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_022,c2d,no,
+MCC 2026 private,mc2026_track1_024,tididi-cnf,yes,41.49
+MCC 2026 private,mc2026_track1_024,Panini,no,
+MCC 2026 private,mc2026_track1_024,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_024,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_024,c2d,no,
+MCC 2026 private,mc2026_track1_026,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_026,Panini,no,
+MCC 2026 private,mc2026_track1_026,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_026,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_026,c2d,no,
+MCC 2026 private,mc2026_track1_028,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_028,Panini,no,
+MCC 2026 private,mc2026_track1_028,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_028,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_028,c2d,no,
+MCC 2026 private,mc2026_track1_030,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_030,Panini,no,
+MCC 2026 private,mc2026_track1_030,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_030,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_030,c2d,no,
+MCC 2026 private,mc2026_track1_032,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_032,Panini,no,
+MCC 2026 private,mc2026_track1_032,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_032,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_032,c2d,no,
+MCC 2026 private,mc2026_track1_034,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_034,Panini,no,
+MCC 2026 private,mc2026_track1_034,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_034,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_034,c2d,no,
+MCC 2026 private,mc2026_track1_036,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_036,Panini,no,
+MCC 2026 private,mc2026_track1_036,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_036,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_036,c2d,no,
+MCC 2026 private,mc2026_track1_038,tididi-cnf,yes,0.38
+MCC 2026 private,mc2026_track1_038,Panini,yes,0.40
+MCC 2026 private,mc2026_track1_038,D4 (compiler),yes,0.18
+MCC 2026 private,mc2026_track1_038,GPMC (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_038,c2d,yes,0.28
+MCC 2026 private,mc2026_track1_040,tididi-cnf,yes,0.33
+MCC 2026 private,mc2026_track1_040,Panini,yes,0.41
+MCC 2026 private,mc2026_track1_040,D4 (compiler),yes,0.66
+MCC 2026 private,mc2026_track1_040,GPMC (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_040,c2d,yes,0.60
+MCC 2026 private,mc2026_track1_042,tididi-cnf,yes,0.23
+MCC 2026 private,mc2026_track1_042,Panini,yes,0.41
+MCC 2026 private,mc2026_track1_042,D4 (compiler),yes,0.08
+MCC 2026 private,mc2026_track1_042,GPMC (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_042,c2d,yes,0.08
+MCC 2026 private,mc2026_track1_044,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_044,Panini,yes,0.39
+MCC 2026 private,mc2026_track1_044,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_044,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_044,c2d,yes,0.02
+MCC 2026 private,mc2026_track1_046,tididi-cnf,yes,0.02
+MCC 2026 private,mc2026_track1_046,Panini,yes,0.39
+MCC 2026 private,mc2026_track1_046,D4 (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_046,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_046,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_048,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_048,Panini,no,
+MCC 2026 private,mc2026_track1_048,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_048,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_048,c2d,no,
+MCC 2026 private,mc2026_track1_050,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_050,Panini,no,
+MCC 2026 private,mc2026_track1_050,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_050,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_050,c2d,no,
+MCC 2026 private,mc2026_track1_052,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_052,Panini,no,
+MCC 2026 private,mc2026_track1_052,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_052,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_052,c2d,no,
+MCC 2026 private,mc2026_track1_054,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_054,Panini,no,
+MCC 2026 private,mc2026_track1_054,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_054,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_054,c2d,no,
+MCC 2026 private,mc2026_track1_056,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_056,Panini,yes,0.43
+MCC 2026 private,mc2026_track1_056,D4 (compiler),yes,0.06
+MCC 2026 private,mc2026_track1_056,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_056,c2d,yes,0.10
+MCC 2026 private,mc2026_track1_058,tididi-cnf,yes,0.43
+MCC 2026 private,mc2026_track1_058,Panini,yes,0.46
+MCC 2026 private,mc2026_track1_058,D4 (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_058,GPMC (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_058,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_060,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_060,Panini,yes,0.40
+MCC 2026 private,mc2026_track1_060,D4 (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_060,GPMC (compiler),yes,0.01
+MCC 2026 private,mc2026_track1_060,c2d,yes,0.05
+MCC 2026 private,mc2026_track1_062,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_062,Panini,yes,0.39
+MCC 2026 private,mc2026_track1_062,D4 (compiler),yes,0.05
+MCC 2026 private,mc2026_track1_062,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_062,c2d,yes,0.08
+MCC 2026 private,mc2026_track1_064,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_064,Panini,yes,0.39
+MCC 2026 private,mc2026_track1_064,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_064,GPMC (compiler),yes,0.01
+MCC 2026 private,mc2026_track1_064,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_066,tididi-cnf,yes,1.89
+MCC 2026 private,mc2026_track1_066,Panini,yes,22.85
+MCC 2026 private,mc2026_track1_066,D4 (compiler),yes,15.16
+MCC 2026 private,mc2026_track1_066,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_066,c2d,no,
+MCC 2026 private,mc2026_track1_068,tididi-cnf,yes,0.38
+MCC 2026 private,mc2026_track1_068,Panini,yes,0.44
+MCC 2026 private,mc2026_track1_068,D4 (compiler),yes,0.11
+MCC 2026 private,mc2026_track1_068,GPMC (compiler),yes,0.05
+MCC 2026 private,mc2026_track1_068,c2d,yes,0.08
+MCC 2026 private,mc2026_track1_070,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_070,Panini,no,
+MCC 2026 private,mc2026_track1_070,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_070,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_070,c2d,no,
+MCC 2026 private,mc2026_track1_072,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_072,Panini,no,
+MCC 2026 private,mc2026_track1_072,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_072,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_072,c2d,no,
+MCC 2026 private,mc2026_track1_074,tididi-cnf,yes,0.33
+MCC 2026 private,mc2026_track1_074,Panini,yes,3.96
+MCC 2026 private,mc2026_track1_074,D4 (compiler),yes,1.06
+MCC 2026 private,mc2026_track1_074,GPMC (compiler),yes,0.76
+MCC 2026 private,mc2026_track1_074,c2d,yes,3.27
+MCC 2026 private,mc2026_track1_076,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_076,Panini,no,
+MCC 2026 private,mc2026_track1_076,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_076,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_076,c2d,no,
+MCC 2026 private,mc2026_track1_078,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_078,Panini,no,
+MCC 2026 private,mc2026_track1_078,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_078,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_078,c2d,no,
+MCC 2026 private,mc2026_track1_080,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_080,Panini,no,
+MCC 2026 private,mc2026_track1_080,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_080,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_080,c2d,no,
+MCC 2026 private,mc2026_track1_082,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_082,Panini,no,
+MCC 2026 private,mc2026_track1_082,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_082,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_082,c2d,no,
+MCC 2026 private,mc2026_track1_084,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_084,Panini,no,
+MCC 2026 private,mc2026_track1_084,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_084,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_084,c2d,no,
+MCC 2026 private,mc2026_track1_086,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_086,Panini,no,
+MCC 2026 private,mc2026_track1_086,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_086,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_086,c2d,no,
+MCC 2026 private,mc2026_track1_088,tididi-cnf,yes,0.04
+MCC 2026 private,mc2026_track1_088,Panini,yes,0.47
+MCC 2026 private,mc2026_track1_088,D4 (compiler),yes,0.14
+MCC 2026 private,mc2026_track1_088,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_088,c2d,yes,0.15
+MCC 2026 private,mc2026_track1_090,tididi-cnf,yes,0.03
+MCC 2026 private,mc2026_track1_090,Panini,yes,0.44
+MCC 2026 private,mc2026_track1_090,D4 (compiler),yes,0.18
+MCC 2026 private,mc2026_track1_090,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_090,c2d,yes,0.13
+MCC 2026 private,mc2026_track1_092,tididi-cnf,yes,0.13
+MCC 2026 private,mc2026_track1_092,Panini,yes,0.71
+MCC 2026 private,mc2026_track1_092,D4 (compiler),yes,3.61
+MCC 2026 private,mc2026_track1_092,GPMC (compiler),yes,0.07
+MCC 2026 private,mc2026_track1_092,c2d,yes,1.87
+MCC 2026 private,mc2026_track1_094,tididi-cnf,yes,0.02
+MCC 2026 private,mc2026_track1_094,Panini,yes,0.40
+MCC 2026 private,mc2026_track1_094,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_094,GPMC (compiler),yes,0.01
+MCC 2026 private,mc2026_track1_094,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_096,tididi-cnf,yes,1.13
+MCC 2026 private,mc2026_track1_096,Panini,yes,1.77
+MCC 2026 private,mc2026_track1_096,D4 (compiler),yes,1.35
+MCC 2026 private,mc2026_track1_096,GPMC (compiler),yes,2.43
+MCC 2026 private,mc2026_track1_096,c2d,no,
+MCC 2026 private,mc2026_track1_098,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_098,Panini,no,
+MCC 2026 private,mc2026_track1_098,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_098,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_098,c2d,no,
+MCC 2026 private,mc2026_track1_100,tididi-cnf,yes,0.18
+MCC 2026 private,mc2026_track1_100,Panini,yes,0.38
+MCC 2026 private,mc2026_track1_100,D4 (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_100,GPMC (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_100,c2d,yes,0.04
+MCC 2026 private,mc2026_track1_102,tididi-cnf,yes,0.18
+MCC 2026 private,mc2026_track1_102,Panini,yes,0.39
+MCC 2026 private,mc2026_track1_102,D4 (compiler),yes,0.03
+MCC 2026 private,mc2026_track1_102,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_102,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_104,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_104,Panini,no,
+MCC 2026 private,mc2026_track1_104,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_104,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_104,c2d,no,
+MCC 2026 private,mc2026_track1_106,tididi-cnf,yes,0.98
+MCC 2026 private,mc2026_track1_106,Panini,yes,0.60
+MCC 2026 private,mc2026_track1_106,D4 (compiler),yes,0.54
+MCC 2026 private,mc2026_track1_106,GPMC (compiler),yes,0.22
+MCC 2026 private,mc2026_track1_106,c2d,yes,1.07
+MCC 2026 private,mc2026_track1_108,tididi-cnf,yes,1.28
+MCC 2026 private,mc2026_track1_108,Panini,yes,0.61
+MCC 2026 private,mc2026_track1_108,D4 (compiler),yes,0.71
+MCC 2026 private,mc2026_track1_108,GPMC (compiler),yes,0.24
+MCC 2026 private,mc2026_track1_108,c2d,yes,1.03
+MCC 2026 private,mc2026_track1_110,tididi-cnf,yes,1.13
+MCC 2026 private,mc2026_track1_110,Panini,yes,0.56
+MCC 2026 private,mc2026_track1_110,D4 (compiler),yes,0.90
+MCC 2026 private,mc2026_track1_110,GPMC (compiler),yes,0.45
+MCC 2026 private,mc2026_track1_110,c2d,yes,1.30
+MCC 2026 private,mc2026_track1_112,tididi-cnf,yes,1.08
+MCC 2026 private,mc2026_track1_112,Panini,yes,0.60
+MCC 2026 private,mc2026_track1_112,D4 (compiler),yes,0.60
+MCC 2026 private,mc2026_track1_112,GPMC (compiler),yes,0.26
+MCC 2026 private,mc2026_track1_112,c2d,yes,0.99
+MCC 2026 private,mc2026_track1_114,tididi-cnf,yes,1.18
+MCC 2026 private,mc2026_track1_114,Panini,yes,0.68
+MCC 2026 private,mc2026_track1_114,D4 (compiler),yes,0.67
+MCC 2026 private,mc2026_track1_114,GPMC (compiler),yes,0.41
+MCC 2026 private,mc2026_track1_114,c2d,yes,0.86
+MCC 2026 private,mc2026_track1_116,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_116,Panini,no,
+MCC 2026 private,mc2026_track1_116,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_116,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_116,c2d,no,
+MCC 2026 private,mc2026_track1_118,tididi-cnf,yes,28.16
+MCC 2026 private,mc2026_track1_118,Panini,yes,62.30
+MCC 2026 private,mc2026_track1_118,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_118,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_118,c2d,no,
+MCC 2026 private,mc2026_track1_120,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_120,Panini,no,
+MCC 2026 private,mc2026_track1_120,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_120,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_120,c2d,no,
+MCC 2026 private,mc2026_track1_122,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_122,Panini,no,
+MCC 2026 private,mc2026_track1_122,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_122,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_122,c2d,no,
+MCC 2026 private,mc2026_track1_124,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_124,Panini,no,
+MCC 2026 private,mc2026_track1_124,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_124,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_124,c2d,no,
+MCC 2026 private,mc2026_track1_126,tididi-cnf,yes,0.08
+MCC 2026 private,mc2026_track1_126,Panini,yes,0.45
+MCC 2026 private,mc2026_track1_126,D4 (compiler),yes,0.04
+MCC 2026 private,mc2026_track1_126,GPMC (compiler),yes,0.02
+MCC 2026 private,mc2026_track1_126,c2d,yes,0.03
+MCC 2026 private,mc2026_track1_128,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_128,Panini,yes,84.99
+MCC 2026 private,mc2026_track1_128,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_128,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_128,c2d,no,
+MCC 2026 private,mc2026_track1_130,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_130,Panini,no,
+MCC 2026 private,mc2026_track1_130,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_130,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_130,c2d,no,
+MCC 2026 private,mc2026_track1_132,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_132,Panini,no,
+MCC 2026 private,mc2026_track1_132,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_132,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_132,c2d,no,
+MCC 2026 private,mc2026_track1_134,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_134,Panini,no,
+MCC 2026 private,mc2026_track1_134,D4 (compiler),yes,114.76
+MCC 2026 private,mc2026_track1_134,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_134,c2d,no,
+MCC 2026 private,mc2026_track1_136,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_136,Panini,no,
+MCC 2026 private,mc2026_track1_136,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_136,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_136,c2d,no,
+MCC 2026 private,mc2026_track1_138,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_138,Panini,no,
+MCC 2026 private,mc2026_track1_138,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_138,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_138,c2d,no,
+MCC 2026 private,mc2026_track1_140,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_140,Panini,no,
+MCC 2026 private,mc2026_track1_140,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_140,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_140,c2d,no,
+MCC 2026 private,mc2026_track1_142,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_142,Panini,no,
+MCC 2026 private,mc2026_track1_142,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_142,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_142,c2d,no,
+MCC 2026 private,mc2026_track1_144,tididi-cnf,yes,67.60
+MCC 2026 private,mc2026_track1_144,Panini,yes,108.28
+MCC 2026 private,mc2026_track1_144,D4 (compiler),yes,116.55
+MCC 2026 private,mc2026_track1_144,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_144,c2d,no,
+MCC 2026 private,mc2026_track1_146,tididi-cnf,yes,3.69
+MCC 2026 private,mc2026_track1_146,Panini,yes,4.89
+MCC 2026 private,mc2026_track1_146,D4 (compiler),yes,4.71
+MCC 2026 private,mc2026_track1_146,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_146,c2d,no,
+MCC 2026 private,mc2026_track1_148,tididi-cnf,yes,2.98
+MCC 2026 private,mc2026_track1_148,Panini,yes,6.08
+MCC 2026 private,mc2026_track1_148,D4 (compiler),yes,7.99
+MCC 2026 private,mc2026_track1_148,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_148,c2d,no,
+MCC 2026 private,mc2026_track1_150,tididi-cnf,yes,3.89
+MCC 2026 private,mc2026_track1_150,Panini,yes,6.49
+MCC 2026 private,mc2026_track1_150,D4 (compiler),yes,6.21
+MCC 2026 private,mc2026_track1_150,GPMC (compiler),yes,3.63
+MCC 2026 private,mc2026_track1_150,c2d,no,
+MCC 2026 private,mc2026_track1_152,tididi-cnf,yes,3.19
+MCC 2026 private,mc2026_track1_152,Panini,yes,8.98
+MCC 2026 private,mc2026_track1_152,D4 (compiler),yes,9.37
+MCC 2026 private,mc2026_track1_152,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_152,c2d,no,
+MCC 2026 private,mc2026_track1_154,tididi-cnf,yes,0.13
+MCC 2026 private,mc2026_track1_154,Panini,yes,0.41
+MCC 2026 private,mc2026_track1_154,D4 (compiler),yes,0.28
+MCC 2026 private,mc2026_track1_154,GPMC (compiler),yes,0.05
+MCC 2026 private,mc2026_track1_154,c2d,yes,11.54
+MCC 2026 private,mc2026_track1_156,tididi-cnf,yes,14.27
+MCC 2026 private,mc2026_track1_156,Panini,yes,0.56
+MCC 2026 private,mc2026_track1_156,D4 (compiler),yes,4.49
+MCC 2026 private,mc2026_track1_156,GPMC (compiler),yes,0.45
+MCC 2026 private,mc2026_track1_156,c2d,yes,3.28
+MCC 2026 private,mc2026_track1_158,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_158,Panini,no,
+MCC 2026 private,mc2026_track1_158,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_158,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_158,c2d,no,
+MCC 2026 private,mc2026_track1_160,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_160,Panini,no,
+MCC 2026 private,mc2026_track1_160,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_160,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_160,c2d,no,
+MCC 2026 private,mc2026_track1_162,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_162,Panini,no,
+MCC 2026 private,mc2026_track1_162,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_162,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_162,c2d,no,
+MCC 2026 private,mc2026_track1_164,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_164,Panini,no,
+MCC 2026 private,mc2026_track1_164,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_164,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_164,c2d,no,
+MCC 2026 private,mc2026_track1_166,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_166,Panini,no,
+MCC 2026 private,mc2026_track1_166,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_166,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_166,c2d,no,
+MCC 2026 private,mc2026_track1_168,tididi-cnf,yes,87.51
+MCC 2026 private,mc2026_track1_168,Panini,no,
+MCC 2026 private,mc2026_track1_168,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_168,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_168,c2d,no,
+MCC 2026 private,mc2026_track1_170,tididi-cnf,yes,3.54
+MCC 2026 private,mc2026_track1_170,Panini,no,
+MCC 2026 private,mc2026_track1_170,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_170,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_170,c2d,no,
+MCC 2026 private,mc2026_track1_172,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_172,Panini,no,
+MCC 2026 private,mc2026_track1_172,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_172,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_172,c2d,no,
+MCC 2026 private,mc2026_track1_174,tididi-cnf,yes,75.53
+MCC 2026 private,mc2026_track1_174,Panini,no,
+MCC 2026 private,mc2026_track1_174,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_174,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_174,c2d,no,
+MCC 2026 private,mc2026_track1_176,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_176,Panini,no,
+MCC 2026 private,mc2026_track1_176,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_176,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_176,c2d,no,
+MCC 2026 private,mc2026_track1_178,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_178,Panini,no,
+MCC 2026 private,mc2026_track1_178,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_178,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_178,c2d,no,
+MCC 2026 private,mc2026_track1_180,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_180,Panini,no,
+MCC 2026 private,mc2026_track1_180,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_180,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_180,c2d,no,
+MCC 2026 private,mc2026_track1_182,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_182,Panini,no,
+MCC 2026 private,mc2026_track1_182,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_182,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_182,c2d,no,
+MCC 2026 private,mc2026_track1_184,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_184,Panini,no,
+MCC 2026 private,mc2026_track1_184,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_184,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_184,c2d,no,
+MCC 2026 private,mc2026_track1_186,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_186,Panini,no,
+MCC 2026 private,mc2026_track1_186,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_186,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_186,c2d,no,
+MCC 2026 private,mc2026_track1_188,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_188,Panini,no,
+MCC 2026 private,mc2026_track1_188,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_188,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_188,c2d,no,
+MCC 2026 private,mc2026_track1_190,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_190,Panini,no,
+MCC 2026 private,mc2026_track1_190,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_190,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_190,c2d,no,
+MCC 2026 private,mc2026_track1_192,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_192,Panini,no,
+MCC 2026 private,mc2026_track1_192,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_192,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_192,c2d,no,
+MCC 2026 private,mc2026_track1_194,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_194,Panini,no,
+MCC 2026 private,mc2026_track1_194,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_194,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_194,c2d,no,
+MCC 2026 private,mc2026_track1_196,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_196,Panini,no,
+MCC 2026 private,mc2026_track1_196,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_196,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_196,c2d,no,
+MCC 2026 private,mc2026_track1_198,tididi-cnf,no,
+MCC 2026 private,mc2026_track1_198,Panini,no,
+MCC 2026 private,mc2026_track1_198,D4 (compiler),no,
+MCC 2026 private,mc2026_track1_198,GPMC (compiler),no,
+MCC 2026 private,mc2026_track1_198,c2d,no,
