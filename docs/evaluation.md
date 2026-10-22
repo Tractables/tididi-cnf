@@ -35,9 +35,10 @@ each curve continues to the time limit so its final height shows its total.
 
 The primary measurements use the
 [0.1.0 evaluation snapshot](https://github.com/Tractables/tididi-cnf/tree/f8acdab8ae4f5becee2c8996905b844f17331efd),
-including its recorded dependency revisions. The logic-circuit and counting
-comparisons extend the original measurements with the same binary and
-settings. These are not new measurements of later release commits.
+including its recorded dependency revisions. The shared tididi-cnf compilation
+series is a fresh locked rebuild of that snapshot. The other logic-circuit
+compilers and model counters retain their original binaries and measurements.
+These are not measurements of later release commits.
 The September supplements measure an earlier development snapshot. Compare
 tools within each comparison: their source and machines are recorded separately.
 
@@ -54,7 +55,18 @@ success, failure and elapsed time. The compiler receives the original clause
 sequence, uses its default preprocessing and portfolio, and writes its
 diagram and vtree within the timed process. Independent validation follows
 the compiler clock. Changing the comparison's baselines does not change the
-tididi-cnf configuration or select a different run.
+tididi-cnf configuration or select a different run. Its clock also includes
+input decompression and normalization in the measurement wrapper; the compiler
+receives only the time remaining from the 120 s budget. Normalization removes
+comments and task directives while preserving variables, literals and clause
+sequence. This preparation is outside the clock for the other compilers.
+
+A matched full-corpus check compared original clause order with FORCE ordering,
+including preparation in both 120 s budgets. Original order completed 605
+distinct formulas (712 competition entries); FORCE completed 590 (703 entries).
+All 573 common successful counts agreed. The compiler retains original order.
+These measurements do not establish a speedup over the older build or a
+recommendation for the separate model-counting task.
 
 The labels “D4 (compiler)” and “D4 (counter)” distinguish the task being
 measured; GPMC is labelled the same way. Compilation uses the repository
@@ -79,16 +91,18 @@ in each competition set's denominator.
 
 The separate 2025–2026 comparison below retains its original representative
 inputs: ten repeated entries take their twins' results. The full-corpus
-logic-circuit and counting comparisons reuse those measurements for 381
-formulas and measure the remaining 772 with the same binary, machine type,
-limits and worker count.
+external logic-circuit compiler and counting comparisons reuse those
+measurements for 381 formulas and measure the remaining 772 with the same
+binary, machine type, limits and worker count. The shared tididi-cnf compilation
+series measures all 1,153 representatives afresh.
 
 ## Bottom-up decision-diagram compilation
 
 All eight tools compile the same 1,153 representative formulas, covering
 every one of the 1,400 competition entries, with 120 s per invocation:
 
-- tididi-cnf uses `--mode compile --time-limit-ms 120000 --mem-limit-mb 61440`,
+- tididi-cnf uses `--mode compile --mem-limit-mb 61440` and a
+  `--time-limit-ms` equal to the remaining end-to-end budget,
   with its default function-preserving simplification and portfolio vtree
   selection. It ignores the input's ordering comments; its own preprocessing,
   tree selection and model count are included in its time.
@@ -118,10 +132,14 @@ and SDD packages retain their own ordering heuristics.
 The native package measurements use two AWS `r7i.48xlarge` machines with
 Xeon Platinum 8488C CPUs, TSC clocks and 1.5 TiB RAM each, with 21 instances
 running at a time on each machine. The shared tididi-cnf measurements use
-the same CPU model on `r7i.24xlarge`, as described below. Each invocation
-uses one CPU, 120 s wall time and a 60 GiB address-space cap. Native BDD and
-SDD processes have a 1 GiB stack. The shared tididi-cnf runs inherited their
-launch environment's stack limit, which the archived receipts do not record.
+the same machine type and worker allocation, with one configuration running
+at a time and saved circuits on dedicated gp3 disk storage. Each invocation
+uses one CPU, 120 s wall time, a 60 GiB address-space cap and a 1 GiB stack.
+One paired measurement, `mc2026_track1_190` in the private 2026 set, was
+repeated alone after a post-timer cleanup failure. Both configurations timed
+out in the repeat; those replacement records are used, with the failed run retained
+in the measurement archive. The replacement had one active instance rather
+than the full suite's 21.
 BDD tools receive a 60 GiB internal memory
 budget; SDD has no separate internal memory setting. BDD runs request
 transparent huge pages for allocations through glibc malloc. Resource
@@ -129,7 +147,8 @@ samples and timing audits are retained; contaminated timing sources are
 rejected.
 
 Time runs from process launch to exit, including startup, parsing and
-compilation, rather than only a package's reported apply time. BDD and SDD
+compilation; tididi-cnf's clock additionally includes the input preparation
+described above. BDD and SDD
 diagrams must be materialized in memory; their serialization is not required.
 tididi-cnf also saves its circuit, as in the logic-circuit comparison. A
 successful native package exit must report a completed diagram with a
@@ -152,7 +171,7 @@ shows the cactus plot. The per-set compilation totals are:
 
 | Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
+| tididi-cnf | **130** | **87** | **117** | **117** | **76** | **77** | **59** | **49** | **712** |
 | OxiDD | 22 | 9 | 27 | 4 | 25 | 20 | 25 | 21 | 153 |
 | BuDDy | 24 | 10 | 28 | 4 | 25 | 20 | 25 | 21 | 157 |
 | CUDD (static) | 18 | 8 | 26 | 3 | 25 | 19 | 24 | 21 | 144 |
@@ -167,13 +186,15 @@ shows the cactus plot. The per-set compilation totals are:
 
 With `--mode compile`, tididi-cnf writes the diagram it compiles, which
 the tididi library reads back and queries. Four d-DNNF compilers, whose
-circuits can be queried in the same ways, ran beside it on the same 1,400
-entries, two minutes each, side by side (9 runs of each at a time, 45 in
-all) on the same kind of machine under the same memory limit:
+circuits can be queried in the same ways, cover the same 1,400 entries,
+two minutes each. Their retained measurements ran alongside the original
+tididi-cnf measurement, with 9 runs of each compiler at a time (45 total)
+on `r7i.24xlarge`, under the same 60 GiB per-process limit and CPU model.
+The shared tididi-cnf series uses the fresh measurements described above:
 
 - tididi-cnf 0.1.0, as
-  `tididi --mode compile --save-tdd <file> --time-limit-ms 120000 --mem-limit-mb 61440 <instance>`,
-  on the instance without its `c t mc` line, since compilation takes no task.
+  `tididi --mode compile --save-tdd <file> --time-limit-ms <remaining-ms> --mem-limit-mb 61440 <instance>`,
+  on the normalized original-order instance.
 - [Panini](https://github.com/meelgroup/KCBox),
   [D4](https://github.com/crillab/d4v2) and
   [GPMC](https://github.com/System-Verification-Lab/GPMC), built from their
@@ -185,6 +206,7 @@ The measured executables have these SHA-256 fingerprints:
 
 | Compiler | Executable SHA-256 |
 | --- | --- |
+| tididi-cnf | `8c004f33f56bcca1adec461a0a4e74f6b1da19e93d4f7bb91e5b63073339d9d6` |
 | Panini | `b209afacef898ca461ee37890dd069e3f36a9b2179d52ca6a17844ca279f26e1` |
 | D4 | `24d5efb8e96896bf5c43d918f180773c6b771900ee57a152cd37834dc0eaddff` |
 | GPMC | `c1c8c3e06811d907e74845b2602077ae4ec05323e517eb59bb0c88e4fcc182ce` |
@@ -200,8 +222,9 @@ and a separate checker, reading the circuit back, found that it accounts for
 every variable, including documented free or fixed variables, and that its
 model count is the one the compiler reported. An UNSAT answer represents the
 constant-false circuit and is accepted without reading a circuit file.
-Every plotted time is the compiler process's wall time, including output
-writing and excluding the subsequent checker. D4 in compilation mode
+Every plotted time includes the compiler process and output writing and
+excludes the subsequent checker. tididi-cnf also includes its measurement
+wrapper and input preparation. D4 in compilation mode
 reports no count, so the checker supplies it; that checker time is also
 excluded. On one instance of 2025, Panini's circuit and count differ from
 the count of tididi-cnf and of Ganak; it counts as not compiled there.
@@ -225,7 +248,7 @@ shows the cactus plot. The per-set compilation totals are:
 
 | Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
+| tididi-cnf | **130** | **87** | **117** | **117** | **76** | **77** | **59** | **49** | **712** |
 | Panini | 112 | 60 | 98 | 102 | 57 | 55 | 53 | 41 | 578 |
 | D4 (compiler) | 59 | 56 | 98 | 79 | 52 | 48 | 55 | 40 | 487 |
 | GPMC (compiler) | 84 | 50 | 92 | 76 | 49 | 48 | 50 | 33 | 482 |
