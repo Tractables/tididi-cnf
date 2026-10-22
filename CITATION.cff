@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite the paper below."
 type: software
-title: "tididi-cnf: a Tree Decision Diagram compiler for CNF"
-abstract: "A compiler from DIMACS CNF to Tree Decision Diagrams, canonical vtree-shaped decision diagrams, for model counting: plain, weighted, projected, and projected weighted."
+title: "tididi-cnf: a knowledge compiler and model counter for CNF"
+abstract: "A knowledge compiler and model counter for CNF: it compiles DIMACS formulas into Tree Decision Diagrams, canonical vtree-shaped decision diagrams, and counts their models: plain, weighted, projected, and projected weighted."
 license: Apache-2.0
 repository-code: "https://github.com/Tractables/tididi-cnf"
 url: "https://tractables.github.io/tididi-cnf/tididi_cnf/"

@@ -5,7 +5,7 @@ edition = "2024"
 # The floor let-chains (`if let … && let …`) set for edition 2024, which this
 # crate, the tididi library and vitri use.
 rust-version = "1.88"
-description = "Tree Decision Diagram (TDD) compiler for CNF: compiles a DIMACS formula into a canonical TDD and counts its models — plain, weighted, projected, or projected and weighted."
+description = "Knowledge compiler and model counter for CNF: compiles a DIMACS formula into a canonical Tree Decision Diagram (TDD) and counts its models — plain, weighted, projected, or projected and weighted."
 license = "Apache-2.0"
 repository = "https://github.com/Tractables/tididi-cnf"
 documentation = "https://tractables.github.io/tididi-cnf/tididi_cnf/"

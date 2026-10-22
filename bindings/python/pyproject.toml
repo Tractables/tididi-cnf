@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "tididi-cnf"
-description = "Exact model counting by compiling a CNF into a Tree Decision Diagram: the model count, the weighted count and their projections of a DIMACS formula."
+description = "Python bindings for tididi-cnf, a knowledge compiler and model counter for CNF: the model count, the weighted count and their projections of a DIMACS formula, computed by compiling it into a Tree Decision Diagram."
 readme = "README.md"
 # The extension is built against the stable ABI of 3.10, so one wheel per
 # platform serves every version from there on.

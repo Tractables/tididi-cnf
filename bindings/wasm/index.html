@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>tididi-cnf: CNF compiler in the browser</title>
+<title>tididi-cnf: CNF compiler and model counter in the browser</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,9 +13,9 @@
 <header>
   <h1><a href="https://github.com/Tractables/tididi-cnf"><img class="logo"
      src="logo.svg" alt="tididi-cnf" width="916" height="262"></a></h1>
-  <p class="lede">Paste a DIMACS CNF, open or drop a file, or pick an example.
-  tididi-cnf compiles the formula into a Tree Decision Diagram and counts
-  its models: the model count, the weighted count, or either one projected
+  <p class="lede">tididi-cnf is a knowledge compiler and model counter for CNF.
+  Paste a DIMACS CNF, open or drop a file, or pick an example: tididi-cnf
+  compiles the formula into a Tree Decision Diagram and counts its models: the model count, the weighted count, or either one projected
   onto the formula's show variables. The weights and the show variables come
   from the formula's own <code>c p weight</code> and <code>c p show</code>
   lines, and its <code>c t</code> line names the task unless you pick one.

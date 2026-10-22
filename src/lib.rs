@@ -1,20 +1,55 @@
-//! Count the models of a CNF formula by compiling it into a Tree Decision
-//! Diagram.
+//! A knowledge compiler and model counter for CNF.
 //!
-//! tididi-cnf answers the model count, the weighted model count and their
-//! projections onto a set of variables: the model count and the projected
-//! counts exactly, the weighted model count in a bounded-precision log domain.
-//! It preprocesses the formula, chooses a vtree for what is left and compiles
-//! it bottom-up, with fallbacks when a compile runs out of time or memory. It
-//! is the library behind the `tididi` binary, and [`count`] makes the binary's
-//! whole run on one instance.
+//! tididi-cnf compiles a DIMACS CNF formula into a Tree Decision Diagram
+//! (TDD), a canonical circuit that holds all of the formula's models, which
+//! the [`tididi`] library saves, combines with other circuits and queries as
+//! evidence or weights change. The same compiler is a model counter: it
+//! answers the model count, the weighted model count and their projections
+//! onto a set of variables, the model count and the projected counts exactly,
+//! the weighted model count in a bounded-precision log domain. It preprocesses
+//! the formula, chooses a vtree for what is left and compiles it bottom-up,
+//! with fallbacks when a compile runs out of time or memory. It is the library
+//! behind the `tididi` binary, and [`count`] makes the binary's whole run on
+//! one instance.
 //!
-//! # Start here
+//! # Compile a formula
 //!
 //! [`count`] takes an instance, the task, and the [`Limits`] to run under, and
-//! returns an [`Answer`]: the verdict, the [`Count`] and the run's [`Stats`].
-//! Here the instance is (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3), parsed from
-//! DIMACS text with [`parse_dimacs`], and the task is its model count:
+//! returns an [`Answer`]: the verdict, the [`Count`], the run's [`Stats`] and,
+//! for a compile, the [`diagram`](Answer::diagram). Here the instance is the
+//! eight queens puzzle, read from a DIMACS file whose variable 1 is a corner
+//! square, and the compiled circuit then counts the placements with a queen
+//! there without compiling again:
+//!
+//! ```
+//! use tididi_cnf::tididi::Literal;
+//! use tididi_cnf::{count, Limits, Mode};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let answer = count("tests/data/queens8.cnf", Some(Mode::Compile), &Limits::default())?;
+//! let board = answer.diagram().expect("a compile keeps its circuit");
+//! println!("Placements: {}", board.model_count()?);
+//! let mut counter = board.counter()?;
+//! counter.observe([Literal::try_from(1)?])?;
+//! println!("With a queen in a corner: {}", counter.model_count()?);
+//! # assert_eq!(board.model_count()?, 92u32.into());
+//! # assert_eq!(counter.model_count()?, 4u32.into());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Output:
+//!
+//! ```text
+//! Placements: 92
+//! With a queen in a corner: 4
+//! ```
+//!
+//! # Count its models
+//!
+//! A counting task returns the count without keeping a circuit. Here the
+//! instance is (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3), parsed from DIMACS text
+//! with [`parse_dimacs`], and the task is its model count:
 //!
 //! ```
 //! use tididi_cnf::{count, parse_dimacs, Limits, Mode};
@@ -33,8 +68,8 @@
 //! Models: 2
 //! ```
 //!
-//! [`count`] also takes a DIMACS file's path. With `None` for the mode, the
-//! instance's header chooses the task, as it does for the binary.
+//! With `None` for the mode, the instance's header chooses the task, as it does
+//! for the binary.
 //!
 //! A program that builds its formula holds it as data rather than text:
 //! [`formula_from_clauses`] takes the clauses as DIMACS integers, with a show

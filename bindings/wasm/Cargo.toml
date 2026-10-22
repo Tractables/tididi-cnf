@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.88"
 license = "Apache-2.0"
 repository = "https://github.com/Tractables/tididi-cnf"
-description = "tididi-cnf built for the browser with Emscripten: a DIMACS CNF goes in, its count and the run's record come out."
+description = "tididi-cnf, a knowledge compiler and model counter for CNF, built for the browser with Emscripten: a DIMACS CNF goes in, compiled or counted, and its count and the run's record come out."
 publish = false
 
 # An empty workspace table keeps this crate out of the tididi-cnf workspace

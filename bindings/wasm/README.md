@@ -2,7 +2,8 @@
 
 **<https://tractables.github.io/tididi-cnf/>**
 
-A page that runs tididi-cnf in the tab. Drop in a DIMACS CNF — or paste
+A page that runs tididi-cnf, the knowledge compiler and model counter, in the
+tab. Drop in a DIMACS CNF — or paste
 one, open a file, or pick an example — and choose circuit compilation or a
 counting task:
 

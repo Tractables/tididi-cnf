@@ -145,9 +145,10 @@ rule below is a form of it. Review a change against this list before it lands.
 - Docs describe current behaviour: what exists, what to watch out for, what is
   guaranteed. No development history or numbers that go stale (test counts,
   runtimes, sizes). Measured results appear in one place, the
-  [evaluation](../docs/evaluation.md) and the README section built from the same
-  data, which name the release, machine and limits they measured and are
-  rebuilt for each release. Per-instance CSVs and dataset catalogs live on the
+  [evaluation](../docs/evaluation.md), which names the release, machine and
+  limits it measured and is rebuilt for each release. The README's summary
+  shows the same figures and quotes its numbers from the evaluation's tables;
+  update the two together. Per-instance CSVs and dataset catalogs live on the
   separate `evaluation` branch. Main keeps the current plots and pins the data
   commit in `docs/evaluation/revision`; the site build fetches that snapshot.
   Commit and push the data branch first, then update the pin, plots and summary

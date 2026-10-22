@@ -1,6 +1,7 @@
 # tididi-cnf from C and C++
 
-A C ABI over the tididi-cnf library: a CNF goes in, as DIMACS text, as
+A C ABI over [tididi-cnf](https://github.com/Tractables/tididi-cnf), a
+knowledge compiler and model counter for CNF: a CNF goes in, as DIMACS text, as
 clauses of DIMACS integers or as a file, and its count comes back, with the
 mode the run resolved to, whether the formula has a model, and the run's record
 as JSON. Each call is the run the `tididi` binary makes on the same formula and

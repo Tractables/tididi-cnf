@@ -1,12 +1,13 @@
 # tididi-cnf for Python
 
 Python bindings for [tididi-cnf](https://github.com/Tractables/tididi-cnf),
-built with [PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs).
-tididi-cnf counts the models of a CNF exactly by compiling it into a
-Tree Decision Diagram: the model count, the weighted count and their
-projections onto a set of variables. Each call is the run the `tididi` binary
-makes on the same input and mode, without the answer it prints on stdout; its
-progress still goes to stderr.
+a knowledge compiler and model counter for CNF, built with
+[PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs). tididi-cnf
+compiles a formula into a Tree Decision Diagram and counts its models exactly:
+the model count, the weighted count and their projections onto a set of
+variables. Each call compiles or counts the formula as the `tididi` binary
+does on the same input and mode, and returns the answer instead of printing
+it; its progress still goes to stderr.
 
 ## Use
 
