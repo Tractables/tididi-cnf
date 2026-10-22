@@ -45,17 +45,16 @@ The three panels measure different results:
 
 | Comparison | Timed result | Correctness checks after timing |
 | --- | --- | --- |
-| Decision-diagram compilation in memory | Process finishes with a materialized diagram | Available exact counts are compared with stored references; diagrams are not read back |
+| Decision-diagram compilation | tididi-cnf writes its circuit; BDD and SDD packages materialize their diagrams in memory | The shared tididi-cnf circuits are read back; package completion and sizes are checked |
 | Saved logic-circuit compilation | Process finishes after writing its circuit | Circuit is read back, variable coverage checked and available exact counts compared |
 | Model counting | Process finishes with an exact count | Available counts are compared with other tools and competition references |
 
-Even for tididi-cnf, the compiler panels are separate measurements. The
-saved-circuit run also writes the diagram and its vtree. The campaigns
-additionally differ in prepared clause order, hardware, concurrency, outer
-memory and stack limits. Their totals therefore need not agree; the
-difference does not isolate the cost of saving a diagram. A shared compiler
-curve would require a new campaign with the same operational inputs,
-completion requirement and machine settings.
+Both compiler panels use the same tididi-cnf measurements, including every
+success, failure and elapsed time. The compiler receives the original clause
+sequence, uses its default preprocessing and portfolio, and writes its
+diagram and vtree within the timed process. Independent validation follows
+the compiler clock. Changing the comparison's baselines does not change the
+tididi-cnf configuration or select a different run.
 
 The labels “D4 (compiler)” and “D4 (counter)” distinguish the task being
 measured; GPMC is labelled the same way. Compilation uses the repository
@@ -111,39 +110,40 @@ variable numbering and SDD uses its official default initial tree. These
 fallbacks preserve coverage of every formula. The input clauses are not
 preprocessed for the packages.
 
-tididi-cnf receives the same prepared clause sequence. It ignores the order
-comments, but the clauses have been sorted during preparation. The saved-
-circuit campaign instead preserves the original clause sequence, removing
-only task directives that compilation does not accept. Shared formula
-identity does not imply byte-identical operational inputs across campaigns.
+tididi-cnf retains the original clause sequence, removing only task
+directives that compilation does not accept. Its results are the same saved-
+circuit measurements used in the logic-circuit comparison below. The BDD
+and SDD packages retain their own ordering heuristics.
 
-The formula groups use Intel Xeon Gold 5220 (133 formulas), Xeon Platinum
-8488C (887 formulas across two machines) and Xeon Platinum 8375C
-(133 formulas), all with TSC clocks.
-All eight tools for a formula run on the same host under matched limits;
-timings across hosts are not calibrated. Each invocation uses one CPU,
-120 s wall time, a 64 GiB address-space cap and a 1 GiB stack. TDD and BDD
-tools have a 60 GiB internal memory budget; SDD has no separate internal
-memory setting. BDD runs request transparent huge pages for allocations
-through glibc malloc. Timings
-contaminated by other work are rejected and repeated.
+The native package measurements use two AWS `r7i.48xlarge` machines with
+Xeon Platinum 8488C CPUs, TSC clocks and 1.5 TiB RAM each, with 21 instances
+running at a time on each machine. The shared tididi-cnf measurements use
+the same CPU model on `r7i.24xlarge`, as described below. Each invocation
+uses one CPU, 120 s wall time and a 60 GiB address-space cap. Native BDD and
+SDD processes have a 1 GiB stack. The shared tididi-cnf runs inherited their
+launch environment's stack limit, which the archived receipts do not record.
+BDD tools receive a 60 GiB internal memory
+budget; SDD has no separate internal memory setting. BDD runs request
+transparent huge pages for allocations through glibc malloc. Resource
+samples and timing audits are retained; contaminated timing sources are
+rejected.
 
 Time runs from process launch to exit, including startup, parsing and
-compilation, rather than only a package's reported apply time. Diagrams
-must be materialized in memory; serialization is not required. This differs
-from the saved-circuit logic comparison below. A successful exit must also
-report a completed diagram with a nonnegative final size or node count.
+compilation, rather than only a package's reported apply time. BDD and SDD
+diagrams must be materialized in memory; their serialization is not required.
+tididi-cnf also saves its circuit, as in the logic-circuit comparison. A
+successful native package exit must report a completed diagram with a
+nonnegative final size or node count.
 SDD must print its successful compilation footer, including both its size
 and node count. Constant true and false diagrams count as completed.
 Stack overflows, variable-range errors and other failed invocations remain
 failures.
 
-The 600 completed tididi-cnf invocations report exact integer counts. Of
-these, 553 agree with stored exact counts from other tools, 39 agree only
-with earlier tididi-cnf runs, and eight have no stored reference.
-Large fixed-width counts reported by the packages are not treated
-as exact validation evidence. Completion and size checks do not establish
-full equivalence between a CNF and its compiled diagram.
+Every successful tididi-cnf circuit passes the independent saved-circuit
+checks described below. Large fixed-width counts reported by the native
+packages are not treated as exact validation evidence. Completion, size
+checks and count agreement do not establish full equivalence between a CNF
+and its compiled diagram.
 
 The [README comparison](../README.md#compared-with-bottom-up-decision-diagram-compilers)
 shows the cactus plot. The per-set compilation totals are:
@@ -152,14 +152,14 @@ shows the cactus plot. The per-set compilation totals are:
 
 | Solver | MCC 2020 (200) | MCC 2021 (200) | MCC 2022 (200) | MCC 2023 (200) | MCC 2024 (200) | MCC 2025 (200) | MCC 2026 public (100) | MCC 2026 private (100) | All (1400) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| tididi-cnf | **125** | **86** | **118** | **116** | **76** | **80** | **59** | **50** | **710** |
+| tididi-cnf | **130** | **85** | **116** | **115** | **73** | **73** | **59** | **49** | **700** |
 | OxiDD | 22 | 9 | 27 | 4 | 25 | 20 | 25 | 21 | 153 |
-| BuDDy | 23 | 10 | 28 | 4 | 26 | 20 | 25 | 21 | 157 |
+| BuDDy | 24 | 10 | 28 | 4 | 25 | 20 | 25 | 21 | 157 |
 | CUDD (static) | 18 | 8 | 26 | 3 | 25 | 19 | 24 | 21 | 144 |
 | Sylvan (static) | 17 | 7 | 25 | 3 | 25 | 20 | 24 | 21 | 142 |
 | lib-bdd | 18 | 8 | 26 | 3 | 25 | 20 | 25 | 21 | 146 |
 | SDD (fixed) | 8 | 3 | 19 | 4 | 12 | 9 | 19 | 19 | 93 |
-| SDD (dynamic) | 9 | 6 | 30 | 12 | 15 | 14 | 23 | 19 | 128 |
+| SDD (dynamic) | 9 | 6 | 31 | 12 | 15 | 14 | 22 | 19 | 128 |
 
 <!-- end of evaluation table -->
 

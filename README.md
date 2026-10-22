@@ -28,8 +28,8 @@ Built on [vitri](https://github.com/Tractables/vitri) and
 
 All primary comparisons cover the full MCC 2020–2026 track-1 sets:
 1,400 entries, 1,153 distinct formulas, two minutes per instance.
-The compiler panels currently differ in input ordering and resources;
-[methods and full results](docs/evaluation.md) give the conditions.
+Both compiler plots use the same saved and validated tididi-cnf results.
+[Methods and full results](docs/evaluation.md).
 
 ### Compared with bottom-up decision-diagram compilers
 
