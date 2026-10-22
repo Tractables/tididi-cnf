@@ -28,7 +28,6 @@ include = [
     "/docs/evaluation/cactus-2020-2026-logic-compile-120s.svg",
     "/docs/evaluation/cactus-2020-2026-120s.svg",
     "/docs/evaluation/cactus-3600s.svg",
-    "/docs/changelog.md",
     "/LICENSE",
     "/NOTICE",
     # The worked examples' programs.

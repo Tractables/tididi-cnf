@@ -10,14 +10,11 @@ The package version in Cargo.toml is the reference. These must equal it:
   that reports the library's version, and whose Cargo.lock must lock both
   the binding and the library at it;
 - the `version` in CITATION.cff;
-- the newest released section of docs/changelog.md, its first `## ` heading other
-  than `Unreleased`, once there is one;
 - every link a worked example, `docs/examples/*.md`, makes to its program at
   a release tag (`tididi-cnf/blob/v<version>/`).
 
 With a tag (as the release workflow passes it, e.g. `v0.1.0`), the tag must
-name the version and the changelog must have its section. Prints each
-disagreement and exits 1.
+name the version. Prints each disagreement and exits 1.
 """
 
 import re
@@ -54,28 +51,22 @@ def main():
         named[f"{binding}/Cargo.toml"] = [package["version"]]
         for name in (package["name"], PACKAGE):
             named[f"{binding}/Cargo.lock's {name}"] = locked(f"{binding}/Cargo.lock", name)
-    released = [heading for heading in re.findall(r"^## +(.+?)\s*$", text("docs/changelog.md"), re.M)
-                if heading != "Unreleased"]
     linked = [(page.name, tagged)
               for page in sorted((ROOT / "docs/examples").glob("*.md"))
               for tagged in re.findall(r"tididi-cnf/blob/v([^/]+)/", page.read_text(encoding="utf-8"))]
 
     problems = [f"{source} names {found}, but Cargo.toml names {version}"
                 for source, found in named.items() if found != [version]]
-    if released and released[0] != version:
-        problems.append(f"docs/changelog.md's newest release is {released[0]}, but Cargo.toml names {version}")
     for page, tagged in linked:
         if tagged != version:
             problems.append(f"docs/examples/{page} links its program at v{tagged}, but Cargo.toml names {version}")
     if tag and tag != f"v{version}":
         problems.append(f"tag {tag} does not name version {version} (expected v{version})")
-    if tag and not released:
-        problems.append(f"docs/changelog.md has no section for {version}")
 
     if problems:
         print("\n".join(problems))
         sys.exit(1)
-    print(f"Cargo.toml, the lockfiles, the bindings, CITATION.cff, docs/changelog.md and the worked "
+    print(f"Cargo.toml, the lockfiles, the bindings, CITATION.cff and the worked "
           f"examples' links{' and tag ' + tag if tag else ''} name version {version}")
 
 
