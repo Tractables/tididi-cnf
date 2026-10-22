@@ -25,7 +25,14 @@ portfolio vtree selection remain enabled. Counting uses `--mode mc` with
 conjoins clauses in a balanced tree. OxiDD 0.11.2 (`9158645e`), CUDD 3.0.0 +
 20 commits (`538810a`) and Sylvan 1.9.0 (`8ddb68e3`) use complement edges;
 BuDDy (`5aca063a`) and lib-bdd-ffi (`0c9481b4`) use plain BDDs. All use static
-orders. PySDD 1.0.6 supplies the official SDD CLI: `-r 0` disables vtree
+orders; CUDD is also measured with dynamic variable-order sifting enabled
+after clause construction. Both CUDD configurations use the same prepared
+inputs, source revision, original hosts and resource limits. Sifting time is
+included in compilation. The harness activates `CUDD_REORDER_SIFT` for `-R`;
+activation and exact counts are checked on small inputs before the suite.
+The full suite measures compilation without an additional model-count query.
+
+PySDD 1.0.6 supplies the official SDD CLI: `-r 0` disables vtree
 search; the dynamic variant uses its default search settings.
 
 Public vitri prepares FORCE variable/clause orders and initial SDD vtrees
