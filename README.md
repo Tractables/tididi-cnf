@@ -38,7 +38,8 @@ Both compiler plots use the same saved and validated tididi-cnf results.
        alt="Cactus plot of the 1,400 MCC 2020–2026 entries compiled against time per instance, up to two minutes, by tididi-cnf, five BDD packages and SDD in fixed and dynamic modes">
 </p>
 
-[Results and method](docs/evaluation.md#bottom-up-decision-diagram-compilation).
+BDD variable orders and initial SDD vtrees use FORCE, with
+[documented fallbacks](docs/evaluation.md#bottom-up-decision-diagram-compilation).
 
 ### Compared with logic-circuit compilers
 
