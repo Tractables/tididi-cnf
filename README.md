@@ -35,11 +35,12 @@ Both compiler plots use the same saved and validated tididi-cnf results.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-dd-compile-120s.svg" width="760"
-       alt="Cactus plot of the 1,400 MCC 2020–2026 entries compiled against time per instance, up to two minutes, by tididi-cnf, five BDD packages and SDD in fixed and dynamic modes">
+       alt="Cactus plot of the 1,400 MCC 2020–2026 entries compiled against time per instance, up to two minutes, by tididi-cnf, five BDD packages including CUDD with and without sifting, and SDD in fixed and dynamic modes">
 </p>
 
 BDD variable orders and initial SDD vtrees use FORCE, with
 [documented fallbacks](docs/evaluation.md#bottom-up-decision-diagram-compilation).
+CUDD is shown both with and without dynamic variable-order sifting.
 
 ### Compared with logic-circuit compilers
 

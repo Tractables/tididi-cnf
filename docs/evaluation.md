@@ -17,7 +17,7 @@ logarithmic time scale.
 ## Bottom-up decision-diagram compilation
 
 - **BDDs:** FORCE variable and clause orders, then balanced conjunction with
-  a static variable order.
+  a static variable order, with an additional CUDD sifting configuration.
 - **SDDs:** a FORCE initial vtree, with search disabled (fixed) or enabled
   (dynamic).
 - **tididi-cnf:** default preprocessing and portfolio vtree selection, original
@@ -40,6 +40,7 @@ circuit. Constant true and false diagrams count as completed.
 | lib-bdd | 18 | 8 | 26 | 3 | 25 | 20 | 25 | 21 | 146 |
 | SDD (fixed) | 8 | 3 | 19 | 4 | 12 | 9 | 19 | 19 | 93 |
 | SDD (dynamic) | 9 | 6 | 31 | 12 | 15 | 14 | 22 | 19 | 128 |
+| CUDD (sifting) | 7 | 6 | 27 | 8 | 13 | 11 | 27 | 18 | 117 |
 
 <!-- end of evaluation table -->
 
