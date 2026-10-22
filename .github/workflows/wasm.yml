@@ -18,6 +18,7 @@ on:
     paths:
       - "bindings/wasm/**"
       - "bindings/parity.txt"
+      - "docs/evaluation/**"
       - ".github/scripts/dependency-path.py"
       - ".github/workflows/wasm.yml"
       - "src/**"

@@ -147,7 +147,11 @@ rule below is a form of it. Review a change against this list before it lands.
   runtimes, sizes). Measured results appear in one place, the
   [evaluation](../docs/evaluation.md) and the README section built from the same
   data, which name the release, machine and limits they measured and are
-  rebuilt for each release.
+  rebuilt for each release. Per-instance CSVs and dataset catalogs live on the
+  separate `evaluation` branch. Main keeps the current plots and pins the data
+  commit in `docs/evaluation/revision`; the site build fetches that snapshot.
+  Commit and push the data branch first, then update the pin, plots and summary
+  tables together on main.
 - [`docs/architecture.md`](../docs/architecture.md) maps the source, states the
   invariants and links the design pages. A new public module gets a row in
   its module table, which `tests/source_layout.rs` checks; a change to a

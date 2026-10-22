@@ -72,7 +72,9 @@ python3 -m http.server -d bindings/wasm/site
 `site.sh` gathers what the page is served with, including the example formulas
 `examples.js` names, which it copies from `tests/data/`, and puts the
 [evaluation page](../../docs/evaluation/index.html) and the results it reads
-under `evaluation/`; the web build workflow builds its artifact the same way.
+under `evaluation/`. Results are downloaded from the separate `evaluation`
+branch at the commit in `docs/evaluation/revision`; this step needs network
+access. The web build workflow builds its artifact the same way.
 Opening `index.html` from the filesystem does not work: the module and the
 examples are fetched, so they have to come from a server.
 
