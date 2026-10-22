@@ -187,3 +187,44 @@ through stale identity levels and mismatched vtree `Arc`s.
 [Marginal TDD levels](marginal-tdd-levels.md) has the design: marginal
 sub-vtree levels replaced with per-node model counts in `mc` mode, and the
 `peak_pairs` measurement.
+
+## Fallback stages
+
+A compile can give up on a vtree that another tree, or another form of the
+formula, would compile. These stages take over; the record's `answered_by`
+names the one that answered ([`stats.md`](stats.md)).
+
+- **The `compile` tree.** Under `compile`, a large, clause-dense formula that
+  splits into independent parts, none of which dominates the split, gets
+  vitri's force-directed `force` tree on every part instead of the
+  portfolio's pick
+  ([vitri's vtree guide](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md)
+  gives the rule). On some formulas the diagram outgrows the memory limit on
+  the portfolio's pick while another tree compiles in a small fraction of it.
+- **Bisection retry** (`bisect-retry`). When a `compile` runs out of memory
+  with time left, it compiles once more on vitri's hypergraph bisection,
+  `hypergraph-bisect:imbalance=0.40`, unless the portfolio's pick already was
+  a `hypergraph-bisect` tree. The retry builds its tree in the time left, and
+  one that cannot finish the tree gives up. Nothing follows the retry.
+- **Stall recompile** (`stall-recompile`). Under `mc`, a compile of the
+  reduced formula that stalls is given up early. The compile works up the
+  vtree one node at a time, and with a time limit each node's step may run
+  for a sixth of it, as long as at least 50 steps, that one included, are
+  still to come in its part of the formula. A step that runs longer ends the
+  compile, and the same reduced formula is compiled again, to the end of the
+  run, on a vtree from vitri's portfolio restricted to `goatd-primal`, a
+  construction the portfolio otherwise leaves out; the record's
+  `vtree_candidate` names the tree. A recompile that gives up leaves the
+  formula to the stages that follow any failed compile. Without a time limit,
+  no step has a limit of its own. `wmc` has no such step limit.
+- **Monotone reduction** (`monotone-reduction`). Under `mc`, the run asks
+  vitri to skip Arjun on a monotone formula, one in which every variable
+  occurs in one polarity only: its compile usually answers sooner without the
+  reduction. When that compile gives up with more than five and a half
+  minutes left, Arjun reduces the formula after all and the reduction, when
+  smaller, is compiled, leaving a quarter of the time left, and at least five
+  minutes, to the steps after it.
+- **Later stages.** Behind a failed compile, `mc` tries the no-SBVA retry,
+  support enumeration and the unreduced retry, then splits the formula on a
+  variable; [the support-enumeration stage](support-enum-stage.md) says how
+  they are ordered.

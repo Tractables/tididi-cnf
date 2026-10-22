@@ -109,42 +109,20 @@ diagram's shape follows it: on the same formula, one vtree can compile in a
 second and another not finish. Without `--vtree`, the run chooses:
 
 - `compile`, `pmc` and `pwmc` build vitri's `portfolio`, which constructs
-  several vtrees for the formula and keeps the one that scores best. Under
-  `compile`, a large, clause-dense formula that splits into independent
-  parts, none of which dominates the split, gets vitri's force-directed
-  `force` tree on every part instead
-  ([vitri's vtree guide](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md)
-  gives the rule). The portfolio scores trees without compiling on them, and
-  on some formulas the diagram outgrows the memory limit on its pick while
-  another tree compiles in a small fraction of it.
-  When a `compile` runs out of memory with time left, it compiles once more
-  on vitri's hypergraph bisection, `hypergraph-bisect:imbalance=0.40`, unless
-  the portfolio's pick already was a `hypergraph-bisect` tree; the record's
-  `answered_by` is then `bisect-retry`. The retry builds its tree in the time
-  left, and one that cannot finish the tree gives up. Nothing follows the
-  retry.
+  several vtrees for the formula and keeps the one that scores best. The
+  portfolio scores trees without compiling on them, so a `compile` that runs
+  out of memory with time left compiles once more on a second tree; the record's `answered_by` is then `bisect-retry`.
 - `mc` and `wmc` run the counting cascade: vitri's Arjun preprocessing reduces
   the formula, the portfolio picks a vtree for what is left, and if that
-  compile gives up, further stages follow. The record's `answered_by`
-  ([`stats.md`](stats.md)) says which stage produced a model count.
-- Under `mc`, a compile of the reduced formula that stalls is given up early.
-  The compile works up the vtree one node at a time, and with a time limit
-  each node's step may run for a sixth of it, as long as at least 50 steps,
-  that one included, are still to come in its part of the formula. A step
-  that runs longer ends the compile, and the same reduced formula is compiled
-  again, to the end of the run, on a vtree from vitri's portfolio restricted
-  to `goatd-primal`, a construction the portfolio otherwise leaves out. The
-  record's `answered_by` is then `stall-recompile`, and its `vtree_candidate`
-  names the tree. A recompile that gives up leaves the formula to the stages
-  that follow any failed compile. Without a time limit, no step has a limit
-  of its own. `wmc` has no such step limit.
-- Under `mc`, the run asks vitri to skip Arjun on a monotone formula, one in
-  which every variable occurs in one polarity only: its compile usually
-  answers sooner without the reduction. When that compile gives up with more
-  than five and a half minutes left, Arjun reduces the formula after all and
-  the reduction, when smaller, is compiled, leaving a quarter of the time
-  left, and at least five minutes, to the steps after it; the record's
-  `answered_by` is then `monotone-reduction`.
+  compile gives up, further stages follow. Under `mc`, a compile that stalls
+  on one step is given up early and compiled again on another tree
+  (`stall-recompile`), and a monotone formula, in which every variable occurs
+  in one polarity only, is first compiled without Arjun's reduction
+  (`monotone-reduction` when the reduction answers after all).
+
+The record's `answered_by` ([`stats.md`](stats.md)) says which stage produced
+the count, and [`algorithms.md`](algorithms.md#fallback-stages) gives each
+stage's rule and budget.
 
 With `--vtree <spec>`, the run compiles on that construction instead, and a
 `compile` that gives up on it has no retry. Under `mc` that also skips the

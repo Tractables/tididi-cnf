@@ -18,11 +18,11 @@ variable is still refused ([`env.md`](env.md)).
   up the run: its one retry follows a compile that ran out of memory, not one
   that ran out of time. A zero limit is already expired; even a shortcut
   answer gives up.
-- **A model count limits each step of its first compile.** Under `mc`, one
-  step of the compile of the reduced formula, the work at one vtree node, may
-  run for a sixth of the limit when at least 50 steps are still to come; a
-  step that runs longer gives that compile up, and the run compiles the
-  formula again on a second vtree ([`tasks.md`](tasks.md#vtrees)).
+- **A model count limits each step of its first compile.** Under `mc`, a
+  step of the compile of the reduced formula, the work at one vtree node, that
+  runs past its share of the limit gives that compile up, and the run
+  compiles the formula again on a second vtree
+  ([`algorithms.md`](algorithms.md#fallback-stages)).
 - **SAT equivalence probing**, part of vitri's simplification of the formula
   in `compile`, `mc` and `wmc`, gets a quarter of the limit, at most 30 s, and
   30 s when the run has no limit; probing that finishes in its budget reduces
