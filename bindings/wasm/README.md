@@ -89,8 +89,9 @@ evaluation page's `index.html` against `page.css`. The web build workflow
 runs these checks and `app-test.mjs`, which checks delayed worker replies
 after input and settings edits without building the module.
 
-The native binary is built without `VITRI_EMSCRIPTEN_PREFIX` in the
-environment, which a native build of vitri refuses:
+To run these checks locally, build the native binary without
+`VITRI_EMSCRIPTEN_PREFIX` in the environment, which a native build of vitri
+refuses:
 
 ```sh
 vitri=$(python3 .github/scripts/dependency-path.py vitri)
