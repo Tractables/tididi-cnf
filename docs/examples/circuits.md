@@ -83,5 +83,5 @@ Distinct products: 7
 
 The products of numbers from 0 to 3 are 0, 1, 2, 3, 4, 6 and 9.
 
-The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/circuits.rs)
+The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.1/examples/circuits.rs)
 has the XOR gate.

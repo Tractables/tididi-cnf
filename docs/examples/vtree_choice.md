@@ -83,4 +83,4 @@ The specs and the constructions behind them are documented with
 Continue with the
 [configuration example](crate::guide::examples::catalog), which
 counts with the vtree chosen for you, or see the
-[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.0/examples/vtree_choice.rs).
+[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.1/examples/vtree_choice.rs).
