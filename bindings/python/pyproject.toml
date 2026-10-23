@@ -10,6 +10,11 @@ readme = "README.md"
 # platform serves every version from there on.
 requires-python = ">=3.10"
 license = "Apache-2.0"
+# PEP 639 resolves these against this directory and forbids `..`, so the Python
+# workflow copies LICENSE and NOTICE in from the repository root, and
+# .github/scripts/collect-notices.sh the texts NOTICE names, before it builds
+# the wheel.
+license-files = ["notices/**/*"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Rust",

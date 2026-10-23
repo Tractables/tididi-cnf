@@ -5,7 +5,7 @@ This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
 Cargo.lock identifies the dependencies and their source revisions. Licence
 paths below are relative to each dependency's Cargo source directory; binary
-release archives carry the texts under notices/.
+release archives and the Python wheel carry the texts under notices/.
 
 tididi — Tree Decision Diagram library
 --------------------------------------
@@ -28,6 +28,14 @@ modifications and complete licence texts are maintained with that library:
 That file links goatd's own THIRD-PARTY.md for the FlowCutter backend
 (notices/vitri/goatd-THIRD-PARTY.md). Both are the authoritative attribution
 for the native dependency stack.
+
+GMP — arbitrary-precision arithmetic library
+--------------------------------------------
+LGPLv3+, and GPLv2+. Vitri's native stack links it dynamically. The binary
+loads the system's GMP. The Python wheel bundles GMP as shared libraries,
+built unmodified from the upstream tarball that the release attaches with
+GNU's signature; the licence texts are notices/vitri/GMP-COPYING.LESSERv3,
+notices/vitri/GMP-COPYINGv3 and notices/vitri/GMP-COPYINGv2.
 
 Rust crates
 -----------

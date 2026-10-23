@@ -1,11 +1,13 @@
 name: Python
 
-# Builds the Python extension in bindings/python, installs the wheel in a
-# fresh virtual environment, and runs its tests there, comparing its counts
-# with the tididi binary's. Nightly, on demand, and on a pull request that
-# changes the bindings, what they compile or the instances the tests read;
-# not on every commit, since the job builds vitri's vendored C++ stack twice.
-# Nothing is published.
+# Builds the Python wheel in bindings/python, the one PyPI receives, installs
+# it in a fresh virtual environment, and runs its tests there, comparing its
+# counts with the tididi binary's. Nightly, on demand, and on a pull request
+# that changes the bindings, what they compile or the instances the tests read;
+# not on every commit, since the job builds GMP and vitri's vendored C++ stack.
+# A published release also uploads the wheel to PyPI and attaches the GMP
+# source the wheel bundles to the release, as does a manual run on a release
+# tag with `publish`.
 on:
   schedule:
     - cron: "0 10 * * *"
@@ -14,44 +16,137 @@ on:
       - "bindings/python/**"
       - "bindings/parity.txt"
       - ".github/workflows/python.yml"
+      - ".github/scripts/collect-notices.sh"
       - "src/**"
       - "tests/data/*.cnf"
       - "Cargo.toml"
       - "Cargo.lock"
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload the wheel to PyPI (on a release tag only)
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
   MATURIN_VERSION: 1.15.0
+  AUDITWHEEL_VERSION: 6.8.2
+  PATCHELF_VERSION: 0.19.1.0
+
+permissions:
+  contents: read
 
 jobs:
-  # x86-64 Linux only. The wheel links the runner's GMP and carries a plain
-  # linux tag: it is for these tests, not for distribution.
-  wheel-linux:
+  # PyPI never lets a version be replaced, so a tag must name the version
+  # every file carries before anything is built for it.
+  versions:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check that the tag and every file naming the version name one
+        run: python3 .github/scripts/check-versions.py ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+
+  # x86-64 Linux only, the platform vitri builds on. The wheel is built on
+  # Ubuntu 22.04 and tagged manylinux_2_34, as vitri's own wheel is: an older
+  # manylinux image would first need a C++20 compiler that builds the vendored
+  # stack.
+  wheel-linux:
+    needs: versions
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/install-prereqs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-      - name: Cache Cargo builds
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: |
-            . -> target
-            bindings/python -> target
 
-      - name: Install maturin
-        run: python -m pip install --disable-pip-version-check maturin==$MATURIN_VERSION
+      # The wheel bundles a GMP built from the upstream tarball vitri's gmp.sh
+      # pins, not the runner's. CPATH, LIBRARY_PATH and PKG_CONFIG_PATH make
+      # everything built after this step compile and link against it.
+      - name: Build GMP
+        env:
+          CC: gcc-12
+          CXX: g++-12
+        run: |
+          sudo apt-get install -y --no-install-recommends m4
+          gmp=$(python3 .github/scripts/dependency-path.py vitri)/.github/scripts/gmp.sh
+          work=$RUNNER_TEMP/gmp
+          bash "$gmp" build "$work" "$work/prefix"
+          {
+            echo "GMP_PREFIX=$work/prefix"
+            echo "GMP_TARBALL=$(bash "$gmp" fetch "$work")"
+            echo "PKG_CONFIG_PATH=$work/prefix/lib/pkgconfig"
+            echo "CPATH=$work/prefix/include"
+            echo "LIBRARY_PATH=$work/prefix/lib"
+          } >> "$GITHUB_ENV"
+
+      # pyproject.toml takes the licence files from notices/: LICENSE and
+      # NOTICE, and the texts NOTICE names, GMP's among them.
+      - name: Collect the licence and the notices
+        run: |
+          mkdir -p bindings/python/notices
+          cp LICENSE NOTICE bindings/python/notices/
+          bash .github/scripts/collect-notices.sh bindings/python/notices "$GMP_PREFIX"
+
+      - name: Install the build tools
+        run: >
+          python -m pip install --disable-pip-version-check
+          maturin==$MATURIN_VERSION auditwheel==$AUDITWHEEL_VERSION patchelf==$PATCHELF_VERSION
 
       - name: Lint
         working-directory: bindings/python
         run: PYO3_PYTHON=$(command -v python) cargo clippy --release --locked -- -D warnings
 
+      # maturin's own audit would refuse the GMP dependency, so the wheel is
+      # built with a plain linux tag and auditwheel repairs it: it copies the
+      # shared libraries beyond the manylinux set into the wheel and points the
+      # extension at those copies. LD_LIBRARY_PATH makes it find the GMP built
+      # above. They stay shared libraries; nothing is linked statically.
       - name: Build the wheel
         working-directory: bindings/python
-        run: maturin build --release --locked --out dist --compatibility linux --auditwheel skip
+        run: |
+          maturin build --release --locked --out dist/raw --auditwheel skip --compatibility linux
+          LD_LIBRARY_PATH=$GMP_PREFIX/lib auditwheel repair --plat manylinux_2_34_x86_64 --wheel-dir dist dist/raw/*.whl
+
+      # A library auditwheel starts bundling needs its notice collected before
+      # the wheel can ship. The GMP in the wheel must be the one built above,
+      # and the extension must load it, not contain it; vitri's scripts check
+      # both.
+      - name: Check what the wheel carries
+        working-directory: bindings/python
+        run: |
+          wheel=$(ls dist/*.whl)
+          echo "$wheel"
+          python -m zipfile --list "$wheel" | tee dist/contents.txt
+          notices=$(bash "$GITHUB_WORKSPACE/.github/scripts/collect-notices.sh" list gmp)
+          for wanted in notices/LICENSE notices/NOTICE $(printf 'notices/%s\n' $notices) \
+                        tididi_cnf/py.typed tididi_cnf/__init__.pyi libgmp- libgmpxx-; do
+            grep -q -- "$wanted" dist/contents.txt || { echo "$wanted is not in the wheel"; exit 1; }
+          done
+          for library in $(awk '{print $1}' dist/contents.txt | grep '\.libs/.'); do
+            case "${library##*/}" in
+              libgmp-* | libgmpxx-*) ;;
+              *) echo "$library is bundled without a notice"; exit 1 ;;
+            esac
+          done
+          scripts=$(python3 "$GITHUB_WORKSPACE/.github/scripts/dependency-path.py" vitri)/.github/scripts
+          unpacked=$RUNNER_TEMP/wheel
+          python -m zipfile --extract "$wheel" "$unpacked"
+          # auditwheel names each copy after the file it copied, with a hash:
+          # libgmp-<hash>.so.10.5.0 is a copy of libgmp.so.10.5.0.
+          for library in "$unpacked"/*.libs/*; do
+            original=$(basename "$library" | sed 's/-[0-9a-f]\{8\}\.so\./.so./')
+            sh "$scripts/same-build-id.sh" "$library" "$GMP_PREFIX/lib/$original"
+          done
+          extension=$(ls "$unpacked"/tididi_cnf/tididi_cnf*.so)
+          sh "$scripts/no-gmp-inside.sh" "$extension" \
+            "$GMP_PREFIX/lib/libgmp.so" "$GMP_PREFIX/lib/libgmpxx.so"
+          if ! nm -D --undefined-only "$extension" | awk '$NF ~ /^__gmp/ { found = 1 } END { exit !found }'; then
+            echo "the extension does not call GMP through a shared library"; exit 1
+          fi
 
       - name: Build the command line for the parity tests
         run: cargo build --release --locked --bin tididi
@@ -63,5 +158,62 @@ jobs:
           python -m pip install --disable-pip-version-check pytest
           python -m pip install --disable-pip-version-check --no-index bindings/python/dist/*.whl
           cd "$RUNNER_TEMP"
+          # The installed extension loads GMP from the copies inside the wheel.
+          extension=$(python -c 'import pathlib, tididi_cnf; print(next(pathlib.Path(tididi_cnf.__file__).parent.glob("tididi_cnf*.so")))')
+          ldd "$extension" | tee ldd.txt
+          if grep -E 'libgmp|libmpfr' ldd.txt | grep -v '\.libs/'; then
+            echo "GMP or MPFR resolves outside the wheel"; exit 1
+          fi
           python -m pytest "$GITHUB_WORKSPACE/bindings/python/tests" -q -rs -p no:cacheprovider \
             --tididi-cli "$GITHUB_WORKSPACE/target/release/tididi"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-x86_64-linux
+          path: bindings/python/dist/*.whl
+
+      # The exact source of the GMP libraries in the wheel, with GNU's detached
+      # signature, which the release carries beside it.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gmp-source
+          path: |
+            ${{ env.GMP_TARBALL }}
+            ${{ env.GMP_TARBALL }}.sig
+
+  # Only for a release tag, and only once the wheel has been built and tested.
+  # The upload uses the PYPI_API_TOKEN secret, or trusted publishing when that
+  # secret is not set.
+  publish:
+    needs: wheel-linux
+    if: github.event_name == 'release' || (inputs.publish && github.ref_type == 'tag')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-x86_64-linux
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: gmp-source
+          path: gmp
+
+      - name: Check the distribution
+        run: |
+          python -m pip install --disable-pip-version-check twine
+          python -m twine check --strict dist/*
+
+      # `--clobber` so re-running the job replaces the assets instead of
+      # failing on the leftovers of the previous attempt.
+      - name: Attach the GMP source to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" gmp/* --repo "$GITHUB_REPOSITORY" --clobber
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

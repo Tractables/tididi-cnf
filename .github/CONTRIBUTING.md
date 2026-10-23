@@ -173,6 +173,8 @@ CI refuses a file that still names the old version.
 Then publish a GitHub release with the tag `v<version>`, its notes saying what
 changed since the last one: the release workflow checks the tag against those
 files, builds and runs the Linux binary, and attaches it to the release with
-the licence texts it needs. Last, run the Docs workflow with `publish` ticked,
-so that the documentation and the browser page on GitHub Pages follow the
-release.
+the licence texts it needs. The Python workflow builds and tests the wheel,
+uploads it to PyPI, with the `PYPI_API_TOKEN` secret or trusted publishing,
+and attaches the GMP source the wheel bundles to the release. Last, run the
+Docs workflow with `publish` ticked, so that the documentation and the browser
+page on GitHub Pages follow the release.
