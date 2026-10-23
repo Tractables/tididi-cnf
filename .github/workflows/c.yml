@@ -60,6 +60,12 @@ jobs:
       - name: Build and run the examples and tests
         run: make check
 
+      # The package a release attaches, used through its pkg-config file.
+      - name: Install the package and build against it
+        run: |
+          make install PREFIX="$RUNNER_TEMP/tididi-cnf-c"
+          make installcheck PREFIX="$RUNNER_TEMP/tididi-cnf-c"
+
       - name: Test the bindings crate
         run: cargo test --release --locked
 

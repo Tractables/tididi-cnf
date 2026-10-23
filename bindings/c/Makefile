@@ -2,8 +2,11 @@
 # bindings/c; README.md describes each target.
 #
 #   make                 the shared and static libraries, and the tididi executable
+#   make lib             the shared and static libraries alone
 #   make check           the examples and the conformance tests against each library
 #   make link-libs-check Libs.private in tididi-cnf-c.pc.in covers what rustc reports
+#   make install         the header, both libraries and the pkg-config file under PREFIX
+#   make installcheck    an example built against the installed package
 #   make header          regenerate include/tididi_cnf.h
 #   make header-check    fail if include/tididi_cnf.h differs from cbindgen's output
 
@@ -17,7 +20,11 @@ CXX ?= c++
 CFLAGS ?= -O2 -g
 CXXFLAGS ?= -O2 -g
 
+# An absolute path: installcheck records it in the programs it links.
+PREFIX ?= /usr/local
+
 ROOT := ../..
+VERSION := $(shell sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
 RELEASE := target/release
 OUT := target/c
 SHARED := $(RELEASE)/libtididi_cnf_c.so
@@ -44,17 +51,19 @@ EXAMPLE_OUTPUT := mode: compile\nsatisfiable: yes\ncount: 10
 # What examples/clauses.c promises in its header comment.
 CLAUSES_OUTPUT := mode: pwmc\nsatisfiable: yes\ncount: 23/50\nas a double: 0.46
 
-.PHONY: all libs check link-libs-check header header-check clean
+.PHONY: all lib libs check link-libs-check install installcheck header header-check clean
 
 all: libs
 
 # rustc prints the static link line only when it compiles this crate, so the
 # crate is touched to make every run print it. `--locked` builds the
 # dependency versions the committed Cargo.lock names.
-libs:
+lib:
 	@mkdir -p $(OUT)
 	touch src/lib.rs
 	$(CARGO) rustc --release --locked --lib -- --print native-static-libs 2>&1 | tee $(OUT)/rustc.log
+
+libs: lib
 	cd $(ROOT) && $(CARGO) build --release --locked --bin tididi
 
 # cargo decides what is stale, so the libraries and the binary are rebuilt on
@@ -94,6 +103,29 @@ link-libs-check:
 	  case " $(STATIC_LIBS) " in *" $$lib "*) ;; *) missing="$$missing $$lib" ;; esac; \
 	done; \
 	test -z "$$missing" || { echo "Libs.private in tididi-cnf-c.pc.in lacks:$$missing"; exit 1; }
+
+# The layout a release's C package has. The pkg-config file finds the package
+# from where it sits, so the directory can be moved or unpacked anywhere.
+install: lib
+	install -d $(PREFIX)/include $(PREFIX)/lib/pkgconfig
+	install -m 644 include/tididi_cnf.h $(PREFIX)/include/
+	install -m 755 $(SHARED) $(PREFIX)/lib/
+	install -m 644 $(STATIC) $(PREFIX)/lib/
+	sed 's|@VERSION@|$(VERSION)|' tididi-cnf-c.pc.in > $(PREFIX)/lib/pkgconfig/tididi-cnf-c.pc
+
+# examples/clauses.c compiled against the package under PREFIX, through its
+# pkg-config file, and linked each way.
+installcheck:
+	@mkdir -p $(OUT)
+	export PKG_CONFIG_PATH=$(PREFIX)/lib/pkgconfig; \
+	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) examples/clauses.c \
+	  $$(pkg-config --cflags --libs tididi-cnf-c) -Wl,-rpath,$(PREFIX)/lib -o $(OUT)/clauses-installed-shared; \
+	$(CC) -std=c99 $(WARNINGS) $(CFLAGS) $$(pkg-config --cflags tididi-cnf-c) examples/clauses.c \
+	  $(PREFIX)/lib/libtididi_cnf_c.a $$(pkg-config --static --libs-only-l tididi-cnf-c | sed 's/-ltididi_cnf_c//') \
+	  -o $(OUT)/clauses-installed-static
+	for kind in $(KINDS); do \
+	  diff <(printf '$(CLAUSES_OUTPUT)\n') <($(OUT)/clauses-installed-$$kind 2> $(OUT)/clauses-installed-$$kind.stderr); \
+	done
 
 header:
 	$(CBINDGEN) --config cbindgen.toml --crate tididi-cnf-c --output include/tididi_cnf.h .

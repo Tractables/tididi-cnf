@@ -29,19 +29,25 @@ resolved to, whether the formula has a model, and the run's record as JSON.
 
 ## Install
 
-From a checkout, with the prerequisites
-[`docs/building.md`](../../docs/building.md) lists:
+Each [release](https://github.com/Tractables/tididi-cnf/releases/latest) has a
+prebuilt package for x86-64 Linux: the header, the shared and static libraries,
+and a pkg-config file. Unpack it anywhere; it needs no Rust toolchain. The
+libraries load the system's GMP (`libgmp10` and `libgmpxx4ldbl` on Debian and
+Ubuntu) and need glibc 2.35 or later (Ubuntu 22.04, Debian 12 and newer).
+
+```sh
+tar xzf tididi-cnf-c-v0.1.1-x86_64-unknown-linux-gnu.tar.gz
+mv tididi-cnf-c-v0.1.1-x86_64-unknown-linux-gnu tididi-cnf-c
+export PKG_CONFIG_PATH=$PWD/tididi-cnf-c/lib/pkgconfig
+```
+
+To build and install the same package from a checkout instead, with the
+prerequisites [`docs/building.md`](../../docs/building.md) lists:
 
 ```sh
 cd bindings/c
-make
+make install PREFIX=/your/install/prefix
 ```
-
-This runs `cargo` for both libraries and for the `tididi` binary the tests
-compare against; the first build compiles vitri's C++ stack. The libraries land
-in `bindings/c/target/release`, `libtididi_cnf_c.so` and `libtididi_cnf_c.a`,
-and the header is `bindings/c/include/tididi_cnf.h`. The Makefile and the CI
-workflow cover Linux x86-64.
 
 ## Getting started
 
@@ -94,31 +100,20 @@ A run belongs to the process:
 
 ## Linking
 
-Against the shared library, nothing else is needed. Link it by name, so the
-program records `libtididi_cnf_c.so` rather than the path it was built
-from, and tell the loader where to find it:
+Link the shared library by name, so the program records `libtididi_cnf_c.so`
+rather than a path, and tell the loader where to find it:
 
 ```sh
-cc -Ibindings/c/include prog.c -Lbindings/c/target/release -ltididi_cnf_c \
-   -Wl,-rpath,"$PWD/bindings/c/target/release" -o prog
+cc prog.c $(pkg-config --cflags --libs tididi-cnf-c) -Wl,-rpath,"$PWD/tididi-cnf-c/lib" -o prog
 ```
 
-A static link has to name the system libraries the archive uses, which is the
-`Libs.private` line of `tididi-cnf-c.pc.in`. GMP and MPFR are always linked
+A static link names the archive and the system libraries it uses, the
+`Libs.private` line of the pkg-config file. GMP and MPFR are always linked
 dynamically, whichever library you link.
 
 ```sh
-cc -Ibindings/c/include prog.c bindings/c/target/release/libtididi_cnf_c.a \
-   $(sed -n 's/^Libs.private: //p' bindings/c/tididi-cnf-c.pc.in) -o prog
-```
-
-That file is a pkg-config template; fill in its two placeholders when
-installing, taking the version from `bindings/c/Cargo.toml`:
-
-```sh
-version=$(sed -n 's/^version = "\(.*\)"/\1/p' bindings/c/Cargo.toml | head -1)
-sed -e 's|@PREFIX@|/usr/local|' -e "s|@VERSION@|$version|" \
-    bindings/c/tididi-cnf-c.pc.in > /usr/local/lib/pkgconfig/tididi-cnf-c.pc
+cc prog.c $(pkg-config --cflags tididi-cnf-c) tididi-cnf-c/lib/libtididi_cnf_c.a \
+   $(pkg-config --static --libs-only-l tididi-cnf-c | sed 's/-ltididi_cnf_c//') -o prog
 ```
 
 The static archive carries vitri's vendored CaDiCaL, CryptoMiniSat and Arjun
@@ -127,11 +122,14 @@ should use the shared library.
 
 ## Develop
 
-Run the examples and the tests:
+`make` builds both libraries into `target/release`, and the `tididi` binary
+the tests compare against; the first build compiles vitri's C++ stack. Run the
+examples and the tests:
 
 ```sh
 make check            # the examples and tests/conformance.c, against each library
 make link-libs-check  # Libs.private covers what rustc reports for a static link
+make install PREFIX=/tmp/tididi-cnf-c installcheck  # an example against the installed package
 ```
 
 `tests/conformance.c` compares the counts of the instances

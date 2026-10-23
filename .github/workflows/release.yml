@@ -1,15 +1,16 @@
 name: Release
 
-# Builds the `tididi` binary, runs it, and packages it with the licence
-# notices. For a tag, it then attaches the archive to the GitHub release.
+# Builds the `tididi` binary and the C library, runs both, and packages each
+# with the licence notices. For a tag, it then attaches the archives to the
+# GitHub release.
 # Creating a release in the GitHub UI pushes the tag, so the release exists by
 # the time the tag event arrives here. The manual trigger with a tag rebuilds
 # and re-attaches for that tag; without one it builds the selected branch. A
 # pull request that changes this workflow or what it runs builds the archive
 # without attaching it.
 #
-# Linux x86-64 only, the platform vitri builds on. The binary loads GMP as a
-# shared library, which docs/building.md says.
+# Linux x86-64 only, the platform vitri builds on. The binary and the C
+# library load GMP as a shared library, which docs/building.md says.
 
 on:
   push:
@@ -19,6 +20,7 @@ on:
       - .github/workflows/release.yml
       - .github/actions/**
       - .github/scripts/**
+      - bindings/c/**
       - Cargo.toml
       - Cargo.lock
   workflow_dispatch:
@@ -83,6 +85,20 @@ jobs:
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
 
+      # The header, both libraries and a pkg-config file that finds them
+      # wherever the archive is unpacked. installcheck builds an example
+      # against the package, linked each way, and checks what it prints.
+      - name: Package the C library
+        run: |
+          label=${TAG:-$(git rev-parse --short=12 HEAD)}
+          name="tididi-cnf-c-$label-$TARGET"
+          make -C bindings/c install PREFIX="$PWD/dist/$name"
+          make -C bindings/c installcheck PREFIX="$PWD/dist/$name"
+          cp LICENSE NOTICE "dist/$name"
+          bash .github/scripts/collect-notices.sh "dist/$name/notices"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+
       - uses: actions/upload-artifact@v4
         with:
           name: tididi-${{ env.TARGET }}
@@ -109,4 +125,7 @@ jobs:
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" dist/tididi-"$TAG"-"$TARGET".tar.gz dist/tididi-"$TAG"-"$TARGET".tar.gz.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            dist/tididi-"$TAG"-"$TARGET".tar.gz dist/tididi-"$TAG"-"$TARGET".tar.gz.sha256 \
+            dist/tididi-cnf-c-"$TAG"-"$TARGET".tar.gz dist/tididi-cnf-c-"$TAG"-"$TARGET".tar.gz.sha256
