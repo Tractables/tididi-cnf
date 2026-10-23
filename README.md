@@ -95,16 +95,24 @@ only Cara, and none only Ganak or D4.
 
 ## Install
 
-Download the Linux x86-64 binary from the
-[latest release](https://github.com/Tractables/tididi-cnf/releases/latest), or
-build it with Rust and a C++20 toolchain
-([prerequisites](docs/building.md)):
+- **Command line:** download the Linux x86-64 binary from the
+  [latest release](https://github.com/Tractables/tididi-cnf/releases/latest),
+  or build it with Rust and a C++20 toolchain
+  ([prerequisites](docs/building.md)):
 
-```sh
-git clone https://github.com/Tractables/tididi-cnf
-cd tididi-cnf
-cargo build --release
-```
+  ```sh
+  git clone https://github.com/Tractables/tididi-cnf
+  cd tididi-cnf
+  cargo build --release
+  ```
+
+- **Rust:** depend on the crate through Git:
+  `tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }`.
+- **Python:** build the package from a checkout, as the
+  [Python README](bindings/python/README.md) says.
+- **C and C++:** build the shared and static libraries with `make`, as the
+  [C README](bindings/c/README.md) says.
+- **No install:** [run it in your browser](https://tractables.github.io/tididi-cnf/).
 
 ## Getting started
 
@@ -169,9 +177,8 @@ With a queen in a corner: 4
 ```
 
 With a counting mode, such as `Mode::Mc` or `Mode::Pwmc`, the same call
-returns the count. [`docs/building.md`](docs/building.md#use-from-another-rust-crate)
-says how to depend on the crate, and the [Python](bindings/python/README.md)
-and [C](bindings/c/README.md) bindings count from those languages.
+returns the count, as the [Python](bindings/python/README.md) and
+[C](bindings/c/README.md) bindings do.
 
 The worked examples cover what the compiler and counter do:
 
