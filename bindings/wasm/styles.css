@@ -63,7 +63,7 @@ header { margin-bottom: 1.5rem; max-width: 60rem; }
 
 h1 { margin: 0 0 0.6rem; line-height: 0; }
 
-/* The logo is the title: the compiler's name beside a variable tree. */
+/* The logo is the title: the compiler's name with decision and clause graphs. */
 .logo { display: block; width: auto; height: 4.5rem; max-width: 100%; }
 
 h2 {
@@ -243,7 +243,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 /* ------------------------------------------------------------- summary */
 
-/* The answer, with the gold of the logo's leaves beside it. */
+/* The answer, with the gold of the logo's nodes beside it. */
 .answer {
   margin: 0 0 0.9rem;
   padding: 0.55rem 0.75rem;
