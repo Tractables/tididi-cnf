@@ -37,11 +37,11 @@ which introduced TDDs.
 
 ## How well does it work?
 
-Every tool runs on all 1,400 track-1 entries of the 2020–2026 competitions,
-1,153 distinct formulas, with two minutes, one CPU and 60 GiB per instance.
-The [evaluation](docs/evaluation.md) has the full tables and the method, and the
-[interactive plots](https://tractables.github.io/tididi-cnf/evaluation/) show
-every run.
+Every tool runs on all 1,400 track-1 entries of the 2020–2026 Model Counting
+Competitions, 1,153 distinct formulas, with two minutes, one CPU and 60 GiB
+per instance. The [evaluation](docs/evaluation.md) has the full tables and the
+method, and the [interactive plots](https://tractables.github.io/tididi-cnf/evaluation/)
+show every run.
 
 ### Compiling, against decision-diagram packages
 
@@ -66,7 +66,7 @@ of D4 (487), GPMC (482) and c2d (387).
        alt="All 1,400 MCC 2020–2026 entries compiled within two minutes by tididi-cnf, Panini, D4 as a compiler, GPMC as a compiler and c2d">
 </p>
 
-### Counting, against the 2026 competition's exact counters
+### Counting, against the exact counters of the 2026 Model Counting Competition
 
 tididi-cnf counts **770** of the 1,400 entries, second to Ganak (792) and
 ahead of D4 (629), GPMC (577) and Cara (517).
