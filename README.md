@@ -27,7 +27,7 @@ without weights, in the format of the Model Counting Competition.
 On all 1,400 entries of the 2020–2026 Model Counting Competitions, tididi-cnf
 compiles more of them than any of the BDD, SDD and logic-circuit compilers we
 compared, and as a model counter it counts more than every exact counter of
-the 2026 competition except Ganak.
+the 2026 competition except Ganak, and 66 entries only it counts.
 
 tididi-cnf is built on the [tididi](https://github.com/Tractables/tididi)
 diagram library and the [vitri](https://github.com/Tractables/vitri) CNF
@@ -45,8 +45,9 @@ show every run.
 
 ### Compiling, against decision-diagram packages
 
-tididi-cnf compiles **712** of the 1,400 entries. The best BDD package,
-BuDDy, compiles 157, and SDD compiles 128 with dynamic vtree search. Every
+tididi-cnf compiles **712** of the 1,400 entries, **521** of which no BDD
+or SDD package compiles. The best BDD package, BuDDy, compiles 157, and SDD
+compiles 128 with dynamic vtree search. Every
 BDD package gets a FORCE variable order, CUDD also with dynamic sifting, and
 SDD starts from a FORCE vtree, all prepared outside the timer
 ([method](docs/evaluation.md#bottom-up-decision-diagram-compilation)).
@@ -59,7 +60,8 @@ SDD starts from a FORCE vtree, all prepared outside the timer
 ### Compiling, against logic-circuit compilers
 
 tididi-cnf compiles **712** entries, 134 more than Panini (578) and well ahead
-of D4 (487), GPMC (482) and c2d (387).
+of D4 (487), GPMC (482) and c2d (387). **160** of them no other compiler
+finishes; Panini has 36 such entries.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-logic-compile-120s.svg" width="760"
@@ -69,7 +71,8 @@ of D4 (487), GPMC (482) and c2d (387).
 ### Counting, against the exact counters of the 2026 Model Counting Competition
 
 tididi-cnf counts **770** of the 1,400 entries, second to Ganak (792) and
-ahead of D4 (629), GPMC (577) and Cara (517).
+ahead of D4 (629), GPMC (577) and Cara (517). It is the only counter to count
+**66** of them, more than Ganak's 42.
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-120s.svg" width="760"
@@ -80,7 +83,8 @@ ahead of D4 (629), GPMC (577) and Cara (517).
 <summary>One hour per instance</summary>
 
 With an hour each on the 100 private instances of 2026, tididi-cnf counts 61,
-Ganak and D4 62, Cara 58 and GPMC 54.
+Ganak and D4 62, Cara 58 and GPMC 54. Two of them only tididi-cnf counts, one
+only Cara, and none only Ganak or D4.
 
 <p align="center">
   <img src="docs/evaluation/cactus-3600s.svg" width="760"
