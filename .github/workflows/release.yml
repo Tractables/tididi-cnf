@@ -71,24 +71,15 @@ jobs:
           printf 'p cnf 2 1\n1 2 0\n' > smoke.cnf
           "target/$TARGET/release/tididi" smoke.cnf | grep -qx 'model count: 3'
 
-      # `notices/` holds the licence texts NOTICE names: vitri's and its
-      # native stack's, which vitri's own script collects, the diagram
-      # library's, and jemalloc's, from the tikv-jemalloc-sys that Cargo.lock
-      # pins.
+      # `notices/` holds the licence texts NOTICE names. The binary loads the
+      # system's GMP, so the archive carries no GMP texts.
       - name: Package
         run: |
           label=${TAG:-$(git rev-parse --short=12 HEAD)}
           name="tididi-$label-$TARGET"
           mkdir -p "dist/$name"
           cp "target/$TARGET/release/tididi" LICENSE NOTICE "dist/$name"
-          notices="dist/$name/notices"
-          vitri=$(python3 .github/scripts/dependency-path.py vitri)
-          tididi=$(python3 .github/scripts/dependency-path.py tididi)
-          jemalloc=$(python3 .github/scripts/dependency-path.py tikv-jemalloc-sys)
-          bash "$vitri/.github/scripts/collect-notices.sh" "$notices/vitri"
-          mkdir -p "$notices/tididi" "$notices/jemalloc"
-          cp "$tididi/LICENSE" "$notices/tididi/"
-          cp "$jemalloc/jemalloc/COPYING" "$notices/jemalloc/"
+          bash .github/scripts/collect-notices.sh "dist/$name/notices"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
 
