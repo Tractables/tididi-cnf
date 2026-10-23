@@ -5,6 +5,8 @@
 <p align="center">
   <a href="https://tractables.github.io/tididi-cnf/"><img
      src="https://img.shields.io/badge/run-in%20the%20browser-blue" alt="Run in the browser"></a>
+  <a href="https://pypi.org/project/tididi-cnf/"><img
+     src="https://img.shields.io/pypi/v/tididi-cnf.svg" alt="PyPI"></a>
   <a href="https://github.com/Tractables/tididi-cnf/actions/workflows/rust.yml"><img
      src="https://github.com/Tractables/tididi-cnf/actions/workflows/rust.yml/badge.svg" alt="CI"></a>
   <a href="https://tractables.github.io/tididi-cnf/tididi_cnf/"><img
@@ -108,8 +110,8 @@ only Cara, and none only Ganak or D4.
 
 - **Rust:** depend on the crate through Git:
   `tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }`.
-- **Python:** build the package from a checkout, as the
-  [Python README](bindings/python/README.md) says.
+- **Python:** `pip install tididi-cnf` on x86-64 Linux. See the
+  [Python README](bindings/python/README.md).
 - **C and C++:** build the shared and static libraries with `make`, as the
   [C README](bindings/c/README.md) says.
 - **No install:** [run it in your browser](https://tractables.github.io/tididi-cnf/).

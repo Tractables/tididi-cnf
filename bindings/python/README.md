@@ -3,6 +3,8 @@
 </p>
 
 <p align="center">
+  <a href="https://pypi.org/project/tididi-cnf/"><img
+     src="https://img.shields.io/pypi/v/tididi-cnf.svg" alt="PyPI"></a>
   <a href="https://github.com/Tractables/tididi-cnf/actions/workflows/python.yml"><img
      src="https://github.com/Tractables/tididi-cnf/actions/workflows/python.yml/badge.svg" alt="Python"></a>
   <a href="https://tractables.github.io/tididi-cnf/"><img
@@ -28,19 +30,14 @@ answer instead of printing it.
 
 ## Install
 
-The package builds from a checkout of the repository, which needs the Rust and
-C++ toolchains and the system packages that
-[`docs/building.md`](https://github.com/Tractables/tididi-cnf/blob/main/docs/building.md)
-lists. From the repository root:
-
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install 'maturin>=1.9.4,<2'
-maturin develop --release --locked --manifest-path bindings/python/Cargo.toml
+pip install tididi-cnf
 ```
 
-It runs on Linux, as vitri's native build does.
+The wheel covers Python 3.10 and later on x86-64 Linux with glibc 2.34 or later
+(Ubuntu 22.04, Debian 12, RHEL 9 and newer), and carries the GMP library it
+needs. Elsewhere on Linux, build it from a checkout, as [Develop](#develop)
+says.
 
 ## Getting started
 
@@ -112,14 +109,19 @@ A run belongs to the process:
 
 ## Develop
 
-In the environment from [Install](#install), from the repository root, build
-the command line and run the tests. They also compare the version and the
-counts of the instances
+Building the package needs the Rust and C++ toolchains and the system packages
+that [`docs/building.md`](https://github.com/Tractables/tididi-cnf/blob/main/docs/building.md)
+lists. From the repository root, build it in place, then build the command
+line and run the tests. They also compare the version and the counts of the
+instances
 [`bindings/parity.txt`](https://github.com/Tractables/tididi-cnf/blob/main/bindings/parity.txt)
 lists with the binary's:
 
 ```sh
-python -m pip install pytest
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install 'maturin>=1.9.4,<2' pytest
+maturin develop --release --locked --manifest-path bindings/python/Cargo.toml
 cargo build --release --locked --bin tididi
 python -m pytest bindings/python/tests --tididi-cli target/release/tididi
 ```
