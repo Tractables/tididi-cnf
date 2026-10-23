@@ -5,6 +5,8 @@
 <p align="center">
   <a href="https://tractables.github.io/tididi-cnf/"><img
      src="https://img.shields.io/badge/run-in%20the%20browser-blue" alt="Run in the browser"></a>
+  <a href="https://crates.io/crates/tididi-cnf"><img
+     src="https://img.shields.io/crates/v/tididi-cnf.svg" alt="crates.io"></a>
   <a href="https://pypi.org/project/tididi-cnf/"><img
      src="https://img.shields.io/pypi/v/tididi-cnf.svg" alt="PyPI"></a>
   <a href="https://github.com/Tractables/tididi-cnf/actions/workflows/rust.yml"><img
@@ -108,8 +110,8 @@ only Cara, and none only Ganak or D4.
   cargo build --release
   ```
 
-- **Rust:** depend on the crate through Git:
-  `tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }`.
+- **Rust:** `cargo add tididi-cnf`. See the [API reference] and the
+  [crate on crates.io](https://crates.io/crates/tididi-cnf).
 - **Python:** `pip install tididi-cnf` on x86-64 Linux. See the
   [Python README](bindings/python/README.md).
 - **C and C++:** build the shared and static libraries with `make`, as the

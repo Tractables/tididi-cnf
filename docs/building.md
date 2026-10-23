@@ -47,12 +47,10 @@ RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo build --release
 
 ## Use from another Rust crate
 
-The crate is not on crates.io yet. Add it through Git in your application's
-`Cargo.toml`:
+Add the crate from crates.io:
 
-```toml
-[dependencies]
-tididi-cnf = { git = "https://github.com/Tractables/tididi-cnf" }
+```sh
+cargo add tididi-cnf
 ```
 
 The native toolchain and system packages above are also needed when building
