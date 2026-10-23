@@ -114,8 +114,9 @@ only Cara, and none only Ganak or D4.
   [crate on crates.io](https://crates.io/crates/tididi-cnf).
 - **Python:** `pip install tididi-cnf` on x86-64 Linux. See the
   [Python README](bindings/python/README.md).
-- **C and C++:** build the shared and static libraries with `make`, as the
-  [C README](bindings/c/README.md) says.
+- **C and C++:** download the x86-64 Linux package from the
+  [latest release](https://github.com/Tractables/tididi-cnf/releases/latest),
+  or build it with `make install`. See the [C README](bindings/c/README.md).
 - **No install:** [run it in your browser](https://tractables.github.io/tididi-cnf/).
 
 ## Getting started
