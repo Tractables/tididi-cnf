@@ -1,91 +1,122 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Tractables/tididi-cnf/main/docs/logo.svg" alt="tididi-cnf" width="460">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Tractables/tididi-cnf/actions/workflows/python.yml"><img
+     src="https://github.com/Tractables/tididi-cnf/actions/workflows/python.yml/badge.svg" alt="Python"></a>
+  <a href="https://tractables.github.io/tididi-cnf/"><img
+     src="https://img.shields.io/badge/run-in%20the%20browser-blue" alt="Run in the browser"></a>
+  <a href="https://arxiv.org/abs/2604.05537"><img
+     src="https://img.shields.io/badge/arXiv-2604.05537-b31b1b.svg" alt="arXiv"></a>
+</p>
+
 # tididi-cnf for Python
 
-Python bindings for [tididi-cnf](https://github.com/Tractables/tididi-cnf),
-a knowledge compiler and model counter for CNF, built with
-[PyO3](https://pyo3.rs) and [maturin](https://www.maturin.rs). tididi-cnf
-compiles a formula into a Tree Decision Diagram and counts its models exactly:
-the model count, the weighted count and their projections onto a set of
-variables. Each call compiles or counts the formula as the `tididi` binary
-does on the same input and mode, and returns the answer instead of printing
-it; its progress still goes to stderr.
+**A knowledge compiler and model counter for CNF, in Python.**
 
-## Use
+tididi-cnf compiles a CNF formula into a **Tree Decision Diagram (TDD)** and
+counts its models exactly: the model count, the weighted count and their
+projections onto a set of variables. On the 1,400 entries of the 2020–2026
+Model Counting Competitions it compiles more formulas than any BDD, SDD or
+logic-circuit compiler we compared, and counts more than every exact counter
+of the 2026 competition but one
+([evaluation](https://github.com/Tractables/tididi-cnf#how-well-does-it-work)).
+This package runs the same Rust implementation as the `tididi` command line:
+each call compiles or counts a formula as the binary does, and returns the
+answer instead of printing it.
+
+## Install
+
+The package builds from a checkout of the repository, which needs the Rust and
+C++ toolchains and the system packages that
+[`docs/building.md`](https://github.com/Tractables/tididi-cnf/blob/main/docs/building.md)
+lists. From the repository root:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install 'maturin>=1.9.4,<2'
+maturin develop --release --locked --manifest-path bindings/python/Cargo.toml
+```
+
+It runs on Linux, as vitri's native build does.
+
+## Getting started
+
+This example counts the models of a three-clause formula, then the probability
+that the formula holds when `x1` is true with probability 0.3 and `x2` with
+probability 0.4, whatever `x3` does:
 
 ```python
 import tididi_cnf
 
+# (x1 ∨ x2) ∧ (¬x1 ∨ x3) ∧ (¬x2 ∨ ¬x3)
+clauses = [[1, 2], [-1, 3], [-2, -3]]
+print("Models:", tididi_cnf.count(clauses).count)
+
+answer = tididi_cnf.count(clauses, mode="pwmc", show=[1, 2], weights={1: "0.3", 2: "0.4"})
+print("Probability:", answer.count)
+```
+
+Output:
+
+```text
+Models: 2
+Probability: 23/50
+```
+
+The second call is a projected weighted count: it adds up the weights of the
+assignments to `x1` and `x2` that some value of `x3` completes to a model.
+Counts are exact: an `int`, or a `fractions.Fraction` for weighted projected
+counts. A weighted count without projection is a `float`.
+
+`tididi_cnf.count` takes DIMACS text as `str` or `bytes`, clauses of nonzero
+`int` literals, or an object with `clauses` and `nv` such as a PySAT `CNF`.
+`show` and `weights` stand for a DIMACS file's `c p show` and `c p weight`
+lines. A weight is an `int`, a `Fraction`, a decimal string read exactly, or a
+`float` read as its shortest decimal; a lone weight for `x` leaves `1 - w` for
+`¬x`. `tididi_cnf.count_file` reads a DIMACS file, whose header can name the
+task:
+
+```python
 answer = tididi_cnf.count_file("formula.cnf", time_limit_ms=60_000)
 
 answer.mode         # "mc", "wmc", "pmc", "pwmc", or "compile" without a task line
 answer.satisfiable  # whether the formula has a model
-answer.count        # an int, a fractions.Fraction for pwmc, a float for wmc
+answer.count        # the count
 answer.stats        # the run's record, the object `tididi --stats` writes
 ```
 
-`tididi_cnf.count(formula)` counts a formula held in the program: DIMACS
-text as `str` or `bytes`, or clauses of nonzero `int` literals, as lists or
-any other iterables, or an object with `clauses` and `nv` such as a PySAT
-`CNF`. Clauses take the keywords `num_vars`, `show` and `weights` for what a
-DIMACS file declares in its `p cnf`, `c p show` and `c p weight` lines. A
-weight is an `int`, a `Fraction`, a decimal string read exactly, or a `float`
-read as its shortest decimal:
-
-```python
-# (x1 or x2) and (not x1 or x3) and (not x2 or not x3), counted over x1 and
-# x2, with x1 weighing 0.3 true and 0.7 false, and x2 0.4 true, so 0.6 false
-# as the competition's format reads a lone weight.
-answer = tididi_cnf.count(
-    [[1, 2], [-1, 3], [-2, -3]], mode="pwmc", show=[1, 2], weights={1: "0.3", -1: "0.7", 2: 0.4}
-)
-answer.count  # Fraction(23, 50)
-```
-
-Both calls take `mode`, which must agree with the instance's `c t` and
+Both calls take `mode`, which must agree with the formula's `c t` and
 `c p show` lines and names the task for a formula without them, and the
 limits `time_limit_ms` and `mem_limit_mb`. A run that fails raises a subclass
-of `tididi_cnf.Error`; `help(tididi_cnf.count)` and
-`help(tididi_cnf.count_file)` list them. The user guide's
+of `tididi_cnf.Error`; `help(tididi_cnf.count)` lists them. The user guide's
 [input](https://github.com/Tractables/tididi-cnf/blob/main/docs/input.md),
 [tasks](https://github.com/Tractables/tididi-cnf/blob/main/docs/tasks.md) and
 [limits](https://github.com/Tractables/tididi-cnf/blob/main/docs/limits.md)
-pages describe the formula, the counts and the limits.
+pages describe the formula, the counts and the limits, and
+[`examples/count.py`](https://github.com/Tractables/tididi-cnf/blob/main/bindings/python/examples/count.py)
+counts a file from the command line.
 
-What a Python program should know about a run:
+A run belongs to the process:
 
-- **It belongs to the process.** A nonzero `mem_limit_mb` lowers the
-  interpreter's address-space limit (`RLIMIT_AS`) while the run lasts, and the
-  run prints its progress to the process's stderr, not to `sys.stderr`.
+- **A nonzero `mem_limit_mb` lowers the interpreter's address-space limit**
+  (`RLIMIT_AS`) while the run lasts, and the run prints its progress to the
+  process's stderr, not to `sys.stderr`.
 - **The interpreter lock is released while it runs**, and calls from several
   threads run one at a time.
 - **The time limit is checked as the run goes**, so a step in progress can
   finish after it. For a hard wall-clock limit, make the call in a separate
   process and stop that process at the limit.
 
-[`examples/count.py`](https://github.com/Tractables/tididi-cnf/blob/main/bindings/python/examples/count.py)
-counts a file and prints the answer.
+## Develop
 
-## Building from source
-
-The extension compiles the library in this repository, and vitri's C++ stack
-with it, so it needs the toolchain and system packages that
-[`docs/building.md`](https://github.com/Tractables/tididi-cnf/blob/main/docs/building.md)
-lists. From the repository root, create a virtual environment and install
-the extension with maturin:
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install maturin
-maturin develop --release --locked --manifest-path bindings/python/Cargo.toml
-```
-
-The extension links the system GMP dynamically. No wheel is published yet.
-
-To build a wheel instead, run
-`maturin build --release --locked --manifest-path bindings/python/Cargo.toml --compatibility linux --auditwheel skip`.
-That wheel links the system libraries and is for a compatible Linux machine.
-
-Run the tests in the same environment, from the repository root:
+In the environment from [Install](#install), from the repository root, build
+the command line and run the tests. They also compare the version and the
+counts of the instances
+[`bindings/parity.txt`](https://github.com/Tractables/tididi-cnf/blob/main/bindings/parity.txt)
+lists with the binary's:
 
 ```sh
 python -m pip install pytest
@@ -93,6 +124,12 @@ cargo build --release --locked --bin tididi
 python -m pytest bindings/python/tests --tididi-cli target/release/tididi
 ```
 
-The tests also compare the version and the counts of the instances
-[`bindings/parity.txt`](https://github.com/Tractables/tididi-cnf/blob/main/bindings/parity.txt)
-lists with the binary's.
+## Citing
+
+Please cite [*A Canonical Generalization of OBDD*](https://arxiv.org/abs/2604.05537),
+which introduced TDDs.
+
+## Acknowledgements
+
+This material is based upon work supported by the Defense Advanced Research
+Projects Agency (DARPA) under Agreement No. HR0011269E224.
