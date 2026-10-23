@@ -39,15 +39,17 @@ which introduced TDDs.
 
 Every tool runs on all 1,400 track-1 entries of the 2020–2026 competitions,
 1,153 distinct formulas, with two minutes, one CPU and 60 GiB per instance.
-Both compiler comparisons show the same tididi-cnf runs. The
-[evaluation](docs/evaluation.md) has the full tables and the method, and the
+The [evaluation](docs/evaluation.md) has the full tables and the method, and the
 [interactive plots](https://tractables.github.io/tididi-cnf/evaluation/) show
 every run.
 
 ### Compiling, against decision-diagram packages
 
 tididi-cnf compiles **712** of the 1,400 entries. The best BDD package,
-BuDDy, compiles 157, and SDD compiles 128 with dynamic vtree search.
+BuDDy, compiles 157, and SDD compiles 128 with dynamic vtree search. Every
+BDD package gets a FORCE variable order, CUDD also with dynamic sifting, and
+SDD starts from a FORCE vtree, all prepared outside the timer
+([method](docs/evaluation.md#bottom-up-decision-diagram-compilation)).
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-dd-compile-120s.svg" width="760"
@@ -57,8 +59,7 @@ BuDDy, compiles 157, and SDD compiles 128 with dynamic vtree search.
 ### Compiling, against logic-circuit compilers
 
 tididi-cnf compiles **712** entries, 134 more than Panini (578) and well ahead
-of D4 (487), GPMC (482) and c2d (387). Every compiler writes its circuit within
-the limit, and an untimed checker validates it.
+of D4 (487), GPMC (482) and c2d (387).
 
 <p align="center">
   <img src="docs/evaluation/cactus-2020-2026-logic-compile-120s.svg" width="760"
