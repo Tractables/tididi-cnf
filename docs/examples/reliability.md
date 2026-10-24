@@ -96,5 +96,5 @@ Connected with link 5 down: 0.88290
 Without the bridge, s reaches t over a–t or b–t: 1 − (1 − 0.81)² = 0.9639.
 Each outer link matters more: without link 1, every route starts on link 2.
 
-The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.1/examples/reliability.rs)
+The [complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.2/examples/reliability.rs)
 also builds the instance text for each case.

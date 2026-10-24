@@ -36,8 +36,8 @@ libraries load the system's GMP (`libgmp10` and `libgmpxx4ldbl` on Debian and
 Ubuntu) and need glibc 2.35 or later (Ubuntu 22.04, Debian 12 and newer).
 
 ```sh
-tar xzf tididi-cnf-c-v0.1.1-x86_64-unknown-linux-gnu.tar.gz
-mv tididi-cnf-c-v0.1.1-x86_64-unknown-linux-gnu tididi-cnf-c
+tar xzf tididi-cnf-c-v0.1.2-x86_64-unknown-linux-gnu.tar.gz
+mv tididi-cnf-c-v0.1.2-x86_64-unknown-linux-gnu tididi-cnf-c
 export PKG_CONFIG_PATH=$PWD/tididi-cnf-c/lib/pkgconfig
 ```
 

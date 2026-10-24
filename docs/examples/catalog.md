@@ -146,5 +146,5 @@ To keep the circuit between runs, save it as the binary's `--save-tdd` does;
 the library's
 [persistence example](https://tractables.github.io/tididi/tididi/guide/examples/persistence/index.html)
 saves and reloads one. The
-[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.1/examples/catalog.rs)
+[complete program](https://github.com/Tractables/tididi-cnf/blob/v0.1.2/examples/catalog.rs)
 runs all these queries.
