@@ -73,7 +73,7 @@ enum Request {
 
 /// One command line, parsed: the run it asks for and where its answer goes.
 pub(crate) struct Cli {
-    /// The DIMACS file.
+    /// The DIMACS file, or the directory of a vitri bundle.
     pub(crate) path: PathBuf,
     /// `--mode`, when it was on the command line.
     pub(crate) mode: Option<Mode>,
@@ -102,10 +102,12 @@ fn usage(prog: &str) -> String {
     let levels = spelled(&PreprocessLevel::ALL, PreprocessLevel::token, "|");
     let formats = spelled(&OutputFormat::ALL, OutputFormat::token, "|");
     let mut text = format!(
-        "Usage: {prog} [options] <dimacs-file>
+        "Usage: {prog} [options] <dimacs-file|bundle-dir>
 
 Compiles a CNF formula in DIMACS form to a tree decision diagram, or counts its
-models.
+models. A directory is read as the bundle `vitri --out-dir` writes: its reduced
+formula is compiled on its vtree, in the mode vitri preprocessed it for, and
+the answer is the original formula's.
 
 Options:
   --mode <{modes}>
@@ -122,12 +124,12 @@ Options:
                        cascade: Arjun reduces the formula, portfolio picks a vtree
                        for the reduced formula, and fallbacks follow if that
                        compile gives up. With it, mc compiles on <spec> without
-                       the reduction, and wmc refuses it.
+                       the reduction, and wmc and a bundle refuse it.
   --preprocess <{levels}>
                        Simplify the formula before the compile (full, the
                        default) or not (none). Applies to compile, mc and wmc;
                        pmc and pwmc refuse it, since their projection stages
-                       always simplify.
+                       always simplify, and so does a bundle.
   --save-tdd <file>    Write the compiled circuit to <file> and its vtree to
                        <file>.vtree (compile mode only); the library's load_tdd
                        reads the circuit back over that vtree.
@@ -180,7 +182,7 @@ fn parse_args() -> Result<Request, Error> {
     // is wrong and points to the usage, and the binary exits 2.
     let usage_error = |what: String| {
         Error::Usage(format!(
-            "{what}\nUsage: {prog} [options] <dimacs-file> (`{prog} --help` lists the options)"
+            "{what}\nUsage: {prog} [options] <dimacs-file|bundle-dir> (`{prog} --help` lists the options)"
         ))
     };
 
@@ -203,12 +205,12 @@ fn parse_args() -> Result<Request, Error> {
     let mut given: Vec<String> = Vec::new();
 
     while let Some(arg) = args.next() {
-        // Anything that is not a flag is the input file, taken as the system
-        // gave it: a path need not be text.
+        // Anything that is not a flag is the input, a file or a bundle's
+        // directory, taken as the system gave it: a path need not be text.
         if !arg.as_encoded_bytes().starts_with(b"-") {
             if let Some(first) = &dimacs_path {
                 return Err(usage_error(format!(
-                    "a second input file {arg:?} after {first:?}; tididi reads one DIMACS file."
+                    "a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."
                 )));
             }
             dimacs_path = Some(arg.into());
@@ -266,7 +268,7 @@ fn parse_args() -> Result<Request, Error> {
         }
     }
 
-    let dimacs_path = dimacs_path.ok_or_else(|| usage_error("no DIMACS file given.".to_owned()))?;
+    let dimacs_path = dimacs_path.ok_or_else(|| usage_error("no DIMACS file or vitri bundle given.".to_owned()))?;
 
     // The flag wins over `TIDIDI_TIME_LIMIT_MS`, but a set value that does not
     // parse is refused either way: it is an invalid setting, and ignoring it

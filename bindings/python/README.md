@@ -74,7 +74,7 @@ counts. A weighted count without projection is a `float`.
 lines. A weight is an `int`, a `Fraction`, a decimal string read exactly, or a
 `float` read as its shortest decimal; a lone weight for `x` leaves `1 - w` for
 `¬x`. `tididi_cnf.count_file` reads a DIMACS file, whose header can name the
-task:
+task, or the directory of a vitri bundle:
 
 ```python
 answer = tididi_cnf.count_file("formula.cnf", time_limit_ms=60_000)

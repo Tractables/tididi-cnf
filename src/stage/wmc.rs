@@ -3,7 +3,9 @@
 //! The weighted count starts from the parsed formula. vitri owns the
 //! simplified formula's weighted simplify/DVE record, exact lift, reduced
 //! weights and portfolio vtree; this crate owns only the order — Arjun's
-//! reduction first, then the simplified formula — and the compiles.
+//! reduction first, then the simplified formula — and the compiles. A vitri
+//! bundle's count is one compile of its reduced formula on its vtree
+//! ([`run_wmc_bundle`]).
 
 use std::time::Instant;
 
@@ -237,6 +239,33 @@ fn count_reduced(
     // the reserved time.
     compile_weighted(run, &arj_formula, &arj_w, None, compile_deadline)
         .map(|raw| raw.map(|raw| raw.mul_rational(&k)))
+}
+
+/// The weighted count of a vitri bundle, `outcome` as its record describes
+/// it: refuted, or one compile of its reduced formula on the bundle's vtree
+/// (`Config::bundle_tree`), with nothing preprocessed, and the record's exact
+/// lift applied to the answer. Nothing follows a compile that gives up.
+pub(crate) fn run_wmc_bundle(
+    run: &Run<'_>,
+    outcome: Outcome<Weighted>,
+) -> Result<WeightedCount<WeightValue>, crate::Error> {
+    eprintln!("[wmc] arithmetic: log (bounded)");
+    let problem = match outcome {
+        Outcome::Unsat => {
+            eprintln!("[wmc] preprocessing: UNSAT");
+            return Ok(WeightedCount::Unsatisfiable);
+        }
+        Outcome::Reduced(problem) => problem,
+    };
+    // A bundle with no vtree has no variable left, and the lift is the count.
+    let Some(built) = run.config.bundle_tree() else {
+        eprintln!("[wmc] preprocessing: fully resolved");
+        return Ok(WeightedCount::Satisfiable(weight_value(problem.lift)));
+    };
+    let vtree = built.clone().bind(run.eng);
+    compile_weighted(run, &problem.formula, &problem.weights, Some(vtree), run.deadline)
+        .map(|raw| raw.map(|raw| raw.mul_rational(&problem.lift)))
+        .ok_or_else(crate::Error::compile_gave_up)
 }
 
 /// A weighted answer in [`ARITHMETIC`], the domain the compiles answer in.

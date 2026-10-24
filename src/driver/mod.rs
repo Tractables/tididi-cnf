@@ -3,9 +3,11 @@
 //! `solve` is the run. The library's [`crate::count`] calls it with the
 //! caller's mode and limits, and the command line, `cli::run_cli`, with what
 //! argv set. The phases here are the run's spine — its per-run state, reading
-//! the CNF and the plain compile route — and the mode dispatch that picks
-//! between that route and the stages in `crate::stage`. The stage bodies are
-//! not here.
+//! the CNF or a vitri bundle (`bundle.rs`) and the plain compile route — and
+//! the mode dispatch that picks between that route and the stages in
+//! `crate::stage`. The stage bodies are not here.
+
+mod bundle;
 
 use std::io::BufReader;
 use std::path::Path;
@@ -20,14 +22,18 @@ use vitri::cnf::CnfFormula;
 use crate::compile::{CompileOptions, CompileRun, Compiled, ComponentPlan, GiveUp, compile_with};
 use crate::compile::sat_prune::SatPrune;
 use crate::config::{Config, Limits, Mode, Settings};
+use crate::frontend::CompileFrontendAttempt;
+use crate::frontend::record::Outcome;
+use crate::problem::Domain;
 use crate::run::{Answer, Failure, Input};
 use crate::Error;
 use crate::output::{
-    AnsweredBy, CompileAnswer, PreprocessReport, Verdict, record_compile, record_mc, record_pmc, record_pwmc,
-    record_wmc,
+    AnsweredBy, CompileAnswer, PreprocessReport, Stats, Verdict, record_compile, record_mc, record_pmc,
+    record_pwmc, record_wmc,
 };
 use crate::stage::{
-    RETRY_VTREE_SPEC, Run, run_mc_count, run_mc_streaming, run_pmc_count, run_pwmc_count, run_wmc_count,
+    RETRY_VTREE_SPEC, Run, run_mc_bundle, run_mc_count, run_mc_streaming, run_pmc_bundle, run_pmc_count,
+    run_pwmc_bundle, run_pwmc_count, run_wmc_bundle, run_wmc_count,
 };
 use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components, spec_family};
 
@@ -44,26 +50,30 @@ fn read_dimacs(path: &Path) -> Result<(CnfFormula, vitri::cnf::CnfMeta), Error> 
         .map_err(|error| Error::Input(format!("could not parse {shown}: {error}")))
 }
 
+/// The instance as [`parse_input`] read it, and the run's settings for it.
+struct Parsed {
+    formula: CnfFormula,
+    /// The header (`c t` / `c p show` / `c p weight`); `CnfMeta::default()`
+    /// for a CNF without one.
+    meta: vitri::cnf::CnfMeta,
+    /// A bundle's `preprocess.json`, `None` for any other input.
+    record: Option<vitri::bundle::PreprocessRecord>,
+    config: Config,
+    program_deadline: Option<Instant>,
+}
+
 /// Start the run's clock, read the instance, resolve the mode, and refuse a
-/// setting that mode makes inert.
-/// Returns `(formula, meta, config, program_deadline)`.
-/// `meta` carries the header (`c t` / `c p show` / `c p weight`); it is
-/// `CnfMeta::default()` for a CNF without one.
+/// setting that mode, or a bundle, makes inert. A directory is read as a
+/// vitri bundle: the formula is its `reduced.cnf`, the record its
+/// `preprocess.json`, and the config carries its vtree
+/// (`Config::input_vtree`).
 fn parse_input(
     input: Input,
     mode_flag: Option<Mode>,
     limits: &Limits,
     settings: &Settings,
     vitri: vitri::RunConfig,
-) -> Result<
-    (
-        CnfFormula,
-        vitri::cnf::CnfMeta,
-        Config,
-        Option<Instant>,
-    ),
-    Error,
-> {
+) -> Result<Parsed, Error> {
     // Validate an explicit spec here, the one point every compile path passes
     // through: some paths never construct a vtree from it and would otherwise
     // ignore a bad one.
@@ -77,8 +87,15 @@ fn parse_input(
         .time_limit_ms
         .map(|ms| program_start + std::time::Duration::from_millis(ms));
 
-    let (formula, meta) = match input {
-        Input::File(path) => read_dimacs(&path)?,
+    let (formula, meta, bundle) = match input {
+        Input::File(path) if path.is_dir() => {
+            let bundle::Bundle { reduced, meta, record, vtree } = bundle::read_bundle(&path)?;
+            (reduced, meta, Some((record, vtree)))
+        }
+        Input::File(path) => {
+            let (formula, meta) = read_dimacs(&path)?;
+            (formula, meta, None)
+        }
         Input::Formula(formula, meta) => {
             // A caller can pair a formula with metadata built for another
             // variable space. Rebuild through vitri's range gate before any
@@ -89,14 +106,21 @@ fn parse_input(
                 meta.declared_show_vars().cloned(),
                 meta.declared_weights().cloned(),
             ).map_err(|error| Error::Input(error.to_string()))?;
-            (formula, meta)
+            (formula, meta, None)
         }
     };
 
-    // `--mode` and the instance header (`c t`, `c p show`) decide the mode;
-    // this is the one place it is decided.
-    let mode = Mode::resolve(mode_flag, &meta)?;
-    settings.refuse_inert(mode_flag, &meta, mode)?;
+    // `--mode` and the instance header (`c t`, `c p show`), or a bundle's
+    // record, decide the mode; this is the one place it is decided.
+    let mode = match &bundle {
+        Some((record, _)) => {
+            let mode = bundle::bundle_mode(mode_flag, record)?;
+            eprintln!("[input] a vitri bundle, preprocessed for mode {mode}");
+            mode
+        }
+        None => Mode::resolve(mode_flag, &meta)?,
+    };
+    settings.refuse_inert(mode_flag, &meta, mode, bundle.is_some())?;
 
     eprintln!(
         "[input] {} variables, {} clauses",
@@ -104,25 +128,34 @@ fn parse_input(
         formula.clauses().len()
     );
 
-    Ok((formula, meta, Config::new(limits, settings, vitri, mode), program_deadline))
+    let (record, input_vtree) = bundle.unzip();
+    let config = Config::new(limits, settings, vitri, mode, input_vtree);
+    Ok(Parsed { formula, meta, record, config, program_deadline })
 }
 
 /// The ordinary non-counting route: vitri's `compile` preprocessing, the
-/// paired vtree construction, reduced compilation ([`compile_with_retry`]),
-/// then exact function expansion through the returned total original-variable
-/// map. Preprocessing, vtree and compile all stop at the run's wall.
+/// paired vtree construction, then the compile of what it returned
+/// ([`compile_attempt`]). Preprocessing, vtree and compile all stop at the
+/// run's wall.
 fn run_function_compile(run: &Run<'_>, formula: &CnfFormula) -> Result<CompileAnswer, Error> {
-    let Run { eng, config, deadline: program_deadline, .. } = *run;
-    let crate::frontend::CompileFrontendAttempt { reduced, expansion, telemetry, vtree } =
-        crate::frontend::compile_frontend(formula, config, program_deadline)
-            .map_err(Error::stage_failed("compile preprocessing"))?;
+    let attempt = crate::frontend::compile_frontend(formula, run.config, run.deadline)
+        .map_err(Error::stage_failed("compile preprocessing"))?;
+    compile_attempt(run, attempt)
+}
+
+/// Reduced compilation of a compile frontend's result, or of a bundle's
+/// ([`compile_with_retry`]), then exact function expansion through its total
+/// original-variable map.
+fn compile_attempt(run: &Run<'_>, attempt: CompileFrontendAttempt) -> Result<CompileAnswer, Error> {
+    let Run { eng, config, .. } = *run;
+    let CompileFrontendAttempt { reduced, expansion, telemetry, vtree } = attempt;
     let preprocessing = PreprocessReport::of(&telemetry);
 
     let (tdd, peak, compile_ms, answered_by) = match vtree {
         crate::frontend::FrontendVtree::Built(built) => {
             let built = built.bind(eng);
             // The portfolio's winner, `None` when no portfolio ran.
-            let pick = run.announce_tree(&format!("[vtree] {}", config.vtree_spec()), ": ");
+            let pick = run.announce_tree(&format!("[vtree] {}", config.vtree_name()), ": ");
             eprintln!("[compile] start");
             let clock = crate::budget::CompileClock::start(&config.vtree_time);
             let (compiled, answered_by) = compile_with_retry(run, &reduced, built, pick.as_deref())?;
@@ -188,8 +221,8 @@ fn compile_with_retry(
     };
     // Inputs that do not fit are a fault of the route, which a second vtree
     // would only hide.
-    if matches!(give_up, GiveUp::Invalid(_))
-        || !bisect_retry_applies(run.config.vtree.is_some(), pick, run.deadline, Instant::now())
+    let explicit_vtree = run.config.vtree.is_some() || run.config.input_vtree.is_some();
+    if matches!(give_up, GiveUp::Invalid(_)) || !bisect_retry_applies(explicit_vtree, pick, run.deadline, Instant::now())
     {
         return Err(gave_up(give_up));
     }
@@ -245,7 +278,7 @@ fn compile_on(run: &Run<'_>, reduced: &CnfFormula, built: VtreeBuild) -> Result<
 
 /// Whether a plain compile that gave up gets the retry on
 /// [`RETRY_VTREE_SPEC`]: its vtree came from the default portfolio, not an
-/// explicit `--vtree`; the portfolio's winner, `pick`, is not already of the
+/// explicit `--vtree` or a bundle; the portfolio's winner, `pick`, is not already of the
 /// retry's family; and the run has time left at `now`.
 ///
 /// Time left is also what makes the give-up a memory one. A compile in this
@@ -312,8 +345,8 @@ fn solve_on(
     });
 
     // Start the clock, read the instance, resolve the mode.
-    let (formula, meta, mut config, program_deadline) = parse_input(input, mode_flag, limits, settings, vitri)
-        .map_err(|error| Failure { error, stats: None })?;
+    let Parsed { formula, meta, record, mut config, program_deadline } =
+        parse_input(input, mode_flag, limits, settings, vitri).map_err(|error| Failure { error, stats: None })?;
 
     // The last point before the mode dispatch, so the record opens knowing the
     // mode and the resolved vtree construction and every mode fills the same
@@ -343,6 +376,9 @@ fn solve_on(
             started_on: &started_on,
         };
         let stats = &mut stats;
+        if let Some(record) = &record {
+            return answer_bundle(run, stats, formula, record);
+        }
         Ok(match config.mode {
             Mode::Pwmc => {
                 let problem = crate::problem::Problem::declared(formula, &meta);
@@ -372,6 +408,37 @@ fn solve_on(
         }
         Err(error) => Err(Failure { error, stats: Some(Box::new(stats)) }),
     }
+}
+
+/// The run on a vitri bundle: the mode's compile of the bundle's reduced
+/// formula on the bundle's vtree, which nothing preprocesses again, with the
+/// record's lift carrying the answer back to the original formula. A compile
+/// that gives up is followed by what follows one on an explicit `--vtree`.
+fn answer_bundle(
+    run: &Run<'_>,
+    stats: &mut Stats,
+    reduced: CnfFormula,
+    record: &vitri::bundle::PreprocessRecord,
+) -> Result<Verdict, Error> {
+    let config = run.config;
+    Ok(match config.mode {
+        Mode::Compile => {
+            let expansion = crate::frontend::record::original_expansion(record, reduced.num_vars());
+            let vtree = config.input_vtree.clone().expect("a bundle's run carries the bundle's vtree");
+            let attempt = CompileFrontendAttempt { reduced, expansion, telemetry: Default::default(), vtree };
+            record_compile(stats, compile_attempt(run, attempt)?)
+        }
+        Mode::Mc => record_mc(stats, config, run_mc_bundle(run, &reduced, record)?),
+        Mode::Wmc => record_wmc(stats, config, run_wmc_bundle(run, bundle_outcome(reduced, record)?)?),
+        Mode::Pmc => record_pmc(stats, run_pmc_bundle(run, bundle_outcome(reduced, record)?)?),
+        Mode::Pwmc => record_pwmc(stats, run_pwmc_bundle(run, bundle_outcome(reduced, record)?)?),
+    })
+}
+
+/// The problem a bundle's record describes over its reduced formula.
+fn bundle_outcome<D: Domain>(reduced: CnfFormula, record: &vitri::bundle::PreprocessRecord) -> Result<Outcome<D>, Error> {
+    crate::frontend::record::outcome(reduced, record)
+        .map_err(|error| Error::Input(format!("the bundle's preprocess.json does not fit reduced.cnf: {error}")))
 }
 
 /// The common dispatch and answer boundary: native stages may finish a step

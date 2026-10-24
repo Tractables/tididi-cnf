@@ -1,10 +1,12 @@
-//! The model count, on its two routes: the cascade from Arjun's reduction to
-//! a count, and the streaming compile under an explicit `--vtree`.
+//! The model count, on its three routes: the cascade from Arjun's reduction
+//! to a count, the streaming compile under an explicit `--vtree`, and the
+//! compile of a vitri bundle on its vtree.
 //!
 //! `count_mc` is the cascade — vitri's MC frontend, the full-resolve
 //! short-circuit, then the primary compile and what follows it — and
 //! `run_mc_count` is the driver entry that hands back what it produced;
-//! `run_mc_streaming` is the other route's entry. The pieces they compose are
+//! `run_mc_streaming` and `run_mc_bundle` are the other routes' entries, which
+//! end in the same count of a preprocessed formula. The pieces they compose are
 //! `attempt` (what a compile attempt is built from and how it compiles),
 //! `windows` (what each fallback may spend, and the primary compile's
 //! per-step wall), `cascade` (the primary compile, the stall recompile and
@@ -21,7 +23,7 @@
 //! returns, and no caller folds it again.
 
 use vitri::cnf::CnfFormula;
-use crate::compile::StallRule;
+use crate::compile::{CompileOptions, ComponentPlan, Output, StallRule, compile_with, settle};
 use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reduction};
 use crate::stage::Run;
 
@@ -304,12 +306,52 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
         eprintln!("[mc] preprocessing: every variable is a backbone");
     }
 
+    // The first compile streams over the formula's components, building each
+    // vtree as the compile reaches it.
+    let compile = || super::count_streaming(run, &reduced, None);
     let lift_pow2 = count_lift.total_pow2() as usize;
-    let preprocessing = PreprocessReport::of(&telemetry);
+    count_preprocessed(run, &reduced, record.unsat, lift_pow2, PreprocessReport::of(&telemetry), compile)
+}
+
+/// Integer MC of a vitri bundle's reduced formula, `reduced`, compiled whole
+/// or by the components the bundle lists, on the bundle's vtree
+/// (`Config::bundle_tree`), with nothing preprocessed. As on an explicit
+/// `--vtree`, a compile that fails is recovered by Shannon split, and the
+/// record's lift is applied once, to the answer.
+pub(crate) fn run_mc_bundle(
+    run: &Run<'_>,
+    reduced: &CnfFormula,
+    record: &vitri::bundle::PreprocessRecord,
+) -> Result<McAnswer, crate::Error> {
+    let compile = || {
+        let built = run.config.bundle_tree().expect("a bundle with a formula to compile has its vtree");
+        let built = built.clone().bind(run.eng);
+        let plan = ComponentPlan::from_components(built.components.as_deref());
+        let options = CompileOptions { plan, output: Output::Count, deadline: run.deadline };
+        let compiled = settle(compile_with(run.eng, reduced, &built.root, options, run.compile))?;
+        let count = run.eng.model_count(&compiled.diagram).ok()?;
+        Some((count, compiled.peak_pairs))
+    };
+    let preprocessing = PreprocessReport::of(&vitri::bundle::PreprocessTelemetry::default());
+    count_preprocessed(run, reduced, record.unsat, record.count_lift_pow2 as usize, preprocessing, compile)
+}
+
+/// The model count of `reduced`, what preprocessing left of the input, times
+/// `2^lift_pow2`: settled by the preprocessing when it refuted the input
+/// (`unsat`) or left no variable, and otherwise by `compile`, the first
+/// compile, recovered by Shannon split when it fails.
+fn count_preprocessed(
+    run: &Run<'_>,
+    reduced: &CnfFormula,
+    unsat: bool,
+    lift_pow2: usize,
+    preprocessing: PreprocessReport,
+    compile: impl FnOnce() -> Option<recovery::Counted>,
+) -> Result<McAnswer, crate::Error> {
     // Preprocessing that settles the count leaves nothing to compile: no peak,
     // no compile time and no cascade.
-    if record.unsat || reduced.num_vars() == 0 {
-        let count = if record.unsat {
+    if unsat || reduced.num_vars() == 0 {
+        let count = if unsat {
             eprintln!("[mc] preprocessing: refuted the formula");
             num_bigint::BigUint::from(0u32)
         } else {
@@ -329,16 +371,16 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
             },
         });
     }
-    eprintln!("[vtree] {}", run.config.vtree_spec());
+    eprintln!("[vtree] {}", run.config.vtree_name());
     eprintln!("[mc] compile: start");
     // In-loop sub-vtree builds bill to `vtree_ms`, not `compile_ms`.
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
-    // The first compile and each cofactor's stream over their own components,
-    // building each vtree as the compile reaches it.
-    let first = || super::count_streaming(run, &reduced, None).map(|counted| (counted, AnsweredBy::Compile));
+    let first = || compile().map(|counted| (counted, AnsweredBy::Compile));
+    // Each cofactor streams over its own components, building each vtree, on
+    // the run's construction, as the compile reaches it.
     let cofactor = |run: &Run<'_>, form: &CnfFormula| super::count_streaming(run, form, None);
     let Recovered { count, peak_pairs, answered_by, cascade_ms } =
-        count_with_recovery(run, &reduced, first, None, cofactor)
+        count_with_recovery(run, reduced, first, None, cofactor)
             .ok_or_else(crate::Error::compile_gave_up)?;
     Ok(McAnswer {
         count: count << lift_pow2,

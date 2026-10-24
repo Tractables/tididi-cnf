@@ -19,6 +19,7 @@ use super::projected::{
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
 use crate::enumeration::{EnumLimits, Models, allsat_share_ms, constrained_show_count};
+use crate::frontend::record::Outcome;
 use crate::output::Projected;
 use crate::problem::{Problem, ShowSet, Unweighted};
 
@@ -329,6 +330,27 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     let compile_ms = clock.compile_ms(0);
     trace.print_compile("[pmc]", work, vtree_ms, compile_ms, forget_set.len(), problem.show_len());
     Step::Answer(pmc)
+}
+
+/// The projected count of a vitri bundle, `outcome` as its record describes
+/// it: refuted, or the trivial residual and the compile, which runs on the
+/// bundle's vtree with nothing preprocessed, followed as on an explicit
+/// `--vtree` by show-variable conditioning when it gives up. The record's lift
+/// is applied once, to the answer.
+pub(crate) fn run_pmc_bundle(
+    run: &Run<'_>,
+    outcome: Outcome<Unweighted>,
+) -> Result<Projected<num_bigint::BigUint>, crate::Error> {
+    let problem = match outcome {
+        Outcome::Unsat => {
+            eprintln!("[pmc] preprocessing: UNSAT");
+            return Ok(Projected { value: num_bigint::BigUint::ZERO, show_vars: None, compile_ms: 0 });
+        }
+        Outcome::Reduced(problem) => problem,
+    };
+    let trivial = |problem: &Problem<Unweighted>, trace: &Trace| trivial_residual("[pmc] trivial", problem, trace);
+    let compile = |problem: &Problem<Unweighted>, trace: &Trace| compile_projected(run, problem, trace);
+    run_stages(problem, &[&trivial, &compile], run.deadline, &run.config.vtree_time)
 }
 
 /// Projected model counting (PMC). Counts the number of

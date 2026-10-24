@@ -47,6 +47,7 @@ use crate::budget::{deadline_passed, deadline_scope};
 use crate::problem::WeightedCount;
 use crate::vtree::{Component, ComponentVtree};
 use component::{CompileJob, PassOutput, compile_split, detected_split};
+pub(crate) use component::{check_partition, check_vtree};
 use minimize::minimize_full;
 use step::compile_component;
 

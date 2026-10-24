@@ -28,6 +28,14 @@ use crate::Error;
 pub enum Input {
     /// A DIMACS file, read when the run starts. Its reading counts against
     /// the time limit, as it does in the binary.
+    ///
+    /// A directory is read as the bundle `vitri --out-dir` writes. The run
+    /// compiles the bundle's `reduced.cnf` on its `vtree.vtree`, split into
+    /// the components `components.json` lists, and preprocesses nothing; its
+    /// mode is the one in `preprocess.json`, and a different `mode` is
+    /// refused. The answer is the original formula's: the record's lift is
+    /// applied to the count, and in mode compile the diagram is expanded back
+    /// onto the original variables.
     File(PathBuf),
     /// A formula and the header lines that came with it: the `c t` mode, the
     /// `c p show` set and the `c p weight` table.

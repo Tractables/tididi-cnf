@@ -202,13 +202,15 @@ tididi_cnf_code tididi_cnf_count_clauses(uint32_t num_vars,
                                          struct tididi_cnf_answer **out);
 
 /**
- * Count the models of the DIMACS CNF file at `path`, as `tididi --mode MODE
- * PATH` does.
+ * Count the models of the DIMACS CNF file at `path`, or of the vitri bundle
+ * in the directory at `path` (the user guide's `docs/input.md`), as
+ * `tididi --mode MODE PATH` does.
  *
  * `path` is a NUL-terminated file name. `mode` is a NUL-terminated mode
  * token, one of `compile`, `mc`, `wmc`, `pmc` and `pwmc`, or null to take
  * the task the instance's `c t` and `c p show` lines declare, a plain
- * compile when they declare none; a mode given must agree with those lines.
+ * compile when they declare none; a mode given must agree with those lines,
+ * or with the mode a bundle was made for.
  * `time_limit_ms` limits the whole run, and 0 sets no limit. `mem_limit_mb`
  * lowers the process's address-space limit (`RLIMIT_AS`) to that many MiB
  * while the run lasts, and 0 leaves it unchanged; the limit belongs to the

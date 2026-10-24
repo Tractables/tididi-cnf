@@ -63,7 +63,9 @@ with `pmc` and `pwmc` only. `--mode mc` and `--mode pmc` also refuse an
 instance with `c p weight` lines, which they would ignore, and name the
 weighted modes `wmc` and `pwmc` instead; a run that the header alone makes
 `mc` or `pmc` reads past the weights. `--mode compile` ignores `c p weight`
-lines, since a circuit has no use for them.
+lines, since a circuit has no use for them. A vitri bundle
+([`input.md`](input.md#a-vitri-bundle)) decides its own mode, the one vitri
+preprocessed it for, and `--mode` must agree with it.
 `tests/data/mcc_mc_sat.cnf` declares `c t mc`:
 
 ```sh
@@ -101,6 +103,8 @@ every mode.
   `mc` and `wmc` runs Arjun's reduction either way. The projected counts
   always simplify, so they refuse the flag.
 - **`--vtree`** names the vtree to compile on.
+- **A vitri bundle** refuses `--vtree` and `--preprocess`: it brings the
+  formula vitri preprocessed and the vtree vitri built for it.
 
 ## Vtrees
 
@@ -128,7 +132,8 @@ With `--vtree <spec>`, the run compiles on that construction instead, and a
 `compile` that gives up on it has no retry. Under `mc` that also skips the
 cascade: the formula is simplified but not reduced by Arjun, and each of its
 independent parts compiles on a vtree of that construction. `wmc` has the
-cascade only and refuses the flag.
+cascade only and refuses the flag. A run on a vitri bundle compiles on the
+bundle's vtree the same way, with no retry and no cascade.
 `tididi --help` lists every spec and its parameters, and
 [vitri's vtree guide](https://github.com/Tractables/vitri/blob/main/docs/vtrees.md)
 explains the constructions. `balanced`, `linear`, `reverse-linear` and
