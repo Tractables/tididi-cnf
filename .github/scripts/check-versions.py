@@ -11,7 +11,8 @@ The package version in Cargo.toml is the reference. These must equal it:
   the binding and the library at it;
 - the `version` in CITATION.cff;
 - every link a worked example, `docs/examples/*.md`, makes to its program at
-  a release tag (`tididi-cnf/blob/v<version>/`).
+  a release tag (`tididi-cnf/blob/v<version>/`);
+- the C package the C binding's README unpacks (`tididi-cnf-c-v<version>-`).
 
 With a tag (as the release workflow passes it, e.g. `v0.1.0`), the tag must
 name the version. Prints each disagreement and exits 1.
@@ -54,20 +55,24 @@ def main():
     linked = [(page.name, tagged)
               for page in sorted((ROOT / "docs/examples").glob("*.md"))
               for tagged in re.findall(r"tididi-cnf/blob/v([^/]+)/", page.read_text(encoding="utf-8"))]
+    packaged = re.findall(r"tididi-cnf-c-v([^-\s]+)-", text("bindings/c/README.md"))
 
     problems = [f"{source} names {found}, but Cargo.toml names {version}"
                 for source, found in named.items() if found != [version]]
     for page, tagged in linked:
         if tagged != version:
             problems.append(f"docs/examples/{page} links its program at v{tagged}, but Cargo.toml names {version}")
+    for found in packaged:
+        if found != version:
+            problems.append(f"bindings/c/README.md unpacks the C package of v{found}, but Cargo.toml names {version}")
     if tag and tag != f"v{version}":
         problems.append(f"tag {tag} does not name version {version} (expected v{version})")
 
     if problems:
         print("\n".join(problems))
         sys.exit(1)
-    print(f"Cargo.toml, the lockfiles, the bindings, CITATION.cff and the worked "
-          f"examples' links{' and tag ' + tag if tag else ''} name version {version}")
+    print(f"Cargo.toml, the lockfiles, the bindings, CITATION.cff, the worked examples' "
+          f"links{', the C README and tag ' + tag if tag else ' and the C README'} name version {version}")
 
 
 if __name__ == "__main__":

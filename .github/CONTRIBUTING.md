@@ -167,7 +167,8 @@ rule below is a form of it. Review a change against this list before it lands.
 Set the new version in `Cargo.toml`, in each binding's `Cargo.toml` under
 `bindings/` and in `CITATION.cff`, then run `cargo update --workspace` in the
 repository root and in each binding, so that every `Cargo.lock` follows.
-Move the worked examples' `blob/v<version>/` program links to the new tag.
+Move the worked examples' `blob/v<version>/` program links and the C
+package name in `bindings/c/README.md` to the new tag.
 CI refuses a file that still names the old version.
 
 Then publish a GitHub release with the tag `v<version>`, its notes saying what
