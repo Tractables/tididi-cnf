@@ -3,10 +3,10 @@
 `tididi` reads one DIMACS CNF file, named on the command line, with the header
 lines of the model counting competition's format
 ([version 1.2](https://mccompetition.org/assets/files/mccomp_format_25.pdf),
-§2) for the task, the show set and the weights. It reads no other input: not
-stdin, and not compressed files, so decompress a `.cnf.xz` with `xz -dk`
-first. `tididi` in the commands is the built binary,
-`target/release/tididi`.
+§2) for the task, the show set and the weights. It also reads a directory
+that vitri wrote ([below](#a-vitri-bundle)), and no other input: not stdin,
+and not compressed files, so decompress a `.cnf.xz` with `xz -dk` first.
+`tididi` in the commands is the built binary, `target/release/tididi`.
 
 vitri reads the file for the compiler, so the two accept the same inputs; the
 grammar below is vitri's `CnfFormula::from_dimacs`.
@@ -123,3 +123,20 @@ error: could not parse lone.cnf: weight literal 1 has weight 3/2 and literal -1 
 To use such a weight, write a weight line for both literals of the variable.
 In a projected weighted count, only the show variables' weights count
 ([`tasks.md`](tasks.md#the-five-modes)).
+
+## A vitri bundle
+
+A directory is read as the bundle `vitri --out-dir` writes
+([vitri's bundle guide](https://github.com/Tractables/vitri/blob/main/docs/bundle.md)),
+and the original formula is not needed:
+
+```sh
+vitri formula.cnf --out-dir bundle/ --mode mc
+tididi bundle/
+```
+
+The run compiles `reduced.cnf` on `vtree.vtree`, one tree per component when
+`components.json` lists several, and preprocesses nothing. The mode is the one
+`preprocess.json` records, and the answer is the original formula's: the
+record's lift is applied to the count, and a compile's diagram is over the
+original variables.

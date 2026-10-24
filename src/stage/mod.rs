@@ -3,7 +3,8 @@
 //!
 //! `mc/` is the model count: Arjun reduces the formula, the primary compile
 //! runs on the reduction, and the fallbacks and Shannon split follow it; under
-//! an explicit `--vtree` the streaming compile runs instead.
+//! an explicit `--vtree` the streaming compile runs instead. Each mode also
+//! answers a vitri bundle, compiling its reduced formula on its vtree.
 //! `wmc.rs` is the weighted count, `pmc.rs` the projected count and `pwmc.rs`
 //! the weighted projected count. `projected.rs` is what the two projected
 //! counts share: the stage seam they are written on, their common stages and
@@ -36,10 +37,10 @@ mod pwmc;
 mod structured_count;
 mod wmc;
 
-pub(crate) use mc::{run_mc_count, run_mc_streaming};
-pub(crate) use pmc::run_pmc_count;
-pub(crate) use pwmc::run_pwmc_count;
-pub(crate) use wmc::run_wmc_count;
+pub(crate) use mc::{run_mc_bundle, run_mc_count, run_mc_streaming};
+pub(crate) use pmc::{run_pmc_bundle, run_pmc_count};
+pub(crate) use pwmc::{run_pwmc_bundle, run_pwmc_count};
+pub(crate) use wmc::{run_wmc_bundle, run_wmc_count};
 
 /// The vtree spec a stage builds its own trees on, wherever it does not take
 /// the run's: vitri's portfolio. The model count's unreduced retry and Shannon

@@ -77,8 +77,9 @@ count: 23/50
 ```
 
 `tididi_cnf_count` takes DIMACS text and `tididi_cnf_count_file` a file,
-whose header can name the task. `tididi_cnf_answer_count` spells the count
-exactly, and `tididi_cnf_answer_count_f64` gives it as the nearest `double`.
+whose header can name the task, or the directory of a vitri bundle.
+`tididi_cnf_answer_count` spells the count exactly, and
+`tididi_cnf_answer_count_f64` gives it as the nearest `double`.
 `include/tididi_cnf.h` documents every function, including who owns each
 buffer and how calls from several threads behave. `examples/clauses.c` is the
 program above, `examples/count.c` counts a file and prints the answer, and

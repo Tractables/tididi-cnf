@@ -75,7 +75,7 @@ pub(crate) fn preprocess_problem<D: Domain>(
 /// show id names the reduced formula. The record is the mode's that was asked
 /// for, since an explicit `RunConfig::mode` always wins, and a projected record
 /// that is not UNSAT always carries its reduced show set.
-pub(super) fn outcome<D: Domain>(
+pub(crate) fn outcome<D: Domain>(
     reduced: CnfFormula,
     record: &vitri::bundle::PreprocessRecord,
 ) -> Result<Outcome<D>, vitri::VitriError> {

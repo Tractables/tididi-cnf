@@ -227,13 +227,18 @@ pub(super) fn trivial_residual<D: Domain>(
 /// Build the counting vtree, with the variables it places: peak
 /// ∃-forget-frontier selection when there is a show set, ordinary clause-load
 /// balance otherwise, on the run's spec and policy; `None` when the
-/// construction failed. PWMC's compile uses it too; the conditioning branches
-/// build theirs with `count_vtree` on vitri's portfolio and no run policy.
+/// construction failed. On a vitri bundle's run, whose only compile is of the
+/// bundle's formula, it is the bundle's vtree (`Config::bundle_tree`). PWMC's
+/// compile uses it too; the conditioning branches build theirs with
+/// `count_vtree` on vitri's portfolio and no run policy.
 pub(super) fn counting_vtree(
     run: &Run<'_>,
     work: &CnfFormula,
     show: Option<&ShowSet>,
 ) -> Option<CountVtree> {
+    if let Some(built) = run.config.bundle_tree() {
+        return Some(CountVtree::over(built.clone().bind(run.eng), show));
+    }
     let ctx = if show.is_some() { VtreeOptions::by_peak_width() } else { VtreeOptions::default() };
     count_vtree(
         run,
@@ -256,16 +261,7 @@ pub(super) fn count_vtree(
     show: Option<&ShowSet>,
 ) -> Option<CountVtree> {
     let built = run.config.vtree_time.time(|| crate::vtree::build_vtree_with_components(work, spec, ctx));
-    let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees } =
-        crate::vtree::built_or_give_up(built)?.bind(run.eng);
-    let projected = show.map_or_else(Vec::new, |show| {
-        vtree
-            .leaf_bottomup()
-            .map(|(_, v)| v)
-            .filter(|&v| !show.contains(crate::convert::formula_var(v)))
-            .collect()
-    });
-    Some(CountVtree { vtree, component_vtrees, projected })
+    Some(CountVtree::over(crate::vtree::built_or_give_up(built)?.bind(run.eng), show))
 }
 
 /// The counting vtree and the variables it places.
@@ -275,6 +271,21 @@ pub(super) struct CountVtree {
     /// The vtree's leaves outside the show set, bottom-up; empty without a
     /// show set.
     pub(super) projected: Vec<tididi::vtree::VarId>,
+}
+
+impl CountVtree {
+    /// The bound trees of `built`, with the leaves outside `show`.
+    fn over(built: crate::vtree::VtreeBuild, show: Option<&ShowSet>) -> Self {
+        let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees } = built;
+        let projected = show.map_or_else(Vec::new, |show| {
+            vtree
+                .leaf_bottomup()
+                .map(|(_, v)| v)
+                .filter(|&v| !show.contains(crate::convert::formula_var(v)))
+                .collect()
+        });
+        CountVtree { vtree, component_vtrees, projected }
+    }
 }
 
 #[cfg(test)]

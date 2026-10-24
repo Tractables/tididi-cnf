@@ -354,13 +354,14 @@ fn weight(literal: i32, value: &Bound<'_, PyAny>) -> PyResult<BigRational> {
     })
 }
 
-/// Count the models of the DIMACS CNF file at `path`, as
+/// Count the models of the DIMACS CNF file at `path`, or of the vitri bundle
+/// in the directory at `path` (the user guide's `docs/input.md`), as
 /// `tididi --mode MODE PATH` does.
 ///
 /// - `mode`: `"compile"`, `"mc"`, `"wmc"`, `"pmc"` or `"pwmc"`; `None` takes
 ///   the task the instance's `c t` and `c p show` lines declare, a plain
 ///   compile when they declare none. A mode given must agree with those
-///   lines.
+///   lines, or with the mode a bundle was made for.
 /// - `time_limit_ms`: the time the whole run may take, in milliseconds;
 ///   `None` sets no limit. The run checks it as it goes, so a step in
 ///   progress can finish after it, and a run that reaches it raises

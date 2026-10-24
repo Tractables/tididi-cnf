@@ -99,6 +99,7 @@ pub(crate) fn minimal_config() -> Config {
         time_limit_ms: None,
         sat_prune: true,
         vitri: vitri::RunConfig::default(),
+        input_vtree: None,
     }
 }
 

@@ -82,20 +82,40 @@ pub(crate) struct Settings {
 }
 
 impl Settings {
-    /// Refuse a setting the run's `mode` would ignore. Every such check is
-    /// here, and the driver makes it once, as soon as the instance's header
-    /// has decided the mode and before any preprocessing. Each check is on
-    /// the setting's presence, and its message names the setting and what
-    /// made the run that mode: the `--mode` it was given (`flag`) or the
-    /// header lines of `meta`.
+    /// Refuse a setting the run's `mode` or its input would ignore. Every
+    /// such check is here, and the driver makes it once, as soon as the
+    /// instance's header, or a bundle's record, has decided the mode and
+    /// before any preprocessing. Each check is on the setting's presence, and
+    /// its message names the setting and what made it inert: the input being
+    /// a vitri bundle (`bundle`), or what made the run that mode, the `--mode`
+    /// it was given (`flag`) or the header lines of `meta`.
     pub(crate) fn refuse_inert(
         &self,
         flag: Option<Mode>,
         meta: &vitri::cnf::CnfMeta,
         mode: Mode,
+        bundle: bool,
     ) -> Result<(), crate::Error> {
+        // A bundle brings the formula vitri preprocessed and the vtree vitri
+        // built for it, so the run neither preprocesses nor builds a vtree.
+        if bundle && self.vtree.is_some() {
+            return Err(crate::Error::Usage(
+                "--vtree applies to a DIMACS file, but the input is a vitri bundle, which \
+                 brings its own vtree. Drop --vtree, or give the original formula to compile \
+                 on that construction."
+                    .to_owned(),
+            ));
+        }
+        if bundle && self.preprocess.is_some() {
+            return Err(crate::Error::Usage(
+                "--preprocess applies to a DIMACS file, but the input is a vitri bundle, whose \
+                 formula vitri has already preprocessed. Drop --preprocess."
+                    .to_owned(),
+            ));
+        }
         let cause = || match (flag, Mode::declared(meta)) {
             (Some(flag), _) => format!("--mode {flag}"),
+            _ if bundle => "the bundle's preprocess.json".to_owned(),
             (None, Some((_, lines))) => lines,
             (None, None) => "the default".to_owned(),
         };
@@ -183,13 +203,24 @@ pub(crate) struct Config {
     /// vitri's `VITRI_*` settings, read and checked from the environment as
     /// the run starts: the base of every vitri request the run makes.
     pub(crate) vitri: vitri::RunConfig,
+    /// The vtree a vitri bundle came with, when the input is one: the tree
+    /// the run compiles the bundle's formula on, or how vitri's preprocessing
+    /// settled the instance. `None` when the input is a formula, whose vtrees
+    /// the run builds.
+    pub(crate) input_vtree: Option<crate::frontend::FrontendVtree>,
 }
 
 impl Config {
     /// The record a run of `mode` starts from: `limits`, `settings` and
     /// vitri's settings as the caller gave them, the preprocessing defaulting
-    /// to [`PreprocessLevel::Full`].
-    pub(crate) fn new(limits: &Limits, settings: &Settings, vitri: vitri::RunConfig, mode: Mode) -> Config {
+    /// to [`PreprocessLevel::Full`], and the vtree a bundle came with.
+    pub(crate) fn new(
+        limits: &Limits,
+        settings: &Settings,
+        vitri: vitri::RunConfig,
+        mode: Mode,
+        input_vtree: Option<crate::frontend::FrontendVtree>,
+    ) -> Config {
         Config {
             vtree: settings.vtree.clone(),
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
@@ -200,12 +231,28 @@ impl Config {
             time_limit_ms: limits.time_limit_ms,
             sat_prune: settings.sat_prune.unwrap_or(true),
             vitri,
+            input_vtree,
         }
     }
 
     /// The vtree the run compiles on: `--vtree`, or `portfolio` without it.
     pub(crate) fn vtree_spec(&self) -> &str {
         self.vtree.as_deref().unwrap_or("portfolio")
+    }
+
+    /// The tree the run's main compile is on, as its log lines name it: the
+    /// bundle's, or the construction [`Config::vtree_spec`] names.
+    pub(crate) fn vtree_name(&self) -> &str {
+        if self.input_vtree.is_some() { "bundle" } else { self.vtree_spec() }
+    }
+
+    /// A bundle's vtree, when the input is a bundle whose preprocessing left
+    /// a formula to compile.
+    pub(crate) fn bundle_tree(&self) -> Option<&crate::vtree::VtreeBuild> {
+        match &self.input_vtree {
+            Some(crate::frontend::FrontendVtree::Built(built)) => Some(built),
+            _ => None,
+        }
     }
 }
 
@@ -267,6 +314,12 @@ impl std::str::FromStr for Mode {
 impl Mode {
     /// Every mode, in the order `--help` lists them.
     pub(crate) const ALL: [Mode; 5] = [Mode::Compile, Mode::Mc, Mode::Wmc, Mode::Pmc, Mode::Pwmc];
+
+    /// The mode named as vitri's `mode` is, `None` for a vitri mode this
+    /// crate does not answer.
+    pub(crate) fn of_vitri(mode: vitri::cnf::Mode) -> Option<Self> {
+        Mode::ALL.into_iter().find(|ours| ours.vitri() == mode)
+    }
 
     /// The vitri mode of the same name, whose token is this mode's.
     fn vitri(self) -> vitri::cnf::Mode {

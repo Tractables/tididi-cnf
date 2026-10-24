@@ -152,6 +152,10 @@ Output:
 projected model count: 5598861
 ```
 
+`tididi` also reads the directory `vitri --out-dir` writes: it compiles the
+preprocessed formula there on vitri's vtree and answers for the original
+formula ([input](docs/input.md#a-vitri-bundle)).
+
 [Getting started](docs/getting-started.md) works through compiling and each
 kind of count on a small formula, and [tasks](docs/tasks.md) lists the
 options.

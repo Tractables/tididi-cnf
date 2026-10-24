@@ -15,6 +15,7 @@ use super::projected::{
     CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projected_arjun_budget_ms, projection_step,
     run_stages, trivial_residual,
 };
+use crate::frontend::record::Outcome;
 use crate::problem::WeightedCount;
 use crate::enumeration::{EnumLimits, WeightedModels, allsat_share_ms};
 use crate::output::Projected;
@@ -554,6 +555,27 @@ fn compile_evaluate(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Trace) -
             Step::Decline
         }
     }
+}
+
+/// The projected weighted count of a vitri bundle, `outcome` as its record
+/// describes it: refuted, or the trivial residual and the weighted compile,
+/// which runs on the bundle's vtree with nothing preprocessed. The record's
+/// exact lift is applied once, to the answer.
+pub(crate) fn run_pwmc_bundle(
+    run: &Run<'_>,
+    outcome: Outcome<Weighted>,
+) -> Result<Projected<WeightedCount<BigRational>>, crate::Error> {
+    eprintln!("[pwmc] arithmetic: exact rational");
+    let problem = match outcome {
+        Outcome::Unsat => {
+            eprintln!("[pwmc] preprocessing: UNSAT");
+            return Ok(Projected { value: WeightedCount::Unsatisfiable, show_vars: None, compile_ms: 0 });
+        }
+        Outcome::Reduced(problem) => problem,
+    };
+    let trivial = |problem: &Problem<Weighted>, trace: &Trace| trivial_residual("[pwmc] trivial", problem, trace);
+    let compile = |problem: &Problem<Weighted>, trace: &Trace| compile_evaluate(run, problem, trace);
+    run_stages(problem, &[&trivial, &compile], run.deadline, &run.config.vtree_time)
 }
 
 /// Projected weighted model counting (PWMC). Combines the projected count's

@@ -133,7 +133,8 @@ pub struct Stats {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clauses: Option<u64>,
     /// The vtree construction the run compiles on: the binary's `--vtree`, or
-    /// `portfolio`.
+    /// `portfolio`. `None` when the input is a vitri bundle, which brings its
+    /// vtree.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_spec: Option<String>,
     /// The portfolio candidate that won selection, when a portfolio ran. In
@@ -259,7 +260,8 @@ pub(crate) fn open_record(config: &Config, formula: &vitri::cnf::CnfFormula) -> 
         mode: Some(config.mode.token()),
         variables: Some(formula.num_vars()),
         clauses: Some(formula.clauses().len() as u64),
-        vtree_spec: Some(config.vtree_spec().to_owned()),
+        // A bundle's run builds no vtree for its main compile.
+        vtree_spec: config.input_vtree.is_none().then(|| config.vtree_spec().to_owned()),
         sat_prune: (!config.sat_prune).then_some("off"),
         ..Stats::default()
     }

@@ -39,6 +39,7 @@ pub(crate) struct McFrontendAttempt {
 }
 
 /// The vtree a frontend attempt built, or why it built none.
+#[derive(Clone)]
 pub(crate) enum FrontendVtree {
     Built(VtreeBuild),
     /// Preprocessing assigned every variable; the answer is the lift alone.

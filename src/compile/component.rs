@@ -274,7 +274,7 @@ pub(crate) fn check_vtree(n: u32, vtree: &Vtree) -> Result<(), GiveUp> {
 /// Whether `components` partition `formula`: every clause in exactly one
 /// component, every variable in at most one, and each component's clauses
 /// naming only its own variables, with a vtree over their local numbering.
-pub(super) fn check_partition(formula: &CnfFormula, components: &[ComponentVtree]) -> Result<(), GiveUp> {
+pub(crate) fn check_partition(formula: &CnfFormula, components: &[ComponentVtree]) -> Result<(), GiveUp> {
     let invalid = |why: String| Err(GiveUp::Invalid(format!("the split does not partition the formula: {why}")));
     // Which component each variable is in, by variable index.
     let mut owner: Vec<Option<usize>> = vec![None; formula.num_vars() as usize];

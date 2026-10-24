@@ -68,7 +68,7 @@ everything below is called, and nothing below calls back up. Below the stages,
 |---|---|
 | `src/run.rs` | The library's one call, `count`, with its `Input` and `Answer`. |
 | `src/cli.rs` | The command line: argument parsing, the usage text, and `run_cli`, which solves what argv asks and prints the answer. |
-| `src/driver/` | `solve`, the phase spine, the mode dispatch, and the plain compile route. |
+| `src/driver/` | `solve`, the phase spine, the mode dispatch, the plain compile route, and the reading of a vitri bundle. |
 | `src/stage/` | The counting runners the driver dispatches to, and what they share. See below. |
 | `src/enumeration.rs` | Counting a show set's feasible assignments with a SAT solver: the small-show sweep, projected AllSAT, and the estimates that gate them and forecast its count. |
 | `src/compile/` | `compile_cnf`, what it takes and what it returns; the bottom-up pass beneath it; and the counts the stages build on it. See below. |
