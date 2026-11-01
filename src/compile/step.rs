@@ -129,7 +129,7 @@ pub(crate) fn compile_component(
     // to ⊥ instead of reaching `clause_scope`'s assertion. Projected cutset
     // conditioning can produce one when preprocessing a conditioned UNSAT
     // branch.
-    if formula.clauses().iter().any(|c| c.literals.is_empty()) {
+    if crate::formula::has_empty_clause(formula) {
         return Ok(Compiled { diagram: job.output.with_store(eng.zero(vtree)), forgotten: 0, peak_pairs: 0 });
     }
 

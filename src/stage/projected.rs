@@ -231,11 +231,11 @@ pub(super) fn trivial_residual<D: Domain>(
     trace: &Trace,
 ) -> Step<D> {
     let work = &problem.formula;
-    let has_empty_clause = work.clauses().iter().any(|c| c.literals.is_empty());
-    if !has_empty_clause && work.num_vars() != 0 {
+    let empty_clause = crate::formula::has_empty_clause(work);
+    if !empty_clause && work.num_vars() != 0 {
         return Step::Decline;
     }
-    let what = if has_empty_clause { "an empty clause" } else { "no variables left" };
+    let what = if empty_clause { "an empty clause" } else { "no variables left" };
     eprintln!(
         "{tag}: {what} (preprocessing {}ms, {}c→{}c), show {}, vars {}",
         trace.preprocess_ms,
@@ -244,7 +244,7 @@ pub(super) fn trivial_residual<D: Domain>(
         problem.show_len(),
         trace.input_vars,
     );
-    Step::Answer(if has_empty_clause { D::zero() } else { D::one() })
+    Step::Answer(if empty_clause { D::zero() } else { D::one() })
 }
 
 /// Build the counting vtree, with the variables it places: peak

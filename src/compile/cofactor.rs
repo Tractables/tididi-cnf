@@ -26,7 +26,7 @@
 //! scheduled levels are marginalized afterwards, as after the normal step.
 //!
 //! **Marginalization.** The branch folds marginalize nothing. The levels the
-//! normal fold would sum out inside its merges ([`build_marginalize_targets`])
+//! normal fold would sum out inside its merges ([`marginalize_scheduled_at`])
 //! are marginalized once the branches are joined, so the step leaves the same
 //! levels marginal as the normal one. The step-end pass
 //! ([`super::marginalize::run_marginalize_at`]) then forgets and marginalizes
@@ -47,7 +47,7 @@ use tididi::{Engine, Literal, OperationError};
 
 use crate::budget::deadline_passed;
 use super::batch::{batch_accumulate, batch_floor};
-use super::marginalize::{build_marginalize_targets, summable};
+use super::marginalize::marginalize_scheduled_at;
 use super::step::{DiagramClauses, PassState, StepContext};
 
 /// The most variables the smaller child of an internal vtree node may span
@@ -257,9 +257,7 @@ fn run_cofactor(
         eng.or_many(terms)?
     };
     state.minimize.adaptive_minimize(eng, &mut joined)?;
-    if let Some(targets) = build_marginalize_targets(t.idx(), vtree, ctx, &state.forgotten) {
-        eng.marginalize_levels(&mut joined, &summable(vtree, &targets, ctx.job.output.forget().is_some()))?;
-    }
+    marginalize_scheduled_at(eng, &mut joined, t.idx(), vtree, ctx, &state.forgotten)?;
     let pairs = joined.pair_count();
     state.tdds[t.idx()] = Some(joined);
     if deadline_passed(ctx.job.deadline) {

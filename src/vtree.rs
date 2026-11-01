@@ -139,6 +139,18 @@ pub struct Component {
     pub local_to_global: Vec<VarId>,
 }
 
+impl Component {
+    /// The component of `formula` whose clauses are `clause_indices`.
+    pub(crate) fn from_clauses(formula: &CnfFormula, clause_indices: Vec<usize>) -> Self {
+        let local_to_global = formula
+            .component_vars(&clause_indices)
+            .into_iter()
+            .map(diagram_var)
+            .collect();
+        Self { clause_indices, local_to_global }
+    }
+}
+
 /// A component and the vtree built for it, whose leaves are the component's
 /// local variables.
 #[derive(Clone, Debug)]
@@ -346,14 +358,7 @@ pub(crate) fn split_components(formula: &CnfFormula, spec: &str) -> Vec<Componen
         eprintln!("[vtree] {} independent components", groups.len());
         return groups
             .into_iter()
-            .map(|clause_indices| Component {
-                local_to_global: formula
-                    .component_vars(&clause_indices)
-                    .into_iter()
-                    .map(diagram_var)
-                    .collect(),
-                clause_indices,
-            })
+            .map(|clause_indices| Component::from_clauses(formula, clause_indices))
             .collect();
     }
 

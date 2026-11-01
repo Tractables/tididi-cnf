@@ -102,15 +102,40 @@ pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
     true
 }
 
-/// Unpack a frontend session retry bundle (`retried`) for stage `tag`: log
-/// the Arjun reduction summary on stderr, answer early when the retry refuted
-/// or fully resolved `formula`, and otherwise bind its vtree to `run.eng`.
-fn unpack_retry_attempt(
+struct RetryLog<'a> {
+    tag: &'a str,
+    declined: &'a str,
+    next: &'a str,
+}
+
+/// Retry `session` under `retry` inside `(window, stage_deadline)`: cap Arjun
+/// at half `window` so the reduce cannot consume the compile's share, run the
+/// retry, log the reduction summary on stderr, answer early when the retry
+/// refuted or fully resolved `formula`, and otherwise bind its vtree to
+/// `run.eng`.
+fn retry_frontend_session(
     run: &Run<'_>,
     formula: &CnfFormula,
-    retried: vitri::bundle::VitriRun,
-    tag: &str,
-) -> std::ops::ControlFlow<Counted, (vitri::bundle::PreprocessBundle, crate::vtree::VtreeBuild)> {
+    session: &vitri::bundle::FrontendSession<'_>,
+    window: std::time::Duration,
+    stage_deadline: Instant,
+    retry: &vitri::bundle::FrontendRetryConfig,
+    log: RetryLog<'_>,
+) -> Option<std::ops::ControlFlow<Counted, (vitri::bundle::PreprocessBundle, crate::vtree::VtreeBuild)>> {
+    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(window / 2);
+    let budget = vitri::bundle::RetryBudget::new(stage_deadline, arjun_budget).ok()?;
+    let retried = match session.retry(budget, retry) {
+        Ok(Some(retried)) => retried,
+        Ok(None) => {
+            eprintln!("{}: {} — {}", log.tag, log.declined, log.next);
+            return None;
+        }
+        Err(error) => {
+            eprintln!("{}: vitri's frontend failed ({error}) — {}", log.tag, log.next);
+            return None;
+        }
+    };
+    let tag = log.tag;
     let crate::frontend::McFrontendAttempt { preprocessed, vtree } =
         crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
     let arjun_pow2 = preprocessed.count_lift.arjun_pow2;
@@ -123,7 +148,7 @@ fn unpack_retry_attempt(
         preprocessed.reduced.clauses().len(),
         arjun_pow2,
     );
-    match vtree {
+    Some(match vtree {
         // A refuted retry has answered the instance: the count is 0, and no
         // lift can move it, so nothing is built or compiled on top of it.
         crate::frontend::FrontendVtree::Refuted => {
@@ -137,12 +162,12 @@ fn unpack_retry_attempt(
             std::ops::ControlFlow::Break((num_bigint::BigUint::from(1u32) << arjun_pow2, 0))
         }
         // `StageOutcome::Ran` means vitri's own NotSmaller gate kept this
-        // reduction. A discarded result returned before `unpack_retry_attempt`,
-        // so there is no second clause-growth decision here.
+        // reduction. A discarded result returned before this match, so there
+        // is no second clause-growth decision here.
         crate::frontend::FrontendVtree::Built(built) => {
             std::ops::ControlFlow::Continue((preprocessed, built.bind(run.eng)))
         }
-    }
+    })
 }
 
 /// First fallback: re-reduce the same formula with SBVA off and recompile,
@@ -195,32 +220,19 @@ fn no_sbva_retry(
         RETRY_VTREE_SPEC,
         reserve.as_secs(),
     );
-    // Reduce budget: the front end's own Arjun budget for the run's time
-    // limit (`ArjunBudget::derived_duration`), capped at half this stage's
-    // window so the reduce cannot consume the compile's share — on the class
-    // this stage is for, the reduce is the smaller half of the route.
-    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(reserve / 2);
     let t_reduce = Instant::now();
-    let budget = vitri::bundle::RetryBudget::new(stage_deadline, arjun_budget).ok()?;
     let retry = vitri::bundle::FrontendRetryConfig {
         arjun_sbva: Some(vitri::preprocess::ArjunSbva::Off),
         vtree_spec: Some(RETRY_VTREE_SPEC.to_owned()),
         arjun_skip_monotone: reduce_monotone.then_some(false),
     };
-    let retried = match session.retry(budget, &retry) {
-        Ok(Some(retried)) => retried,
-        Ok(None) => {
-            eprintln!("[mc] no-sbva-retry: vitri's frontend declined — leaving the formula to the next fallback");
-            return None;
-        }
-        Err(error) => {
-            eprintln!(
-                "[mc] no-sbva-retry: vitri's frontend failed ({error}) — leaving the formula to the next fallback"
-            );
-            return None;
-        }
+    let log = RetryLog {
+        tag: "[mc] no-sbva-retry",
+        declined: "vitri's frontend declined",
+        next: "leaving the formula to the next fallback",
     };
-    let (ar, built) = match unpack_retry_attempt(run, compile_formula, retried, "[mc] no-sbva-retry") {
+    let (ar, built) = match retry_frontend_session(run, compile_formula, session, reserve, stage_deadline, &retry, log)?
+    {
         std::ops::ControlFlow::Break(counted) => return Some(counted),
         std::ops::ControlFlow::Continue(ready) => ready,
     };
@@ -274,26 +286,16 @@ pub(super) fn monotone_reduction(
          the reduction for up to {}s before Shannon split",
         window.as_secs(),
     );
-    // The front end's own Arjun budget for the run's limit, capped at half the
-    // window so the reduce cannot take the compile's share.
-    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(window / 2);
-    let budget = vitri::bundle::RetryBudget::new(stage_deadline, arjun_budget).ok()?;
     let retry = vitri::bundle::FrontendRetryConfig {
         arjun_skip_monotone: Some(false),
         ..vitri::bundle::FrontendRetryConfig::default()
     };
-    let retried = match session.retry(budget, &retry) {
-        Ok(Some(retried)) => retried,
-        Ok(None) => {
-            eprintln!("[mc] monotone-reduction: Arjun kept no reduction — Shannon split next");
-            return None;
-        }
-        Err(error) => {
-            eprintln!("[mc] monotone-reduction: vitri's frontend failed ({error}) — Shannon split next");
-            return None;
-        }
+    let log = RetryLog {
+        tag: "[mc] monotone-reduction",
+        declined: "Arjun kept no reduction",
+        next: "Shannon split next",
     };
-    let (bundle, built) = match unpack_retry_attempt(run, formula, retried, "[mc] monotone-reduction") {
+    let (bundle, built) = match retry_frontend_session(run, formula, session, window, stage_deadline, &retry, log)? {
         std::ops::ControlFlow::Break(counted) => return Some((counted, AnsweredBy::MonotoneReduction)),
         std::ops::ControlFlow::Continue(ready) => ready,
     };

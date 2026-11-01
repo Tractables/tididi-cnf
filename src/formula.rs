@@ -133,6 +133,12 @@ fn clause_from_dimacs(literals: &[i32], n: usize) -> Result<Clause, Error> {
     Ok(Clause::new(clause))
 }
 
+/// Whether `formula` contains an empty clause, making it immediately
+/// unsatisfiable.
+pub(crate) fn has_empty_clause(formula: &CnfFormula) -> bool {
+    formula.clauses().iter().any(|c| c.literals.is_empty())
+}
+
 /// How many literals of each variable of `formula` sit in clauses of at least
 /// `min_len` literals, indexed by `VarId::idx`.
 pub(crate) fn occurrence_counts(formula: &CnfFormula, min_len: usize) -> Vec<usize> {

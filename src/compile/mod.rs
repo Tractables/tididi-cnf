@@ -432,7 +432,7 @@ pub(crate) fn compile_with(
     }
     // The empty clause is the constant false, which the whole-formula pass
     // answers at once: there is nothing to split into components.
-    let plan = if formula.clauses().iter().any(|c| c.literals.is_empty()) { ComponentPlan::Whole } else { plan };
+    let plan = if crate::formula::has_empty_clause(formula) { ComponentPlan::Whole } else { plan };
 
     // Two compilation paths:
     //  1. A split — the caller's per-component vtrees, or detected components

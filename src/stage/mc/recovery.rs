@@ -309,10 +309,10 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
 fn simplify_via_unit(formula: &CnfFormula, unit: Literal) -> Option<CnfFormula> {
     let seeded = with_unit(formula, unit);
     let vitri::cnf::UnitPropagation { residual, forced } = vitri::cnf::propagate_units(&seeded);
-    let mut clauses = residual.into_clauses();
-    if clauses.iter().any(|clause| clause.literals.is_empty()) {
+    if crate::formula::has_empty_clause(&residual) {
         return None;
     }
+    let mut clauses = residual.into_clauses();
     // Re-pin every BCP-derived forced literal as a unit clause so the
     // residual CNF still binds the variable (preserves `num_vars` semantics).
     for lit in &forced {

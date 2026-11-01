@@ -14,6 +14,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use tididi::diagram::Tdd;
 use tididi::{Engine, OperationError};
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
@@ -110,6 +111,22 @@ pub(crate) fn build_marginalize_targets<'a>(
     if kept.is_empty() { None } else { Some(kept) }
 }
 
+/// Sum out any levels scheduled at step `t_idx` that are still explicit and
+/// outside the projection shield of still-unforgotten projected variables.
+pub(crate) fn marginalize_scheduled_at(
+    eng: &Engine,
+    tdd: &mut Tdd,
+    t_idx: usize,
+    vtree: &Vtree,
+    ctx: &StepContext<'_>,
+    forgotten: &HashSet<VarId>,
+) -> Result<(), OperationError> {
+    if let Some(targets) = build_marginalize_targets(t_idx, vtree, ctx, forgotten) {
+        eng.marginalize_levels(tdd, &summable(vtree, &targets, ctx.job.output.forget().is_some()))?;
+    }
+    Ok(())
+}
+
 /// What step `t` does after its fold:
 /// - ∃-forget each projected variable whose leaf is scheduled at `t`.
 /// - Marginalize every scheduled level the fold did not sum out. A level that
@@ -176,23 +193,13 @@ pub(crate) fn run_marginalize_at(
 
     // The projected function leaves its forgotten leaves as structural One
     // and sums nothing out, so a weighted fold can read the whole diagram.
-    if !output.marginalizes() {
-        return Ok(());
-    }
-
+    // Otherwise, keep the shield of still-unforgotten projected vars out of
+    // this marginalization (`build_marginalize_targets`), while marginalizing
+    // the forgotten vars themselves (their leaf level is now a One — ×2,
+    // corrected by the 2^k divisor). A weighted compile marginalizes into the
+    // `WeightStore`, and `marginalize_levels` passes a `Stopped` cut through.
     if let Some(tdd) = state.tdds[t.idx()].as_mut() {
-        // Projection: keep the shield of still-unforgotten projected vars out
-        // of this marginalization, as `build_marginalize_targets` does for the
-        // fold. Otherwise an ancestor goes marginal before its projected
-        // descendant is ∃-forgotten and the structural ∃-forget asserts. The
-        // forgotten vars themselves are marginalized here (their leaf level is
-        // now a One — ×2, corrected by the 2^k divisor). Without projection
-        // the schedule is borrowed as it is.
-        let targets = unshielded(&schedule[t.idx()], current_vtree, output.forget(), &state.forgotten);
-        // A weighted compile marginalizes into the WeightStore.
-        // `marginalize_levels` passes a `Stopped` cut through, which the step
-        // aborts on like a cut inside the apply before it.
-        eng.marginalize_levels(tdd, &summable(current_vtree, &targets, output.forget().is_some()))?;
+        marginalize_scheduled_at(eng, tdd, t.idx(), current_vtree, ctx, &state.forgotten)?;
     }
     Ok(())
 }

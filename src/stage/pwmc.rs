@@ -243,7 +243,7 @@ fn pwmc_solve_component(
     let reduced = vitri::projection::eliminate_hidden(sub, local_show)
         .expect("the show set names variables of the component it came from");
     let bve_ms = t_bve.elapsed().as_millis();
-    if reduced.clauses().iter().any(|c| c.literals.is_empty()) {
+    if crate::formula::has_empty_clause(&reduced) {
         return Some(WeightedCount::Unsatisfiable);
     }
     let (formula, preprocess_ms) = if reduced.clauses().len() <= sub.clauses().len() {
@@ -336,7 +336,7 @@ where
     // An empty clause anywhere ⇒ UNSAT ⇒ PWMC 0. `detect_components` puts the
     // empty clauses in a group of their own, which names no variable and which
     // the singleton loop below cannot read, so answer here.
-    if formula.clauses().iter().any(|c| c.literals.is_empty()) {
+    if crate::formula::has_empty_clause(formula) {
         return Some(WeightedCount::Unsatisfiable);
     }
     if sort_cheap_first {

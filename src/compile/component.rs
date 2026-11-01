@@ -13,7 +13,6 @@ use tididi::restructure::GraftError;
 use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
-use crate::convert::diagram_var;
 use crate::vtree::{Component, ComponentVtree};
 use super::{Compiled, GiveUp};
 use super::minimize::minimize_full;
@@ -318,13 +317,9 @@ pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<V
     detected
         .into_iter()
         .map(|clause_indices| {
-            let local_to_global: Vec<VarId> = formula
-                .component_vars(&clause_indices)
-                .into_iter()
-                .map(diagram_var)
-                .collect();
-            let vtree = eng.bind_vtree(Vtree::balanced(local_to_global.len() as u32));
-            ComponentVtree { vtree, component: Component { clause_indices, local_to_global } }
+            let component = Component::from_clauses(formula, clause_indices);
+            let vtree = eng.bind_vtree(Vtree::balanced(component.local_to_global.len() as u32));
+            ComponentVtree { vtree, component }
         })
         .collect()
 }
