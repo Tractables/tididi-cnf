@@ -6,7 +6,7 @@ settings of two chosen switches a solution can have, the chance that a random
 setting of those two can be completed, and a weighted count. It ends by
 compiling the formula into a circuit and saving it.
 
-Build the binary first, as the [README](../README.md#build) says. The commands
+Build the binary first, as the [README](../README.md#install) says. The commands
 run from the repository root.
 
 ## The problem
