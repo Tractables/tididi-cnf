@@ -175,33 +175,51 @@ Vtree specs:
     text
 }
 
+fn usage_error(prog: &str, what: impl std::fmt::Display) -> Error {
+    Error::Usage(format!(
+        "{what}\nUsage: {prog} [options] <dimacs-file|bundle-dir> (`{prog} --help` lists the options)"
+    ))
+}
+
+fn next_value(prog: &str, flag: &str, args: &mut std::env::ArgsOs) -> Result<std::ffi::OsString, Error> {
+    args.next().ok_or_else(|| usage_error(prog, format!("{flag} needs a value.")))
+}
+
+fn next_text(prog: &str, flag: &str, args: &mut std::env::ArgsOs) -> Result<String, Error> {
+    next_value(prog, flag, args)?
+        .into_string()
+        .map_err(|value| usage_error(prog, format!("{flag} {value:?} is not text.")))
+}
+
+fn next_choice<T: Copy>(
+    prog: &str,
+    flag: &str,
+    args: &mut std::env::ArgsOs,
+    choices: &[T],
+    token: fn(T) -> &'static str,
+) -> Result<T, Error> {
+    let val = next_text(prog, flag, args)?;
+    one_of(flag, &val, choices, token).map_err(|e| usage_error(prog, e))
+}
+
+fn next_u64(prog: &str, flag: &str, args: &mut std::env::ArgsOs, unit: &str) -> Result<u64, Error> {
+    let val = next_text(prog, flag, args)?;
+    val.parse().map_err(|_| usage_error(prog, format!("{flag} {val:?} is not a whole number of {unit}")))
+}
+
 fn parse_args() -> Result<Request, Error> {
     let mut args = std::env::args_os();
     let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
-    // A command line the parser cannot read is a usage error: it names what
-    // is wrong and points to the usage, and the binary exits 2.
-    let usage_error = |what: String| {
-        Error::Usage(format!(
-            "{what}\nUsage: {prog} [options] <dimacs-file|bundle-dir> (`{prog} --help` lists the options)"
-        ))
-    };
 
     let mut vtree_spec: Option<String> = None;
     let mut dimacs_path: Option<PathBuf> = None;
     let mut save_tdd_path: Option<PathBuf> = None;
-    // `--stats <path>`: where the run's stats record goes. Valid in every
-    // mode, so it has no inert-combination guard of its own.
     let mut stats_path: Option<PathBuf> = None;
-    // `--time-limit-ms`; `TIDIDI_TIME_LIMIT_MS` fills it in below when the
-    // flag is absent.
     let mut time_limit_ms: Option<u64> = None;
     let mut output_format = OutputFormat::Plain;
     let mut mode_flag: Option<Mode> = None;
-    // RLIMIT_AS soft limit to self-impose at startup (MiB).
     let mut mem_limit_mb = DEFAULT_MEM_LIMIT_MB;
-    // `--preprocess`; the run's default, full, applies without it.
     let mut preprocess: Option<PreprocessLevel> = None;
-    // The flags read so far.
     let mut given: Vec<String> = Vec::new();
 
     while let Some(arg) = args.next() {
@@ -209,66 +227,43 @@ fn parse_args() -> Result<Request, Error> {
         // directory, taken as the system gave it: a path need not be text.
         if !arg.as_encoded_bytes().starts_with(b"-") {
             if let Some(first) = &dimacs_path {
-                return Err(usage_error(format!(
-                    "a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."
-                )));
+                return Err(usage_error(
+                    &prog,
+                    format!("a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."),
+                ));
             }
             dimacs_path = Some(arg.into());
             continue;
         }
         let flag = arg.to_string_lossy();
-        // Each flag is read once: a second value would replace the first
-        // without a word, as a setting the run ignores.
         if given.iter().any(|seen| *seen == flag) {
-            return Err(usage_error(format!("{flag} is given twice; a run takes one value for each flag.")));
+            return Err(usage_error(&prog, format!("{flag} is given twice; a run takes one value for each flag.")));
         }
         given.push(flag.clone().into_owned());
-        // The argument after the flag: as given for a path, and otherwise
-        // read as text.
-        let mut value = || args.next().ok_or_else(|| usage_error(format!("{flag} needs a value.")));
-        let text = |value: std::ffi::OsString| {
-            value.into_string().map_err(|value| usage_error(format!("{flag} {value:?} is not text.")))
-        };
         match flag.as_ref() {
-            "--vtree" => vtree_spec = Some(text(value()?)?),
-            "--save-tdd" => save_tdd_path = Some(value()?.into()),
-            "--stats" => stats_path = Some(value()?.into()),
-            "--mode" => {
-                mode_flag = Some(one_of("--mode", &text(value()?)?, &Mode::ALL, Mode::token).map_err(usage_error)?);
-            }
+            "--vtree" => vtree_spec = Some(next_text(&prog, "--vtree", &mut args)?),
+            "--save-tdd" => save_tdd_path = Some(next_value(&prog, "--save-tdd", &mut args)?.into()),
+            "--stats" => stats_path = Some(next_value(&prog, "--stats", &mut args)?.into()),
+            "--mode" => mode_flag = Some(next_choice(&prog, "--mode", &mut args, &Mode::ALL, Mode::token)?),
             "--output-format" => {
-                output_format = one_of("--output-format", &text(value()?)?, &OutputFormat::ALL, OutputFormat::token)
-                    .map_err(usage_error)?;
+                output_format = next_choice(&prog, "--output-format", &mut args, &OutputFormat::ALL, OutputFormat::token)?;
             }
             "--mem-limit-mb" => {
-                let val = text(value()?)?;
-                mem_limit_mb = val.parse().map_err(|_| {
-                    usage_error(format!(
-                        "--mem-limit-mb {val:?} is not a whole number of MiB (0 leaves RLIMIT_AS untouched)."
-                    ))
-                })?;
+                mem_limit_mb = next_u64(&prog, "--mem-limit-mb", &mut args, "MiB (0 leaves RLIMIT_AS untouched).")?;
             }
             "--time-limit-ms" => {
-                let val = text(value()?)?;
-                time_limit_ms = Some(val.parse().map_err(|_| {
-                    usage_error(format!("--time-limit-ms {val:?} is not a whole number of milliseconds."))
-                })?);
+                time_limit_ms = Some(next_u64(&prog, "--time-limit-ms", &mut args, "milliseconds.")?);
             }
             "--preprocess" => {
-                preprocess = Some(
-                    one_of("--preprocess", &text(value()?)?, &PreprocessLevel::ALL, PreprocessLevel::token)
-                        .map_err(usage_error)?,
-                );
+                preprocess = Some(next_choice(&prog, "--preprocess", &mut args, &PreprocessLevel::ALL, PreprocessLevel::token)?);
             }
-            // Help and the version are answers of their own, and the rest of
-            // the command line is not read.
             "--help" | "-h" => return Ok(Request::Print(usage(&prog))),
             "--version" | "-V" => return Ok(Request::Print(format!("tididi {}\n", env!("CARGO_PKG_VERSION")))),
-            other => return Err(usage_error(format!("unknown flag {other}."))),
+            other => return Err(usage_error(&prog, format!("unknown flag {other}."))),
         }
     }
 
-    let dimacs_path = dimacs_path.ok_or_else(|| usage_error("no DIMACS file or vitri bundle given.".to_owned()))?;
+    let dimacs_path = dimacs_path.ok_or_else(|| usage_error(&prog, "no DIMACS file or vitri bundle given."))?;
     let (time_limit_ms, sat_prune) = parse_env_overrides(time_limit_ms)?;
 
     Ok(Request::Run(Cli {

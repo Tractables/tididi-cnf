@@ -430,18 +430,21 @@ pub(crate) fn compile_with(
         });
         return Ok(Compiled { diagram, forgotten, peak_pairs: 0 });
     }
+    compile_nonempty(eng, formula, vtree, plan, job)
+}
+
+/// Compile a non-empty formula under `plan`: either split across independent
+/// components and graft, or run a single whole-formula pass and minimize.
+fn compile_nonempty(
+    eng: &Engine,
+    formula: &CnfFormula,
+    vtree: &Arc<Vtree>,
+    plan: ComponentPlan<'_>,
+    job: CompileJob<'_>,
+) -> Result<Compiled, GiveUp> {
     // The empty clause is the constant false, which the whole-formula pass
     // answers at once: there is nothing to split into components.
     let plan = if crate::formula::has_empty_clause(formula) { ComponentPlan::Whole } else { plan };
-
-    // Two compilation paths:
-    //  1. A split — the caller's per-component vtrees, or detected components
-    //     on balanced ones: compile each component on its own vtree (a
-    //     marginal-cluster rotation stays confined to that vtree Arc), then
-    //     *graft* the per-component TDDs into a single TDD on a freshly built
-    //     grafted vtree.
-    //  2. The whole formula (asked for, or a detected single component):
-    //     compile on the caller's supplied root and minimize.
     match plan {
         ComponentPlan::Split(component_vtrees) => {
             return compile_split(eng, formula, component_vtrees, job);
@@ -454,7 +457,6 @@ pub(crate) fn compile_with(
         ComponentPlan::Whole => {}
     }
 
-    // Whole-formula compile.
     let mut result = compile_component(eng, formula, vtree, job)?;
     minimize_full(eng, &mut result.diagram, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
     Ok(result)

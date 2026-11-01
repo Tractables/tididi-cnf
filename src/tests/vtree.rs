@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::{clause, formula, three_variable_formula};
+use crate::test_support::{dimacs, formula, three_variable_formula};
 
 /// A spec is vitri's grammar, whose own tests cover it: a spec it reads is
 /// accepted, and one it does not is a vtree-spec error.
@@ -115,7 +115,7 @@ fn vitri_build_preserves_component_clause_and_variable_mappings() {
     // (x1 ∨ x2) ∧ (¬x3 ∨ x4): two disconnected, two-variable components.
     // Variable 5 appears in no clause and must remain a free leaf in
     // the whole-formula graft rather than disappearing with the split.
-    let formula = formula(5, vec![clause(&[1, 2]), clause(&[-3, 4])]);
+    let formula = dimacs(5, &[&[1, 2], &[-3, 4]]);
     let built = build_vtree_with_components(
         &formula,
         "minfill-primal",
@@ -246,7 +246,7 @@ fn a_one_entry_portfolio_builds_on_that_entry_alone() {
         [1, 2, 3], [-2, 4, 5], [3, -5, 6], [-1, 6, 7], [4, -7, 8],
         [-3, 5, -8], [2, -6, 9], [-4, 7, 10], [8, -9, -10], [1, -5, 10],
     ];
-    let formula = formula(10, clauses.iter().map(|c| clause(c)).collect());
+    let formula = dimacs(10, &clauses);
     build_vtree(&formula, "portfolio", &options).expect("the portfolio builds");
     let winner = options.portfolio_history.last_winning_spec().expect("the portfolio recorded its winner");
     assert_eq!(spec_family(&winner), "goatd-primal", "the winner was {winner}");

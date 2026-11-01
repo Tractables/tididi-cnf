@@ -74,20 +74,23 @@ fn compile_rejects_projection_variables_outside_the_formula() {
     }
 }
 
+fn assert_invalid(formula: &tididi_cnf::vitri::cnf::CnfFormula, vtree: &Arc<Vtree>, options: CompileOptions<'_>) {
+    assert!(matches!(compile_cnf(&Engine::new(), formula, vtree, options), Err(GiveUp::Invalid(_))));
+}
+
 #[test]
 fn compile_rejects_missing_literal_weights_before_shortcuts_or_splitting() {
     for clauses in [vec![], vec![vec![]], vec![vec![1, 2]], vec![vec![1], vec![2]]] {
         let formula = make_formula(2, clauses);
         let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
         for plan in [ComponentPlan::Whole, ComponentPlan::Detect] {
-            let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+            assert_invalid(&formula, &vtree, CompileOptions {
                 plan,
                 output: Output::WeightedCount {
                     weights: RationalWeights::unit(1), arithmetic: Arithmetic::ExactRational,
                 },
                 ..CompileOptions::default()
             });
-            assert!(matches!(result, Err(GiveUp::Invalid(_))));
         }
     }
 }
@@ -101,10 +104,9 @@ fn compile_rejects_invalid_splits_even_when_the_formula_is_constant() {
             vtree: vtree.clone(),
             component: Component { clause_indices: vec![1], local_to_global: vec![VarId(1), VarId(2)] },
         }];
-        let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+        assert_invalid(&formula, &vtree, CompileOptions {
             plan: ComponentPlan::Split(&split), ..CompileOptions::default()
         });
-        assert!(matches!(result, Err(GiveUp::Invalid(_))));
 
         let wrong_tree = [ComponentVtree {
             vtree: vtree.clone(),
@@ -113,10 +115,9 @@ fn compile_rejects_invalid_splits_even_when_the_formula_is_constant() {
                 local_to_global: vec![VarId(1)],
             },
         }];
-        let result = compile_cnf(&Engine::new(), &formula, &vtree, CompileOptions {
+        assert_invalid(&formula, &vtree, CompileOptions {
             plan: ComponentPlan::Split(&wrong_tree), ..CompileOptions::default()
         });
-        assert!(matches!(result, Err(GiveUp::Invalid(_))));
     }
 }
 
@@ -210,8 +211,7 @@ fn an_empty_clause_compiles_to_false() {
 fn a_vtree_over_other_variables_is_an_error() {
     let formula = make_formula(3, vec![vec![1, 2], vec![-2, 3]]);
     for vtree in [Vtree::balanced(2), Vtree::balanced(4), Vtree::linear_from_order(&[VarId(1), VarId(2), VarId(4)]).unwrap()] {
-        let result = compile_cnf(&Engine::new(), &formula, &Arc::new(vtree), CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() });
-        assert!(matches!(result, Err(GiveUp::Invalid(_))));
+        assert_invalid(&formula, &Arc::new(vtree), CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() });
     }
 }
 
@@ -242,9 +242,7 @@ fn a_split_that_does_not_partition_the_formula_is_an_error() {
         ],
     ];
     for split in &malformed {
-        let options = CompileOptions { plan: ComponentPlan::Split(split), ..CompileOptions::default() };
-        let result = compile_cnf(&Engine::new(), &formula, &vtree, options);
-        assert!(matches!(result, Err(GiveUp::Invalid(_))));
+        assert_invalid(&formula, &vtree, CompileOptions { plan: ComponentPlan::Split(split), ..CompileOptions::default() });
     }
 }
 

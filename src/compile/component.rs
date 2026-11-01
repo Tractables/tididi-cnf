@@ -320,6 +320,38 @@ pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<V
         .collect()
 }
 
+/// Compile one remapped component `sub` on `sub_vtree` with `job`'s projected
+/// variables and weights restated in the component's local numbering (`l2g`).
+fn compile_local_component(
+    eng: &Engine,
+    sub: &CnfFormula,
+    sub_vtree: &std::sync::Arc<Vtree>,
+    l2g: &[VarId],
+    job: CompileJob<'_>,
+) -> Result<Compiled, GiveUp> {
+    let comp_forget;
+    let comp_weights;
+    let output = match job.output {
+        PassOutput::Function => PassOutput::Function,
+        PassOutput::Count(weights) => {
+            comp_weights = weights.map(|ws| {
+                let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
+                WeightStore::new(local, ws.arithmetic())
+            });
+            PassOutput::Count(comp_weights.as_ref())
+        }
+        PassOutput::ProjectedCount(forget) => {
+            comp_forget = local_vars_in(l2g, forget);
+            PassOutput::ProjectedCount(&comp_forget)
+        }
+        PassOutput::ProjectedFunction(forget) => {
+            comp_forget = local_vars_in(l2g, forget);
+            PassOutput::ProjectedFunction(&comp_forget)
+        }
+    };
+    compile_component(eng, sub, sub_vtree, CompileJob { output, ..job })
+}
+
 /// Compile each component on its own vtree, under the job's variable sets and
 /// weights restated in its local numbering, and graft the results over the
 /// free variables into one TDD on a new grafted vtree, minimized. Each
@@ -345,32 +377,7 @@ pub(crate) fn compile_split(
     let mut scratch = RemapScratch::default();
     for ComponentVtree { vtree: sub_vtree, component: Component { clause_indices, local_to_global: l2g } } in components {
         remap_component_clauses_into(&mut scratch, formula, clause_indices, l2g);
-        // The pass tests membership against the local VarIds the component
-        // vtree's leaves carry, and reads weights by them; untranslated, a
-        // forgotten variable would be kept inside every component.
-        let comp_forget;
-        let comp_weights;
-        let output = match job.output {
-            PassOutput::Function => PassOutput::Function,
-            PassOutput::Count(weights) => {
-                // The marginal leaf lookup indexes the weight table by the
-                // vtree leaf's own VarId, which inside a component is local.
-                comp_weights = weights.map(|ws| {
-                    let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
-                    WeightStore::new(local, ws.arithmetic())
-                });
-                PassOutput::Count(comp_weights.as_ref())
-            }
-            PassOutput::ProjectedCount(forget) => {
-                comp_forget = local_vars_in(l2g, forget);
-                PassOutput::ProjectedCount(&comp_forget)
-            }
-            PassOutput::ProjectedFunction(forget) => {
-                comp_forget = local_vars_in(l2g, forget);
-                PassOutput::ProjectedFunction(&comp_forget)
-            }
-        };
-        let comp = compile_component(eng, scratch.sub(), sub_vtree, CompileJob { output, ..job })?;
+        let comp = compile_local_component(eng, scratch.sub(), sub_vtree, l2g, job)?;
         forgotten += comp.forgotten;
         peak_pairs = peak_pairs.max(comp.peak_pairs);
         let comp_tdd = comp.diagram;
@@ -380,12 +387,8 @@ pub(crate) fn compile_split(
         );
         if !eng.is_sat(&comp_tdd).map_err(|e| GiveUp::from_operation(eng, e))? {
             // The rest need not compile. The graft answers ⊥ with an empty
-            // store when any part is ⊥, on the grafted vtree, as a satisfiable
-            // result would be, so the result vtree does not depend on the
-            // answer. Every part is a ⊥ on the vtree its component was given,
-            // so it does not depend on what the compiles did to theirs either.
-            // The output is structurally 0 and `weighted_value` short-circuits
-            // on it without reading a level, so the empty store is sound here.
+            // store when any part is ⊥, on the grafted vtree, so the result
+            // vtree does not depend on the answer.
             comp_tdds = components.iter().map(|c| (eng.zero(&c.vtree), c.component.local_to_global.clone())).collect();
             break;
         }

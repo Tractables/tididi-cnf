@@ -5,11 +5,10 @@
 mod common;
 
 use std::path::PathBuf;
-use std::process::Command;
 
 use tididi_cnf::{Answer, Count, Limits, Mode, count};
 
-const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
+use common::run;
 
 /// The bundle vitri writes for `dimacs` under the request `request`, in a
 /// temporary directory named from `tag` and `request`.
@@ -95,12 +94,6 @@ fn a_bundle_split_into_components_counts_them_all() {
     assert_eq!(answer(dir.as_path(), Mode::Mc).count(), &Count::Integer(16u32.into()));
 }
 
-/// The binary on `args`: its exit code and its standard error.
-fn run(args: &[&str]) -> (Option<i32>, String) {
-    let output = Command::new(BINARY).args(args).output().expect("the binary runs");
-    (output.status.code(), String::from_utf8_lossy(&output.stderr).into_owned())
-}
-
 #[test]
 fn the_binary_refuses_what_a_bundle_makes_inert() {
     let dir = bundle("tests/data/mcc_mc_sat.cnf", &requests(Mode::Mc)[0]);
@@ -111,9 +104,9 @@ fn the_binary_refuses_what_a_bundle_makes_inert() {
         (vec!["--mode", "wmc"], "contradicts the bundle"),
         (vec!["--save-tdd", "out.tdd"], "the bundle's preprocess.json"),
     ] {
-        let (code, stderr) = run(&[&args[..], &[dir]].concat());
-        assert_eq!(code, Some(2), "{args:?}: {stderr}");
-        assert!(stderr.contains(says), "{args:?}: {stderr}");
+        let out = run(&[&args[..], &[dir]].concat(), &[]);
+        assert_eq!(out.code, Some(2), "{args:?}: {}", out.stderr);
+        assert!(out.stderr.contains(says), "{args:?}: {}", out.stderr);
     }
 }
 
@@ -123,8 +116,8 @@ fn the_binary_refuses_what_a_bundle_makes_inert() {
 fn a_bundle_run_records_no_vtree_spec() {
     let dir = bundle("tests/data/mcc_mc_sat.cnf", &requests(Mode::Mc)[0]);
     let record = common::tmp_path("bundle_record.json");
-    let (code, stderr) = run(&[dir.to_str().unwrap(), "--stats", record.to_str().unwrap()]);
-    assert_eq!(code, Some(0), "{stderr}");
+    let out = run(&[dir.to_str().unwrap(), "--stats", record.to_str().unwrap()], &[]);
+    assert!(out.ok(), "{}", out.stderr);
     let record: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&record).unwrap()).unwrap();
     assert_eq!(record["model_count"], "22");
     assert!(record.get("vtree_spec").is_none(), "{record}");

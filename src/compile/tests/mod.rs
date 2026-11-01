@@ -1,7 +1,7 @@
 use super::*;
 use tididi::Engine;
 use tididi::limits::StopAt;
-use crate::test_support::{clause, connected_eight_var_formula};
+use crate::test_support::{connected_eight_var_formula, dimacs};
 use std::time::Duration;
 use num_bigint::{BigInt, BigUint};
 use num_rational::BigRational;
@@ -65,10 +65,7 @@ fn streaming_cannot_extend_or_clear_the_enclosing_deadline() {
 }
 
 fn decomposable_formula_and_split() -> (CnfFormula, Arc<Vtree>, Vec<ComponentVtree>) {
-    let formula = crate::test_support::formula(4, vec![
-        crate::test_support::clause(&[1, 2]),
-        crate::test_support::clause(&[3, 4]),
-    ]);
+    let formula = dimacs(4, &[&[1, 2], &[3, 4]]);
     let root = Arc::new(Vtree::linear_from_order(&[
         VarId(4),
         VarId(2),
@@ -182,7 +179,7 @@ fn a_free_projected_variable_counts_as_forgotten_on_every_route() {
     let integer = |value: i64| BigRational::from_integer(BigInt::from(value));
     // (x1 ∨ x2) ∧ (x3 ∨ x4) over five variables, x2 and x5 projected: x5 is
     // in no clause. Projected variables weigh 1.
-    let split = crate::test_support::formula(5, vec![clause(&[1, 2]), clause(&[3, 4])]);
+    let split = dimacs(5, &[&[1, 2], &[3, 4]]);
     let clause_free = crate::test_support::formula(3, vec![]);
     let routes = [
         ("whole", &split, ComponentPlan::Whole, vec![VarId(2), VarId(5)]),
@@ -233,11 +230,6 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
     let (_, streamed_peak) =
         model_count_streaming(eng, &formula, &components, |_| Some(Arc::clone(&vtree)), None, None, CompileRun::default()).unwrap();
     assert_eq!(streamed_peak, compiled.peak_pairs);
-}
-
-/// A formula over `num_vars` variables from DIMACS clauses.
-fn dimacs(num_vars: u32, clauses: &[Vec<i32>]) -> CnfFormula {
-    crate::test_support::formula(num_vars, clauses.iter().map(|c| clause(c)).collect())
 }
 
 /// The streaming count of `formula` over `components` on balanced component

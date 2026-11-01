@@ -1,7 +1,7 @@
 use super::*;
 use crate::compile::component::PassOutput;
 use tididi::Engine;
-use crate::test_support::{self as fixtures, clause};
+use crate::test_support::dimacs;
 
 /// The Boolean compile of the DIMACS `clauses` on a balanced vtree of
 /// `num_vars` leaves.
@@ -11,7 +11,7 @@ fn run_pass(
     clauses: &[&[i32]],
     deadline: Option<std::time::Instant>,
 ) -> Option<Tdd> {
-    let formula = fixtures::formula(num_vars, clauses.iter().map(|c| clause(c)).collect());
+    let formula = dimacs(num_vars, clauses);
     let vtree = Arc::new(Vtree::balanced(num_vars));
     let prune_spent_us = std::cell::Cell::new(0);
     let job = CompileJob {
@@ -66,7 +66,7 @@ fn short_circuit_reports_unsat() {
 #[test]
 fn a_proof_of_unsat_under_a_deadline_is_an_answer() {
     let eng = &Engine::new();
-    let formula = fixtures::formula(2, vec![clause(&[1, 2]), clause(&[-1]), clause(&[-2])]);
+    let formula = dimacs(2, &[&[1, 2][..], &[-1], &[-2]]);
     let vtree = Arc::new(Vtree::balanced(2));
     let deadline = Some(std::time::Instant::now() + std::time::Duration::from_secs(3600));
     for output in [crate::compile::Output::Function, crate::compile::Output::Count] {

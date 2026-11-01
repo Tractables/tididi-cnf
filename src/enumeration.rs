@@ -439,39 +439,23 @@ fn allsat<T: Tally>(
 
     let start = Instant::now();
     // Clones share the movable deadline; each solve hands one to a scoped
-    // `Bounded` guard, which disconnects before returning. The deadline is
-    // reachable through `window.deadline` for the resume path below.
+    // `Bounded` guard, which disconnects before returning.
     let term = vitri::sat::WallClockTerminator::new(time_budget);
     let mut solver = load_solver(formula, constrained)?;
-    // Budget enforcement (under a wall callback). Without a terminator the
-    // loop can only notice the budget between solves, so one long CaDiCaL call
-    // runs uninterrupted however far past the budget it likes, spending wall
-    // the caller had reserved for something else. The terminator makes the
-    // budget bound a single solve too: CaDiCaL returns unknown, which the loop
-    // below already treats as a stop.
+    // Under a wall callback, the terminator bounds each individual CaDiCaL
+    // call so a single long solve cannot overrun the budget.
     let supervised = ctl.at_wall.is_some();
-    // The enumeration is quadratic in its own tally: per-model wall grows
-    // with the clause database, which gains one blocking clause per model,
-    // while per-model search does not. A compact block encoding is slower
-    // in both regimes this file serves, so the flat encoding stays.
     let mut count: u64 = 0;
-    // Wall currently granted. `at_wall` can push it out (and with it the
-    // terminator's deadline) to resume this enumeration rather than restart
-    // it — the blocking-clause DB, the learned clauses and `count` all carry
-    // over, so a probe-then-commit caller pays for its probe only once. Its
-    // ceiling is set only by a `WallGrant` — so the first window (the caller's
-    // own opening budget, e.g. the support-enum stage's fixed-cost probe) is
-    // never guarded.
+    // `at_wall` can push the budget out (and with it the terminator's
+    // deadline) to resume this enumeration with its learned and blocking
+    // clauses intact.
     let mut window = Window { budget: time_budget, deadline: term.deadline_handle(), abort_at: None };
-    // Pending until the one forecast is taken.
     let mut forecast_at = ctl.forecast;
     loop {
         if start.elapsed() > window.budget && !window.at_wall(ctl, count, start.elapsed()) {
             return bust(ctl, AllsatStop::Wall, count);
         }
         // The count forecast, once, between solves (see `AllsatCtl::forecast`).
-        // The estimator loads its own solver, so this one is untouched, and
-        // its wall is spent from the enumeration's.
         if let Some(at) = forecast_at
             && count > 0
             && start.elapsed() >= at
@@ -489,11 +473,8 @@ fn allsat<T: Tally>(
         match status {
             Status::Unsatisfiable => break,
             Status::Unknown => {
-                // The only limit connected here is the wall terminator, so
-                // an unknown result means a solve was cut at the deadline. Same
-                // continuation decision as the between-solves check; CaDiCaL
-                // is left in a valid incremental state, so resuming is just
-                // the next `solve()`.
+                // The wall terminator cut the solve at the deadline; CaDiCaL
+                // remains in a valid incremental state if `at_wall` extends.
                 if window.at_wall(ctl, count, start.elapsed()) {
                     continue;
                 }
@@ -501,44 +482,47 @@ fn allsat<T: Tally>(
             }
             Status::Satisfiable => {
                 count += 1;
-                // Tally ceiling, checked before the standing cap so the more
-                // specific reason wins when both would trip. The window was
-                // granted because the caller asserted the feasible-projection
-                // count was at most some bound; a tally past that bound has
-                // disproved the assertion the window rests on, so grinding on
-                // spends the remainder on a premise this run already refuted.
-                // `count` is cumulative across the grant boundary (same
-                // solver, same tally), which is the right unit: the bound is
-                // on the total feasible set.
-                if let Some(limit) = window.abort_at
-                    && count > limit
-                {
-                    return bust(ctl, AllsatStop::TallyCeiling, count);
+                if let Err(stop) = record_projection(&mut solver, constrained, count, window.abort_at, model_budget, &mut tally) {
+                    return bust(ctl, stop, count);
                 }
-                if count > model_budget {
-                    return bust(ctl, AllsatStop::ModelCap, count);
-                }
-                // Block this projection: a clause that excludes exactly the
-                // found assignment over the constrained-show vars (one clause
-                // per projection; see the note on the flat encoding above).
-                // `val(d) > 0` ⇒ var true here ⇒ exclude with `¬d`; otherwise (incl.
-                // don't-care `val == 0`) treat as false and exclude with `+d` — the
-                // opposite polarity, if feasible, is then found and counted
-                // separately.
-                // Read every model value first: the first `add()` leaves the
-                // satisfied state, after which `val()` is illegal.
-                let assignment = model_lits(&mut solver, constrained);
-                for &lit in &assignment {
-                    solver.add(-lit);
-                }
-                solver.add(0);
-                tally.add(&assignment);
             }
         }
     }
 
     ctl.models = count;
     Some(tally.total(free))
+}
+
+/// Record one satisfied projection: check the window's tally ceiling and the
+/// standing model budget, then add the blocking clause over `constrained` and
+/// fold the assignment into `tally`.
+fn record_projection<T: Tally>(
+    solver: &mut CaDiCal,
+    constrained: &[i32],
+    count: u64,
+    abort_at: Option<u64>,
+    model_budget: u64,
+    tally: &mut T,
+) -> Result<(), AllsatStop> {
+    // Tally ceiling is checked before the standing cap so the more specific
+    // reason wins when both would trip: a tally past the granted window's
+    // bound refutes the estimate the grant rested on.
+    if abort_at.is_some_and(|limit| count > limit) {
+        return Err(AllsatStop::TallyCeiling);
+    }
+    if count > model_budget {
+        return Err(AllsatStop::ModelCap);
+    }
+    // Block this projection with one clause over the constrained-show vars
+    // (flat encoding). Read every model value first: the first `add()` leaves
+    // the satisfied state, after which `val()` is illegal.
+    let assignment = model_lits(solver, constrained);
+    for &lit in &assignment {
+        solver.add(-lit);
+    }
+    solver.add(0);
+    tally.add(&assignment);
+    Ok(())
 }
 
 /// Estimate the feasible-projection count by drawing random paths one at a

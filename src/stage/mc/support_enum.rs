@@ -212,6 +212,27 @@ fn log_probe_decision(
     );
 }
 
+/// Weigh the entry estimate against what the probe tallied and either grant
+/// the remaining stage wall or bail. Fires at most once (`*committed`).
+fn grant_after_probe(
+    est: &PathEstimate,
+    stage_deadline: Instant,
+    committed: &mut bool,
+    models: u64,
+    elapsed: std::time::Duration,
+) -> Option<crate::enumeration::WallGrant> {
+    if std::mem::replace(committed, true) {
+        return None;
+    }
+    let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
+    let verdict = commit_decision(est, available_ms, models);
+    log_probe_decision(models, elapsed, est, available_ms, &verdict);
+    verdict.ok().map(|ms| crate::enumeration::WallGrant {
+        extra: std::time::Duration::from_millis(ms),
+        abort_at_models: TALLY_CEILING,
+    })
+}
+
 /// Run the enumeration: estimate, probe, commit. Returns the model count of
 /// `reduced`, in its own space, or `None` when the stage bailed.
 ///
@@ -228,51 +249,25 @@ fn run_support_enum(
     probe_wall_ms: u64,
     enum_wall_ms: u64,
 ) -> Option<num_bigint::BigUint> {
-    use crate::enumeration::{AllsatStop, AllsatCtl, Models, WallGrant};
+    use crate::enumeration::{AllsatStop, AllsatCtl, Models};
     use tididi::vtree::VarId;
     use std::time::Duration;
 
-    // The estimate gates entry. Taken once, here, and read again at the
-    // probe's wall: the estimator sees only the formula and the show set, so a
-    // second draw could only add sampling noise. The show vector comes from
-    // the converter the shared fastpath uses.
+    // The estimate gates entry and is reused at the probe's wall.
     let show_vec: Vec<VarId> = crate::enumeration::show_vars(support);
     let t_est = Instant::now();
     let est = estimate_projected_count(reduced, &show_vec);
     log_path_estimate(&est, t_est.elapsed().as_millis());
-    // Nothing tallied and the whole stage wall still ahead, so the only rules
-    // that can refuse here are the estimate's own — see [`commit_decision`].
     if let Err(why) = commit_decision(&est, enum_wall_ms, 0) {
         eprintln!("[mc] support-enumeration: skipped (estimate): {why}");
         return None;
     }
 
     let stage_deadline = Instant::now() + Duration::from_millis(enum_wall_ms);
-    // Fires once, when the probe's wall runs out: weigh the entry estimate
-    // against what the probe actually did and either commit (resuming this
-    // same solver and its blocking-clause DB) or bail. A second call means the
-    // committed window itself ran out — that one is a real bust.
     let mut committed = false;
-    let mut at_wall = |models: u64, elapsed: Duration| -> Option<WallGrant> {
-        if committed {
-            return None;
-        }
-        committed = true;
-        let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
-        // The same estimate the entry gate admitted on.
-        let verdict = commit_decision(&est, available_ms, models);
-        log_probe_decision(models, elapsed, &est, available_ms, &verdict);
-        // Every commit rests on the same admission (`N̂ ≤ COMMIT_MAX_MODELS`)
-        // and so carries the same bound: the gate's own ceiling, attached to
-        // the grant (see `WallGrant`).
-        verdict.ok().map(|ms| WallGrant {
-            extra: Duration::from_millis(ms),
-            abort_at_models: TALLY_CEILING,
-        })
+    let mut at_wall = |models: u64, elapsed: Duration| {
+        grant_after_probe(&est, stage_deadline, &mut committed, models, elapsed)
     };
-    // The callback also connects the wall terminator, because a bust must
-    // never overrun into the cascade's reserve and a check made only between
-    // solves does not bound a solve that is already running.
     let mut ctl = AllsatCtl {
         at_wall: Some(&mut at_wall),
         ..Default::default()

@@ -17,7 +17,7 @@ use crate::compile::schedule::marginalize_schedule;
 use crate::compile::scope::{ScopeGroups, group_clauses_by_scope};
 use crate::compile::step::splice_and_fold;
 use crate::compile::{CompileOptions, ComponentPlan, Output, WeightedCount, compile_cnf, weighted_count};
-use crate::test_support::{self as fixtures, clause};
+use crate::test_support as fixtures;
 
 /// Clauses at `t` in each fixture: at least [`COFACTOR_MIN_CLAUSES`], and
 /// enough that the normal fold takes three merges at the small floor, more
@@ -71,7 +71,7 @@ impl Fixture {
         let side = |vars: Vec<u32>| Vtree::balanced_over(&vars.into_iter().map(VarId).collect::<Vec<_>>()).unwrap();
         let t_tree = Vtree::join(&side(s.to_vec()), &side(b.collect())).unwrap();
         let vtree = Arc::new(Vtree::join(&t_tree, &Vtree::leaf(VarId(top))).unwrap());
-        let formula = fixtures::formula(top, clauses.iter().map(|c| clause(c)).collect());
+        let formula = fixtures::dimacs(top, &clauses);
         let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
         let t = vtree.children(vtree.root()).0;
         Fixture {

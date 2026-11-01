@@ -70,6 +70,11 @@ pub(crate) fn clause(dimacs: &[i32]) -> Clause {
     Clause::new(dimacs.iter().map(|&l| Literal::new(VarId::from_dimacs(l), l > 0)).collect())
 }
 
+/// A formula over `num_vars` variables from DIMACS clauses.
+pub(crate) fn dimacs(num_vars: u32, clauses: &[impl AsRef<[i32]>]) -> CnfFormula {
+    formula(num_vars, clauses.iter().map(|c| clause(c.as_ref())).collect())
+}
+
 /// `formula` with one more clause, for a fixture built from another.
 pub(crate) fn with_clause(formula: CnfFormula, clause: Clause) -> CnfFormula {
     let num_vars = formula.num_vars();
@@ -81,27 +86,24 @@ pub(crate) fn with_clause(formula: CnfFormula, clause: Clause) -> CnfFormula {
 /// `(x1 ∨ ¬x2) ∧ (x2 ∨ x3)`: a small satisfiable formula, for tests that
 /// need some formula to run on.
 pub(crate) fn three_variable_formula() -> CnfFormula {
-    formula(3, vec![clause(&[1, -2]), clause(&[2, 3])])
+    dimacs(3, &[&[1, -2], &[2, 3]])
 }
 
 /// A connected 3-CNF over eight variables: every variable shares a clause
 /// with another, so its clauses land at internal vtree nodes.
 pub(crate) fn connected_eight_var_formula() -> CnfFormula {
-    formula(
+    dimacs(
         8,
-        [
-            &[1, 2, 3][..],
-            &[-2, 4, 5],
-            &[3, -5, 6],
-            &[-1, 6, 7],
-            &[4, -7, 8],
-            &[-3, 5, -8],
-            &[2, -6, 8],
-            &[-4, 7, 1],
-        ]
-        .into_iter()
-        .map(clause)
-        .collect(),
+        &[
+            [1, 2, 3],
+            [-2, 4, 5],
+            [3, -5, 6],
+            [-1, 6, 7],
+            [4, -7, 8],
+            [-3, 5, -8],
+            [2, -6, 8],
+            [-4, 7, 1],
+        ],
     )
 }
 

@@ -421,6 +421,58 @@ fn unreduced_retry(
     Some(counted)
 }
 
+/// The primary compile's own deadline (`program_deadline - tail`), armed when
+/// the remaining wall exceeds twice the reserved tail (`UNREDUCED_RETRY_RESERVE`
+/// plus the no-SBVA retry's want when `has_no_sbva`).
+fn primary_deadline(run: &Run<'_>, has_no_sbva: bool) -> Option<Instant> {
+    let mut tail = UNREDUCED_RETRY_RESERVE;
+    if has_no_sbva && let Some(total_ms) = run.config.time_limit_ms {
+        tail += no_sbva_retry_want(total_ms);
+    }
+    run.deadline.and_then(|d| {
+        let remaining = d.saturating_duration_since(Instant::now());
+        (remaining > tail * 2).then(|| d - tail)
+    })
+}
+
+/// Run the primary compile on `ar` and `vtree`, and on a per-step stall with
+/// program wall remaining, try [`stall_recompile`].
+fn run_primary_or_stall_recompile(
+    run: &Run<'_>,
+    ar: &crate::frontend::record::ArjunReduction,
+    vtree: crate::vtree::VtreeBuild,
+    stall_rule: Option<StallRule>,
+    primary_deadline: Option<Instant>,
+) -> Option<(Counted, AnsweredBy)> {
+    let primary = attempt_from_vitri_build(ar.formula.clone(), vtree, ar.lift_pow2);
+    let stall_watch = stall_rule.map(StallWatch::new);
+    let watched = Run { compile: CompileRun { stall_watch: stall_watch.as_ref(), ..run.compile }, ..*run };
+    if let Some(counted) = count_attempt(&watched, primary, primary_deadline.or(run.deadline)) {
+        return Some((counted, AnsweredBy::Compile));
+    }
+    if let Some(watch) = &stall_watch
+        && let Some(stall) = watch.stall()
+        && run.deadline.is_none_or(|d| Instant::now() < d)
+    {
+        eprintln!(
+            "[mc] compile: the step at vtree node {} (internal step {}/{}) ran {:.1}s, past its \
+             {}s wall — giving the primary compile up",
+            stall.node,
+            stall.k,
+            stall.total,
+            stall.ran.as_secs_f64(),
+            watch.rule().wall.as_secs(),
+        );
+        if let Some(counted) = stall_recompile(run, ar) {
+            return Some((counted, AnsweredBy::StallRecompile));
+        }
+    }
+    if primary_deadline.is_some_and(|d| Instant::now() >= d) {
+        eprintln!("[mc] compile: reached its deadline — the fallbacks run on the reserved time");
+    }
+    None
+}
+
 /// The kept reduction: compile it on the vtree vitri built for it, under
 /// [`count_with_recovery`], with the fallbacks behind it and Shannon split
 /// behind them. `None` when nothing answered; the stage that gave up has said
@@ -439,99 +491,28 @@ fn unreduced_retry(
 /// (`None`, no wall). A primary that gives up on it, with the run's time
 /// left, goes to the [`stall_recompile`] before the fallbacks.
 pub(super) fn count_primary(
-    // The run; its wall bounds the whole chain, Shannon cascade included.
     run: &Run<'_>,
     compile_formula: &CnfFormula,
-    // The Arjun reduction the primary compile runs on, also handed to the
-    // support-enum stage among the fallbacks. The stage's own preconditions
-    // decide.
     ar: crate::frontend::record::ArjunReduction,
     vtree: crate::vtree::VtreeBuild,
-    // The same vitri session that produced the reduction when the no-SBVA
-    // retry is a candidate, `None` when it is not; checkpointed retries stay
-    // anchored to it instead of replaying preprocessing. Candidacy is derived
-    // only from vitri's structure profile of the input and its stage report.
-    // vitri rechecks eligibility when the retry is requested.
     no_sbva_session: Option<&vitri::bundle::FrontendSession<'_>>,
     stall_rule: Option<StallRule>,
 ) -> Option<Recovered> {
-    // The primary (Arjun-reduced) compile's own wall: `program_deadline −
-    // tail`, so a compile that would otherwise grind to the program end is
-    // cut with the tail still unspent. Being cut is an ordinary primary
-    // failure and enters the fallbacks like any other. The no-SBVA retry and
-    // the unreduced retry are sized against that tail
-    // (`no_sbva_retry_window`, `unreduced_retry_window`); the unreduced
-    // retry then compiles the unreduced formula on exactly that tail
-    // (`unreduced_retry_window`'s `program - primary` case). This answers the class
-    // where the unreduced formula compiles and the reduction does not,
-    // without compiling both every time. The tail is `UNREDUCED_RETRY_RESERVE`
-    // (enough for the unreduced retry that class needs while leaving Shannon
-    // split behind it what it needs), plus the no-SBVA retry's want when that
-    // stage is armed. It engages only when the remaining wall exceeds twice
-    // the tail; below that the unreduced retry still runs before Shannon
-    // split, on `unreduced_retry_window`'s remaining/4. `None` = off: the
-    // primary compile runs to `program_deadline`.
-    let program_deadline = run.deadline;
-    let primary_deadline = {
-        let mut tail = UNREDUCED_RETRY_RESERVE;
-        if no_sbva_session.is_some() && let Some(total_ms) = run.config.time_limit_ms {
-            tail += no_sbva_retry_want(total_ms);
-        }
-        program_deadline.and_then(|d| {
-            let remaining = d.saturating_duration_since(Instant::now());
-            (remaining > tail * 2).then(|| d - tail)
-        })
-    };
-    // The primary compile: the Arjun reduction on the vtree vitri built for
-    // it, stopping at the reserved-tail deadline when one is set, and each of
-    // its internal steps the stall rule bounds at its own wall. A stall, a
-    // step stopped on that wall, which ends before the primary's deadline,
-    // hands the reduction to the stall recompile while the run's time lasts.
-    let primary = attempt_from_vitri_build(ar.formula.clone(), vtree, ar.lift_pow2);
-    let stall_watch = stall_rule.map(StallWatch::new);
-    let first = || {
-        let watched = Run { compile: CompileRun { stall_watch: stall_watch.as_ref(), ..run.compile }, ..*run };
-        if let Some(counted) = count_attempt(&watched, primary, primary_deadline.or(program_deadline)) {
-            return Some((counted, AnsweredBy::Compile));
-        }
-        if let Some(watch) = &stall_watch
-            && let Some(stall) = watch.stall()
-            && program_deadline.is_none_or(|d| Instant::now() < d)
-        {
-            eprintln!(
-                "[mc] compile: the step at vtree node {} (internal step {}/{}) ran {:.1}s, past its \
-                 {}s wall — giving the primary compile up",
-                stall.node,
-                stall.k,
-                stall.total,
-                stall.ran.as_secs_f64(),
-                watch.rule().wall.as_secs(),
-            );
-            if let Some(counted) = stall_recompile(run, &ar) {
-                return Some((counted, AnsweredBy::StallRecompile));
-            }
-        }
-        if primary_deadline.is_some_and(|d| Instant::now() >= d) {
-            eprintln!("[mc] compile: reached its deadline — the fallbacks run on the reserved time");
-        }
-        None
-    };
+    let primary_deadline = primary_deadline(run, no_sbva_session.is_some());
+    let first = || run_primary_or_stall_recompile(run, &ar, vtree, stall_rule, primary_deadline);
     // The fallbacks, stopping at the first that answers; each skips itself
     // when it has nothing to do.
     let fallbacks = || {
         no_sbva_session
             .and_then(|session| no_sbva_retry(run, compile_formula, session, false))
             .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
-            // Count the Arjun-reduced formula by enumerating the feasible
-            // assignments to Arjun's own minimized independent support
-            // (`support_enum.rs` has soundness and budget).
             .or_else(|| {
                 support_enum_stage(
                     &ar.formula,
                     &ar.support,
                     ar.lift_pow2,
                     "kept reduction",
-                    program_deadline,
+                    run.deadline,
                 )
                 .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
             })

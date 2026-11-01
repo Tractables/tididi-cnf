@@ -188,16 +188,10 @@ pub(super) fn detect_shatter(
     show: &ShowSet,
     cfg: &ShatterCfg,
 ) -> Option<ShatterPlan> {
-    let ShatterCfg { max_k, min_components, max_comp_frac, max_comp_vars } = *cfg;
-    use vitri::cnf::{detect_components_in, Clause};
-    use std::collections::HashSet;
-
-    let nv = formula.num_vars() as usize;
-
     // Per-variable clause-occurrence count; the separator is drawn from the
-    // show vars that occur.
+    // show vars that occur, ordered by descending occurrence (tiebreak:
+    // ascending id -> deterministic).
     let occ = occurrence_counts(formula, 0);
-    // Show vars by descending occurrence (tiebreak: ascending id → deterministic).
     let mut show_by_occ: Vec<VarId> = show
         .iter_vars()
         .map(diagram_var)
@@ -205,65 +199,64 @@ pub(super) fn detect_shatter(
         .collect();
     show_by_occ.sort_by(|a, b| occ[b.idx()].cmp(&occ[a.idx()]).then(a.0.cmp(&b.0)));
 
-    for k in 1..=max_k.min(MAX_COUNT_TABLE_VARS).min(show_by_occ.len()) {
-        let sep: Vec<VarId> = show_by_occ[..k].to_vec();
-        let sep_set: HashSet<VarId> = sep.iter().copied().collect();
+    let limit = cfg.max_k.min(MAX_COUNT_TABLE_VARS).min(show_by_occ.len());
+    (1..=limit).find_map(|k| try_shatter_at(formula, show, &show_by_occ[..k], cfg))
+}
 
-        // Split clauses: S-only (all lits ∈ S) vs mixed (>= 1 non-S lit).
-        // detect_components runs on the stripped mixed clauses (S removed) so
-        // two vars share a component iff connected through non-S vars.
-        let mut mixed_orig: Vec<usize> = Vec::new();
-        let mut mixed_stripped: Vec<Clause> = Vec::new();
-        let mut s_only: Vec<usize> = Vec::new();
-        for (i, c) in formula.clauses().iter().enumerate() {
-            let non_s: Vec<_> = c
-                .literals
-                .iter()
-                .filter(|l| !sep_set.contains(&diagram_var(l.var)))
-                .copied()
-                .collect();
-            if non_s.is_empty() {
-                s_only.push(i);
-            } else {
-                mixed_orig.push(i);
-                mixed_stripped.push(Clause::new(non_s));
-            }
-        }
-        if mixed_stripped.is_empty() {
-            continue;
-        }
-        let Some(groups) = detect_components_in(&mixed_stripped, formula.num_vars()) else {
-            continue; // single component at this k → grow S
-        };
-        if groups.len() < min_components {
-            continue;
-        }
+/// Test whether separator `sep` shatters `formula` into at least
+/// `cfg.min_components` independent components within `cfg`'s variable bounds.
+fn try_shatter_at(
+    formula: &CnfFormula,
+    show: &ShowSet,
+    sep: &[VarId],
+    cfg: &ShatterCfg,
+) -> Option<ShatterPlan> {
+    use std::collections::{HashMap, HashSet};
+    use vitri::cnf::{Clause, detect_components_in};
 
-        // Build the components; reject if any mixed component is too large
-        // (`ShatterCfg`).
-        let max_vars = (((nv as f64) * max_comp_frac).ceil() as usize).min(max_comp_vars);
-        let sep_bit: std::collections::HashMap<VarId, usize> =
-            sep.iter().enumerate().map(|(b, &v)| (v, b)).collect();
-
-        let Some(mut components) = groups
+    let sep_set: HashSet<VarId> = sep.iter().copied().collect();
+    let mut mixed_orig: Vec<usize> = Vec::new();
+    let mut mixed_stripped: Vec<Clause> = Vec::new();
+    let mut s_only: Vec<usize> = Vec::new();
+    for (i, c) in formula.clauses().iter().enumerate() {
+        let non_s: Vec<_> = c
+            .literals
             .iter()
-            .map(|g| {
-                let orig: Vec<usize> = g.iter().map(|&j| mixed_orig[j]).collect();
-                let component = shatter_component(formula, &orig, &sep_set, show, &sep_bit);
-                ((component.formula.num_vars() as usize) <= max_vars).then_some(component)
-            })
-            .collect::<Option<Vec<_>>>()
-        else {
-            continue;
-        };
-        // S-only clauses → one extra all-boundary indicator component.
-        if !s_only.is_empty() {
-            components.push(shatter_component(formula, &s_only, &sep_set, show, &sep_bit));
+            .filter(|l| !sep_set.contains(&diagram_var(l.var)))
+            .copied()
+            .collect();
+        if non_s.is_empty() {
+            s_only.push(i);
+        } else {
+            mixed_orig.push(i);
+            mixed_stripped.push(Clause::new(non_s));
         }
-
-        return Some(ShatterPlan { separator: sep, components });
     }
-    None
+    if mixed_stripped.is_empty() {
+        return None;
+    }
+    let groups = detect_components_in(&mixed_stripped, formula.num_vars())?;
+    if groups.len() < cfg.min_components {
+        return None;
+    }
+
+    let nv = formula.num_vars() as usize;
+    let max_vars = (((nv as f64) * cfg.max_comp_frac).ceil() as usize).min(cfg.max_comp_vars);
+    let sep_bit: HashMap<VarId, usize> = sep.iter().enumerate().map(|(b, &v)| (v, b)).collect();
+
+    let mut components = groups
+        .iter()
+        .map(|g| {
+            let orig: Vec<usize> = g.iter().map(|&j| mixed_orig[j]).collect();
+            let component = shatter_component(formula, &orig, &sep_set, show, &sep_bit);
+            ((component.formula.num_vars() as usize) <= max_vars).then_some(component)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    if !s_only.is_empty() {
+        components.push(shatter_component(formula, &s_only, &sep_set, show, &sep_bit));
+    }
+
+    Some(ShatterPlan { separator: sep.to_vec(), components })
 }
 
 /// Extract the component made of `formula`'s clauses at `clauses` and classify

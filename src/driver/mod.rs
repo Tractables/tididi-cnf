@@ -370,33 +370,14 @@ fn solve_on(
         // signal. Opening the record first preserves an incomplete input record.
         config.source_structure_profile = Some(vitri::score::StructureProfile::measure(&formula));
         crate::budget::check_deadline(program_deadline)?;
-        let config = &config;
-        let run = &Run {
+        let run = Run {
             eng,
-            config,
+            config: &config,
             deadline: program_deadline,
             compile: CompileRun { sat_prune: config.sat_prune.then_some(&sat_prune), ..CompileRun::default() },
             started_on: &started_on,
         };
-        let stats = &mut stats;
-        if let Some(record) = &record {
-            return answer_bundle(run, stats, formula, record);
-        }
-        Ok(match config.mode {
-            Mode::Pwmc => {
-                let problem = crate::problem::Problem::declared(formula, &meta);
-                record_pwmc(stats, run_pwmc_count(run, problem, &meta)?)
-            }
-            Mode::Pmc => {
-                let problem = crate::problem::Problem::declared(formula, &meta);
-                record_pmc(stats, run_pmc_count(run, problem)?)
-            }
-            Mode::Wmc => record_wmc(stats, config, run_wmc_count(run, &formula, meta.declared_weights())?),
-            // An explicit `--vtree` compiles on that vtree, without the cascade.
-            Mode::Mc if config.vtree.is_some() => record_mc(stats, config, run_mc_streaming(run, &formula)?),
-            Mode::Mc => record_mc(stats, config, run_mc_count(run, &formula)?),
-            Mode::Compile => record_compile(stats, run_function_compile(run, &formula)?),
-        })
+        dispatch_mode(&run, &mut stats, formula, &meta, record.as_ref())
     });
     crate::output::close_record(
         &mut stats,
@@ -411,6 +392,34 @@ fn solve_on(
         }
         Err(error) => Err(Failure { error, stats: Some(Box::new(stats)) }),
     }
+}
+
+fn dispatch_mode(
+    run: &Run<'_>,
+    stats: &mut Stats,
+    formula: CnfFormula,
+    meta: &vitri::cnf::CnfMeta,
+    record: Option<&vitri::bundle::PreprocessRecord>,
+) -> Result<Verdict, Error> {
+    if let Some(record) = record {
+        return answer_bundle(run, stats, formula, record);
+    }
+    let config = run.config;
+    Ok(match config.mode {
+        Mode::Pwmc => {
+            let problem = crate::problem::Problem::declared(formula, meta);
+            record_pwmc(stats, run_pwmc_count(run, problem, meta)?)
+        }
+        Mode::Pmc => {
+            let problem = crate::problem::Problem::declared(formula, meta);
+            record_pmc(stats, run_pmc_count(run, problem)?)
+        }
+        Mode::Wmc => record_wmc(stats, config, run_wmc_count(run, &formula, meta.declared_weights())?),
+        // An explicit `--vtree` compiles on that vtree, without the cascade.
+        Mode::Mc if config.vtree.is_some() => record_mc(stats, config, run_mc_streaming(run, &formula)?),
+        Mode::Mc => record_mc(stats, config, run_mc_count(run, &formula)?),
+        Mode::Compile => record_compile(stats, run_function_compile(run, &formula)?),
+    })
 }
 
 /// The run on a vitri bundle: the mode's compile of the bundle's reduced

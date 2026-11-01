@@ -39,6 +39,62 @@ pub fn tmp_path(name: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("tididi_test_{}_{name}", std::process::id()))
 }
 
+/// Environment variables a binary run adds to this process's own.
+pub type Env<'a> = &'a [(&'a str, &'a str)];
+
+/// What one run of the binary left behind.
+pub struct Run {
+    pub code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+impl Run {
+    pub fn ok(&self) -> bool {
+        self.code == Some(0)
+    }
+
+    /// Whether stdout has `line` as one of its lines.
+    pub fn prints(&self, line: &str) -> bool {
+        self.stdout.lines().any(|l| l == line)
+    }
+}
+
+/// The binary on `args`, with `env` added to this process's environment.
+pub fn run(args: &[&str], env: Env) -> Run {
+    let output = std::process::Command::new(BINARY)
+        .args(args)
+        .envs(env.iter().copied())
+        .output()
+        .expect("the binary runs");
+    Run {
+        code: output.status.code(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+    }
+}
+
+/// DIMACS text in a temporary file, removed on drop.
+pub struct TempCnf(std::path::PathBuf);
+
+impl TempCnf {
+    pub fn new(name: &str, text: &str) -> Self {
+        let path = tmp_path(&format!("{name}.cnf"));
+        std::fs::write(&path, text).unwrap();
+        TempCnf(path)
+    }
+
+    pub fn path(&self) -> &str {
+        self.0.to_str().unwrap()
+    }
+}
+
+impl Drop for TempCnf {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
 /// A test formula over `num_vars` variables, which the fixture is expected to
 /// stay within.
 pub fn formula(num_vars: u32, clauses: Vec<Clause>) -> CnfFormula {

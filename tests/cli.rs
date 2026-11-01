@@ -3,43 +3,11 @@
 
 mod common;
 
-use std::path::PathBuf;
 use std::process::Command;
 
-use common::BINARY;
+use common::{BINARY, Env, Run, TempCnf, run};
 
 const TINY: &str = "tests/data/tiny.cnf";
-
-/// Environment variables a run adds to this process's own.
-type Env<'a> = &'a [(&'a str, &'a str)];
-
-/// What one run of the binary left behind.
-struct Run {
-    code: Option<i32>,
-    stdout: String,
-    stderr: String,
-}
-
-impl Run {
-    fn ok(&self) -> bool {
-        self.code == Some(0)
-    }
-
-    /// Whether stdout has `line` as one of its lines.
-    fn prints(&self, line: &str) -> bool {
-        self.stdout.lines().any(|l| l == line)
-    }
-}
-
-/// The binary on `args`, with `env` added to this process's environment.
-fn run(args: &[&str], env: Env) -> Run {
-    let output = Command::new(BINARY).args(args).envs(env.iter().copied()).output().expect("the binary runs");
-    Run {
-        code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-    }
-}
 
 /// [`run`] with `--stats`, and the record it wrote: `docs/stats.md`
 /// is the field table. A run that ends before its record opens writes none,
@@ -60,27 +28,6 @@ fn run_with_record_in(args: &[&str], env: Env) -> (Run, serde_json::Value) {
         .unwrap_or_else(|| serde_json::json!({}));
     let _ = std::fs::remove_file(&path);
     (out, record)
-}
-
-/// DIMACS text in a temporary file, removed on drop.
-struct TempCnf(PathBuf);
-
-impl TempCnf {
-    fn new(name: &str, text: &str) -> Self {
-        let path = common::tmp_path(&format!("{name}.cnf"));
-        std::fs::write(&path, text).unwrap();
-        TempCnf(path)
-    }
-
-    fn path(&self) -> &str {
-        self.0.to_str().unwrap()
-    }
-}
-
-impl Drop for TempCnf {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
-    }
 }
 
 // ── Spellings ────────────────────────────────────────────────────────────────
@@ -147,27 +94,16 @@ fn refusals_name_what_is_wrong() {
     let literal_above_count = TempCnf::new("literal_above_count", "p cnf 2 1\n999 0\n");
     let lone_weight = TempCnf::new("lone_weight", "c t wmc\np cnf 2 1\nc p weight 1 1 0\n1 2 0\n");
     let unit = TempCnf::new("unit", "p cnf 1 1\n1 0\n");
-    let weighted =
-        TempCnf::new("weighted", "c t wmc\np cnf 3 2\nc p weight 1 0.7 0\nc p weight -1 0.3 0\n1 2 0\n-1 3 0\n");
+    let weighted = TempCnf::new("weighted", "c t wmc\np cnf 3 2\nc p weight 1 0.7 0\nc p weight -1 0.3 0\n1 2 0\n-1 3 0\n");
     let shown = TempCnf::new("shown", "c p show 1 0\np cnf 2 1\n1 2 0\n");
-    let saved = common::tmp_path("refused.tdd");
-    let saved = saved.to_str().unwrap();
+    let saved_path = common::tmp_path("refused.tdd");
+    let saved = saved_path.to_str().unwrap();
     let skip: Env = &[("VITRI_PORTFOLIO_SKIP", "not-a-candidate")];
-    let score: Env = &[("VITRI_SCORE_AGG", "not-a-ranker-file")];
-    let learnts: Env = &[("VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "1")];
-    let monotone: Env = &[("VITRI_ARJUN_SKIP_MONOTONE", "1")];
-    let wall: Env = &[("TIDIDI_TIME_LIMIT_MS", "12s")];
-    let vitri_wall: Env = &[("VITRI_BUDGET_MS", "60000")];
-    let prune_maybe: Env = &[("TIDIDI_SAT_PRUNE", "maybe")];
-    let prune_off: Env = &[("TIDIDI_SAT_PRUNE", "off")];
-    let prune_on: Env = &[("TIDIDI_SAT_PRUNE", "on")];
 
     // (exit code, arguments, environment, what stderr names)
     let rows: Vec<(i32, Vec<&str>, Env, Vec<&str>)> = vec![
         (1, vec!["--vtree", "nonexistent", TINY], &[], vec!["unknown vtree type"]),
-        // A preprocessing level that does not exist names the ones that do.
         (2, vec!["--preprocess", "half", TINY], &[], vec!["half", "none, full"]),
-        // What the argument parser refuses is a usage error, named on stderr.
         (2, vec![], &[], vec!["no DIMACS file", "Usage:"]),
         (2, vec!["--vtree"], &[], vec!["--vtree", "Usage:"]),
         (2, vec!["--no-such-flag", TINY], &[], vec!["--no-such-flag"]),
@@ -185,58 +121,34 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--stats", "-", "--stats", "-", TINY], &[], vec!["--stats is given twice"]),
         (2, vec!["--save-tdd", saved, "--save-tdd", saved, TINY], &[], vec!["--save-tdd is given twice"]),
         (2, vec!["--output-format", "sharp", TINY], &[], vec!["--output-format", "\"sharp\"", "plain", "mcc"]),
-        // A second input file is refused, not read in place of the first.
         (2, vec![TINY, "tests/data/mc_header_tiny.cnf"], &[], vec!["tests/data/mc_header_tiny.cnf", "one DIMACS file"]),
         (1, vec!["/nonexistent/tididi_test.cnf"], &[], vec!["error: could not open"]),
         (1, vec![literal_above_count.path()], &[], vec!["error: could not parse"]),
-        // A literal weighed alone at a weight outside (0, 1): the competition's
-        // format gives the other literal no weight, so the file is refused.
-        (
-            1,
-            vec![lone_weight.path()],
-            &[],
-            vec!["error: could not parse", "weight literal 1 has weight 1 and literal -1 has none", "give both literals"],
-        ),
-        // Only the compile mode's diagram is the circuit whose count is the
-        // answer, whether `--mode` or the header made the run count.
+        (1, vec![lone_weight.path()], &[], vec!["error: could not parse", "weight literal 1 has weight 1 and literal -1 has none", "give both literals"]),
+        // `--save-tdd` is compile mode only.
         (2, vec!["--mode", "mc", "--save-tdd", saved, TINY], &[], vec!["--save-tdd", "--mode mc"]),
         (2, vec!["--mode", "wmc", "--save-tdd", saved, TINY], &[], vec!["--save-tdd", "--mode wmc"]),
         (2, vec!["--mode", "pmc", "--save-tdd", saved, TINY], &[], vec!["--save-tdd", "--mode pmc"]),
         (2, vec!["--save-tdd", saved, "tests/data/mc_header_tiny.cnf"], &[], vec!["--save-tdd", "c t mc"]),
         (2, vec!["--save-tdd", saved, weighted.path()], &[], vec!["--save-tdd", "c t wmc"]),
         (2, vec!["--save-tdd", saved, shown.path()], &[], vec!["--save-tdd", "c p show"]),
-        // The projected counts simplify inside their projection chain, which
-        // `--preprocess` does not reach, whichever value it has.
+        // Projected counts and WMC refuse inert `--preprocess` / `--vtree`.
         (2, vec!["--preprocess", "none", "--mode", "pmc", TINY], &[], vec!["--preprocess", "--mode pmc", "pmc"]),
         (2, vec!["--preprocess", "full", shown.path()], &[], vec!["--preprocess", "c p show", "pmc"]),
         (2, vec!["--preprocess", "full", "--mode", "pwmc", TINY], &[], vec!["--preprocess", "pwmc"]),
-        // The weighted count has one construction, whether `--mode` or the
-        // header asked for it, so `--vtree` is refused, and before
-        // preprocessing, which would refute this formula and answer.
         (2, vec!["--mode", "wmc", "--vtree", "portfolio", "tests/data/wmc_unsat.cnf"], &[], vec!["--vtree", "--mode wmc"]),
         (2, vec!["--vtree", "portfolio", "tests/data/wmc_unsat.cnf"], &[], vec!["--vtree", "c t wmc"]),
+        // Environment validation.
         (2, vec![TINY, "--mode", "mc"], skip, vec!["VITRI_PORTFOLIO_SKIP"]),
         (2, vec![weighted.path()], skip, vec!["VITRI_PORTFOLIO_SKIP"]),
-        (2, vec![unit.path(), "--mode", "mc"], score, vec!["VITRI_SCORE_AGG"]),
-        // This build does not use Arjun's learnt clauses, so asking vitri to
-        // export them is refused rather than ignored.
-        (2, vec![TINY, "--mode", "mc"], learnts, vec!["VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "learnt clauses"]),
-        // A model count asks vitri for the monotone skip itself.
-        (2, vec![TINY, "--mode", "mc"], monotone, vec!["VITRI_ARJUN_SKIP_MONOTONE", "model count"]),
-        // An unparsable time limit is refused, even beside the flag that
-        // would win.
-        (2, vec![TINY, "--time-limit-ms", "60000"], wall, vec!["TIDIDI_TIME_LIMIT_MS", "\"12s\""]),
-        // The run's time limit is `--time-limit-ms`; vitri's own would be
-        // overwritten.
-        (2, vec![TINY, "--mode", "mc", "--time-limit-ms", "60000"], vitri_wall, vec!["VITRI_BUDGET_MS", "time limit"]),
-        // The SAT-pruning switch reads `on` or `off`, and nothing else as
-        // either.
-        (2, vec![TINY], prune_maybe, vec!["TIDIDI_SAT_PRUNE", "\"maybe\"", "on", "off"]),
-        // The weighted count's compiles never prune, so the switch is refused
-        // there, set to either value, whether `--mode` or the header asked
-        // for the weighted count.
-        (2, vec!["--mode", "wmc", TINY], prune_off, vec!["TIDIDI_SAT_PRUNE", "--mode wmc", "compile, mc, pmc and pwmc"]),
-        (2, vec![weighted.path()], prune_on, vec!["TIDIDI_SAT_PRUNE", "c t wmc"]),
+        (2, vec![unit.path(), "--mode", "mc"], &[("VITRI_SCORE_AGG", "not-a-ranker-file")], vec!["VITRI_SCORE_AGG"]),
+        (2, vec![TINY, "--mode", "mc"], &[("VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "1")], vec!["VITRI_ARJUN_EXPORT_LEARNED_CLAUSES", "learnt clauses"]),
+        (2, vec![TINY, "--mode", "mc"], &[("VITRI_ARJUN_SKIP_MONOTONE", "1")], vec!["VITRI_ARJUN_SKIP_MONOTONE", "model count"]),
+        (2, vec![TINY, "--time-limit-ms", "60000"], &[("TIDIDI_TIME_LIMIT_MS", "12s")], vec!["TIDIDI_TIME_LIMIT_MS", "\"12s\""]),
+        (2, vec![TINY, "--mode", "mc", "--time-limit-ms", "60000"], &[("VITRI_BUDGET_MS", "60000")], vec!["VITRI_BUDGET_MS", "time limit"]),
+        (2, vec![TINY], &[("TIDIDI_SAT_PRUNE", "maybe")], vec!["TIDIDI_SAT_PRUNE", "\"maybe\"", "on", "off"]),
+        (2, vec!["--mode", "wmc", TINY], &[("TIDIDI_SAT_PRUNE", "off")], vec!["TIDIDI_SAT_PRUNE", "--mode wmc", "compile, mc, pmc and pwmc"]),
+        (2, vec![weighted.path()], &[("TIDIDI_SAT_PRUNE", "on")], vec!["TIDIDI_SAT_PRUNE", "c t wmc"]),
     ];
 
     for (code, args, env, names) in rows {
@@ -936,6 +848,19 @@ fn save_tdd_reloads_through_the_library() {
 /// count is the `neglog10` line. The record's `satisfiable` is the same
 /// verdict. A 1 ms wall on a random 3-CNF of 400 variables makes each
 /// counting task give up.
+fn check_mcc_row(case: &str, flags: &[&str], cnf: &str, stdout: &str) {
+    let (out, record) = run_with_record(&[flags, &["--output-format", "mcc", cnf]].concat());
+    assert_eq!(out.stdout, stdout, "{case}: {}", out.stderr);
+    let status = stdout.lines().next().expect("every row has a status line");
+    let (code, satisfiable) = match status {
+        "s SATISFIABLE" => (0, Some(true)),
+        "s UNSATISFIABLE" => (0, Some(false)),
+        _ => (1, None),
+    };
+    assert_eq!(out.code, Some(code), "{case}: {}", out.stderr);
+    assert_eq!(record.get("satisfiable").and_then(|v| v.as_bool()), satisfiable, "{case}: {record}");
+}
+
 #[test]
 fn mcc_output_prints_the_mcc_answer() {
     let give_up = |task: &str, show: bool, weighted: bool| {
@@ -947,112 +872,43 @@ fn mcc_output_prints_the_mcc_answer() {
     let wall = ["--time-limit-ms", "1"];
     // (task and case, flags, instance, stdout)
     let rows: [(&str, &[&str], &str, &str); 19] = [
-        (
-            "mc, satisfiable: the data format's Example 1",
-            &[],
-            "tests/data/mcc_mc_sat.cnf",
-            "s SATISFIABLE\nc s type mc\nc s log10-estimate 1.3424226808222062\nc s exact arb int 22\n",
-        ),
-        (
-            "mc, unsatisfiable",
-            &[],
-            "tests/data/mcc_mc_unsat.cnf",
-            "s UNSATISFIABLE\nc s type mc\nc s log10-estimate -inf\nc s exact arb int 0\n",
-        ),
+        ("mc, satisfiable: the data format's Example 1", &[], "tests/data/mcc_mc_sat.cnf",
+            "s SATISFIABLE\nc s type mc\nc s log10-estimate 1.3424226808222062\nc s exact arb int 22\n"),
+        ("mc, unsatisfiable", &[], "tests/data/mcc_mc_unsat.cnf",
+            "s UNSATISFIABLE\nc s type mc\nc s log10-estimate -inf\nc s exact arb int 0\n"),
         ("mc, gives up", &wall, mc_hard.path(), "s UNKNOWN\n"),
-        (
-            "plain compile, satisfiable: its count is a model count",
-            &[],
-            TINY,
-            "s SATISFIABLE\nc s type mc\nc s log10-estimate 1.6812412373755872\nc s exact arb int 48\n",
-        ),
-        (
-            "plain compile, unsatisfiable",
-            &[],
-            "tests/data/pigeon4_3.cnf",
-            "s UNSATISFIABLE\nc s type mc\nc s log10-estimate -inf\nc s exact arb int 0\n",
-        ),
+        ("plain compile, satisfiable: its count is a model count", &[], TINY,
+            "s SATISFIABLE\nc s type mc\nc s log10-estimate 1.6812412373755872\nc s exact arb int 48\n"),
+        ("plain compile, unsatisfiable", &[], "tests/data/pigeon4_3.cnf",
+            "s UNSATISFIABLE\nc s type mc\nc s log10-estimate -inf\nc s exact arb int 0\n"),
         ("plain compile, gives up", &wall, compile_hard.path(), "s UNKNOWN\n"),
-        (
-            "wmc, satisfiable",
-            &[],
-            "tests/data/wmc_header_tiny_sat.cnf",
-            "s SATISFIABLE\nc s type wmc\nc s log10-estimate 0.5185139398778873\nc s exact double prec-sci 3.2999999999999985e0\n",
-        ),
-        (
-            "wmc, unsatisfiable: refuted in preprocessing",
-            &[],
-            "tests/data/wmc_unsat.cnf",
-            "s UNSATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n",
-        ),
-        (
-            "wmc, satisfiable with count 0: a variable weighed 0 both ways",
-            &[],
-            "tests/data/mcc_wmc_zero.cnf",
-            "s SATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n",
-        ),
-        (
-            "wmc, satisfiable with count 0: weights that cancel",
-            &[],
-            "tests/data/mcc_wmc_cancel.cnf",
-            "s SATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n",
-        ),
-        (
-            "wmc, negative count -3/8",
-            &[],
-            "tests/data/mcc_wmc_negative.cnf",
-            "s SATISFIABLE\nc s type wmc\nc s neglog10-estimate -0.4259687322722811\nc s exact double prec-sci -3.75e-1\n",
-        ),
+        ("wmc, satisfiable", &[], "tests/data/wmc_header_tiny_sat.cnf",
+            "s SATISFIABLE\nc s type wmc\nc s log10-estimate 0.5185139398778873\nc s exact double prec-sci 3.2999999999999985e0\n"),
+        ("wmc, unsatisfiable: refuted in preprocessing", &[], "tests/data/wmc_unsat.cnf",
+            "s UNSATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n"),
+        ("wmc, satisfiable with count 0: a variable weighed 0 both ways", &[], "tests/data/mcc_wmc_zero.cnf",
+            "s SATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n"),
+        ("wmc, satisfiable with count 0: weights that cancel", &[], "tests/data/mcc_wmc_cancel.cnf",
+            "s SATISFIABLE\nc s type wmc\nc s log10-estimate -inf\nc s exact double prec-sci 0\n"),
+        ("wmc, negative count -3/8", &[], "tests/data/mcc_wmc_negative.cnf",
+            "s SATISFIABLE\nc s type wmc\nc s neglog10-estimate -0.4259687322722811\nc s exact double prec-sci -3.75e-1\n"),
         ("wmc, gives up", &wall, wmc_hard.path(), "s UNKNOWN\n"),
-        (
-            "pmc, satisfiable: the data format's Example 4",
-            &[],
-            "tests/data/mcc_pmc_sat.cnf",
-            "s SATISFIABLE\nc s type pmc\nc s log10-estimate 0.47712125471966244\nc s exact arb int 3\n",
-        ),
-        (
-            "pmc, unsatisfiable",
-            &[],
-            "tests/data/mcc_pmc_unsat.cnf",
-            "s UNSATISFIABLE\nc s type pmc\nc s log10-estimate -inf\nc s exact arb int 0\n",
-        ),
+        ("pmc, satisfiable: the data format's Example 4", &[], "tests/data/mcc_pmc_sat.cnf",
+            "s SATISFIABLE\nc s type pmc\nc s log10-estimate 0.47712125471966244\nc s exact arb int 3\n"),
+        ("pmc, unsatisfiable", &[], "tests/data/mcc_pmc_unsat.cnf",
+            "s UNSATISFIABLE\nc s type pmc\nc s log10-estimate -inf\nc s exact arb int 0\n"),
         ("pmc, gives up", &wall, pmc_hard.path(), "s UNKNOWN\n"),
-        (
-            "pwmc, satisfiable",
-            &[],
-            "tests/data/mcc_pwmc_sat.cnf",
-            "s SATISFIABLE\nc s type pwmc\nc s log10-estimate -0.055517327849831544\nc s exact arb frac 22/25\n",
-        ),
-        (
-            "pwmc, unsatisfiable",
-            &[],
-            "tests/data/mcc_pwmc_unsat.cnf",
-            "s UNSATISFIABLE\nc s type pwmc\nc s log10-estimate -inf\nc s exact arb frac 0/1\n",
-        ),
-        (
-            "pwmc, satisfiable with count 0: a show variable weighed 0 both ways",
-            &[],
-            "tests/data/mcc_pwmc_zero.cnf",
-            "s SATISFIABLE\nc s type pwmc\nc s log10-estimate -inf\nc s exact arb frac 0/1\n",
-        ),
-        (
-            "pwmc, negative count -1/4",
-            &[],
-            "tests/data/mcc_pwmc_negative.cnf",
-            "s SATISFIABLE\nc s type pwmc\nc s neglog10-estimate -0.6020599913279624\nc s exact arb frac -1/4\n",
-        ),
+        ("pwmc, satisfiable", &[], "tests/data/mcc_pwmc_sat.cnf",
+            "s SATISFIABLE\nc s type pwmc\nc s log10-estimate -0.055517327849831544\nc s exact arb frac 22/25\n"),
+        ("pwmc, unsatisfiable", &[], "tests/data/mcc_pwmc_unsat.cnf",
+            "s UNSATISFIABLE\nc s type pwmc\nc s log10-estimate -inf\nc s exact arb frac 0/1\n"),
+        ("pwmc, satisfiable with count 0: a show variable weighed 0 both ways", &[], "tests/data/mcc_pwmc_zero.cnf",
+            "s SATISFIABLE\nc s type pwmc\nc s log10-estimate -inf\nc s exact arb frac 0/1\n"),
+        ("pwmc, negative count -1/4", &[], "tests/data/mcc_pwmc_negative.cnf",
+            "s SATISFIABLE\nc s type pwmc\nc s neglog10-estimate -0.6020599913279624\nc s exact arb frac -1/4\n"),
     ];
     for (case, flags, cnf, stdout) in rows {
-        let (out, record) = run_with_record(&[flags, &["--output-format", "mcc", cnf]].concat());
-        assert_eq!(out.stdout, stdout, "{case}: {}", out.stderr);
-        let status = stdout.lines().next().expect("every row has a status line");
-        let (code, satisfiable) = match status {
-            "s SATISFIABLE" => (0, Some(true)),
-            "s UNSATISFIABLE" => (0, Some(false)),
-            _ => (1, None),
-        };
-        assert_eq!(out.code, Some(code), "{case}: {}", out.stderr);
-        assert_eq!(record.get("satisfiable").and_then(|v| v.as_bool()), satisfiable, "{case}: {record}");
+        check_mcc_row(case, flags, cnf, stdout);
     }
     // `s UNKNOWN` is the transcript's answer, so it precedes a record written
     // to stdout, as an answer does.

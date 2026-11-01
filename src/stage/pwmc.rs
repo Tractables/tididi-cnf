@@ -282,6 +282,38 @@ fn eval_singleton(
     Some(if pos { w_pos.clone() } else { w_neg.clone() })
 }
 
+/// Partition component clause-groups into substantial (>= 2 variables) and
+/// singleton (1 variable) components, enforcing `policy`'s minimum component
+/// count, show cap, and sort order.
+#[allow(clippy::type_complexity)]
+fn partition_components<'a>(
+    formula: &CnfFormula,
+    groups: &'a [Vec<usize>],
+    mask: &vitri::cnf::ShowMask,
+    policy: DecomposePolicy,
+) -> Option<(Vec<(usize, &'a Vec<usize>)>, Vec<(vitri::cnf::VarId, &'a Vec<usize>)>)> {
+    let mut substantial: Vec<(usize, &'a Vec<usize>)> = Vec::new();
+    let mut singletons: Vec<(vitri::cnf::VarId, &'a Vec<usize>)> = Vec::new();
+    for g in groups {
+        let vars = formula.component_vars(g);
+        if vars.len() >= 2 {
+            if policy.show_cap.is_some_and(|cap| vars.iter().filter(|&&v| mask.is_show(v)).count() > cap) {
+                return None;
+            }
+            substantial.push((vars.len(), g));
+        } else if let &[var] = vars.as_slice() {
+            singletons.push((var, g));
+        }
+    }
+    if substantial.len() < 2 {
+        return None;
+    }
+    if policy.sort_cheap_first {
+        substantial.sort_by_key(|&(nvars, _)| nvars);
+    }
+    Some((substantial, singletons))
+}
+
 /// Independent-component decomposition for PWMC, behind [`decompose_input`] and
 /// [`decompose_reduced`]. PWMC is multiplicative over variable-disjoint
 /// components: PWMC(F₁∧F₂) = PWMC(F₁)·PWMC(F₂) when var(F₁)∩var(F₂)=∅. The
@@ -305,45 +337,21 @@ where
     F: FnMut(&CnfFormula, &ShowSet, &LiteralWeights) -> Option<WeightedCount<BigRational>>,
 {
     use std::collections::HashSet;
-    let DecomposePolicy { show_cap, sort_cheap_first } = policy;
     let show = problem.show.as_ref()?;
     let formula = &problem.formula;
     let mask = show.mask(formula.num_vars());
     let weights = problem_weight_tables(problem);
     let groups = formula.detect_components()?;
-    // (variables, show variables, clause indices) per component of two or
-    // more variables.
-    let mut substantial: Vec<(usize, usize, &Vec<usize>)> = Vec::new();
-    let mut singletons: Vec<(vitri::cnf::VarId, &Vec<usize>)> = Vec::new();
-    for g in &groups {
-        let vars = formula.component_vars(g);
-        if vars.len() >= 2 {
-            let show_in = vars.iter().filter(|&&v| mask.is_show(v)).count();
-            substantial.push((vars.len(), show_in, g));
-        } else if let &[var] = vars.as_slice() {
-            singletons.push((var, g));
-        }
-    }
-    if substantial.len() < 2 {
-        return None;
-    }
-    if let Some(cap) = show_cap
-        && substantial.iter().any(|&(_, show_in, _)| show_in > cap)
-    {
-        return None;
-    }
+    let (substantial, singletons) = partition_components(formula, &groups, &mask, policy)?;
     // An empty clause anywhere ⇒ UNSAT ⇒ PWMC 0. `detect_components` puts the
     // empty clauses in a group of their own, which names no variable and which
     // the singleton loop below cannot read, so answer here.
     if crate::formula::has_empty_clause(formula) {
         return Some(WeightedCount::Unsatisfiable);
     }
-    if sort_cheap_first {
-        substantial.sort_by_key(|&(nvars, _, _)| nvars);
-    }
     let mut product = <Weighted as Domain>::one();
     let mut covered: HashSet<vitri::cnf::VarId> = HashSet::new();
-    for &(_, _, group) in &substantial {
+    for &(_, group) in &substantial {
         let (sub, local_to_global) = formula.extract_component(group);
         let local_show = problem_show(&mask.restrict(&local_to_global));
         let local_weights: Vec<_> = local_to_global

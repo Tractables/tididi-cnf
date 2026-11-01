@@ -98,6 +98,21 @@ impl SatPruneCtx {
         counts
     }
 
+    /// Encode `tdd` into a scoped solver pass, probe its nodes bottom-up by
+    /// `counts`, and retire the pass's activation literal before returning.
+    fn encode_and_probe(&mut self, tdd: &Tdd, counts: &[Vec<u128>]) -> Option<ProbeOutcome> {
+        let rounds = self.limits.allsat_k;
+        let mut solver = PassSolver::open(self);
+        let enc = solver.encode(tdd)?;
+        let witness = if rounds > 0 { Witness::NodeLiterals } else { Witness::None };
+        let probed = tdd.probe_nodes(&enc, ProbeOrder::BottomUp { counts }, rounds, witness, &mut solver);
+        if let Ok(probe) = &probed {
+            solver.record(&probe.stats());
+        }
+        solver.retire();
+        probed.ok()
+    }
+
     /// Run one pass on `tdd`, a diagram of `tdd_size` pairs, as the module
     /// doc describes, and say what replaces it. Adds what the pass did to
     /// the context's tallies, and stops pruning for the compile when one of
@@ -116,18 +131,14 @@ impl SatPruneCtx {
         self.last_trigger_size = tdd_size;
 
         // The spend caps on the work since the last productive rewrite (see
-        // `spend_exempt_us`): this context's, and its compile's over all of
-        // the compile's contexts. Once either is reached, pruning stops for
-        // the rest of this compile so the compiler keeps its remaining time.
+        // `spend_exempt_us`). Once either is reached, pruning stops for the
+        // rest of this compile so the compiler keeps its remaining time.
         if self.spend_cap_reached() {
             self.stats.disabled_by = Some(PruneStop::TimeShare);
             self.record_empty_pass();
             return PruneOutcome::NoOp;
         }
 
-        // With every internal level marginal there is no node to probe, and
-        // the pass removes nothing. Otherwise the encoding covers the
-        // structural upper levels.
         let has_non_marginal_internal = tdd
             .vtree()
             .internal_bottomup()
@@ -137,58 +148,22 @@ impl SatPruneCtx {
             return PruneOutcome::NoOp;
         }
 
-        // ── Per-node model counts ──
-        // Evaluated once per pass. Used for the MC=0 short-circuit kill
-        // before encoding and for ordering the walk within each level.
-        let counts = match self.node_counts(eng, tdd) {
-            Ok(counts) => counts,
-            // No SAT clauses or diagram changes have been made. Leave the
-            // optional pruning pass and let the compiler honor its active cut.
-            Err(_) => return PruneOutcome::NoOp,
-        };
-
-        // ── Encoding ──
-        // `None`: the encode budget was exceeded with nothing encoded, or the
-        // encoding was refused, and the activation literal is already retired.
-        let rounds = self.limits.allsat_k;
-        let mut solver = PassSolver::open(self);
-        let Some(enc) = solver.encode(tdd) else {
+        let Ok(counts) = self.node_counts(eng, tdd) else {
             return PruneOutcome::NoOp;
         };
-
-        // ── Probe ──
-        // Every SAT probe's model certifies alive the nodes it makes true,
-        // exactly when the enumeration runs.
-        let witness = if rounds > 0 { Witness::NodeLiterals } else { Witness::None };
-        let probed = tdd.probe_nodes(&enc, ProbeOrder::BottomUp { counts: &counts }, rounds, witness, &mut solver);
-        if let Ok(probe) = &probed {
-            solver.record(&probe.stats());
-        }
-
-        // ── End of pass: retire this pass's gated clauses ──
-        solver.retire();
-        // Only a fresh variable of 0 or `i32::MIN` fails the probe, and the
-        // context's counter gives neither. A failed probe would end the pass
-        // as one that cannot finish: `a` retired, nothing to swap in.
-        let Ok(probe) = probed else {
+        let Some(probe) = self.encode_and_probe(tdd, &counts) else {
             return PruneOutcome::NoOp;
         };
 
         // The kill-rate gate, for a walk that ended between two of its checks.
-        // The probe counters change only in the walk, so no other site needs it.
         self.maybe_disable_by_running_rate();
 
-        // ── Root-death check after bottom-up propagation ──
-        //
-        // The probe marks any internal node whose pairs all reference a dead
-        // child, the root included. If the root is dead, signal the caller.
         if probe.is_dead(tdd.output()) {
             self.stats.passes_dead_root += 1;
             self.consec_zero_passes = 0;
             return PruneOutcome::DeadRoot;
         }
 
-        // ── Rewrite ──
         self.apply_rewrite_step(eng, tdd, &probe)
     }
 }
