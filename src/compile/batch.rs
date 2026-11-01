@@ -23,7 +23,7 @@ use super::schedule::step_completions;
 use super::step::{DiagramClauses, PassState, StepContext};
 
 /// Clauses per batch below which a batch never stops for its cost, the floor
-/// ([`build_one_batch`]): every batch folds this many clauses unless the
+/// ([`BatchStop::build_one_batch`]): every batch folds this many clauses unless the
 /// node's clauses run out, the batch goes UNSAT or its width passes
 /// [`BATCH_WIDTH_LIMIT`]. A batch that may not extend stops here. A fold that
 /// starts from a large accumulator uses [`BATCH_LARGE_SIZE`] instead
@@ -45,7 +45,7 @@ const BATCH_WIDTH_GUARD: usize = 1024;
 
 /// How many times more one merge costs per accumulator pair than conjoining
 /// one clause into a batch costs per batch pair; the extension past the floor
-/// weighs the two ([`build_one_batch`]). A merge conjoins and reduces the
+/// weighs the two ([`BatchStop::build_one_batch`]). A merge conjoins and reduces the
 /// whole accumulator, where a batch conjoin touches only the batch.
 const BATCH_MERGE_COST_RATIO: usize = 5;
 
@@ -130,6 +130,8 @@ pub(crate) fn batch_accumulate(
         let start_clause = i;
         let acc_width = acc.as_ref().map_or(0, Tdd::max_width);
         let stop = BatchStop {
+            vtree,
+            clauses,
             width_cap: batch_width_cap(acc_width, floor.width_limit),
             guard: batch_width_cap(acc_width, BATCH_WIDTH_GUARD),
             floor: floor.size,
@@ -137,8 +139,8 @@ pub(crate) fn batch_accumulate(
             acc: acc.as_ref(),
             streaming: streaming.as_ref(),
         };
-        let mut local;
-        (local, i) = build_one_batch(eng, ctx.clauses, vtree, clauses, start_clause, &stop, &mut state.on_spine)?;
+        let (mut batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
+        i = next;
         // Absorption decides whether the next batch may extend, so it is only
         // measured when enough clauses remain for the next batch to pass the
         // floor. It needs the accumulator's pairs, which the stop rule may
@@ -146,8 +148,10 @@ pub(crate) fn batch_accumulate(
         let acc_pairs = (clauses.len() - i > floor.size).then(|| stop.acc_pairs());
         // The first batch becomes the accumulator when there is none yet: a
         // diagram the pass creates.
-        if acc.is_none() {
-            local = local.map(|l| ctx.job.output.with_store(l));
+        if acc.is_none()
+            && let BuiltBatch::Diagram(local) = batch
+        {
+            batch = BuiltBatch::Diagram(Box::new(ctx.job.output.with_store(*local)));
         }
         // The targets this merge may sum out: a projecting compile keeps its
         // leaf levels Boolean, which can leave a merge that completes targets
@@ -156,9 +160,8 @@ pub(crate) fn batch_accumulate(
             .as_mut()
             .and_then(|s| s.completed_in(start_clause, i))
             .map(|targets| summable(vtree, targets, ctx.job.output.forget().is_some()));
-        let first_clause = ctx.clauses.get(clauses[start_clause]);
         let merged =
-            merge_batch(eng, local, first_clause, &mut acc, &mut state.minimize, merge_targets.as_deref(), acc_pairs)?;
+            merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets.as_deref(), acc_pairs)?;
         if merged.unsat {
             return Ok(acc);
         }
@@ -246,6 +249,14 @@ impl StreamTargets {
     }
 }
 
+/// One batch built by [`BatchStop::build_one_batch`]: a batch diagram (boxed,
+/// since a `Tdd` is much larger than a clause slice), or a single clause
+/// conjoined straight into a live accumulator.
+enum BuiltBatch<'a> {
+    Diagram(Box<Tdd>),
+    SingleClause(&'a [Literal]),
+}
+
 /// What one merge told the fold.
 struct Merged {
     /// The merged accumulator is UNSAT, and stays so whatever clauses remain,
@@ -256,30 +267,29 @@ struct Merged {
     absorbed: bool,
 }
 
-/// Merge one built batch into `acc`, measuring absorption against
+/// Merge one built `batch` into `acc`, measuring absorption against
 /// `acc_pairs`, the accumulator's pair count, when it is given. An apply
 /// error aborts the pass.
 ///
-/// `local` is `None` when [`build_one_batch`] built no diagram for a
-/// one-clause batch; `first_clause` is then conjoined directly. That happens
-/// only for the node's last clause, so no absorption is measured.
+/// A [`BuiltBatch::SingleClause`] is conjoined directly into `acc`. That
+/// happens only when no further clause can follow in the batch, so no
+/// absorption is measured.
 fn merge_batch(
     eng: &Engine,
-    local: Option<Tdd>,
-    first_clause: &[Literal],
+    batch: BuiltBatch<'_>,
     acc: &mut Option<Tdd>,
     state: &mut MinimizeGate,
     merge_targets: Option<&[VtreeIdx]>,
     acc_pairs: Option<usize>,
 ) -> Result<Merged, OperationError> {
     let acc_in = acc.take();
-    let (merged, absorbed) = match local {
-        Some(batch) => merge_batch_into_acc(eng, acc_in, batch, state, merge_targets, acc_pairs)?,
-        None => (
+    let (merged, absorbed) = match batch {
+        BuiltBatch::Diagram(batch) => merge_batch_into_acc(eng, acc_in, *batch, state, merge_targets, acc_pairs)?,
+        BuiltBatch::SingleClause(clause) => (
             merge_clause_into_acc(
                 eng,
                 acc_in.expect("a one-clause batch builds no diagram only for a live accumulator"),
-                first_clause,
+                clause,
                 state,
                 merge_targets,
             )?,
@@ -364,6 +374,10 @@ fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
 
 /// Where one batch may stop, fixed before it is built.
 struct BatchStop<'a> {
+    /// The vtree the batch is built on.
+    vtree: &'a Arc<Vtree>,
+    /// The node's clause indices in the order the fold visits them.
+    clauses: &'a [usize],
     /// The width that closes any batch below `floor` clauses
     /// ([`batch_width_cap`] at the fold's [`BatchFloor`] width limit).
     width_cap: usize,
@@ -382,7 +396,7 @@ struct BatchStop<'a> {
     streaming: Option<&'a StreamTargets>,
 }
 
-impl BatchStop<'_> {
+impl<'a> BatchStop<'a> {
     fn completes(&self, p: usize) -> bool {
         self.streaming.is_some_and(|s| s.completes(p))
     }
@@ -392,128 +406,129 @@ impl BatchStop<'_> {
     fn acc_pairs(&self) -> usize {
         self.acc.map_or(0, Tdd::pair_count)
     }
-}
 
-/// Build one batch diagram by conjoining clauses one by one from
-/// `clauses[start]`. Each conjoin is followed by twin contraction, which keeps
-/// the width and pair count the stop checks read honest. `on_spine` is the
-/// pass's spine-marking scratch.
-///
-/// The batch stops on UNSAT, at `stop.limit` clauses, and otherwise where its
-/// floor and its extension say:
-///
-/// - **Floor.** Every batch keeps folding until it holds `stop.floor` clauses
-///   or its width exceeds `stop.width_cap`, so the merge with a wide
-///   accumulator that follows stays cheap. A batch the cap stops stops even
-///   when it may extend: a batch that turns wide before the floor is not
-///   behaving like the absorbed batches that earned the extension, and
-///   merging it wide into a wide accumulator multiplies the merge's product.
-///   A batch that may not extend (`stop.limit == stop.floor`) stops at the
-///   floor.
-/// - **Extension.** Past the floor, a merge costs time in proportion to the
-///   accumulator's pairs, nearly independent of the batch, while conjoining
-///   one more clause costs time in proportion to the batch's pairs. So the
-///   batch keeps folding while the next clause's build cost is below the
-///   running per-clause average of the batch's whole cost, its build so far
-///   plus its merge: with `P_j` the batch's pairs once it holds `j` clauses
-///   (the cost of conjoining clause `j + 1`), `k` clauses folded and `A` the
-///   accumulator's pairs, it continues while
-///   `k * P_k < P_1 + ... + P_{k-1} + BATCH_MERGE_COST_RATIO * A`, the
-///   marginal-below-average rule in units of one batch-pair conjoin. It also
-///   stops once its width exceeds `stop.guard`, which keeps a wide batch from
-///   meeting a wide accumulator in one product, and after a clause that is a
-///   marginalize target's last mention, so an extension never delays a
-///   marginalization past the boundary the floor would have given it.
-///
-/// The pairs are read off the spine union ([`batch_spine_pairs`]), and the
-/// accumulator's cached pair count by [`BatchStop::acc_pairs`], which the
-/// extension decision and the merge's absorption check share.
-///
-/// Returns the batch diagram and the index of the next clause, at least
-/// `start + 1`: the first clause is always taken. A one-clause batch merged
-/// into a live accumulator needs no diagram of its own, since
-/// `merge_clause_into_acc` conjoins the clause straight into the
-/// accumulator. So when the accumulator is live and the end of the clause
-/// list or `stop.limit` ends the batch after its first clause, both known
-/// before any diagram exists, no diagram is built and the batch is `None`.
-/// UNSAT and the width caps are tested only once a second clause is in, so
-/// they never end a batch at one clause.
-fn build_one_batch(
-    eng: &Engine,
-    diagram_clauses: &DiagramClauses,
-    vtree: &Arc<Vtree>,
-    clauses: &[usize],
-    start: usize,
-    stop: &BatchStop<'_>,
-    on_spine: &mut Vec<bool>,
-) -> Result<(Option<Tdd>, usize), OperationError> {
-    // Does the batch reach `clauses[i]`, given it already holds `batch_count`
-    // clauses? The single statement of the batch's *content-independent* stop
-    // conditions — evaluated once up front for the skip decision and once per
-    // round by the fold below, never restated.
-    let extends_past = |i: usize, batch_count: usize| i < clauses.len() && batch_count < stop.limit;
+    /// Build one batch by conjoining clauses one by one from
+    /// `self.clauses[start]`. Each conjoin is followed by twin contraction,
+    /// which keeps the width and pair count the stop checks read honest.
+    /// `on_spine` is the pass's spine-marking scratch.
+    ///
+    /// The batch stops on UNSAT, at `self.limit` clauses, and otherwise where
+    /// its floor and its extension say:
+    ///
+    /// - **Floor.** Every batch keeps folding until it holds `self.floor`
+    ///   clauses or its width exceeds `self.width_cap`, so the merge with a
+    ///   wide accumulator that follows stays cheap. A batch the cap stops
+    ///   stops even when it may extend: a batch that turns wide before the
+    ///   floor is not behaving like the absorbed batches that earned the
+    ///   extension, and merging it wide into a wide accumulator multiplies
+    ///   the merge's product. A batch that may not extend
+    ///   (`self.limit == self.floor`) stops at the floor.
+    /// - **Extension.** Past the floor, a merge costs time in proportion to
+    ///   the accumulator's pairs, nearly independent of the batch, while
+    ///   conjoining one more clause costs time in proportion to the batch's
+    ///   pairs. So the batch keeps folding while the next clause's build cost
+    ///   is below the running per-clause average of the batch's whole cost,
+    ///   its build so far plus its merge: with `P_j` the batch's pairs once
+    ///   it holds `j` clauses (the cost of conjoining clause `j + 1`), `k`
+    ///   clauses folded and `A` the accumulator's pairs, it continues while
+    ///   `k * P_k < P_1 + ... + P_{k-1} + BATCH_MERGE_COST_RATIO * A`, the
+    ///   marginal-below-average rule in units of one batch-pair conjoin. It
+    ///   also stops once its width exceeds `self.guard`, which keeps a wide
+    ///   batch from meeting a wide accumulator in one product, and after a
+    ///   clause that is a marginalize target's last mention, so an extension
+    ///   never delays a marginalization past the boundary the floor would
+    ///   have given it.
+    ///
+    /// The pairs are read off the spine union ([`batch_spine_pairs`]), and
+    /// the accumulator's cached pair count by [`BatchStop::acc_pairs`], which
+    /// the extension decision and the merge's absorption check share.
+    ///
+    /// Returns the built batch and the index of the next clause, at least
+    /// `start + 1`: the first clause is always taken. A one-clause batch
+    /// merged into a live accumulator needs no diagram of its own, since
+    /// `merge_clause_into_acc` conjoins the clause straight into the
+    /// accumulator. So when the accumulator is live and the end of the clause
+    /// list or `self.limit` ends the batch after its first clause, both known
+    /// before any diagram exists, no diagram is built and the batch is
+    /// [`BuiltBatch::SingleClause`]. UNSAT and the width caps are tested only
+    /// once a second clause is in, so they never end a batch at one clause.
+    fn build_one_batch<'c>(
+        &self,
+        eng: &Engine,
+        diagram_clauses: &'c DiagramClauses,
+        start: usize,
+        on_spine: &mut Vec<bool>,
+    ) -> Result<(BuiltBatch<'c>, usize), OperationError> {
+        let vtree = self.vtree;
+        let clauses = self.clauses;
+        // Does the batch reach `clauses[i]`, given it already holds `batch_count`
+        // clauses? The single statement of the batch's *content-independent* stop
+        // conditions — evaluated once up front for the skip decision and once per
+        // round by the fold below, never restated.
+        let extends_past = |i: usize, batch_count: usize| i < clauses.len() && batch_count < self.limit;
 
-    if stop.acc.is_some() && !extends_past(start + 1, 1) {
-        return Ok((None, start + 1));
-    }
+        if self.acc.is_some() && !extends_past(start + 1, 1) {
+            return Ok((BuiltBatch::SingleClause(diagram_clauses.get(clauses[start])), start + 1));
+        }
 
-    let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
-    let may_extend = stop.limit > stop.floor;
-    // Spine bookkeeping: the running union of the folded clauses' spines, from
-    // which the stop checks read the batch's max width and pairs instead of
-    // sweeping every level (`batch_max_width`, `batch_spine_pairs`). Tracked
-    // only when a width cap is on or the batch may extend.
-    let track_spine = stop.width_cap != usize::MAX || may_extend;
-    let mut touched: Vec<VtreeIdx> = Vec::new();
-    // All false on entry: only spine entries are ever set, and they are reset
-    // from `touched` before returning. An error return skips the reset, but
-    // an error ends the pass, whose state the scratch is part of.
-    if track_spine {
-        if on_spine.len() < vtree.num_nodes() { on_spine.resize(vtree.num_nodes(), false); }
-        mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
-    }
-    // Extension state, kept only when the batch may extend: the build cost so
-    // far (`P_1 + ... + P_{k-1}`), the current pairs `P_k`, and whether a
-    // folded clause is a marginalize target's last mention.
-    let mut built = 0usize;
-    let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
-    let mut holds_completion = stop.completes(start);
-    let mut i = start + 1;
-    let mut batch_count = 1;
-    while extends_past(i, batch_count) {
+        let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
+        let may_extend = self.limit > self.floor;
+        // Spine bookkeeping: the running union of the folded clauses' spines, from
+        // which the stop checks read the batch's max width and pairs instead of
+        // sweeping every level (`batch_max_width`, `batch_spine_pairs`). Tracked
+        // only when a width cap is on or the batch may extend.
+        let track_spine = self.width_cap != usize::MAX || may_extend;
+        let mut touched: Vec<VtreeIdx> = Vec::new();
+        // All false on entry: only spine entries are ever set, and they are reset
+        // from `touched` before returning. An error return skips the reset, but
+        // an error ends the pass, whose state the scratch is part of.
         if track_spine {
-            mark_clause_levels(vtree, diagram_clauses.get(clauses[i]), on_spine, &mut touched);
+            if on_spine.len() < vtree.num_nodes() { on_spine.resize(vtree.num_nodes(), false); }
+            mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
         }
-        local = eng.and_clause(local, diagram_clauses.get(clauses[i]))?;
-        minimize_contract_only(eng, &mut local)?;
-        holds_completion |= stop.completes(i);
-        i += 1;
-        batch_count += 1;
-        if !eng.is_sat(&local)? { break; }
-        // A disabled cap can never fire, and the spine union `batch_max_width`
-        // reads is only tracked when a cap is on or the batch may extend.
-        let width = if track_spine { batch_max_width(&local, &touched) } else { 0 };
-        if may_extend {
-            built += pairs;
-            pairs = batch_spine_pairs(&local, &touched);
+        // Extension state, kept only when the batch may extend: the build cost so
+        // far (`P_1 + ... + P_{k-1}`), the current pairs `P_k`, and whether a
+        // folded clause is a marginalize target's last mention.
+        let mut built = 0usize;
+        let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
+        let mut holds_completion = self.completes(start);
+        let mut i = start + 1;
+        let mut batch_count = 1;
+        while extends_past(i, batch_count) {
+            if track_spine {
+                mark_clause_levels(vtree, diagram_clauses.get(clauses[i]), on_spine, &mut touched);
+            }
+            local = eng.and_clause(local, diagram_clauses.get(clauses[i]))?;
+            minimize_contract_only(eng, &mut local)?;
+            holds_completion |= self.completes(i);
+            i += 1;
+            batch_count += 1;
+            if !eng.is_sat(&local)? { break; }
+            // A disabled cap can never fire, and the spine union `batch_max_width`
+            // reads is only tracked when a cap is on or the batch may extend.
+            let width = if track_spine { batch_max_width(&local, &touched) } else { 0 };
+            if may_extend {
+                built += pairs;
+                pairs = batch_spine_pairs(&local, &touched);
+            }
+            // The floor: below it the width cap stops every batch, extendable or
+            // not, so only a batch that reached the floor within the cap extends.
+            if batch_count < self.floor {
+                if width <= self.width_cap { continue; }
+                break;
+            }
+            // The extension.
+            if !may_extend || holds_completion || width > self.guard { break; }
+            if batch_count.saturating_mul(pairs)
+                >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(self.acc_pairs()))
+            {
+                break;
+            }
         }
-        // The floor: below it the width cap stops every batch, extendable or
-        // not, so only a batch that reached the floor within the cap extends.
-        if batch_count < stop.floor {
-            if width <= stop.width_cap { continue; }
-            break;
-        }
-        // The extension.
-        if !may_extend || holds_completion || width > stop.guard { break; }
-        if batch_count.saturating_mul(pairs)
-            >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(stop.acc_pairs()))
-        {
-            break;
-        }
+        // Restore the scratch's all-false invariant.
+        for &t in &touched { on_spine[t.idx()] = false; }
+        Ok((BuiltBatch::Diagram(Box::new(local)), i))
     }
-    // Restore the scratch's all-false invariant.
-    for &t in &touched { on_spine[t.idx()] = false; }
-    Ok((Some(local), i))
 }
 
 /// Maximum allowed batch-TDD width before the batch should be flushed into the

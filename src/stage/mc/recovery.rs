@@ -46,7 +46,7 @@
 //! - **Each cofactor is prepared afresh** by the caller's cofactor compile:
 //!   its support is strictly smaller than the formula's, so the formula's
 //!   reduction and vtree no longer fit it.
-//! - **The two branches share nothing.** count(F∧x) and count(F∧¬x) are
+//! - **The two branches share nothing.** `count(F ∧ x)` and `count(F ∧ ¬x)` are
 //!   separate compiles, even where they share structure.
 //!
 //! ## The wall
@@ -206,7 +206,7 @@ where
     let mut acc: Counted = (BigUint::ZERO, 0);
     for (child_idx, unit) in [Literal::pos(var), Literal::neg(var)].into_iter().enumerate() {
         // Past the deadline the whole split can no longer produce a countable
-        // result. Give the entire split up (None) rather than continue —
+        // result. Give the entire split up (`None`) rather than continue —
         // returning the partial `acc` would silently undercount. Checked before
         // any per-child work. Fires only once the wall has passed, so it never
         // abandons a countable result.
@@ -259,7 +259,7 @@ fn log_and_purge_recovery(eng: &tididi::Engine, tag: &str, formula: &CnfFormula,
     // drop + purge, so the log keeps measuring the per-level pin (the before-
     // numbers) and shows the clean slate the children inherit (the after-
     // numbers); the `mapped + retained` sum alone is purge-invariant (see
-    // mem.rs doc).
+    // `crate::mem`).
     let released = crate::compile::release_failed_compile(eng);
     let (held_before, held_after) = released.held_mib();
     let crate::compile::Released { before, after, purged } = released;
@@ -314,7 +314,7 @@ fn simplify_via_unit(formula: &CnfFormula, unit: Literal) -> Option<CnfFormula> 
         return None;
     }
     // Re-pin every BCP-derived forced literal as a unit clause so the
-    // residual CNF still binds the variable (preserves num_vars semantics).
+    // residual CNF still binds the variable (preserves `num_vars` semantics).
     for lit in &forced {
         clauses.push(Clause::new(vec![*lit]));
     }

@@ -33,82 +33,6 @@ use crate::problem::ShowSet;
 use tididi::query::Retention;
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
 
-/// Compute the dense boundary count function for one component.
-///
-/// `formula` is the component sub-formula (its clauses only). Its variables
-/// partition into `hidden` (exist-forgotten), `own_show` (marginalized — these
-/// are the component's private show vars), and `boundary` (the shared separator
-/// vars, kept symbolic). The returned vector has length `2^boundary.len()`;
-/// entry `a` is w(a) = number of `own_show` assignments feasible under boundary
-/// assignment `a`, where bit `k` of `a` is the value of `boundary[k]`.
-///
-/// `vtree` must cover every variable of `formula` (all of hidden/own/boundary).
-/// Boundary variables must be distinct; `shatter_component` assigns each local
-/// variable to exactly one role. A boundary is part of a separator, so
-/// [`detect_shatter`] keeps it within [`MAX_COUNT_TABLE_VARS`].
-/// Returns `None` when compilation or readout is refused by the batch limits.
-fn component_boundary_function(
-    eng: &Engine,
-    run: CompileRun<'_>,
-    formula: &CnfFormula,
-    vtree: &Arc<Vtree>,
-    hidden: &[VarId],
-    own_show: &[VarId],
-    boundary: &[VarId],
-) -> Option<Vec<BigUint>> {
-    // Compile: exist-forget hidden during compile, the rest Boolean.
-    let compiled = settle(compile_with(
-        eng,
-        formula,
-        vtree,
-        CompileOptions {
-            plan: ComponentPlan::Whole,
-            output: Output::ProjectedFunction(hidden),
-            ..CompileOptions::default()
-        },
-        run,
-    ))?;
-    let mut tdd = compiled.diagram;
-    assert!(
-        Arc::ptr_eq(tdd.vtree(), vtree),
-        "Whole boundary compilation must preserve the supplied tree before readout derives indices from it",
-    );
-    // Forgotten hidden leaves were ×2-marginalized; divide them back out.
-    let div = BigUint::from(2u32).pow(compiled.forgotten as u32);
-
-    // Marginalize only the own-show leaves (sum them out), leaving the boundary
-    // levels Boolean. Targets must be in bottom-up topo order.
-    let own_set: std::collections::HashSet<VarId> = own_show.iter().copied().collect();
-    let own_leaves: Vec<VtreeIdx> = vtree.bottomup_slice()
-        .iter()
-        .copied()
-        .filter(|&t| {
-            let node = vtree.node(t);
-            node.is_leaf() && own_set.contains(&vtree.leaf_var(t))
-        })
-        .collect();
-    eng.marginalize_levels(&mut tdd, &own_leaves).ok()?;
-
-    // Read w(a) for every boundary assignment via the pinned counter (it decodes
-    // the marginal tagging internally — the safe public route).
-    // A structurally-zero component has no output count slot, which the pinned
-    // counter needs; every w(a) is 0. Mirrors the `is_zero` guard
-    // the BigUint entry points carry.
-    if tdd.is_zero() {
-        return Some(vec![BigUint::ZERO; 1usize << boundary.len()]);
-    }
-    // One frontier counter reads every assignment, changing only the boundary
-    // pins each binary increment carries through. Evidence pins restrict the
-    // boundary; marginalized local counts retain their multiplicity.
-    let mut ctr =
-        eng.counter_with(&tdd, Retention::Frontier, PinSemantics::Evidence).ok()?;
-    let mut w = ctr.count_table(boundary).ok()?;
-    for count in &mut w {
-        *count /= &div;
-    }
-    Some(w)
-}
-
 /// One component of a shatter plan, in its own compact local variable space
 /// (boundary ∪ own-show ∪ hidden, nothing else — non-participating vars left in
 /// would go free and inflate the count by 2 each).
@@ -127,10 +51,86 @@ pub(super) struct ShatterComponent {
     pub(super) boundary_bit: Vec<usize>,
 }
 
+impl ShatterComponent {
+    /// Compute the dense boundary count function for this component.
+    ///
+    /// `self.formula` is the component sub-formula (its clauses only). Its variables
+    /// partition into `self.hidden_local` (exist-forgotten), `self.own_local`
+    /// (marginalized — these are the component's private show vars), and
+    /// `self.boundary_local` (the shared separator vars, kept symbolic). The returned
+    /// vector has length `2^self.boundary_local.len()`; entry `a` is w(a) = number of
+    /// `own_local` assignments feasible under boundary assignment `a`, where bit `k`
+    /// of `a` is the value of `self.boundary_local[k]`.
+    ///
+    /// `vtree` must cover every variable of `self.formula` (all of hidden/own/boundary).
+    /// Boundary variables must be distinct; [`shatter_component`] assigns each local
+    /// variable to exactly one role. A boundary is part of a separator, so
+    /// [`detect_shatter`] keeps it within [`MAX_COUNT_TABLE_VARS`].
+    /// Returns `None` when compilation or readout is refused by the batch limits.
+    fn boundary_function(
+        &self,
+        eng: &Engine,
+        run: CompileRun<'_>,
+        vtree: &Arc<Vtree>,
+    ) -> Option<Vec<BigUint>> {
+        // Compile: exist-forget hidden during compile, the rest Boolean.
+        let compiled = settle(compile_with(
+            eng,
+            &self.formula,
+            vtree,
+            CompileOptions {
+                plan: ComponentPlan::Whole,
+                output: Output::ProjectedFunction(&self.hidden_local),
+                ..CompileOptions::default()
+            },
+            run,
+        ))?;
+        let mut tdd = compiled.diagram;
+        assert!(
+            Arc::ptr_eq(tdd.vtree(), vtree),
+            "Whole boundary compilation must preserve the supplied tree before readout derives indices from it",
+        );
+        // Forgotten hidden leaves were ×2-marginalized; divide them back out.
+        let div = BigUint::from(2u32).pow(compiled.forgotten as u32);
+
+        // Marginalize only the own-show leaves (sum them out), leaving the boundary
+        // levels Boolean. Targets must be in bottom-up topo order.
+        let own_set: std::collections::HashSet<VarId> = self.own_local.iter().copied().collect();
+        let own_leaves: Vec<VtreeIdx> = vtree.bottomup_slice()
+            .iter()
+            .copied()
+            .filter(|&t| {
+                let node = vtree.node(t);
+                node.is_leaf() && own_set.contains(&vtree.leaf_var(t))
+            })
+            .collect();
+        eng.marginalize_levels(&mut tdd, &own_leaves).ok()?;
+
+        // Read w(a) for every boundary assignment via the pinned counter (it decodes
+        // the marginal tagging internally — the safe public route).
+        // A structurally-zero component has no output count slot, which the pinned
+        // counter needs; every w(a) is 0. Mirrors the `is_zero` guard
+        // the BigUint entry points carry.
+        if tdd.is_zero() {
+            return Some(vec![BigUint::ZERO; 1usize << self.boundary_local.len()]);
+        }
+        // One frontier counter reads every assignment, changing only the boundary
+        // pins each binary increment carries through. Evidence pins restrict the
+        // boundary; marginalized local counts retain their multiplicity.
+        let mut ctr =
+            eng.counter_with(&tdd, Retention::Frontier, PinSemantics::Evidence).ok()?;
+        let mut w = ctr.count_table(&self.boundary_local).ok()?;
+        for count in &mut w {
+            *count /= &div;
+        }
+        Some(w)
+    }
+}
+
 /// A successful shatter: a separator `S ⊆ show` whose removal splits the
 /// formula into independent components. The projected count equals
 /// `Σ over a∈{0,1}^|S| of Π_i w_i(a)` where `w_i` is each component's boundary
-/// count function (`component_boundary_function`). Sound because `S ⊆ show`, so
+/// count function ([`ShatterComponent::boundary_function`]). Sound because `S ⊆ show`, so
 /// conditioning on `S` partitions show-space into disjoint branches.
 pub(super) struct ShatterPlan {
     /// Separator vars (global ids), sorted ascending = canonical S-bit order.
@@ -335,15 +335,7 @@ pub(super) fn structured_count_with(
             i
         } else {
             let vtree = build_vtree(&c.formula)?;
-            let w = component_boundary_function(
-                eng,
-                run,
-                &c.formula,
-                &vtree,
-                &c.hidden_local,
-                &c.own_local,
-                &c.boundary_local,
-            )?;
+            let w = c.boundary_function(eng, run, &vtree)?;
             let i = distinct_w.len();
             distinct_w.push(w);
             cache.insert(key, i);

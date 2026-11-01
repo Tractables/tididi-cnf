@@ -15,10 +15,9 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use tididi::{Engine, OperationError};
-use tididi::diagram::Tdd;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
-use super::step::StepContext;
+use super::step::{PassState, StepContext};
 
 /// The projection shield: the vtree nodes that must stay explicit while a
 /// projected variable is not yet ∃-forgotten, namely its ancestors and the
@@ -121,8 +120,7 @@ pub(crate) fn run_marginalize_at(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    forgotten: &mut HashSet<VarId>,
-    tdds: &mut [Option<Tdd>],
+    state: &mut PassState,
     current_vtree: &Arc<Vtree>,
 ) -> Result<(), OperationError> {
     let Some(schedule) = ctx.marginalize_schedule else { return Ok(()); };
@@ -144,7 +142,7 @@ pub(crate) fn run_marginalize_at(
         // marginalize at step t (= clause-scope is the internal node t).
         for &d in &schedule[t.idx()] {
             if let VtreeNode::Leaf { var, .. } = *current_vtree.node(d)
-                && proj_vars.contains(&var) && !forgotten.contains(&var)
+                && proj_vars.contains(&var) && !state.forgotten.contains(&var)
             {
                 vars_to_forget.push(var);
             }
@@ -160,7 +158,7 @@ pub(crate) fn run_marginalize_at(
         // and keeps the uniform 2^k divisor valid.)
         if t == current_vtree.root() {
             for &var in proj_vars {
-                if !forgotten.contains(&var) && !vars_to_forget.contains(&var) {
+                if !state.forgotten.contains(&var) && !vars_to_forget.contains(&var) {
                     vars_to_forget.push(var);
                 }
             }
@@ -168,12 +166,12 @@ pub(crate) fn run_marginalize_at(
     }
     // Nothing to marginalize and nothing to forget at this step.
     if schedule[t.idx()].is_empty() && vars_to_forget.is_empty() { return Ok(()); }
-    if !vars_to_forget.is_empty() && let Some(tdd_val) = tdds[t.idx()].take() {
+    if !vars_to_forget.is_empty() && let Some(tdd_val) = state.tdds[t.idx()].take() {
         // `exists_vars` picks its own rewrite and carries the weight store to
         // its result. Every rewrite needs no marginal level on a forgotten
         // variable's path to the root, which the projection shield keeps.
-        tdds[t.idx()] = Some(eng.exists_vars(tdd_val, &vars_to_forget)?);
-        forgotten.extend(&vars_to_forget);
+        state.tdds[t.idx()] = Some(eng.exists_vars(tdd_val, &vars_to_forget)?);
+        state.forgotten.extend(&vars_to_forget);
     }
 
     // The projected function leaves its forgotten leaves as structural One
@@ -182,7 +180,7 @@ pub(crate) fn run_marginalize_at(
         return Ok(());
     }
 
-    if let Some(tdd) = tdds[t.idx()].as_mut() {
+    if let Some(tdd) = state.tdds[t.idx()].as_mut() {
         // Projection: keep the shield of still-unforgotten projected vars out
         // of this marginalization, as `build_marginalize_targets` does for the
         // fold. Otherwise an ancestor goes marginal before its projected
@@ -190,7 +188,7 @@ pub(crate) fn run_marginalize_at(
         // forgotten vars themselves are marginalized here (their leaf level is
         // now a One — ×2, corrected by the 2^k divisor). Without projection
         // the schedule is borrowed as it is.
-        let targets = unshielded(&schedule[t.idx()], current_vtree, output.forget(), forgotten);
+        let targets = unshielded(&schedule[t.idx()], current_vtree, output.forget(), &state.forgotten);
         // A weighted compile marginalizes into the WeightStore.
         // `marginalize_levels` passes a `Stopped` cut through, which the step
         // aborts on like a cut inside the apply before it.

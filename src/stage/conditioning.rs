@@ -152,8 +152,6 @@ fn pmc_branch_count(
     deadline: Option<Instant>,
     arjun_ms: u64,
 ) -> Option<num_bigint::BigUint> {
-    let input = Problem::<Unweighted> { formula: formula.clone(), show: Some(show.clone()), weights: (), lift: 0 };
-
     // Re-run projected Arjun inside a conditioned branch. This is deliberately
     // an Arjun-only vitri bundle: the branch's own compile performs projection,
     // and `KeepSound` accepts any correctly mapped checkpoint, including one
@@ -161,8 +159,15 @@ fn pmc_branch_count(
     // The local reduced numbering never leaves this compile attempt.
     let exact_arjun = crate::budget::clamped_to_deadline_ms(arjun_ms, deadline, Instant::now())
         .map(std::time::Duration::from_millis);
-    let branch = match exact_arjun {
+    let (rewritten_formula, rewritten_show);
+    let (cformula, cshow, inner_shift) = match exact_arjun {
         Some(exact_arjun) => {
+            let input = Problem::<Unweighted> {
+                formula: formula.clone(),
+                show: Some(show.clone()),
+                weights: (),
+                lift: 0,
+            };
             let preprocess_config = crate::frontend::request::projection_stage(
                 run.config,
                 vitri::cnf::Mode::Pmc,
@@ -172,15 +177,16 @@ fn pmc_branch_count(
             );
             match projection_step(&input, None, &preprocess_config, "[pmc] condition", "the branch input") {
                 Step::Answer(zero) => return Some(zero),
-                Step::Rewrite(reduced) => reduced,
-                Step::Decline => input,
+                Step::Rewrite(branch) => {
+                    rewritten_formula = branch.formula;
+                    rewritten_show = branch.show.unwrap_or_else(ShowSet::empty);
+                    (&rewritten_formula, &rewritten_show, branch.lift as usize)
+                }
+                Step::Decline => (formula, show, 0),
             }
         }
-        None => input,
+        None => (formula, show, 0),
     };
-    let cformula = &branch.formula;
-    let cshow = branch.show.clone().unwrap_or_else(ShowSet::empty);
-    let inner_shift = branch.lift as usize;
 
     // Trivially-SAT branch: conditioning + re-Arjun can collapse a branch to an
     // empty clause-set (every assignment satisfies). `compile_cnf` returns the
@@ -202,7 +208,7 @@ fn pmc_branch_count(
         cformula,
         super::PORTFOLIO_VTREE_SPEC,
         &VtreeOptions::by_peak_width().with_deadline(crate::budget::vtree_deadline(deadline)),
-        Some(&cshow),
+        Some(cshow),
     )?;
     // The per-branch deadline, armed on the engine around the compile and the
     // count read off it: the compile arms it around itself alone, and the

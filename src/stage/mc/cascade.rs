@@ -102,6 +102,49 @@ pub(super) fn arm_no_sbva_retry(config: &Config) -> bool {
     true
 }
 
+/// Unpack a frontend session retry bundle (`retried`) for stage `tag`: log
+/// the Arjun reduction summary on stderr, answer early when the retry refuted
+/// or fully resolved `formula`, and otherwise bind its vtree to `run.eng`.
+fn unpack_retry_attempt(
+    run: &Run<'_>,
+    formula: &CnfFormula,
+    retried: vitri::bundle::VitriRun,
+    tag: &str,
+) -> std::ops::ControlFlow<Counted, (vitri::bundle::PreprocessBundle, crate::vtree::VtreeBuild)> {
+    let crate::frontend::McFrontendAttempt { preprocessed, vtree } =
+        crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
+    let arjun_pow2 = preprocessed.count_lift.arjun_pow2;
+    eprintln!(
+        "{tag}: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
+        preprocessed.telemetry.arjun_ms.unwrap_or(preprocessed.telemetry.total_ms),
+        formula.num_vars(),
+        formula.clauses().len(),
+        preprocessed.reduced.num_vars(),
+        preprocessed.reduced.clauses().len(),
+        arjun_pow2,
+    );
+    match vtree {
+        // A refuted retry has answered the instance: the count is 0, and no
+        // lift can move it, so nothing is built or compiled on top of it.
+        crate::frontend::FrontendVtree::Refuted => {
+            eprintln!("{tag}: arjun refuted the formula");
+            std::ops::ControlFlow::Break((num_bigint::BigUint::from(0u32), 0))
+        }
+        // Full-resolve short-circuit: the answer is the reduction's lift
+        // alone, folded here as any count of a reduction is.
+        crate::frontend::FrontendVtree::FullyResolved => {
+            eprintln!("{tag}: arjun resolved every variable");
+            std::ops::ControlFlow::Break((num_bigint::BigUint::from(1u32) << arjun_pow2, 0))
+        }
+        // `StageOutcome::Ran` means vitri's own NotSmaller gate kept this
+        // reduction. A discarded result returned before `unpack_retry_attempt`,
+        // so there is no second clause-growth decision here.
+        crate::frontend::FrontendVtree::Built(built) => {
+            std::ops::ControlFlow::Continue((preprocessed, built.bind(run.eng)))
+        }
+    }
+}
+
 /// First fallback: re-reduce the same formula with SBVA off and recompile,
 /// inside this stage's own reserve.
 ///
@@ -182,37 +225,11 @@ fn no_sbva_retry(
             return None;
         }
     };
-    let crate::frontend::McFrontendAttempt { preprocessed: ar, vtree } =
-        crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
-    let arjun_pow2 = ar.count_lift.arjun_pow2;
-    eprintln!(
-        "[mc] no-sbva-retry: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
-        ar.telemetry.arjun_ms.unwrap_or(ar.telemetry.total_ms),
-        compile_formula.num_vars(),
-        compile_formula.clauses().len(),
-        ar.reduced.num_vars(),
-        ar.reduced.clauses().len(),
-        arjun_pow2,
-    );
-    let built = match vtree {
-        // A refuted retry has answered the instance: the count is 0, and no
-        // lift can move it, so nothing is built or compiled on top of it.
-        crate::frontend::FrontendVtree::Refuted => {
-            eprintln!("[mc] no-sbva-retry: arjun refuted the formula");
-            return Some((num_bigint::BigUint::from(0u32), 0));
-        }
-        // Full-resolve short-circuit: the answer is the reduction's lift
-        // alone, folded here as any count of a reduction is.
-        crate::frontend::FrontendVtree::FullyResolved => {
-            eprintln!("[mc] no-sbva-retry: arjun resolved every variable");
-            return Some((num_bigint::BigUint::from(1u32) << arjun_pow2, 0));
-        }
-        // `StageOutcome::Ran` means vitri's own NotSmaller gate kept this
-        // reduction. A discarded result returned above, so there is no second
-        // clause-growth decision here.
-        crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
+    let (ar, built) = match unpack_retry_attempt(run, compile_formula, retried, "[mc] no-sbva-retry") {
+        std::ops::ControlFlow::Break(counted) => return Some(counted),
+        std::ops::ControlFlow::Continue(ready) => ready,
     };
-    let attempt = attempt_from_vitri_build(ar.reduced, built, arjun_pow2);
+    let attempt = attempt_from_vitri_build(ar.reduced, built, ar.count_lift.arjun_pow2);
     // The attempt carries this reduction's lift, which its compile folds.
     let counted = count_attempt(run, attempt, Some(stage_deadline))?;
     eprintln!(
@@ -281,28 +298,9 @@ pub(super) fn monotone_reduction(
             return None;
         }
     };
-    let crate::frontend::McFrontendAttempt { preprocessed: bundle, vtree } =
-        crate::frontend::mc_frontend_attempt(retried, &run.config.vtree_time);
-    let arjun_pow2 = bundle.count_lift.arjun_pow2;
-    eprintln!(
-        "[mc] monotone-reduction: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
-        bundle.telemetry.arjun_ms.unwrap_or(0),
-        formula.num_vars(),
-        formula.clauses().len(),
-        bundle.reduced.num_vars(),
-        bundle.reduced.clauses().len(),
-        arjun_pow2,
-    );
-    let built = match vtree {
-        crate::frontend::FrontendVtree::Refuted => {
-            eprintln!("[mc] monotone-reduction: arjun refuted the formula");
-            return Some(((num_bigint::BigUint::from(0u32), 0), AnsweredBy::MonotoneReduction));
-        }
-        crate::frontend::FrontendVtree::FullyResolved => {
-            eprintln!("[mc] monotone-reduction: arjun resolved every variable");
-            return Some(((num_bigint::BigUint::from(1u32) << arjun_pow2, 0), AnsweredBy::MonotoneReduction));
-        }
-        crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
+    let (bundle, built) = match unpack_retry_attempt(run, formula, retried, "[mc] monotone-reduction") {
+        std::ops::ControlFlow::Break(counted) => return Some((counted, AnsweredBy::MonotoneReduction)),
+        std::ops::ControlFlow::Continue(ready) => ready,
     };
     let no_sbva = no_sbva_armed && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran));
     let ar = crate::frontend::record::arjun_reduction(bundle)

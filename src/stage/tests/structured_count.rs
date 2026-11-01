@@ -17,22 +17,29 @@ fn brute_boundary(formula: &CnfFormula, own: &[VarId], boundary: &[VarId]) -> Ve
         .collect()
 }
 
+fn component(
+    formula: CnfFormula,
+    hidden_local: Vec<VarId>,
+    own_local: Vec<VarId>,
+    boundary_local: Vec<VarId>,
+) -> ShatterComponent {
+    let boundary_bit = (0..boundary_local.len()).collect();
+    ShatterComponent { formula, hidden_local, own_local, boundary_local, boundary_bit }
+}
+
 #[test]
 fn boundary_count_refuses_expired_batch_and_recovers() {
     let eng = &Engine::new();
     let formula = fixtures::formula(2, vec![clause(&[1, 2])]);
+    let comp = component(formula, vec![], vec![VarId(2)], vec![VarId(1)]);
     let vtree = Arc::new(Vtree::balanced(2));
     {
         let _deadline = eng.limits().edit(|limits| {
             limits.with_deadline(Some(std::time::Instant::now()))
         });
-        assert!(component_boundary_function(
-            eng, Default::default(), &formula, &vtree, &[], &[VarId(2)], &[VarId(1)],
-        ).is_none());
+        assert!(comp.boundary_function(eng, Default::default(), &vtree).is_none());
     }
-    let counts = component_boundary_function(
-        eng, Default::default(), &formula, &vtree, &[], &[VarId(2)], &[VarId(1)],
-    ).unwrap();
+    let counts = comp.boundary_function(eng, Default::default(), &vtree).unwrap();
     assert_eq!(counts, vec![BigUint::from(1u32), BigUint::from(2u32)]);
 }
 
@@ -40,10 +47,9 @@ fn boundary_count_refuses_expired_batch_and_recovers() {
 fn component_without_boundary_counts_once() {
     let eng = &Engine::new();
     let formula = fixtures::formula(2, vec![clause(&[1, 2])]);
+    let comp = component(formula, vec![VarId(2)], vec![VarId(1)], vec![]);
     let tree = eng.bind_vtree(Vtree::balanced(2));
-    let counts = component_boundary_function(
-        eng, Default::default(), &formula, &tree, &[VarId(2)], &[VarId(1)], &[],
-    ).unwrap();
+    let counts = comp.boundary_function(eng, Default::default(), &tree).unwrap();
     assert_eq!(counts, vec![BigUint::from(2u32)]);
 }
 
@@ -62,9 +68,10 @@ fn boundary_function_matches_bruteforce() {
     ];
     let formula = fixtures::formula(5, clauses);
     let vtree = Arc::new(Vtree::balanced(5));
-
-    let got = component_boundary_function(eng, Default::default(), &formula, &vtree, &hidden, &own, &boundary).unwrap();
     let want = brute_boundary(&formula, &own, &boundary);
+    let comp = component(formula, hidden, own, boundary);
+
+    let got = comp.boundary_function(eng, Default::default(), &vtree).unwrap();
     assert_eq!(got, want, "boundary function w(a) disagrees with brute force");
 }
 
@@ -91,17 +98,9 @@ fn decomposable_boundary_function_reads_the_supplied_whole_vtree() {
         VarId(3),
         VarId(1),
     ]).unwrap());
+    let comp = component(formula, vec![VarId(4)], vec![VarId(2), VarId(3)], vec![VarId(1)]);
 
-    let got = component_boundary_function(
-        eng,
-        Default::default(),
-        &formula,
-        &vtree,
-        &[VarId(4)],
-        &[VarId(2), VarId(3)],
-        &[VarId(1)],
-    )
-    .unwrap();
+    let got = comp.boundary_function(eng, Default::default(), &vtree).unwrap();
 
     assert_eq!(got, vec![BigUint::from(2u32), BigUint::from(4u32)]);
 }

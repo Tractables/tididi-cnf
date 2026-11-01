@@ -140,7 +140,12 @@ pub(crate) fn arjun_stage(
     budget: std::time::Duration,
     growth: vitri::config::ArjunClauseGrowth,
 ) -> vitri::RunConfig {
-    stage_config(parent, mode, deadline, Some(budget), growth, false, vitri::config::ProjectionPolicy::default())
+    let mut config = base_run_config(parent, mode, deadline);
+    config.arjun_budget = vitri::config::ArjunBudget::Exact(budget);
+    config.arjun_clause_growth = growth;
+    config.stages = vitri::config::PreprocessStages { simplify: false, arjun: true };
+    config.arjun.skip_monotone = skip_monotone(mode, true);
+    config
 }
 
 /// The projection chain under `policy`, with Arjun under an exact allowance
@@ -152,38 +157,30 @@ pub(crate) fn projection_stage(
     arjun: Option<std::time::Duration>,
     policy: vitri::config::ProjectionPolicy,
 ) -> vitri::RunConfig {
-    stage_config(parent, mode, deadline, arjun, vitri::config::ArjunClauseGrowth::default(), true, policy)
+    let mut config = base_run_config(parent, mode, deadline);
+    config.arjun_budget = arjun.map(vitri::config::ArjunBudget::Exact).unwrap_or_default();
+    config.projection_policy = policy;
+    config.stages = vitri::config::PreprocessStages { simplify: true, arjun: arjun.is_some() };
+    config.arjun.skip_monotone = skip_monotone(mode, arjun.is_some());
+    config
 }
 
-/// The vitri request for one stage: Arjun under the exact allowance `arjun`
-/// (off when `None`) and the clause-growth policy `growth`, with `budget_ms`
-/// unset, so vitri does not divide the allowance again. The Arjun options are
-/// the run's, on every mode, with the monotone skip set for this one.
-fn stage_config(
+/// The shared base of a single-stage vitri request ([`arjun_stage`],
+/// [`projection_stage`]): `budget_ms` unset so vitri does not divide the
+/// stage's allowance again, `deadline` and `mode` set for the stage, and the
+/// run's Arjun options copied from `parent`.
+fn base_run_config(
     parent: &Config,
     mode: vitri::cnf::Mode,
     deadline: Option<std::time::Instant>,
-    arjun: Option<std::time::Duration>,
-    growth: vitri::config::ArjunClauseGrowth,
-    simplify: bool,
-    projection: vitri::config::ProjectionPolicy,
-) -> vitri::RunConfig {
-    let mut config = vitri::RunConfig {
+  ) -> vitri::RunConfig {
+    vitri::RunConfig {
         budget_ms: None,
         deadline,
-        arjun_budget: arjun.map(vitri::config::ArjunBudget::Exact).unwrap_or_default(),
-        arjun_clause_growth: growth,
-        projection_policy: projection,
-        stages: vitri::config::PreprocessStages {
-            simplify,
-            arjun: arjun.is_some(),
-        },
         mode: Some(mode),
         arjun: parent.vitri.arjun,
         ..vitri::RunConfig::default()
-    };
-    config.arjun.skip_monotone = skip_monotone(mode, arjun.is_some());
-    config
+    }
 }
 
 #[cfg(test)]

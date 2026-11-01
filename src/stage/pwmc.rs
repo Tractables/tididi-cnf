@@ -184,7 +184,7 @@ fn pwmc_compile_evaluate(
 /// Solve a single independent component's PWMC standalone: bounded show-enumeration
 /// first (cheap when the component's show is small), else the full
 /// compile-evaluate on the component alone, in the component's own space —
-/// the seam folds the global preprocessing lift once. Returns None if neither
+/// the seam folds the global preprocessing lift once. Returns `None` if neither
 /// path solves the component (the caller then aborts decomposition and keeps
 /// the monolith path).
 fn pwmc_solve_component(
@@ -307,7 +307,7 @@ where
     {
         return None;
     }
-    // An empty clause anywhere ⇒ UNSAT ⇒ PWMC 0. detect_components puts the
+    // An empty clause anywhere ⇒ UNSAT ⇒ PWMC 0. `detect_components` puts the
     // empty clauses in a group of their own, which names no variable and which
     // the singleton loop below cannot read, so answer here.
     if formula.clauses().iter().any(|c| c.literals.is_empty()) {
@@ -430,7 +430,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
     decomposed.map_or(Step::Decline, Step::Answer)
 }
 
-/// Stage: the one projection-preserving vitri call.
+/// Stage: the one projection-preserving vitri call ([`vitri::bundle::preprocess`]).
 ///
 /// It owns Arjun minimization, projected strengthening, BVE, show renumbering,
 /// equivalence weight folds and the exact rational lift, and vitri's
@@ -439,7 +439,7 @@ fn decompose_input(run: &Run<'_>, problem: &Problem<Weighted>) -> Step<Weighted>
 /// problem.
 ///
 /// `declared_weights` are the instance's own `c p weight` lines, as parsed.
-/// vitri's projected entry is told which variables the file weighs, not the
+/// [`vitri::bundle::preprocess`] is told which variables the file weighs, not the
 /// resolved table, so the declaration itself has to reach this call.
 fn preprocess(
     run: &Run<'_>,

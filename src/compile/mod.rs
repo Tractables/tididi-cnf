@@ -314,6 +314,20 @@ impl Compiled {
     pub(crate) fn projected_count(&self, eng: &Engine) -> Result<BigUint, OperationError> {
         Ok(eng.model_count(&self.diagram)? >> self.forgotten)
     }
+
+    /// The weighted count `diagram` holds at its root for an
+    /// [`Output::WeightedCount`] compile.
+    ///
+    /// A weighted compile stores no unsatisfiable node, so the formula is
+    /// unsatisfiable when `diagram` is the false constant, whatever its
+    /// weights. Returns `None` when readout is refused or `diagram` carries no
+    /// weighted store.
+    pub(crate) fn weighted_count(&self, eng: &Engine) -> Option<WeightedCount<WeightValue>> {
+        if self.diagram.is_zero() {
+            return Some(WeightedCount::Unsatisfiable);
+        }
+        eng.weighted_value(&self.diagram).ok().flatten().map(WeightedCount::Satisfiable)
+    }
 }
 
 /// Compile a CNF formula into a canonical TDD, guided by the vtree.
@@ -481,7 +495,7 @@ pub(crate) fn weighted_count(
     arithmetic: Arithmetic,
     deadline: Option<Instant>,
 ) -> Option<WeightedCount<WeightValue>> {
-    let tdd = settle(compile_cnf(
+    settle(compile_cnf(
         eng,
         formula,
         vtree,
@@ -491,11 +505,7 @@ pub(crate) fn weighted_count(
             deadline,
         },
     ))?
-    .diagram;
-    if tdd.is_zero() {
-        return Some(WeightedCount::Unsatisfiable);
-    }
-    eng.weighted_value(&tdd).ok().flatten().map(WeightedCount::Satisfiable)
+    .weighted_count(eng)
 }
 
 /// The model count of `formula`, one of `components` at a time: each

@@ -8,7 +8,7 @@ weights instead of counts. The library owns the representation:
 |---|---|
 | Where the values live, and how two diagrams' stores merge | `tididi::diagram::WeightStore` |
 | The value type and its canonical exact form | `tididi::diagram::WeightValue` |
-| The two arithmetic domains | `tididi::diagram::Arithmetic` |
+| The arithmetic domains | `tididi::diagram::Arithmetic` |
 | The pinned leaf column | invariant 11 in the library's [invariant table](https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants) |
 | Pair fusion on weighted levels | invariant 8 in the same table |
 

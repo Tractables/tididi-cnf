@@ -129,15 +129,15 @@ impl Fixture {
         acc
     }
 
-    /// The slots a pass holds when it reaches `t`: each child's diagram,
-    /// with the store of `output`'s weights.
-    fn children(&self, eng: &Engine, output: PassOutput<'_>) -> Vec<Option<Tdd>> {
+    /// The pass state when a pass reaches `t`: each child's diagram in its
+    /// slot, with the store of `output`'s weights.
+    fn children(&self, eng: &Engine, output: PassOutput<'_>) -> PassState {
         let mut tdds = vec![None; self.vtree.num_nodes()];
         let (left, right) = self.vtree.children(self.t);
         for side in [left, right] {
             tdds[side.idx()] = self.conjoined_under(eng, side).map(|d| output.with_store(d));
         }
-        tdds
+        PassState { tdds, ..PassState::default() }
     }
 
     /// The node's diagram by the cofactor step, `None` when it declines
@@ -145,21 +145,21 @@ impl Fixture {
     /// each from the same children.
     fn both_steps(&self, eng: &Engine, ctx: &StepContext<'_>) -> (Option<Tdd>, Tdd) {
         let t = self.t;
-        let mut tdds = self.children(eng, ctx.job.output);
-        let held: Vec<bool> = tdds.iter().map(Option::is_some).collect();
-        let cofactored = cofactor_step(eng, t, ctx, &mut tdds, &mut PassState::default(), &self.vtree)
+        let mut state = self.children(eng, ctx.job.output);
+        let held: Vec<bool> = state.tdds.iter().map(Option::is_some).collect();
+        let cofactored = cofactor_step(eng, t, ctx, &mut state, &self.vtree)
             .unwrap()
             .map(|pairs| {
-                let tdd = tdds[t.idx()].take().expect("a step taken stores the node's diagram");
+                let tdd = state.tdds[t.idx()].take().expect("a step taken stores the node's diagram");
                 assert_eq!(pairs, tdd.pair_count(), "the step reports its diagram's pairs");
                 tdd
             });
         if cofactored.is_none() {
-            assert_eq!(tdds.iter().map(Option::is_some).collect::<Vec<_>>(), held, "a declined step leaves the slots");
+            assert_eq!(state.tdds.iter().map(Option::is_some).collect::<Vec<_>>(), held, "a declined step leaves the slots");
         }
-        let mut tdds = self.children(eng, ctx.job.output);
-        splice_and_fold(eng, t, ctx, &mut tdds, &mut PassState::default(), &self.vtree).unwrap();
-        (cofactored, tdds[t.idx()].take().expect("the normal step stores the node's diagram"))
+        let mut state = self.children(eng, ctx.job.output);
+        splice_and_fold(eng, t, ctx, &mut state, &self.vtree).unwrap();
+        (cofactored, state.tdds[t.idx()].take().expect("the normal step stores the node's diagram"))
     }
 
     /// The rest of a pass from `t`'s children: the step at `t` (the
@@ -167,18 +167,17 @@ impl Fixture {
     /// marginalization, then the root step and its own.
     fn pass(&self, eng: &Engine, ctx: &StepContext<'_>, cofactor: bool) -> Tdd {
         let (t, root) = (self.t, self.vtree.root());
-        let mut tdds = self.children(eng, ctx.job.output);
-        let state = &mut PassState::default();
+        let state = &mut self.children(eng, ctx.job.output);
         if cofactor {
-            let taken = cofactor_step(eng, t, ctx, &mut tdds, state, &self.vtree).unwrap();
+            let taken = cofactor_step(eng, t, ctx, state, &self.vtree).unwrap();
             assert!(taken.is_some(), "the cofactor step fires at t");
         } else {
-            splice_and_fold(eng, t, ctx, &mut tdds, state, &self.vtree).unwrap();
+            splice_and_fold(eng, t, ctx, state, &self.vtree).unwrap();
         }
-        run_marginalize_at(eng, t, ctx, &mut state.forgotten, &mut tdds, &self.vtree).unwrap();
-        splice_and_fold(eng, root, ctx, &mut tdds, state, &self.vtree).unwrap();
-        run_marginalize_at(eng, root, ctx, &mut state.forgotten, &mut tdds, &self.vtree).unwrap();
-        tdds[root.idx()].take().expect("the root step stores the diagram")
+        run_marginalize_at(eng, t, ctx, state, &self.vtree).unwrap();
+        splice_and_fold(eng, root, ctx, state, &self.vtree).unwrap();
+        run_marginalize_at(eng, root, ctx, state, &self.vtree).unwrap();
+        state.tdds[root.idx()].take().expect("the root step stores the diagram")
     }
 
     /// `(negative, positive)` weights for every variable, none of them 1.
@@ -286,15 +285,15 @@ fn the_cofactor_step_declines_a_child_with_a_marginal_level() {
     let fx = one_variable_fixture(&[]);
     let ctx = fx.ctx(fx.job(PassOutput::Function), None);
     let big = fx.vtree.children(fx.t).1;
-    let mut tdds = fx.children(eng, ctx.job.output);
+    let mut state = fx.children(eng, ctx.job.output);
     // A child index precedes its parent's, so ascending is bottom-up.
     let levels: Vec<VtreeIdx> =
         (0..fx.vtree.num_nodes() as u32).map(VtreeIdx).filter(|&u| fx.under(u, big)).collect();
-    eng.marginalize_levels(tdds[big.idx()].as_mut().unwrap(), &levels).unwrap();
-    assert!(tdds[big.idx()].as_ref().unwrap().has_marginal_level());
-    let taken = cofactor_step(eng, fx.t, &ctx, &mut tdds, &mut PassState::default(), &fx.vtree).unwrap();
+    eng.marginalize_levels(state.tdds[big.idx()].as_mut().unwrap(), &levels).unwrap();
+    assert!(state.tdds[big.idx()].as_ref().unwrap().has_marginal_level());
+    let taken = cofactor_step(eng, fx.t, &ctx, &mut state, &fx.vtree).unwrap();
     assert!(taken.is_none(), "a marginal child is left to the normal step");
-    assert!(tdds[big.idx()].is_some() && tdds[fx.t.idx()].is_none());
+    assert!(state.tdds[big.idx()].is_some() && state.tdds[fx.t.idx()].is_none());
 }
 
 #[test]

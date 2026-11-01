@@ -22,9 +22,13 @@ and how the peak is measured.
 The model count, the weighted count and the projected count compile to a
 counting `Output`: `Count`, `WeightedCount` or `ProjectedCount`. Circuit
 output (`Mode::Compile`) compiles `Output::Function` and keeps every level
-explicit. The projected weighted count compiles `Output::ProjectedFunction`,
-which forgets its projected variables on the schedule below but sums no
-level out, so its weighted fold reads the whole diagram.
+explicit. `Output::ProjectedFunction` forgets its projected variables on the
+schedule below while keeping the remaining levels structural, so twin
+contraction can merge identical subfunctions over the kept variables: `pmc`
+uses `Output::ProjectedCount` in `projected_compile` and
+`Output::ProjectedFunction` in `ShatterComponent::boundary_function` (before
+marginalizing each component's private show leaves), and `pwmc` compiles
+`Output::ProjectedFunction` so its weighted fold reads the whole diagram.
 
 ## The schedule
 

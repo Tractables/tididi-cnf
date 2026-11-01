@@ -2,9 +2,17 @@
 
 Mid-compile pruning of intermediate diagram nodes that no model of the original
 CNF Φ passes through. Once a partial diagram passes the size trigger, and
-while it stays under the size ceiling its pass budget allows, reachable
-internal nodes are probed for `f_n ∧ Φ` satisfiability against a long-lived
-CaDiCaL instance that holds Φ, up to a fixed number per pass. An UNSAT
+while it stays under the size ceiling its pass budget allows, the pass computes
+per-node model counts (`Engine::node_counts_u128`) to kill zero-count nodes
+(`zero_count_kills`) before encoding and to order each level's walk, encodes
+the reachable structural levels into a long-lived CaDiCaL instance that holds
+Φ, runs up to `allsat_k` global witness rounds (`Witness::NodeLiterals`) to
+certify live nodes in bulk, and probes the remaining internal nodes for
+`f_n ∧ Φ` satisfiability up to a fixed number per pass. When the Tseitin
+encoding hits `max_encode_ms` after encoding at least one node, the pass keeps
+and probes the encoded bottom-up prefix (`passes_encode_prefix`) instead of
+discarding the pass; only a pass whose budget runs out before any node is
+encoded aborts (`passes_aborted_encode_budget`). An UNSAT or zero-count
 node's pairs are dropped and the diagram is re-minimized. CNF preprocessing
 prunes the input; this prunes the partial output, catching nodes that look
 live in isolation but that no model of Φ passes through.

@@ -72,10 +72,10 @@ Two extremes for handling local clauses at a vtree node:
   recursive TDD. Can blow up without the recursive constraints holding it
   down.
 
-**Batch strategy**: build a small TDD from a batch of clauses (clause ×
-clause operations are cheap), then merge the batch result into the
-accumulator with `merge_batch_into_acc`. Where a batch closes is decided in
-`build_one_batch`:
+- **Batch strategy**: build a small TDD from a batch of clauses (clause ×
+  clause operations are cheap), then merge the batch result into the
+  accumulator with `merge_batch_into_acc`. Where a batch closes is decided in
+  `BatchStop::build_one_batch`:
 
 - **Floor.** A batch folds `BATCH_SIZE` clauses unless it becomes UNSAT, the
   node's clauses run out, or — once the accumulator is wider than
@@ -228,3 +228,15 @@ names the one that answered ([`stats.md`](stats.md)).
   support enumeration and the unreduced retry, then splits the formula on a
   variable; [the support-enumeration stage](support-enum-stage.md) says how
   they are ordered.
+- **Simplified-formula fallback in `wmc`.** `run_wmc_count` (`src/stage/wmc.rs`)
+  spends up to `ARJUN_SHARE` (a quarter) of the remaining time reducing the
+  original formula with Arjun and compiling that reduction (`count_reduced`),
+  then falls back on a decline or give-up to compiling the BVA- and
+  backbone-simplified formula from `wmc_frontend` on the reserved time.
+- **Projected fallback cascade in `pmc`.** `compile_projected`
+  (`src/stage/pmc.rs`) first runs `projected_compile` under a short deadline of
+  a fifth of the time limit, capped at two seconds. When that compile gives up,
+  `condition_on_show` (`src/stage/conditioning.rs`) recursively splits on show
+  variables and compiles each conditioned branch on its own rebuilt portfolio
+  vtree; if conditioning also gives up, `compile_projected` runs one final
+  `projected_compile` on the remaining time.

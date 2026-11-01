@@ -91,9 +91,11 @@ sat_prune_stats! {
     /// Wall time spent Tseitin-encoding partial TDDs (separate from probe),
     /// in microseconds.
     encode_us,
-    /// Passes aborted mid-encode because `max_encode_ms` was exceeded.
-    /// Activation literal `a` is retired before bail-out so the
-    /// partially-emitted clauses are inert in subsequent passes.
+    /// Passes aborted because `max_encode_ms` ran out before any node was
+    /// encoded; passes that encoded at least one node increment
+    /// `passes_encode_prefix` instead and probe that prefix. Activation
+    /// literal `a` is retired before bail-out so any partially-emitted
+    /// clauses are inert in subsequent passes.
     passes_aborted_encode_budget,
     /// Passes that hit the encode budget but kept the fully-encoded bottom-up
     /// prefix and probed it instead of discarding the pass.

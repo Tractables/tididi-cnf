@@ -65,22 +65,21 @@ const _: () = assert!(COFACTOR_MAX_VARS < 8, "the cofactor step's assignments ar
 const COFACTOR_MIN_CLAUSES: usize = 64;
 
 /// Take the cofactor step at internal node `t` when it qualifies, storing the
-/// node's diagram in `tdds[t]` and consuming the children's slots. Returns
+/// node's diagram in `state.tdds[t]` and consuming the children's slots. Returns
 /// `Some` with the diagram's pair count when the step was taken, `None` (with
-/// `tdds` untouched) when the node is left to the normal step.
+/// `state.tdds` untouched) when the node is left to the normal step.
 /// `Err(Stopped)` on the deadline, checked between branches and at the end.
 pub(super) fn cofactor_step(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    tdds: &mut [Option<Tdd>],
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
 ) -> Result<Option<usize>, OperationError> {
-    let Some(plan) = plan_cofactor(eng, t, ctx, tdds, current_vtree)? else {
+    let Some(plan) = plan_cofactor(eng, t, ctx, &state.tdds, current_vtree)? else {
         return Ok(None);
     };
-    run_cofactor(eng, t, ctx, tdds, state, current_vtree, plan).map(Some)
+    run_cofactor(eng, t, ctx, state, current_vtree, plan).map(Some)
 }
 
 /// A node the cofactor step takes, worked out before any diagram is folded.
@@ -218,20 +217,19 @@ fn plan_cofactor(
 }
 
 /// Fold `plan`'s branches into copies of the big side's diagram, join them
-/// into `tdds[t]` and marginalize the levels the normal fold would have
+/// into `state.tdds[t]` and marginalize the levels the normal fold would have
 /// summed out. Returns the node diagram's pair count.
 fn run_cofactor(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    tdds: &mut [Option<Tdd>],
     state: &mut PassState,
     vtree: &Arc<Vtree>,
     plan: CofactorPlan,
 ) -> Result<usize, OperationError> {
-    let r = tdds[plan.big.idx()].take().expect("the plan read the big side's diagram");
+    let r = state.tdds[plan.big.idx()].take().expect("the plan read the big side's diagram");
     // The small side's diagram has done its work: it chose the branches.
-    tdds[plan.small.idx()] = None;
+    state.tdds[plan.small.idx()] = None;
     // The branches fold the reduced clauses; marginalization waits for the join.
     let branch_ctx = StepContext {
         job: ctx.job,
@@ -263,7 +261,7 @@ fn run_cofactor(
         eng.marginalize_levels(&mut joined, &summable(vtree, &targets, ctx.job.output.forget().is_some()))?;
     }
     let pairs = joined.pair_count();
-    tdds[t.idx()] = Some(joined);
+    state.tdds[t.idx()] = Some(joined);
     if deadline_passed(ctx.job.deadline) {
         return Err(OperationError::Stopped);
     }

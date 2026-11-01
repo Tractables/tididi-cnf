@@ -52,6 +52,8 @@ pub(crate) struct StepContext<'a> {
 /// What one bottom-up pass changes as it goes.
 #[derive(Default)]
 pub(crate) struct PassState {
+    /// Per-vtree-node partial diagrams, indexed by `VtreeIdx::idx`.
+    pub(crate) tdds: Vec<Option<Tdd>>,
     /// The adaptive-minimize gate.
     pub(crate) minimize: MinimizeGate,
     /// The projected variables ∃-forgotten so far, in the pass's numbering.
@@ -144,10 +146,10 @@ pub(crate) fn compile_component(
     // meter and the refused size a previous attempt left, so an allocator
     // refusal a give-up names is this attempt's own.
     eng.limits().reset_meters();
-    let mut tdds: Vec<Option<Tdd>> = vec![None; vtree.num_nodes()];
+    let total_nodes = vtree.num_nodes();
     // Live vtree pointer that `batch_accumulate` and the conjunction use. Mid-compile
     // rotation search reseats this Arc; downstream ptr_eq checks require
-    // every live Tdd in `tdds` to share the same Arc, so we propagate.
+    // every live Tdd in `state.tdds` to share the same Arc, so we propagate.
     let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
 
     // A weighted compile builds no pruning context: its marginal levels hold
@@ -159,7 +161,7 @@ pub(crate) fn compile_component(
         }
         _ => None,
     };
-    let mut state = PassState { sat_prune, ..PassState::default() };
+    let mut state = PassState { tdds: vec![None; total_nodes], sat_prune, ..PassState::default() };
     state.minimize.skip_content_twins = job.run.cofactor;
     let ctx = StepContext {
         job,
@@ -192,9 +194,9 @@ pub(crate) fn compile_component(
         let step = if deadline_passed(ctx.job.deadline) {
             Err(OperationError::Stopped)
         } else {
-            fold_step(eng, t, &ctx, &mut tdds, &mut state, &current_vtree, None)
+            fold_step(eng, t, &ctx, &mut state, &current_vtree, None)
         };
-        if let ControlFlow::Break(out) = check(step, tdds[t.idx()].as_ref()) {
+        if let ControlFlow::Break(out) = check(step, state.tdds[t.idx()].as_ref()) {
             return out.map(|diagram| Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size });
         }
     }
@@ -232,9 +234,9 @@ pub(crate) fn compile_component(
         let step = if deadline_passed(ctx.job.deadline) {
             Err(OperationError::Stopped)
         } else {
-            run_internal_step(eng, t, ctx, &mut tdds, &mut state, &current_vtree)
+            run_internal_step(eng, t, ctx, &mut state, &current_vtree)
         };
-        if let ControlFlow::Break(out) = check(step, tdds[t.idx()].as_ref()) {
+        if let ControlFlow::Break(out) = check(step, state.tdds[t.idx()].as_ref()) {
             return out
                 .map(|diagram| Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size })
                 .map_err(stopped);
@@ -249,8 +251,8 @@ pub(crate) fn compile_component(
         // failure aborts the pass like one from the step above: a cut leaves
         // the accumulator count-exact, but there is no wall left to finish
         // the step.
-        let marginalized = run_marginalize_at(eng, t, ctx, &mut state.forgotten, &mut tdds, &current_vtree)
-        .and_then(|()| match tdds[t.idx()].as_mut() {
+        let marginalized = run_marginalize_at(eng, t, ctx, &mut state, &current_vtree)
+        .and_then(|()| match state.tdds[t.idx()].as_mut() {
             Some(tdd) => eng
                 .rotate_marginal_cluster(tdd, t, MARGINAL_CLUSTER_BOUND_FACTOR, &mut cluster_tried)
                 .map(drop),
@@ -259,7 +261,7 @@ pub(crate) fn compile_component(
         if let Err(e) = marginalized {
             return Err(stopped(GiveUp::from_operation(eng, e)));
         }
-        propagate_vtree_arc(&mut tdds, &mut current_vtree, t);
+        propagate_vtree_arc(&mut state.tdds, &mut current_vtree, t);
     }
 
     // The context's unproductive spend joins the compile's, which the next
@@ -270,7 +272,7 @@ pub(crate) fn compile_component(
         run_pass.absorb(prune.into_stats());
     }
 
-    let diagram = tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
+    let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size })
 }
 
@@ -299,26 +301,25 @@ fn propagate_vtree_arc(
 // ── The steps ────────────────────────────────────────────────────────────────
 
 /// Fold node `t`'s clauses into `children` (the conjoined child diagrams, or
-/// `None`), marginalizing in the fold, and store the result in `tdds[t]`.
+/// `None`), marginalizing in the fold, and store the result in `state.tdds[t]`.
 /// Returns its pair count, 0 when the node has no diagram. `Err(Stopped)`
 /// when the deadline passes during the fold.
 fn fold_step(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    tdds: &mut [Option<Tdd>],
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
     children: Option<Tdd>,
 ) -> Result<usize, OperationError> {
     let targets = build_marginalize_targets(t.idx(), current_vtree, ctx, &state.forgotten);
-    tdds[t.idx()] = batch_accumulate(
+    state.tdds[t.idx()] = batch_accumulate(
         eng,
         &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
         state, targets.as_deref(),
     )?;
     if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
-    Ok(tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
+    Ok(state.tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
 }
 
 /// Process a single internal vtree node: the cofactor step when the node
@@ -331,17 +332,16 @@ fn run_internal_step(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    tdds: &mut [Option<Tdd>],
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
-    let mut pairs = match cofactor_step(eng, t, ctx, tdds, state, current_vtree)? {
+    let mut pairs = match cofactor_step(eng, t, ctx, state, current_vtree)? {
         Some(pairs) => pairs,
-        None => splice_and_fold(eng, t, ctx, tdds, state, current_vtree)?,
+        None => splice_and_fold(eng, t, ctx, state, current_vtree)?,
     };
     // Prune the node's diagram when the pass's trigger fires.
     if let Some(prune) = state.sat_prune.as_mut()
-        && let Some(tdd) = tdds[t.idx()].as_ref()
+        && let Some(tdd) = state.tdds[t.idx()].as_ref()
         && prune.should_fire(pairs)
     {
         let pruned = match prune.probe_tdd(eng, tdd, pairs) {
@@ -351,7 +351,7 @@ fn run_internal_step(
         };
         if let Some(pruned) = pruned {
             pairs = pruned.pair_count();
-            tdds[t.idx()] = Some(pruned);
+            state.tdds[t.idx()] = Some(pruned);
         }
     }
     Ok(pairs)
@@ -359,17 +359,16 @@ fn run_internal_step(
 
 /// The normal internal step at `t`: conjoin the children's diagrams by an
 /// O(1) splice, fold the node's clauses into the result ([`fold_step`]) and
-/// store it in `tdds[t]`. Returns its pair count.
+/// store it in `state.tdds[t]`. Returns its pair count.
 pub(super) fn splice_and_fold(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
-    tdds: &mut [Option<Tdd>],
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
     let (left, right) = current_vtree.children(t);
-    let children_tdd = match (tdds[left.idx()].take(), tdds[right.idx()].take()) {
+    let children_tdd = match (state.tdds[left.idx()].take(), state.tdds[right.idx()].take()) {
         (Some(mut l), Some(r)) => {
             if l.is_zero() || r.is_zero() {
                 Some(ctx.job.output.with_store(eng.zero(current_vtree)))
@@ -399,7 +398,7 @@ pub(super) fn splice_and_fold(
         (Some(t_single), None) | (None, Some(t_single)) => Some(t_single),
         (None, None) => None,
     };
-    fold_step(eng, t, ctx, tdds, state, current_vtree, children_tdd)
+    fold_step(eng, t, ctx, state, current_vtree, children_tdd)
 }
 
 #[cfg(test)]
