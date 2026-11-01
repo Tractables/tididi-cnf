@@ -85,8 +85,8 @@ pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec
 /// highest-scoped clause that mentions it, or 0 when no clause does: its last
 /// scope. Every scope of a clause mentioning a variable is an ancestor of the
 /// variable's leaf, so the highest of them is their lowest common ancestor.
-/// `clauses_at[t.idx()]` lists the clauses scoped to node t, and
-/// `vars_of(ci)` yields clause ci's variables.
+/// `clauses_at[t.idx()]` lists the clauses scoped to node `t`, and
+/// `vars_of(ci)` yields clause `ci`'s variables.
 pub(crate) fn last_scope_positions<I: IntoIterator<Item = VarId>>(
     vtree: &Vtree,
     clauses_at: &[Vec<usize>],

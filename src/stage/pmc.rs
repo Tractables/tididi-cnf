@@ -14,7 +14,7 @@ use super::{Run, run_isolated};
 use super::conditioning::{condition_on_show, projected_compile};
 use super::projected::{
     CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projected_arjun_budget_ms, projection_step,
-    run_stages, trivial_residual,
+    run_projected_bundle, run_stages, trivial_residual,
 };
 use super::structured_count::{ShatterCfg, detect_shatter, structured_count_with};
 use crate::vtree::VtreeOptions;
@@ -341,16 +341,8 @@ pub(crate) fn run_pmc_bundle(
     run: &Run<'_>,
     outcome: Outcome<Unweighted>,
 ) -> Result<Projected<num_bigint::BigUint>, crate::Error> {
-    let problem = match outcome {
-        Outcome::Unsat => {
-            eprintln!("[pmc] preprocessing: UNSAT");
-            return Ok(Projected { value: num_bigint::BigUint::ZERO, show_vars: None, compile_ms: 0 });
-        }
-        Outcome::Reduced(problem) => problem,
-    };
-    let trivial = |problem: &Problem<Unweighted>, trace: &Trace| trivial_residual("[pmc] trivial", problem, trace);
     let compile = |problem: &Problem<Unweighted>, trace: &Trace| compile_projected(run, problem, trace);
-    run_stages(problem, &[&trivial, &compile], run.deadline, &run.config.vtree_time)
+    run_projected_bundle(run, "pmc", outcome, &compile)
 }
 
 /// Projected model counting (PMC). Counts the number of
@@ -362,7 +354,7 @@ pub(crate) fn run_pmc_bundle(
 /// while existentially forgetting hidden variables. After a real ∃, each
 /// forgotten var is genuinely free, so:
 ///
-///   PMC = model_count(∃forgotten. f) / 2^forgotten
+///   `PMC = model_count(∃forgotten. f) / 2^forgotten`
 ///
 /// ([`Compiled::projected_count`](crate::compile::Compiled::projected_count)).
 /// Every variable is a vtree leaf, so a show var appearing in no clause stays

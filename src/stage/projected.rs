@@ -20,6 +20,7 @@ use vitri::cnf::CnfFormula;
 use super::Run;
 use crate::vtree::VtreeOptions;
 use crate::enumeration::{AllsatCtl, EnumLimits, Tally, show_enum_fastpath};
+use crate::frontend::record::Outcome;
 use crate::output::Projected;
 use crate::problem::{Domain, Problem, ShowSet};
 
@@ -115,6 +116,28 @@ pub(super) fn run_stages<D: Domain>(
         }
     }
     Err(crate::Error::every_stage_gave_up())
+}
+
+/// The projected count of a vitri bundle, `outcome` as its record describes
+/// it: refuted, or the trivial residual and `compile`, which runs on the
+/// bundle's vtree with nothing preprocessed. The record's lift is applied
+/// once, to the answer.
+pub(super) fn run_projected_bundle<D: Domain>(
+    run: &Run<'_>,
+    mode: &str,
+    outcome: Outcome<D>,
+    compile: Stage<'_, D>,
+) -> Result<Projected<D::Value>, crate::Error> {
+    let problem = match outcome {
+        Outcome::Unsat => {
+            eprintln!("[{mode}] preprocessing: UNSAT");
+            return Ok(Projected { value: D::zero(), show_vars: None, compile_ms: 0 });
+        }
+        Outcome::Reduced(problem) => problem,
+    };
+    let trivial_tag = format!("[{mode}] trivial");
+    let trivial = |problem: &Problem<D>, trace: &Trace| trivial_residual(&trivial_tag, problem, trace);
+    run_stages(problem, &[&trivial, compile], run.deadline, &run.config.vtree_time)
 }
 
 /// Count `show`'s feasible assignments by enumeration

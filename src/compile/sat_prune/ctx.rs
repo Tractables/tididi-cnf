@@ -186,12 +186,7 @@ impl SatPruneCtx {
         if num_orig_vars > 0 {
             solver.reserve(num_orig_vars as i32);
         }
-        for clause in formula.clauses() {
-            for lit in &clause.literals {
-                solver.add(lit.to_dimacs());
-            }
-            solver.add(0);
-        }
+        crate::formula::add_clauses_to_solver(&mut solver, formula);
         let next_var = num_orig_vars as i32 + 1;
         let solver_setup_us = start.elapsed().as_micros() as u64;
 

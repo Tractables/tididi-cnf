@@ -40,6 +40,7 @@ include = [
     # The instances the doctests read.
     "/tests/data/simple.cnf",
     "/tests/data/queens5.cnf",
+    "/tests/data/queens8.cnf",
 ]
 
 # The package is `tididi-cnf` and its library `tididi_cnf`; the binary is

@@ -171,6 +171,16 @@ pub(crate) fn with_unit(formula: &CnfFormula, lit: Literal) -> CnfFormula {
         .expect("a unit over the formula's own variables stays in its space")
 }
 
+/// Add every clause of `formula` to `solver`.
+pub(crate) fn add_clauses_to_solver(solver: &mut vitri::sat::CaDiCal, formula: &CnfFormula) {
+    for clause in formula.clauses() {
+        for lit in &clause.literals {
+            solver.add(lit.to_dimacs());
+        }
+        solver.add(0);
+    }
+}
+
 #[cfg(test)]
 #[path = "tests/formula.rs"]
 mod tests;

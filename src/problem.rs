@@ -239,6 +239,19 @@ impl<D: Domain> Problem<D> {
     pub(crate) fn show_len(&self) -> usize {
         self.show.as_ref().map_or(0, ShowSet::len)
     }
+
+    /// The formula's variables outside the show set, in ascending order;
+    /// empty without a show set.
+    pub(crate) fn forgotten_vars(&self) -> Vec<tididi::vtree::VarId> {
+        let Some(show) = &self.show else {
+            return Vec::new();
+        };
+        (0..self.formula.num_vars() as usize)
+            .map(vitri::cnf::VarId::from_idx)
+            .filter(|&v| !show.contains(v))
+            .map(crate::convert::diagram_var)
+            .collect()
+    }
 }
 
 #[cfg(test)]

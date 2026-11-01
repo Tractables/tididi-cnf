@@ -92,12 +92,7 @@ const MODEL_CAP: u64 = 200_000;
 /// inprocessing cannot eliminate the vars the caller will assume or read.
 fn load_solver(formula: &CnfFormula, constrained: &[i32]) -> Option<CaDiCal> {
     let mut solver = CaDiCal::new()?;
-    for cl in formula.clauses() {
-        for lit in &cl.literals {
-            solver.add(lit.to_dimacs());
-        }
-        solver.add(0);
-    }
+    crate::formula::add_clauses_to_solver(&mut solver, formula);
     for &d in constrained {
         solver.freeze(d);
     }
@@ -526,12 +521,12 @@ fn allsat<T: Tally>(
                 // Block this projection: a clause that excludes exactly the
                 // found assignment over the constrained-show vars (one clause
                 // per projection; see the note on the flat encoding above).
-                // val(d)>0 ⇒ var true here ⇒ exclude with ¬d; otherwise (incl.
-                // don't-care val==0) treat as false and exclude with +d — the
+                // `val(d) > 0` ⇒ var true here ⇒ exclude with `¬d`; otherwise (incl.
+                // don't-care `val == 0`) treat as false and exclude with `+d` — the
                 // opposite polarity, if feasible, is then found and counted
                 // separately.
-                // Read every model value first: the first add() leaves the
-                // satisfied state, after which val() is illegal.
+                // Read every model value first: the first `add()` leaves the
+                // satisfied state, after which `val()` is illegal.
                 let assignment = model_lits(&mut solver, constrained);
                 for &lit in &assignment {
                     solver.add(-lit);

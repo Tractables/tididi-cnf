@@ -193,7 +193,7 @@ impl RemapScratch {
     }
 }
 
-/// Remap a component's clauses from global VarIds to local VarIds (`0..K-1`)
+/// Remap a component's clauses from global `VarId`s to local `VarId`s (`1..=K`)
 /// into `scratch`, producing a self-contained sub-formula, [`RemapScratch::sub`],
 /// that can be compiled against the component's own vtree.
 pub(crate) fn remap_component_clauses_into(

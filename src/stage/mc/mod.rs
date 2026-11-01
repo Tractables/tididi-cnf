@@ -75,81 +75,96 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula, stall_rule: Option<Stal
         run.config,
         run.deadline,
         |attempt, session| {
-            let mut bundle = attempt.preprocessed;
-            let simplify_pow2 = bundle.count_lift.simplify_pow2;
-            let preprocessing = bundle.telemetry;
-            let reduction = reduction(bundle.stages.arjun.as_ref());
-            // Both vtree-less outcomes end here: a refuted formula counts 0, a
-            // fully resolved one the lift alone.
-            let primary_vtree = match attempt.vtree {
-                crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
-                _ => {
-                    let count = if bundle.record.unsat {
-                        num_bigint::BigUint::from(0u32)
-                    } else {
-                        num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
-                    };
-                    return Some(McOutcome {
-                        count,
-                        peak_pairs: 0,
-                        cascade_ms: None,
-                        answered_by: AnsweredBy::Preprocessing,
-                        reduction,
-                        preprocessing,
-                    });
-                }
-            };
-            let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
-                // Everything inside the cascade stays in the formula space
-                // Arjun was given; vitri's simplify lift is applied once, below.
-                let arjun_input = bundle
-                    .arjun_input
-                    .take()
-                    .unwrap_or_else(|| compile_formula.clone());
-                eprintln!(
-                    "[mc] arjun: reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
-                    preprocessing.arjun_ms.unwrap_or(0) as u128,
-                    arjun_input.num_vars(),
-                    arjun_input.clauses().len(),
-                    bundle.reduced.num_vars(),
-                    bundle.reduced.clauses().len(),
-                    bundle.count_lift.arjun_pow2,
-                );
-                // The input decides whether the retry is armed; the stage
-                // report can only narrow it.
-                let no_sbva_retry = (no_sbva_retry_armed
-                    && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
-                .then_some(session);
-                let ar = crate::frontend::record::arjun_reduction(bundle)
-                    .expect("a kept plain-MC Arjun result carries its support");
-                count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
-            } else {
-                count_without_reduction(
-                    run,
-                    bundle.reduced,
-                    bundle.stages.arjun,
-                    primary_vtree,
-                    session,
-                    no_sbva_retry_armed,
-                )
-            };
-            let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) = recovered else {
-                eprintln!("[mc] no answer: Shannon split gave up");
-                return None;
-            };
-            Some(McOutcome {
-                count: count << simplify_pow2,
-                peak_pairs,
-                cascade_ms: Some(cascade_ms),
-                answered_by,
-                reduction,
-                preprocessing,
-            })
+            run_mc_cascade(run, compile_formula, stall_rule, no_sbva_retry_armed, attempt, session)
         },
     );
     result.unwrap_or_else(|error| {
         eprintln!("[mc] preprocessing: vitri's frontend failed: {error}");
         None
+    })
+}
+
+/// One frontend attempt of [`count_mc`]: the full-resolve short-circuit, then
+/// either the primary compile with its fallbacks and Shannon-split recovery
+/// ([`count_primary`]) or, when vitri kept no reduction, the count without it
+/// ([`count_without_reduction`]).
+fn run_mc_cascade(
+    run: &Run<'_>,
+    compile_formula: &CnfFormula,
+    stall_rule: Option<StallRule>,
+    no_sbva_retry_armed: bool,
+    attempt: crate::frontend::McFrontendAttempt,
+    session: &vitri::bundle::FrontendSession<'_>,
+) -> Option<McOutcome> {
+    let mut bundle = attempt.preprocessed;
+    let simplify_pow2 = bundle.count_lift.simplify_pow2;
+    let preprocessing = bundle.telemetry;
+    let reduction = reduction(bundle.stages.arjun.as_ref());
+    // Both vtree-less outcomes end here: a refuted formula counts 0, a
+    // fully resolved one the lift alone.
+    let primary_vtree = match attempt.vtree {
+        crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
+        _ => {
+            let count = if bundle.record.unsat {
+                num_bigint::BigUint::from(0u32)
+            } else {
+                num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
+            };
+            return Some(McOutcome {
+                count,
+                peak_pairs: 0,
+                cascade_ms: None,
+                answered_by: AnsweredBy::Preprocessing,
+                reduction,
+                preprocessing,
+            });
+        }
+    };
+    let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
+        // Everything inside the cascade stays in the formula space
+        // Arjun was given; vitri's simplify lift is applied once, below.
+        let arjun_input = bundle
+            .arjun_input
+            .take()
+            .unwrap_or_else(|| compile_formula.clone());
+        eprintln!(
+            "[mc] arjun: reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
+            preprocessing.arjun_ms.unwrap_or(0) as u128,
+            arjun_input.num_vars(),
+            arjun_input.clauses().len(),
+            bundle.reduced.num_vars(),
+            bundle.reduced.clauses().len(),
+            bundle.count_lift.arjun_pow2,
+        );
+        // The input decides whether the retry is armed; the stage
+        // report can only narrow it.
+        let no_sbva_retry = (no_sbva_retry_armed
+            && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
+        .then_some(session);
+        let ar = crate::frontend::record::arjun_reduction(bundle)
+            .expect("a kept plain-MC Arjun result carries its support");
+        count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
+    } else {
+        count_without_reduction(
+            run,
+            bundle.reduced,
+            bundle.stages.arjun,
+            primary_vtree,
+            session,
+            no_sbva_retry_armed,
+        )
+    };
+    let Some(Recovered { count, peak_pairs, answered_by, cascade_ms }) = recovered else {
+        eprintln!("[mc] no answer: Shannon split gave up");
+        return None;
+    };
+    Some(McOutcome {
+        count: count << simplify_pow2,
+        peak_pairs,
+        cascade_ms: Some(cascade_ms),
+        answered_by,
+        reduction,
+        preprocessing,
     })
 }
 

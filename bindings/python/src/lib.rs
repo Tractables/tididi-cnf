@@ -399,8 +399,9 @@ fn count_file(
 // `pymodule` expands this function into a Rust module of the same name, so it
 // cannot be called `tididi_cnf` without shadowing the crate being wrapped.
 // `name` is what Python imports.
-/// Exact model counting by compiling a CNF into a Tree Decision Diagram: the
-/// model count, the weighted count and their projections of a DIMACS formula.
+/// Python bindings for tididi-cnf, a knowledge compiler and model counter for
+/// CNF: the model count, the weighted count and their projections of a DIMACS
+/// formula, computed by compiling it into a Tree Decision Diagram.
 #[pymodule]
 #[pyo3(name = "tididi_cnf")]
 fn python_module(module: &Bound<'_, PyModule>) -> PyResult<()> {

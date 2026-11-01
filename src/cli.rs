@@ -269,7 +269,28 @@ fn parse_args() -> Result<Request, Error> {
     }
 
     let dimacs_path = dimacs_path.ok_or_else(|| usage_error("no DIMACS file or vitri bundle given.".to_owned()))?;
+    let (time_limit_ms, sat_prune) = parse_env_overrides(time_limit_ms)?;
 
+    Ok(Request::Run(Cli {
+        path: dimacs_path,
+        mode: mode_flag,
+        limits: Limits { time_limit_ms, mem_limit_mb },
+        settings: Settings {
+            vtree: vtree_spec,
+            preprocess,
+            save_tdd: save_tdd_path.is_some(),
+            sat_prune,
+        },
+        output_format,
+        stats_path,
+        save_tdd_path,
+    }))
+}
+
+/// Read `TIDIDI_TIME_LIMIT_MS` (when `flag_time_limit_ms` is absent, though an
+/// unparseable value is refused either way) and `TIDIDI_SAT_PRUNE`.
+fn parse_env_overrides(flag_time_limit_ms: Option<u64>) -> Result<(Option<u64>, Option<bool>), Error> {
+    let mut time_limit_ms = flag_time_limit_ms;
     // The flag wins over `TIDIDI_TIME_LIMIT_MS`, but a set value that does not
     // parse is refused either way: it is an invalid setting, and ignoring it
     // would run with no time limit at all.
@@ -303,18 +324,5 @@ fn parse_args() -> Result<Request, Error> {
         }),
     };
 
-    Ok(Request::Run(Cli {
-        path: dimacs_path,
-        mode: mode_flag,
-        limits: Limits { time_limit_ms, mem_limit_mb },
-        settings: Settings {
-            vtree: vtree_spec,
-            preprocess,
-            save_tdd: save_tdd_path.is_some(),
-            sat_prune,
-        },
-        output_format,
-        stats_path,
-        save_tdd_path,
-    }))
+    Ok((time_limit_ms, sat_prune))
 }

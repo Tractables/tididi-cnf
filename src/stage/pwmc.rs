@@ -13,7 +13,7 @@ use vitri::cnf::CnfFormula;
 use super::{Run, run_isolated};
 use super::projected::{
     CountVtree, Stage, Step, Trace, counting_vtree, enumerate_show, projected_arjun_budget_ms, projection_step,
-    run_stages, trivial_residual,
+    run_projected_bundle, run_stages, trivial_residual,
 };
 use crate::frontend::record::Outcome;
 use crate::problem::WeightedCount;
@@ -52,6 +52,9 @@ fn pwmc_preprocess_config(
     )
 }
 
+/// The `(negative, positive)` literal weights per variable.
+type LiteralWeights = [(BigRational, BigRational)];
+
 /// The weighted projected instance a stage is asked about: the show set and the
 /// per-literal weights.
 #[derive(Clone, Copy)]
@@ -60,7 +63,7 @@ struct PwmcCase<'a> {
     /// is a pure feasibility factor.
     show: Option<&'a ShowSet>,
     /// The `(negative, positive)` literal weights per variable.
-    weights: &'a [(BigRational, BigRational)],
+    weights: &'a LiteralWeights,
 }
 
 /// Who asks [`pwmc_show_enum_fastpath`] for an enumeration, which sets its
@@ -191,7 +194,7 @@ fn pwmc_solve_component(
     run: &Run<'_>,
     sub: &CnfFormula,
     local_show: &ShowSet,
-    weights: &[(BigRational, BigRational)],
+    weights: &LiteralWeights,
 ) -> Option<WeightedCount<BigRational>> {
     /// The most show vars a component may have for AllSAT to exhaust its
     /// projections.
@@ -252,6 +255,33 @@ fn pwmc_solve_component(
     pwmc_compile_evaluate(run, formula, &trace, case)
 }
 
+/// Evaluate a one-variable component `group` over `var`: each clause is a unit
+/// forcing `var`. Returns `None` when both polarities are forced, or the forced
+/// literal's weight in `weights` (1 for a projected variable, which
+/// [`problem_weight_tables`] pins to 1).
+fn eval_singleton(
+    formula: &CnfFormula,
+    group: &[usize],
+    var: vitri::cnf::VarId,
+    weights: &LiteralWeights,
+) -> Option<BigRational> {
+    let (mut pos, mut neg) = (false, false);
+    for &ci in group {
+        for lit in &formula.clauses()[ci].literals {
+            if lit.positive {
+                pos = true;
+            } else {
+                neg = true;
+            }
+        }
+    }
+    if pos && neg {
+        return None;
+    }
+    let (w_neg, w_pos) = &weights[var.idx()];
+    Some(if pos { w_pos.clone() } else { w_neg.clone() })
+}
+
 /// Independent-component decomposition for PWMC, behind [`decompose_input`] and
 /// [`decompose_reduced`]. PWMC is multiplicative over variable-disjoint
 /// components: PWMC(F₁∧F₂) = PWMC(F₁)·PWMC(F₂) when var(F₁)∩var(F₂)=∅. The
@@ -260,10 +290,11 @@ fn pwmc_solve_component(
 /// and multiplying pays their sum instead.
 ///
 /// Runs only on two or more components of at least two variables each; a
-/// one-variable component is read off its unit clauses. `policy` says which
-/// components decline it and in which order they are solved. `solve` answers
-/// one component in its own variable space; a `None` from it declines the whole
-/// decomposition, and the caller falls through with its budget intact.
+/// one-variable component is read off its unit clauses ([`eval_singleton`]).
+/// `policy` says which components decline it and in which order they are
+/// solved. `solve` answers one component in its own variable space; a `None`
+/// from it declines the whole decomposition, and the caller falls through with
+/// its budget intact.
 fn pwmc_decompose<F>(
     problem: &Problem<Weighted>,
     policy: DecomposePolicy,
@@ -271,7 +302,7 @@ fn pwmc_decompose<F>(
     mut solve: F,
 ) -> Option<WeightedCount<BigRational>>
 where
-    F: FnMut(&CnfFormula, &ShowSet, &[(BigRational, BigRational)]) -> Option<WeightedCount<BigRational>>,
+    F: FnMut(&CnfFormula, &ShowSet, &LiteralWeights) -> Option<WeightedCount<BigRational>>,
 {
     use std::collections::HashSet;
     let DecomposePolicy { show_cap, sort_cheap_first } = policy;
@@ -284,19 +315,14 @@ where
     // (variables, show variables, clause indices) per component of two or
     // more variables.
     let mut substantial: Vec<(usize, usize, &Vec<usize>)> = Vec::new();
-    let mut singletons: Vec<&Vec<usize>> = Vec::new();
+    let mut singletons: Vec<(vitri::cnf::VarId, &Vec<usize>)> = Vec::new();
     for g in &groups {
-        let mut vars: HashSet<vitri::cnf::VarId> = HashSet::new();
-        for &ci in g {
-            for lit in &formula.clauses()[ci].literals {
-                vars.insert(lit.var);
-            }
-        }
+        let vars = formula.component_vars(g);
         if vars.len() >= 2 {
             let show_in = vars.iter().filter(|&&v| mask.is_show(v)).count();
             substantial.push((vars.len(), show_in, g));
-        } else {
-            singletons.push(g);
+        } else if let &[var] = vars.as_slice() {
+            singletons.push((var, g));
         }
     }
     if substantial.len() < 2 {
@@ -334,27 +360,13 @@ where
     // Singleton (1-var) components: each clause is a unit forcing that var. Both
     // polarities forced ⇒ UNSAT ⇒ 0. A forced show var contributes its forced
     // weight; a forced projected var contributes only feasibility (×1). No compile.
-    for &group in &singletons {
-        let mut var: Option<vitri::cnf::VarId> = None;
-        let (mut pos, mut neg) = (false, false);
-        for &ci in group {
-            for lit in &formula.clauses()[ci].literals {
-                var = Some(lit.var);
-                if lit.positive {
-                    pos = true;
-                } else {
-                    neg = true;
-                }
-            }
-        }
-        let v = var?;
-        if pos && neg {
+    for &(v, group) in &singletons {
+        let Some(w) = eval_singleton(formula, group, v, &weights) else {
             return Some(WeightedCount::Unsatisfiable);
-        }
+        };
         if mask.is_show(v) {
             covered.insert(v);
-            let (w_neg, w_pos) = &weights[v.idx()];
-            product = product.map(|product| product * if pos { w_pos } else { w_neg });
+            product = product.map(|product| product * w);
         }
     }
     // Show vars present in no component at all are genuinely free → (w_pos + w_neg).
@@ -499,17 +511,12 @@ fn symmetric_subsumption(run: &Run<'_>, problem: &Problem<Weighted>, trace: &Tra
         return Step::Decline;
     }
     let work = &problem.formula;
-    let n = work.num_vars() as usize;
     // ∏ over show vars of the (symmetric) literal weight; the tables pin every
     // projected var to 1. A free show var (in no clause of `work`) carries its
     // w_pos here; the streaming count counts it ×2, which makes it
     // w_pos + w_neg = 2·w_pos.
     let weight_product: BigRational = weights.iter().map(|(_, positive)| positive).product();
-    let forget: Vec<tididi::vtree::VarId> = (0..n)
-        .map(vitri::cnf::VarId::from_idx)
-        .filter(|&v| problem.show.as_ref().is_some_and(|show| !show.contains(v)))
-        .map(crate::convert::diagram_var)
-        .collect();
+    let forget = problem.forgotten_vars();
     // Streaming and the monolithic compile each answer formulas the other
     // does not. Streaming runs first, on the run's whole wall, and a `None`
     // falls through to the monolithic compile.
@@ -566,16 +573,8 @@ pub(crate) fn run_pwmc_bundle(
     outcome: Outcome<Weighted>,
 ) -> Result<Projected<WeightedCount<BigRational>>, crate::Error> {
     eprintln!("[pwmc] arithmetic: exact rational");
-    let problem = match outcome {
-        Outcome::Unsat => {
-            eprintln!("[pwmc] preprocessing: UNSAT");
-            return Ok(Projected { value: WeightedCount::Unsatisfiable, show_vars: None, compile_ms: 0 });
-        }
-        Outcome::Reduced(problem) => problem,
-    };
-    let trivial = |problem: &Problem<Weighted>, trace: &Trace| trivial_residual("[pwmc] trivial", problem, trace);
     let compile = |problem: &Problem<Weighted>, trace: &Trace| compile_evaluate(run, problem, trace);
-    run_stages(problem, &[&trivial, &compile], run.deadline, &run.config.vtree_time)
+    run_projected_bundle(run, "pwmc", outcome, &compile)
 }
 
 /// Projected weighted model counting (PWMC). Combines the projected count's
@@ -583,7 +582,7 @@ pub(crate) fn run_pwmc_bundle(
 /// count the weighted assignments to the show set that extend to a model,
 /// weighting only show-var literals.
 ///
-///   PWMC = evaluate(∃forgotten. f, w) / 2^forgotten
+///   `PWMC = evaluate(∃forgotten. f, w) / 2^forgotten`
 ///
 /// Semantics: weights live on show vars only. Per the MC 2026 format, weights on
 /// projected (Y) vars are semantically ill-defined for PWMC, so they are pinned

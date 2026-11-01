@@ -49,7 +49,7 @@ fn clause_scope(vtree: &Vtree, clause: &Clause) -> VtreeIdx {
 /// The compile's clause groups: which clauses fold at which vtree node, in
 /// what order, and the node each variable is last mentioned at.
 pub(crate) struct ScopeGroups {
-    /// `clauses_at[t.idx()]`: the indices of the clauses scoped to node t, in
+    /// `clauses_at[t.idx()]`: the indices of the clauses scoped to node `t`, in
     /// the order the node folds them.
     pub(crate) clauses_at: Vec<Vec<usize>>,
     /// Per variable (`VarId::idx` of the diagram's variable), the bottom-up
@@ -91,7 +91,7 @@ pub(crate) fn group_clauses_by_scope(formula: &CnfFormula, vtree: &Vtree) -> Sco
 /// completion order ([`OrderScratch::completion_order`]). Each is scored by
 /// its [`OpenProfile`], and the completion order replaces the tour only where
 /// [`prefer_completion`] finds it clearly smaller. `finishes_here(v)` says
-/// whether this node is v's last scope. A group over
+/// whether this node is `v`'s last scope. A group over
 /// [`COMPLETION_ORDER_MAX_CLAUSES`] keeps the tour: the completion greedy is
 /// quadratic in the group.
 fn order_group(
@@ -174,7 +174,7 @@ fn effect(open: bool, pending: u32, finishes: bool) -> (i32, i32) {
 struct OrderScratch {
     /// Per variable: the node is its last scope, so it finishes here.
     finishes: Vec<bool>,
-    /// The group positions of the clauses mentioning variable v are
+    /// The group positions of the clauses mentioning variable `v` are
     /// `occurrences[occurrence_starts[v]..occurrence_starts[v + 1]]`.
     occurrence_starts: Vec<u32>,
     occurrences: Vec<u32>,
@@ -372,7 +372,7 @@ fn proximity_order(sets: &DenseClauseVars) -> Vec<usize> {
 }
 
 /// Greedy tour over a clause group: `order[k]` is the group position that
-/// should end up at position k. `sizes[i]` is clause i's distinct-variable
+/// should end up at position `k`. `sizes[i]` is clause `i`'s distinct-variable
 /// count, which bounds its overlap with any other clause.
 fn proximity_tour(mut unplaced: impl Unplaced, sizes: &[u32]) -> Vec<usize> {
     let n = sizes.len();
@@ -420,10 +420,10 @@ trait Unplaced {
 struct DenseClauseVars {
     /// The formula variable of each dense id.
     ids: Vec<VarId>,
-    /// Clause i's distinct variables, sorted, are `vars[starts[i]..starts[i + 1]]`.
+    /// Clause `i`'s distinct variables, sorted, are `vars[starts[i]..starts[i + 1]]`.
     starts: Vec<usize>,
     vars: Vec<u32>,
-    /// Clause i's distinct-variable count.
+    /// Clause `i`'s distinct-variable count.
     sizes: Vec<u32>,
 }
 
