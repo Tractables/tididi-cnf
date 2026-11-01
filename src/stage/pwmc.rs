@@ -310,7 +310,6 @@ where
     let formula = &problem.formula;
     let mask = show.mask(formula.num_vars());
     let weights = problem_weight_tables(problem);
-    let one = BigRational::one();
     let groups = formula.detect_components()?;
     // (variables, show variables, clause indices) per component of two or
     // more variables.
@@ -347,13 +346,15 @@ where
     for &(_, _, group) in &substantial {
         let (sub, local_to_global) = formula.extract_component(group);
         let local_show = problem_show(&mask.restrict(&local_to_global));
-        let mut local_weights = vec![(one.clone(), one.clone()); sub.num_vars() as usize];
-        for (local, &global) in local_to_global.iter().enumerate() {
-            local_weights[local] = weights[global.idx()].clone();
-            if mask.is_show(global) {
-                covered.insert(global);
-            }
-        }
+        let local_weights: Vec<_> = local_to_global
+            .iter()
+            .map(|&global| {
+                if mask.is_show(global) {
+                    covered.insert(global);
+                }
+                weights[global.idx()].clone()
+            })
+            .collect();
         let comp_val = solve(&sub, &local_show, &local_weights);
         product = product * comp_val?;
     }

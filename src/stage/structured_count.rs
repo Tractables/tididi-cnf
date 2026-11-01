@@ -125,7 +125,22 @@ impl ShatterComponent {
         }
         Some(w)
     }
+
+    /// Key for deduplicating components whose local clauses and variable role
+    /// vectors are identical.
+    fn key(&self) -> CompKey {
+        let clauses = self
+            .formula
+            .clauses()
+            .iter()
+            .map(|cl| cl.literals.iter().map(|l| (l.var.get(), l.positive)).collect())
+            .collect();
+        let ids = |vs: &[VarId]| vs.iter().map(|v| v.0).collect::<Vec<u32>>();
+        (clauses, ids(&self.hidden_local), ids(&self.own_local), ids(&self.boundary_local))
+    }
 }
+
+type CompKey = (Vec<Vec<(u32, bool)>>, Vec<u32>, Vec<u32>, Vec<u32>);
 
 /// A successful shatter: a separator `S ⊆ show` whose removal splits the
 /// formula into independent components. The projected count equals
@@ -314,23 +329,11 @@ pub(super) fn structured_count_with(
     // separator alignment lives in each component's `boundary_bit` (applied in
     // the combine), not in w, so components sharing w but touching different
     // separator bits still combine correctly.
-    type CompKey = (Vec<Vec<(u32, bool)>>, Vec<u32>, Vec<u32>, Vec<u32>);
-    let key_of = |c: &ShatterComponent| -> CompKey {
-        let clauses = c
-            .formula
-            .clauses()
-            .iter()
-            .map(|cl| cl.literals.iter().map(|l| (l.var.get(), l.positive)).collect())
-            .collect();
-        let ids = |vs: &[VarId]| vs.iter().map(|v| v.0).collect::<Vec<u32>>();
-        (clauses, ids(&c.hidden_local), ids(&c.own_local), ids(&c.boundary_local))
-    };
-
     let mut cache: HashMap<CompKey, usize> = HashMap::new();
     let mut distinct_w: Vec<Vec<BigUint>> = Vec::new();
     let mut per_comp: Vec<(usize, &[usize])> = Vec::with_capacity(plan.components.len());
     for c in &plan.components {
-        let key = key_of(c);
+        let key = c.key();
         let idx = if let Some(&i) = cache.get(&key) {
             i
         } else {
@@ -349,12 +352,10 @@ pub(super) fn structured_count_with(
         let mut prod = BigUint::from(1u32);
         for &(wi, bits) in &per_comp {
             let w = &distinct_w[wi];
-            let mut la = 0usize;
-            for (j, &gb) in bits.iter().enumerate() {
-                if (a >> gb) & 1 == 1 {
-                    la |= 1 << j;
-                }
-            }
+            let la = bits
+                .iter()
+                .enumerate()
+                .fold(0usize, |la, (j, &gb)| la | (((a >> gb) & 1) << j));
             prod *= &w[la];
             if prod == BigUint::ZERO {
                 break;

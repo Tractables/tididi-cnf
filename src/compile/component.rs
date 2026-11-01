@@ -213,11 +213,7 @@ pub(crate) fn remap_component_clauses_into(
     // capacity, which is the whole point of the scratch.
     let num_vars = local_to_global.len() as u32;
     let mut clauses = std::mem::replace(&mut scratch.sub, empty_formula()).into_clauses();
-    if clauses.len() > clause_indices.len() {
-        clauses.truncate(clause_indices.len());
-    } else {
-        clauses.resize_with(clause_indices.len(), || Clause { literals: Vec::new() });
-    }
+    clauses.resize_with(clause_indices.len(), || Clause { literals: Vec::new() });
     // Literals are pushed into the retained `Vec` rather than handed to
     // `Clause::new`, whose `debug_assert!` re-checks "each variable at most
     // once". `local_to_global` is injective, so the remap is a bijection on the

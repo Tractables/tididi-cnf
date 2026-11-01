@@ -186,35 +186,7 @@ fn count_without_reduction(
         outcome,
         Some(vitri::bundle::StageOutcome::Skipped(vitri::bundle::SkipReason::Monotone))
     );
-    // The single sink for every non-`Ran` disposition vitri reports. The typed reason
-    // is kept: a deterministic quality rejection and a budget give-up are
-    // different findings.
-    match outcome {
-        Some(vitri::bundle::StageOutcome::Discarded(
-            vitri::bundle::DiscardReason::NotSmaller,
-        )) => eprintln!("[mc] arjun: the reduction grew the clauses — discarded"),
-        Some(vitri::bundle::StageOutcome::Discarded(
-            vitri::bundle::DiscardReason::NonInjectiveMap,
-        )) => eprintln!(
-            "[mc] arjun: the reduction has a non-injective variable map — discarded"
-        ),
-        Some(vitri::bundle::StageOutcome::Discarded(reason)) => {
-            eprintln!("[mc] arjun: the reduction was discarded ({reason:?})")
-        }
-        Some(vitri::bundle::StageOutcome::GaveUp) => {
-            eprintln!("[mc] arjun: gave up inside its budget")
-        }
-        Some(vitri::bundle::StageOutcome::Skipped(reason)) => {
-            eprintln!("[mc] arjun: skipped ({reason:?})")
-        }
-        Some(vitri::bundle::StageOutcome::Ran) => unreachable!(
-            "a Ran outcome must enter the reduced primary arm"
-        ),
-        Some(other) => {
-            eprintln!("[mc] arjun: unavailable ({other:?})")
-        }
-        None => eprintln!("[mc] arjun: vitri's frontend reported no Arjun stage"),
-    }
+    log_arjun_unused(outcome.as_ref());
     eprintln!("[mc] compile: no kept reduction — compiling the simplified formula on {}", run.config.vtree_spec());
 
     // A failure here enters the recovery like the primary compile's: this path
@@ -243,6 +215,38 @@ fn count_without_reduction(
         Some(((count, 0), AnsweredBy::SupportEnumeration))
     };
     count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)
+}
+
+/// Log why Arjun kept no reduction: the single sink for every non-`Ran`
+/// disposition vitri reports. The typed reason is kept: a deterministic
+/// quality rejection and a budget give-up are different findings.
+fn log_arjun_unused(outcome: Option<&vitri::bundle::StageOutcome>) {
+    match outcome {
+        Some(vitri::bundle::StageOutcome::Discarded(
+            vitri::bundle::DiscardReason::NotSmaller,
+        )) => eprintln!("[mc] arjun: the reduction grew the clauses — discarded"),
+        Some(vitri::bundle::StageOutcome::Discarded(
+            vitri::bundle::DiscardReason::NonInjectiveMap,
+        )) => eprintln!(
+            "[mc] arjun: the reduction has a non-injective variable map — discarded"
+        ),
+        Some(vitri::bundle::StageOutcome::Discarded(reason)) => {
+            eprintln!("[mc] arjun: the reduction was discarded ({reason:?})")
+        }
+        Some(vitri::bundle::StageOutcome::GaveUp) => {
+            eprintln!("[mc] arjun: gave up inside its budget")
+        }
+        Some(vitri::bundle::StageOutcome::Skipped(reason)) => {
+            eprintln!("[mc] arjun: skipped ({reason:?})")
+        }
+        Some(vitri::bundle::StageOutcome::Ran) => unreachable!(
+            "a Ran outcome must enter the reduced primary arm"
+        ),
+        Some(other) => {
+            eprintln!("[mc] arjun: unavailable ({other:?})")
+        }
+        None => eprintln!("[mc] arjun: vitri's frontend reported no Arjun stage"),
+    }
 }
 
 /// What became of Arjun's reduction, from the stage outcome vitri reported:
