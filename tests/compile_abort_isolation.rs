@@ -58,6 +58,21 @@ fn with_deadline() -> CompileOptions<'static> {
     CompileOptions { deadline: Some(Instant::now() + Duration::from_secs(3600)), ..CompileOptions::default() }
 }
 
+/// Run one compile of `(f, v)` under a work-unit cut at `half`, verifying inside
+/// the cut scope that the aborted compile did not leave its apply deadline
+/// armed on `eng`.
+fn compile_cut(eng: &Engine, f: &CnfFormula, v: &Arc<Vtree>, half: u64) -> bool {
+    common::cut_after(eng, half, || {
+        let compiled = compile_cnf(eng, f, v, with_deadline());
+        assert_eq!(
+            eng.limits().armed().stop_rules(),
+            StopRules::default(),
+            "the aborted compile left its apply deadline armed on the engine",
+        );
+        compiled.is_err()
+    })
+}
+
 /// One 8-queens subject, one engine, three properties an aborted compile must
 /// leave true for whatever runs after it on the same thread. Each abort is a
 /// cut halfway through the work a whole compile of the subject takes, so it
@@ -81,38 +96,16 @@ fn an_aborted_compile_leaves_the_engine_reusable() {
     // The deadline a compile arms as its apply-level cut lives exactly as long
     // as the compile. An aborted compile must not leave it armed on the
     // engine: the next compile, which keeps whatever is armed, would stop
-    // when it passed. `compile_cnf` scopes it, and a cut returns early, so
-    // this is the path whose leak matters. The check is made inside the cut,
-    // whose own scope would otherwise restore the engine's settings.
-    let compile_cut = || {
-        common::cut_after(eng, half, || {
-            let compiled = compile_cnf(eng, &f, &v, with_deadline());
-            assert_eq!(
-                eng.limits().armed().stop_rules(),
-                StopRules::default(),
-                "the aborted compile left its apply deadline armed on the engine",
-            );
-            compiled.is_err()
-        })
-    };
-    assert!(compile_cut(), "a cut halfway through the work must stop the compile");
+    // when it passed.
+    assert!(compile_cut(eng, &f, &v, half), "a cut halfway through the work must stop the compile");
 
-    // The apply pipeline's thread-local scratch pools are grow-only by
-    // design, so a compile that ballooned leaves them at its own high-water
-    // capacity: live bytes, charged to whoever measures the heap next. A
-    // caller that sizes a memory ceiling relative to the live heap would
-    // read a different baseline after every compile.
-    //
-    // `Engine::clear_scratch` is the one drain for that state. This pins that
-    // it actually recovers an aborted compile's retained capacity, so a
-    // caller that calls it between compiles gets a stable baseline.
+    // `Engine::clear_scratch` is the one drain for the apply pipeline's
+    // thread-local scratch pools. This pins that it actually recovers an
+    // aborted compile's retained capacity.
     let before = heap_bytes();
-    assert!(compile_cut(), "a cut halfway through the work must stop the compile");
+    assert!(compile_cut(eng, &f, &v, half), "a cut halfway through the work must stop the compile");
     eng.clear_scratch();
     let after = heap_bytes();
-    // Generous slack: the point is that the aborted compile's retained pools
-    // are released, not that the allocator is byte-identical (the formula,
-    // the vtree and the test's own bookkeeping are live in both readings).
     assert!(
         after <= before + (16 << 20),
         "after clear_scratch the live heap is still {} MiB above the pre-compile \
@@ -122,16 +115,9 @@ fn an_aborted_compile_leaves_the_engine_reusable() {
         before >> 20,
     );
 
-    // The behavioural statement, and the one a caller depends on: a compile
-    // that follows an aborted one behaves like a first-and-only compile.
-    // Same formula, same vtree, no limit of its own: it has to finish, and
-    // its count has to be the count.
-    //
-    // No `Engine::clear_scratch` runs between this abort and the recompile:
-    // the claim under test is that the library leaves the thread usable, not
-    // that a caller can clean up after it. A caller still should, for the
-    // baseline it measures, though not for correctness.
-    assert!(compile_cut(), "a cut halfway through the work must stop the compile");
+    // A compile that follows an aborted one behaves like a first-and-only
+    // compile without `Engine::clear_scratch` in between.
+    assert!(compile_cut(eng, &f, &v, half), "a cut halfway through the work must stop the compile");
     let again = compile_cnf(eng, &f, &v, CompileOptions::default()).unwrap_or_else(|_| {
         panic!(
             "the compile after an aborted one gave up, though the same compile finishes \

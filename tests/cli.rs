@@ -207,6 +207,25 @@ fn arguments_need_not_be_text() {
     assert!(std::fs::remove_file(&record).is_ok(), "the record was written at the path given");
 }
 
+/// Assert that `mode` on `cnf` resolves to `Ok(resolved)` or is refused with
+/// exit code 2 and `Err(names)` in stderr.
+fn assert_mode_resolution(mode: Option<&str>, cnf: &TempCnf, expected: Result<&str, &[&str]>) {
+    let mut args = vec!["--time-limit-ms", "30000"];
+    args.extend(mode.map(|mode| ["--mode", mode]).iter().flatten());
+    args.push(cnf.path());
+    let (out, record) = run_with_record(&args);
+    match expected {
+        Ok(resolved) => {
+            assert!(out.ok(), "{mode:?} on {}: {}", cnf.path(), out.stderr);
+            assert_eq!(record["mode"], resolved, "{mode:?} on {}: {record}", cnf.path());
+        }
+        Err(names) => {
+            assert_eq!(out.code, Some(2), "{mode:?} on {}: {}", cnf.path(), out.stderr);
+            assert_stderr_names(&out.stderr, names, format_args!("{mode:?} on {}", cnf.path()));
+        }
+    }
+}
+
 /// `--mode` names the mode, and without it the header declares one: a `c t`
 /// line names the count, a `c p show` line makes it projected, and a CNF that
 /// declares neither is compiled. `c p weight` lines alone declare nothing, but
@@ -265,20 +284,7 @@ fn the_mode_comes_from_the_flag_or_the_header() {
         (Some("mc"), &t_mc_show, Err(&["mode mc", "`c t mc` and `c p show` lines", "declares mode pmc"])),
     ];
     for (mode, cnf, expected) in rows {
-        let mut args = vec!["--time-limit-ms", "30000"];
-        args.extend(mode.map(|mode| ["--mode", mode]).iter().flatten());
-        args.push(cnf.path());
-        let (out, record) = run_with_record(&args);
-        match expected {
-            Ok(resolved) => {
-                assert!(out.ok(), "{mode:?} on {}: {}", cnf.path(), out.stderr);
-                assert_eq!(record["mode"], resolved, "{mode:?} on {}: {record}", cnf.path());
-            }
-            Err(names) => {
-                assert_eq!(out.code, Some(2), "{mode:?} on {}: {}", cnf.path(), out.stderr);
-                assert_stderr_names(&out.stderr, names, format_args!("{mode:?} on {}", cnf.path()));
-            }
-        }
+        assert_mode_resolution(mode, cnf, expected);
     }
 }
 

@@ -379,12 +379,7 @@ where
         }
     }
     // Show vars present in no component at all are genuinely free → (w_pos + w_neg).
-    for var in show.iter_vars() {
-        if !covered.contains(&var) {
-            let (w_neg, w_pos) = &weights[var.idx()];
-            product = product.map(|product| product * (w_pos + w_neg));
-        }
-    }
+    multiply_free_show_weights(&mut product, show, &covered, &weights);
     eprintln!(
         "{}: {} substantial components, show {}, vars {}",
         label,
@@ -393,6 +388,20 @@ where
         formula.num_vars(),
     );
     Some(product)
+}
+
+fn multiply_free_show_weights(
+    product: &mut WeightedCount<BigRational>,
+    show: &ShowSet,
+    covered: &std::collections::HashSet<vitri::cnf::VarId>,
+    weights: &LiteralWeights,
+) {
+    for var in show.iter_vars() {
+        if !covered.contains(&var) {
+            let (w_neg, w_pos) = &weights[var.idx()];
+            *product = std::mem::replace(product, WeightedCount::Unsatisfiable).map(|p| p * (w_pos + w_neg));
+        }
+    }
 }
 
 /// Which components [`pwmc_decompose`] takes on, and in which order.

@@ -334,18 +334,7 @@ fn solve_on(
     settings: &Settings,
     vitri: vitri::RunConfig,
 ) -> Result<Answer, Failure> {
-    // The jemalloc-backed memory probes, held for the whole run so every
-    // compile sees real address-space pressure. Library use that never calls
-    // `solve` keeps the no-op default.
-    let _mem_pressure = eng.limits().edit(|s| {
-        s.with_memory_hooks(tididi::limits::MemoryHooks::new(
-            crate::mem::preflight_alloc_decay_check,
-            crate::mem::mapped_bytes,
-            crate::mem::rlimit_as_bytes,
-            // The request-0 heartbeat, once per top-level apply.
-            || crate::mem::preflight_alloc_decay_check(0),
-        ))
-    });
+    let _mem_pressure = install_memory_hooks(eng);
 
     // Start the clock, read the instance, resolve the mode.
     let Parsed { formula, meta, record, mut config, program_deadline } =
@@ -355,19 +344,13 @@ fn solve_on(
     // mode and the resolved vtree construction and every mode fills the same
     // one.
     let mut stats = crate::output::open_record(&config, &formula);
-    // The run's SAT-pruning pass, handed to every compile when the run keeps it
-    // on; the tallies it gathers close the record.
     let sat_prune = SatPrune::new(config.time_limit_ms);
-    // The tree the run's main compile last started on (`Run::started_on`),
-    // which closes the record of a run that gives up.
     let started_on = std::cell::RefCell::new(None);
 
     // One engine scope covers the whole mode, including expansion and final
     // count readout. Child attempts may tighten it but cannot extend it. Each
     // mode hands back what it answered, and it is recorded here, once.
     let verdict = with_run_deadline(eng, program_deadline, || {
-        // Measure only after the expiry check, before preprocessing changes the
-        // signal. Opening the record first preserves an incomplete input record.
         config.source_structure_profile = Some(vitri::score::StructureProfile::measure(&formula));
         crate::budget::check_deadline(program_deadline)?;
         let run = Run {
@@ -392,6 +375,19 @@ fn solve_on(
         }
         Err(error) => Err(Failure { error, stats: Some(Box::new(stats)) }),
     }
+}
+
+/// Install the jemalloc-backed memory probes on `eng` for the duration of the
+/// returned guard so every compile sees real address-space pressure.
+fn install_memory_hooks(eng: &Engine) -> tididi::limits::LimitScope<'_> {
+    eng.limits().edit(|s| {
+        s.with_memory_hooks(tididi::limits::MemoryHooks::new(
+            crate::mem::preflight_alloc_decay_check,
+            crate::mem::mapped_bytes,
+            crate::mem::rlimit_as_bytes,
+            || crate::mem::preflight_alloc_decay_check(0),
+        ))
+    })
 }
 
 fn dispatch_mode(
