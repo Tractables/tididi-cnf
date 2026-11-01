@@ -170,25 +170,9 @@ fn plan_cofactor(
         return Ok(None);
     }
 
-    // Each clause's `S` literals as bit masks, and how many literals it has
-    // on the big side. A clause scoped at `t` has both, by its scope.
-    let mut masks = Vec::with_capacity(clauses.len());
-    let mut rest_len = Vec::with_capacity(clauses.len());
-    for &clause in clauses {
-        let (mut positive, mut negative, mut rest) = (0u8, 0u8, 0usize);
-        for lit in ctx.clauses.get(clause) {
-            match vars.iter().position(|&var| var == lit.var) {
-                Some(b) if lit.sign => positive |= 1 << b,
-                Some(b) => negative |= 1 << b,
-                None => rest += 1,
-            }
-        }
-        if (positive | negative) == 0 || rest == 0 {
-            return Ok(None);
-        }
-        masks.push((positive, negative));
-        rest_len.push(rest);
-    }
+    let Some((rest, masks)) = split_clause_masks(clauses, ctx.clauses, &vars) else {
+        return Ok(None);
+    };
 
     let mut branches = Vec::with_capacity(1 << vars.len());
     for a in 0..1u8 << vars.len() {
@@ -204,16 +188,43 @@ fn plan_cofactor(
         return Ok(None);
     }
 
-    // Shortest first, stably: the shortest clauses constrain a branch most, so
-    // folding them first keeps small the diagram the longer ones meet.
+    Ok(Some(CofactorPlan { small, big, vars, branches, rest, masks }))
+}
+
+/// Partition each clause in `clauses` into its bit mask on `vars` and its
+/// remaining literals on the big side, ordered shortest-remainder first so a
+/// branch folds its tightest constraints first. Returns `None` if any clause
+/// lacks literals on either side.
+fn split_clause_masks(
+    clauses: &[usize],
+    diagram_clauses: &DiagramClauses,
+    vars: &[VarId],
+) -> Option<(DiagramClauses, Vec<(u8, u8)>)> {
+    let mut masks = Vec::with_capacity(clauses.len());
+    let mut rest_len = Vec::with_capacity(clauses.len());
+    for &clause in clauses {
+        let (mut positive, mut negative, mut rest) = (0u8, 0u8, 0usize);
+        for lit in diagram_clauses.get(clause) {
+            match vars.iter().position(|&var| var == lit.var) {
+                Some(b) if lit.sign => positive |= 1 << b,
+                Some(b) => negative |= 1 << b,
+                None => rest += 1,
+            }
+        }
+        if (positive | negative) == 0 || rest == 0 {
+            return None;
+        }
+        masks.push((positive, negative));
+        rest_len.push(rest);
+    }
     let mut order: Vec<usize> = (0..clauses.len()).collect();
     order.sort_by_key(|&i| rest_len[i]);
     let mut rest = DiagramClauses::with_capacity(clauses.len(), rest_len.iter().sum());
     for &i in &order {
-        rest.push(ctx.clauses.get(clauses[i]).iter().copied().filter(|lit| !vars.contains(&lit.var)));
+        rest.push(diagram_clauses.get(clauses[i]).iter().copied().filter(|lit| !vars.contains(&lit.var)));
     }
     let masks = order.iter().map(|&i| masks[i]).collect();
-    Ok(Some(CofactorPlan { small, big, vars, branches, rest, masks }))
+    Some((rest, masks))
 }
 
 /// Fold `plan`'s branches into copies of the big side's diagram, join them

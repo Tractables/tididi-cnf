@@ -104,21 +104,7 @@ fn run_mc_cascade(
     // fully resolved one the lift alone.
     let primary_vtree = match attempt.vtree {
         crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
-        _ => {
-            let count = if bundle.record.unsat {
-                num_bigint::BigUint::from(0u32)
-            } else {
-                num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
-            };
-            return Some(McOutcome {
-                count,
-                peak_pairs: 0,
-                cascade_ms: None,
-                answered_by: AnsweredBy::Preprocessing,
-                reduction,
-                preprocessing,
-            });
-        }
+        _ => return Some(preprocessed_mc_outcome(&bundle, reduction, preprocessing)),
     };
     let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
         // Everything inside the cascade stays in the formula space
@@ -166,6 +152,26 @@ fn run_mc_cascade(
         reduction,
         preprocessing,
     })
+}
+
+fn preprocessed_mc_outcome(
+    bundle: &vitri::bundle::PreprocessBundle,
+    reduction: Option<crate::output::Reduction>,
+    preprocessing: vitri::bundle::PreprocessTelemetry,
+) -> McOutcome {
+    let count = if bundle.record.unsat {
+        num_bigint::BigUint::from(0u32)
+    } else {
+        num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
+    };
+    McOutcome {
+        count,
+        peak_pairs: 0,
+        cascade_ms: None,
+        answered_by: AnsweredBy::Preprocessing,
+        reduction,
+        preprocessing,
+    }
 }
 
 /// No kept reduction: say why, then compile the simplified formula on the

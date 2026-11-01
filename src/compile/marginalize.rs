@@ -143,44 +143,9 @@ pub(crate) fn run_marginalize_at(
     let Some(schedule) = ctx.marginalize_schedule else { return Ok(()); };
     let output = ctx.job.output;
 
-    // Forget each projected var at the step where its own leaf is scheduled to
-    // marginalize (completion_pos[leaf(x)]) — the earliest sound point. This
-    // forget runs before the marginalize below, and completion_pos is monotone
-    // up the vtree, so every ancestor of x has completion_pos >= t and is still
-    // explicit (un-marginalized) at this instant — the structural ∃-forget's
-    // no-marginal-ancestor precondition holds by construction. Triggering on the
-    // leaf (not the leaf-parent) also covers projected vars whose leaf-parent is
-    // the vtree root, which is never scheduled. The projected level keeps a
-    // One on the leaf side, so the marginalize counts ×2 per projected var —
-    // corrected by the caller via 2^k.
-    let mut vars_to_forget: Vec<VarId> = Vec::new();
-    if let Some(proj_vars) = output.forget() {
-        // (1) Primary trigger: a projected var whose own leaf is scheduled to
-        // marginalize at step t (= clause-scope is the internal node t).
-        for &d in &schedule[t.idx()] {
-            if let VtreeNode::Leaf { var, .. } = *current_vtree.node(d)
-                && proj_vars.contains(&var) && !state.forgotten.contains(&var)
-            {
-                vars_to_forget.push(var);
-            }
-        }
-        // (2) Root backstop: any projected var not yet forgotten by (1) — its
-        // clause-scope was a leaf-step the main loop never visits (unit-only or
-        // free vars, incl. root-children) — is forgotten when the root step is
-        // processed. The projection shield (`forget_shield`) keeps every
-        // not-yet-forgotten projected var's ancestors explicit, so at the root
-        // every such var still has a marginal-ancestor-free path — the
-        // structural ∃-forget's precondition holds. (Free vars are ×2-correct
-        // without a forget, but ∃ on an unconstrained leaf is a harmless no-op
-        // and keeps the uniform 2^k divisor valid.)
-        if t == current_vtree.root() {
-            for &var in proj_vars {
-                if !state.forgotten.contains(&var) && !vars_to_forget.contains(&var) {
-                    vars_to_forget.push(var);
-                }
-            }
-        }
-    }
+    let vars_to_forget = output.forget().map_or_else(Vec::new, |proj_vars| {
+        projected_vars_to_forget(proj_vars, &schedule[t.idx()], t, current_vtree, &state.forgotten)
+    });
     // Nothing to marginalize and nothing to forget at this step.
     if schedule[t.idx()].is_empty() && vars_to_forget.is_empty() { return Ok(()); }
     if !vars_to_forget.is_empty() && let Some(tdd_val) = state.tdds[t.idx()].take() {
@@ -202,6 +167,37 @@ pub(crate) fn run_marginalize_at(
         marginalize_scheduled_at(eng, tdd, t.idx(), current_vtree, ctx, &state.forgotten)?;
     }
     Ok(())
+}
+
+/// Projected variables to ∃-forget at step `t`: those whose own leaf is
+/// scheduled to marginalize at `t` (`completion_pos[leaf(x)]`), or at the root
+/// step any projected variable not yet forgotten (unit-only or free variables
+/// whose clause scope was a leaf). Because `completion_pos` is monotone up the
+/// vtree and `forget_shield` keeps unforgotten projected variables' ancestors
+/// explicit, every returned variable has a marginal-ancestor-free path.
+fn projected_vars_to_forget(
+    proj_vars: &HashSet<VarId>,
+    scheduled: &[VtreeIdx],
+    t: VtreeIdx,
+    current_vtree: &Vtree,
+    forgotten: &HashSet<VarId>,
+) -> Vec<VarId> {
+    let mut vars_to_forget = Vec::new();
+    for &d in scheduled {
+        if let VtreeNode::Leaf { var, .. } = *current_vtree.node(d)
+            && proj_vars.contains(&var) && !forgotten.contains(&var)
+        {
+            vars_to_forget.push(var);
+        }
+    }
+    if t == current_vtree.root() {
+        for &var in proj_vars {
+            if !forgotten.contains(&var) && !vars_to_forget.contains(&var) {
+                vars_to_forget.push(var);
+            }
+        }
+    }
+    vars_to_forget
 }
 
 #[cfg(test)]

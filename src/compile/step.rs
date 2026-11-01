@@ -204,16 +204,24 @@ pub(crate) fn compile_component(
         }
     }
 
-    // The context's unproductive spend joins the compile's, which the next
-    // component's context starts from. Every other exit of the pass ends the
-    // compile, so no later context could read it.
+    Ok(finish_component_pass(vtree, state, job, eng, peak_size))
+}
+
+/// Absorb the completed pass's SAT-pruning stats into the run and extract the
+/// root diagram (or `1` when no clauses were scoped to the component).
+fn finish_component_pass(
+    vtree: &Arc<Vtree>,
+    mut state: PassState,
+    job: CompileJob<'_>,
+    eng: &Engine,
+    peak_pairs: usize,
+) -> Compiled {
     if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
         job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
-
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
-    Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: peak_size })
+    Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs }
 }
 
 /// Run internal step `t` under any active [`super::StallWatch`] per-step

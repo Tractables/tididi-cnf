@@ -159,6 +159,11 @@ usage error, a refused instance or environment setting, or a failed stage.
 Vtree specs:
 "
     );
+    append_vtree_specs(&mut text);
+    text
+}
+
+fn append_vtree_specs(text: &mut String) {
     for base in vitri::spec::vtree_spec_bases() {
         let params = vitri::spec::spec_param_docs(&base);
         if params.is_empty() {
@@ -172,7 +177,6 @@ Vtree specs:
             text.push_str(&format!("  {base}[:{keys}]\n"));
         }
     }
-    text
 }
 
 fn usage_error(prog: &str, what: impl std::fmt::Display) -> Error {
@@ -207,6 +211,17 @@ fn next_u64(prog: &str, flag: &str, args: &mut std::env::ArgsOs, unit: &str) -> 
     val.parse().map_err(|_| usage_error(prog, format!("{flag} {val:?} is not a whole number of {unit}")))
 }
 
+fn record_input_path(prog: &str, slot: &mut Option<PathBuf>, arg: std::ffi::OsString) -> Result<(), Error> {
+    if let Some(first) = slot {
+        return Err(usage_error(
+            prog,
+            format!("a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."),
+        ));
+    }
+    *slot = Some(arg.into());
+    Ok(())
+}
+
 fn parse_args() -> Result<Request, Error> {
     let mut args = std::env::args_os();
     let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
@@ -226,13 +241,7 @@ fn parse_args() -> Result<Request, Error> {
         // Anything that is not a flag is the input, a file or a bundle's
         // directory, taken as the system gave it: a path need not be text.
         if !arg.as_encoded_bytes().starts_with(b"-") {
-            if let Some(first) = &dimacs_path {
-                return Err(usage_error(
-                    &prog,
-                    format!("a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."),
-                ));
-            }
-            dimacs_path = Some(arg.into());
+            record_input_path(&prog, &mut dimacs_path, arg)?;
             continue;
         }
         let flag = arg.to_string_lossy();

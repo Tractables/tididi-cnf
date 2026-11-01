@@ -93,27 +93,19 @@ pub(crate) fn run_wmc_count(
     let crate::frontend::WmcFrontend { outcome, vtree, report } =
         crate::frontend::wmc_frontend(formula, &orig_table, run.config, program_deadline)
             .map_err(crate::Error::stage_failed("wmc preprocessing"))?;
-    let render_report = |report: &crate::frontend::record::Report, result: &str| {
-        eprintln!(
-            "[wmc] preprocessing: simplify={:?} arjun={:?}; {}ms; {result}",
-            report.stages.simplify,
-            report.stages.arjun,
-            report.telemetry.total_ms,
-        );
-    };
     let (simplified_problem, simplified_vtree) = match (outcome, vtree) {
         (Outcome::Unsat, _) => {
-            render_report(&report, "UNSAT");
+            render_wmc_report(&report, "UNSAT");
             return Ok(WeightedCount::Unsatisfiable);
         }
         // Nothing is left to compile and nothing was refuted: every clause is
         // satisfied, and the lift is the whole count.
         (Outcome::Reduced(problem), None) => {
-            render_report(&report, "fully resolved");
+            render_wmc_report(&report, "fully resolved");
             return Ok(WeightedCount::Satisfiable(weight_value(problem.lift)));
         }
         (Outcome::Reduced(problem), Some(vtree)) => {
-            render_report(
+            render_wmc_report(
                 &report,
                 &format!(
                     "{}v/{}c reduced",
@@ -156,6 +148,15 @@ pub(crate) fn run_wmc_count(
     };
     eprintln!("[wmc] compile: counted in {}ms", t_compile.elapsed().as_millis());
     Ok(value)
+}
+
+fn render_wmc_report(report: &crate::frontend::record::Report, result: &str) {
+    eprintln!(
+        "[wmc] preprocessing: simplify={:?} arjun={:?}; {}ms; {result}",
+        report.stages.simplify,
+        report.stages.arjun,
+        report.telemetry.total_ms,
+    );
 }
 
 /// The reduced attempt: Arjun runs through vitri on the original formula and

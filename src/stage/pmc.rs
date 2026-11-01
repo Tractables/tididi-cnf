@@ -290,19 +290,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 
     let t_compile = Instant::now();
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
-    // Reactive recovery: a short single-shot compile, then show-var cutset
-    // conditioning, then the same compile again on the run's wall.
-    //
-    // The single-shot deadline is min(0.2 × wall, 2 s) from compile start. The
-    // compile arms it on the engine, which cuts any apply at it, and checks it
-    // between steps, so a compile not done by then gives up and conditioning
-    // runs. The 2 s cap is an empirical setting: nothing in the compile
-    // derives it. With no wall set there is no deadline, and only a panic or a
-    // refused apply leads to recovery.
-    let first_try_deadline = run.config.time_limit_ms.map(|ms| {
-        let frac_ms = (ms as f64 * 0.2) as u64;
-        crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)
-    });
+    let first_try_deadline = first_try_deadline(run.config.time_limit_ms, t_compile, program_deadline);
     let compile = |deadline| {
         projected_compile(
             run,
@@ -340,6 +328,20 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     let compile_ms = clock.compile_ms(0);
     trace.print_compile("[pmc]", work, vtree_ms, compile_ms, forget_set.len(), problem.show_len());
     Step::Answer(pmc)
+}
+
+/// First-try deadline for reactive recovery: `min(0.2 × wall, 2 s)` from
+/// `t_compile`, capped at `program_deadline`. The compile arms it on the engine
+/// and checks it between steps so a stalled compile yields to conditioning.
+fn first_try_deadline(
+    time_limit_ms: Option<u64>,
+    t_compile: Instant,
+    program_deadline: Option<Instant>,
+) -> Option<Instant> {
+    time_limit_ms.map(|ms| {
+        let frac_ms = (ms as f64 * 0.2) as u64;
+        crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)
+    })
 }
 
 /// The projected count of a vitri bundle, `outcome` as its record describes

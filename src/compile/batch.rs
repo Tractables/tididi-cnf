@@ -107,17 +107,7 @@ pub(crate) fn batch_accumulate(
         return Ok(acc);
     }
 
-    // For each of the node's clauses, the targets the schedule frees at this
-    // step whose last mention it is: each is summed out at the merge of the
-    // batch that holds that clause, rather than at the step's end.
-    let mut streaming = marginalize_targets.map(|targets| {
-        let clause_lits: Vec<&[Literal]> =
-            clauses.iter().map(|&ci| ctx.clauses.get(ci)).collect();
-        StreamTargets {
-            completions: step_completions(&clause_lits, vtree, targets),
-            set: Vec::new(),
-        }
-    });
+    let mut streaming = stream_targets(clauses, ctx, vtree, marginalize_targets);
 
     // `limit` is the most clauses the next batch may hold: the floor until a
     // merge at this node stays absorbing, then `next_batch_limit` of it. The
@@ -168,6 +158,25 @@ pub(crate) fn batch_accumulate(
         limit = next_batch_limit(i - start_clause, merged.absorbed, floor.size);
     }
     Ok(acc)
+}
+
+/// For each of the node's clauses, the targets the schedule frees at this step
+/// whose last mention it is: each is summed out at the merge of the batch that
+/// holds that clause, rather than at the step's end.
+fn stream_targets(
+    clauses: &[usize],
+    ctx: &StepContext<'_>,
+    vtree: &Arc<Vtree>,
+    marginalize_targets: Option<&[VtreeIdx]>,
+) -> Option<StreamTargets> {
+    marginalize_targets.map(|targets| {
+        let clause_lits: Vec<&[Literal]> =
+            clauses.iter().map(|&ci| ctx.clauses.get(ci)).collect();
+        StreamTargets {
+            completions: step_completions(&clause_lits, vtree, targets),
+            set: Vec::new(),
+        }
+    })
 }
 
 /// The floor one node's fold batches at: the clauses every batch folds before
@@ -511,23 +520,36 @@ impl<'a> BatchStop<'a> {
                 built += pairs;
                 pairs = batch_spine_pairs(&local, &touched);
             }
-            // The floor: below it the width cap stops every batch, extendable or
-            // not, so only a batch that reached the floor within the cap extends.
-            if batch_count < self.floor {
-                if width <= self.width_cap { continue; }
-                break;
-            }
-            // The extension.
-            if !may_extend || holds_completion || width > self.guard { break; }
-            if batch_count.saturating_mul(pairs)
-                >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(self.acc_pairs()))
-            {
+            if self.stops_after(batch_count, width, holds_completion, built, pairs) {
                 break;
             }
         }
         // Restore the scratch's all-false invariant.
         for &t in &touched { on_spine[t.idx()] = false; }
         Ok((BuiltBatch::Diagram(Box::new(local)), i))
+    }
+
+    /// Whether the batch should stop after folding `batch_count` clauses: below
+    /// `self.floor`, `self.width_cap` stops the batch; at or above `self.floor`,
+    /// the batch stops unless `self.limit > self.floor`, no marginalize target
+    /// has completed, `width <= self.guard`, and the next step's amortized build
+    /// cost stays below the merge cost.
+    fn stops_after(
+        &self,
+        batch_count: usize,
+        width: usize,
+        holds_completion: bool,
+        built: usize,
+        pairs: usize,
+    ) -> bool {
+        if batch_count < self.floor {
+            return width > self.width_cap;
+        }
+        if self.limit <= self.floor || holds_completion || width > self.guard {
+            return true;
+        }
+        batch_count.saturating_mul(pairs)
+            >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(self.acc_pairs()))
     }
 }
 
