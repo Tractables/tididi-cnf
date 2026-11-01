@@ -9,6 +9,8 @@
 //! the support-enumeration re-reduce. Keeping them together keeps two stages
 //! from carving the same wall twice.
 
+use std::time::{Duration, Instant};
+
 use crate::compile::StallRule;
 
 /// The stall rule's per-step wall as a share of the declared time limit: one
@@ -31,7 +33,7 @@ const STALL_MIN_STEPS_LEFT: usize = 50;
 pub(super) fn stall_rule(time_limit_ms: Option<u64>) -> Option<StallRule> {
     let total_ms = time_limit_ms?;
     Some(StallRule {
-        wall: std::time::Duration::from_millis(total_ms / STALL_WALL_DIVISOR),
+        wall: Duration::from_millis(total_ms / STALL_WALL_DIVISOR),
         min_left: STALL_MIN_STEPS_LEFT,
     })
 }
@@ -48,6 +50,12 @@ pub(super) fn shannon_split_reserve_ms(remaining_ms: u64) -> u64 {
     MIN_RESERVE_MS.max(remaining_ms / 4)
 }
 
+/// What remains of `left` after reserving what Shannon split behind the stage
+/// is owed ([`shannon_split_reserve_ms`]).
+fn after_shannon_reserve(left: Duration) -> Duration {
+    left.saturating_sub(Duration::from_millis(shannon_split_reserve_ms(left.as_millis() as u64)))
+}
+
 /// Wall floor below which the count without a reduction will not spend any of
 /// the recovery window looking for a support. Above it the retry is
 /// affordable; below it Shannon split keeps the whole window.
@@ -60,7 +68,7 @@ const SUPPORT_ARJUN_MAX_MS: u64 = 600_000;
 /// monotone reduction, is not entered at all. The stage has to run a whole
 /// Arjun reduce (its own floor is 5 s), build a vtree and compile; under half
 /// a minute it can only take wall away from the stages that follow it.
-const REDUCE_RETRY_MIN_WINDOW: std::time::Duration = std::time::Duration::from_secs(30);
+const REDUCE_RETRY_MIN_WINDOW: Duration = Duration::from_secs(30);
 
 /// Budget for re-running Arjun when the count runs without a reduction, or
 /// `None` when it must not try at all. Pure, so the arithmetic is
@@ -83,7 +91,7 @@ pub(super) fn support_enum_arjun_retry_ms(remaining_ms: Option<u64>) -> Option<u
 /// compile of the unreduced formula: the primary deadline in `count_primary`
 /// caps the primary compile at `program_deadline − UNREDUCED_RETRY_RESERVE`,
 /// and [`unreduced_retry_window`] takes it when the run has no wall.
-pub(super) const UNREDUCED_RETRY_RESERVE: std::time::Duration = std::time::Duration::from_millis(250_000);
+pub(super) const UNREDUCED_RETRY_RESERVE: Duration = Duration::from_millis(250_000);
 
 /// Reserve window for the unreduced retry — the third fallback — which runs
 /// on any failure of the primary compile. Pure so it can be
@@ -100,11 +108,10 @@ pub(super) const UNREDUCED_RETRY_RESERVE: std::time::Duration = std::time::Durat
 /// tails skip (return `None`). With no wall limit at all, reserve is the
 /// [`UNREDUCED_RETRY_RESERVE`] constant.
 pub(super) fn unreduced_retry_window(
-    primary_deadline: Option<std::time::Instant>,
-    program_deadline: Option<std::time::Instant>,
-    now: std::time::Instant,
-) -> Option<std::time::Duration> {
-    use std::time::Duration;
+    primary_deadline: Option<Instant>,
+    program_deadline: Option<Instant>,
+    now: Instant,
+) -> Option<Duration> {
     match (primary_deadline, program_deadline) {
         // Armed (long window). `program - primary` is what the primary
         // deadline reserved for this stage, and it is what the stage actually
@@ -125,10 +132,8 @@ pub(super) fn unreduced_retry_window(
         // `program_deadline`.
         (Some(primary), Some(program)) => {
             let left = program.saturating_duration_since(now);
-            let owed_to_cascade =
-                Duration::from_millis(shannon_split_reserve_ms(left.as_millis() as u64));
             Some(
-                left.saturating_sub(owed_to_cascade)
+                after_shannon_reserve(left)
                     .max(program.saturating_duration_since(primary)),
             )
         }
@@ -162,8 +167,8 @@ const NO_SBVA_RETRY_RESERVE_FRAC: f64 = 0.25;
 /// primary deadline in `count_primary` carves it out of the primary compile's
 /// window when the retry is armed, so a primary compile that runs to its
 /// deadline still leaves the stage its share.
-pub(super) fn no_sbva_retry_want(total_ms: u64) -> std::time::Duration {
-    std::time::Duration::from_millis((total_ms as f64 * NO_SBVA_RETRY_RESERVE_FRAC) as u64)
+pub(super) fn no_sbva_retry_want(total_ms: u64) -> Duration {
+    Duration::from_millis((total_ms as f64 * NO_SBVA_RETRY_RESERVE_FRAC) as u64)
 }
 
 /// Window for the predicate-gated no-SBVA retry: [`no_sbva_retry_want`], never
@@ -176,9 +181,9 @@ pub(super) fn no_sbva_retry_want(total_ms: u64) -> std::time::Duration {
 /// still must not let one stage eat the whole cascade.
 pub(super) fn no_sbva_retry_window(
     time_limit_ms: Option<u64>,
-    program_deadline: Option<std::time::Instant>,
-    now: std::time::Instant,
-) -> Option<std::time::Duration> {
+    program_deadline: Option<Instant>,
+    now: Instant,
+) -> Option<Duration> {
     match (time_limit_ms, program_deadline) {
         (Some(total_ms), Some(program)) => {
             let window = no_sbva_retry_want(total_ms).min(program.saturating_duration_since(now));
@@ -198,15 +203,13 @@ pub(super) fn no_sbva_retry_window(
 /// longer limits. With no wall at all, the fixed [`UNREDUCED_RETRY_RESERVE`],
 /// as for the no-SBVA retry.
 pub(super) fn monotone_reduction_window(
-    program_deadline: Option<std::time::Instant>,
-    now: std::time::Instant,
-) -> Option<std::time::Duration> {
+    program_deadline: Option<Instant>,
+    now: Instant,
+) -> Option<Duration> {
     let Some(program) = program_deadline else {
         return Some(UNREDUCED_RETRY_RESERVE);
     };
-    let left = program.saturating_duration_since(now);
-    let owed = std::time::Duration::from_millis(shannon_split_reserve_ms(left.as_millis() as u64));
-    let window = left.saturating_sub(owed);
+    let window = after_shannon_reserve(program.saturating_duration_since(now));
     (window >= REDUCE_RETRY_MIN_WINDOW).then_some(window)
 }
 

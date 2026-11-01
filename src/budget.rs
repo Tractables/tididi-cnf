@@ -6,6 +6,8 @@
 //! limit and the stages that need a share of it; vitri receives the resulting
 //! deadline and divides it inside a construction itself.
 
+use std::time::{Duration, Instant};
+
 /// `ratio` of the run's time limit clamped to `[min, max]`, or `abs_default`
 /// when the run has none.
 pub(crate) fn resolve_scaled(
@@ -20,25 +22,25 @@ pub(crate) fn resolve_scaled(
 
 /// Milliseconds left before `deadline`, zero once it has passed; `None` when
 /// there is no deadline.
-pub(crate) fn left_ms(deadline: Option<std::time::Instant>) -> Option<u64> {
-    deadline.map(|d| d.saturating_duration_since(std::time::Instant::now()).as_millis() as u64)
+pub(crate) fn left_ms(deadline: Option<Instant>) -> Option<u64> {
+    deadline.map(|d| d.saturating_duration_since(Instant::now()).as_millis() as u64)
 }
 
 /// `at`, or `deadline` when that comes first: a window's own end, never past
 /// the wall of the work it runs inside.
-pub(crate) fn not_past(at: std::time::Instant, deadline: Option<std::time::Instant>) -> std::time::Instant {
+pub(crate) fn not_past(at: Instant, deadline: Option<Instant>) -> Instant {
     deadline.map_or(at, |deadline| at.min(deadline))
 }
 
 /// Whether `deadline` has passed: reached at its instant, never in rounded
 /// milliseconds, so a remaining fraction still counts. The one test every
 /// deadline check makes.
-pub(crate) fn deadline_passed(deadline: Option<std::time::Instant>) -> bool {
-    deadline.is_some_and(|at| std::time::Instant::now() >= at)
+pub(crate) fn deadline_passed(deadline: Option<Instant>) -> bool {
+    deadline.is_some_and(|at| Instant::now() >= at)
 }
 
 /// A stage boundary or final answer may not cross the whole-run deadline.
-pub(crate) fn check_deadline(deadline: Option<std::time::Instant>) -> Result<(), crate::Error> {
+pub(crate) fn check_deadline(deadline: Option<Instant>) -> Result<(), crate::Error> {
     if deadline_passed(deadline) {
         Err(crate::Error::Incomplete("no answer: the time limit was reached".to_owned()))
     } else {
@@ -51,7 +53,7 @@ pub(crate) fn check_deadline(deadline: Option<std::time::Instant>) -> Result<(),
 /// including a work-clock bound a standalone compiler caller armed.
 pub(crate) fn deadline_scope(
     eng: &tididi::Engine,
-    deadline: Option<std::time::Instant>,
+    deadline: Option<Instant>,
 ) -> Option<tididi::limits::LimitScope<'_>> {
     let deadline = deadline?;
     Some(eng.limits().edit(|config| config.with_deadline_at_most(deadline)))
@@ -67,8 +69,8 @@ pub(crate) fn deadline_scope(
 /// policy here, and declines the reduction on `None`.
 pub(crate) fn clamped_to_deadline_ms(
     policy_ms: u64,
-    deadline: Option<std::time::Instant>,
-    now: std::time::Instant,
+    deadline: Option<Instant>,
+    now: Instant,
 ) -> Option<u64> {
     let left_ms = deadline.map(|d| d.saturating_duration_since(now).as_millis() as u64);
     let allowed = left_ms.map_or(policy_ms, |left| policy_ms.min(left));
@@ -85,11 +87,11 @@ pub(crate) fn clamped_to_deadline_ms(
 /// deadline. The result is additionally clamped to `program_deadline` — the
 /// 90 s floor can exceed a short remaining wall, and a construction deadline
 /// past the wall would be meaningless.
-pub(crate) fn vtree_deadline(program_deadline: Option<std::time::Instant>) -> Option<std::time::Instant> {
+pub(crate) fn vtree_deadline(program_deadline: Option<Instant>) -> Option<Instant> {
     let pd = program_deadline?;
-    let now = std::time::Instant::now();
+    let now = Instant::now();
     let remaining_ms = pd.saturating_duration_since(now).as_millis() as u64;
-    let budget = std::time::Duration::from_millis((remaining_ms / 3).clamp(90_000, 900_000));
+    let budget = Duration::from_millis((remaining_ms / 3).clamp(90_000, 900_000));
     Some(not_past(now + budget, program_deadline))
 }
 
@@ -100,19 +102,19 @@ pub(crate) fn vtree_deadline(program_deadline: Option<std::time::Instant>) -> Op
 /// which interleaves preprocessing and construction in one vitri call, adds
 /// the construction time vitri reports with [`VtreeTime::add`].
 #[derive(Debug, Default)]
-pub(crate) struct VtreeTime(std::cell::Cell<Option<std::time::Duration>>);
+pub(crate) struct VtreeTime(std::cell::Cell<Option<Duration>>);
 
 impl VtreeTime {
     /// Run the construction `build` and add its wall-clock time.
     pub(crate) fn time<T>(&self, build: impl FnOnce() -> T) -> T {
-        let started = std::time::Instant::now();
+        let started = Instant::now();
         let built = build();
         self.add(started.elapsed());
         built
     }
 
     /// Add one construction that took `spent`.
-    pub(crate) fn add(&self, spent: std::time::Duration) {
+    pub(crate) fn add(&self, spent: Duration) {
         self.0.set(Some(self.0.get().unwrap_or_default() + spent));
     }
 
@@ -121,7 +123,7 @@ impl VtreeTime {
     /// `None` is not zero: the record leaves `vtree_ms` out rather than print
     /// a 0 that would read like a timer that missed the work, so `Some(0)`
     /// carries "built, in under a millisecond".
-    pub(crate) fn total(&self) -> Option<std::time::Duration> {
+    pub(crate) fn total(&self) -> Option<Duration> {
         self.0.get()
     }
 }
@@ -135,16 +137,16 @@ impl VtreeTime {
 /// separately, so the clock takes both out: the run's vtree time since it
 /// started, and the phase time its caller names.
 pub(crate) struct CompileClock<'a> {
-    started: std::time::Instant,
+    started: Instant,
     vtree: &'a VtreeTime,
-    vtree_at_start: std::time::Duration,
+    vtree_at_start: Duration,
 }
 
 impl<'a> CompileClock<'a> {
     /// Start timing a compile stage now, against the run's `vtree` time.
     pub(crate) fn start(vtree: &'a VtreeTime) -> Self {
         CompileClock {
-            started: std::time::Instant::now(),
+            started: Instant::now(),
             vtree,
             vtree_at_start: vtree.total().unwrap_or_default(),
         }

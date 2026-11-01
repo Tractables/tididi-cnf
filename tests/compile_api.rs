@@ -9,11 +9,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use num_bigint::BigUint;
-use num_rational::BigRational;
-use num_traits::One;
 
 use tididi::Engine;
-use tididi::diagram::{Arithmetic, LiteralWeights, RationalWeights};
+use tididi::diagram::{Arithmetic, RationalWeights};
 use tididi::test_helpers::{CnfShape, Lcg, brute_force_count, rand_cnf};
 use tididi::vtree::{VarId, Vtree};
 use tididi_cnf::compile::{CompileOptions, ComponentPlan, GiveUp, Output, compile_cnf};
@@ -133,9 +131,7 @@ fn a_cut_compile_gives_up_for_every_output() {
     let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
     // The last row's squares are hidden and the rest are shown.
     let hidden: Vec<VarId> = (57..=64).map(VarId).collect();
-    let ones = vec![BigRational::one(); num_vars as usize];
-    let weights = RationalWeights::from_polarities(LiteralWeights { negative: ones.clone(), positive: ones })
-        .expect("both polarity columns cover every variable");
+    let weights = RationalWeights::unit(num_vars as usize);
     for (name, output) in [
         ("Function", Output::Function),
         ("Count", Output::Count),

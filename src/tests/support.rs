@@ -84,6 +84,27 @@ pub(crate) fn three_variable_formula() -> CnfFormula {
     formula(3, vec![clause(&[1, -2]), clause(&[2, 3])])
 }
 
+/// A connected 3-CNF over eight variables: every variable shares a clause
+/// with another, so its clauses land at internal vtree nodes.
+pub(crate) fn connected_eight_var_formula() -> CnfFormula {
+    formula(
+        8,
+        [
+            &[1, 2, 3][..],
+            &[-2, 4, 5],
+            &[3, -5, 6],
+            &[-1, 6, 7],
+            &[4, -7, 8],
+            &[-3, 5, -8],
+            &[2, -6, 8],
+            &[-4, 7, 1],
+        ]
+        .into_iter()
+        .map(clause)
+        .collect(),
+    )
+}
+
 /// Minimal Config for unit tests that only exercise a couple of fields.
 /// Every field is set to an inert default; tests override just what they
 /// need via struct-update syntax. Every field is named, so a new field

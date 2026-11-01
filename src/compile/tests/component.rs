@@ -10,7 +10,7 @@ use crate::test_support::{self as fixtures, clause};
 /// too, where the ⊥ carries an empty store.
 #[test]
 fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
-    use tididi::diagram::{LiteralWeights, RationalWeights};
+    use tididi::diagram::RationalWeights;
     use tididi::vtree::{VtreeIdx, VtreeNode};
     let eng = &Engine::new();
     // Component (x1 ∨ x2) ∧ (x2 ∨ x3) ∧ (¬x1 ∨ x3), then x4 ∧ ¬x4; x5 free.
@@ -37,12 +37,7 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
         5,
     )
     .unwrap();
-    let one = || num_rational::BigRational::from_integer(1.into());
-    let weights = RationalWeights::from_polarities(LiteralWeights {
-        positive: vec![one(); 5],
-        negative: vec![one(); 5],
-    })
-    .unwrap();
+    let weights = RationalWeights::unit(5);
     let weighted = Output::WeightedCount { weights, arithmetic: tididi::diagram::Arithmetic::ExactRational };
     for output in [Output::Function, Output::Count, weighted] {
         let weighted = matches!(output, Output::WeightedCount { .. });

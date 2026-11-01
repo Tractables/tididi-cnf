@@ -24,7 +24,13 @@ fn a_compile_without_a_vtree_builds_its_own() {
     let expected = fixtures::brute_projected_weighted_count(&sub, 0..sub.num_vars() as usize, &w);
 
     let config = fixtures::minimal_config();
-    let got = compile_weighted(&fixtures::run(eng, &config), &sub, &w, None, None)
+    let problem = crate::problem::Problem {
+        formula: sub,
+        show: None,
+        weights: w,
+        lift: rat(1, 1),
+    };
+    let got = compile_weighted(&fixtures::run(eng, &config), &problem, None, None)
         .expect("the compile must answer");
     let crate::problem::WeightedCount::Satisfiable(got) = got else {
         panic!("the fixture is satisfiable");

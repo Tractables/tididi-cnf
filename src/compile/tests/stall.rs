@@ -10,35 +10,18 @@ use super::*;
 use crate::compile::component::{CompileJob, PassOutput};
 use crate::compile::step::compile_component;
 use crate::compile::{CompileRun, GiveUp};
-use crate::test_support::{self as fixtures, clause};
-
-/// A connected 3-CNF over eight variables: its clauses land at internal
-/// vtree nodes, so the internal steps have work to do.
-const CONNECTED: &[&[i32]] = &[
-    &[1, 2, 3],
-    &[-2, 4, 5],
-    &[3, -5, 6],
-    &[-1, 6, 7],
-    &[4, -7, 8],
-    &[-3, 5, -8],
-    &[2, -6, 8],
-    &[-4, 7, 1],
-];
-
-fn connected() -> vitri::cnf::CnfFormula {
-    fixtures::formula(8, CONNECTED.iter().map(|c| clause(c)).collect())
-}
+use crate::test_support as fixtures;
 
 /// The internal schedule of the balanced vtree the pass runs on.
 fn schedule() -> Vec<tididi::vtree::VtreeIdx> {
     Vtree::balanced(8).internal_bottomup_slice().to_vec()
 }
 
-/// The counting pass over [`CONNECTED`] on a balanced vtree, under `rule`,
-/// with an hour's job deadline: its count, or the give-up, and what the
-/// watch reports.
+/// The counting pass over [`fixtures::connected_eight_var_formula`] on a
+/// balanced vtree, under `rule`, with an hour's job deadline: its count, or
+/// the give-up, and what the watch reports.
 fn run_watched(eng: &Engine, rule: StallRule) -> (Result<BigUint, GiveUp>, Option<Stall>) {
-    let formula = connected();
+    let formula = fixtures::connected_eight_var_formula();
     let vtree = Arc::new(Vtree::balanced(8));
     let watch = StallWatch::new(rule);
     let prune_spent_us = std::cell::Cell::new(0);
@@ -90,7 +73,7 @@ fn a_step_the_rule_does_not_bound_runs_without_a_wall() {
     let rule = StallRule { wall: Duration::ZERO, min_left: schedule().len() + 1 };
     let (count, stall) = run_watched(&Engine::new(), rule);
     assert_eq!(stall, None);
-    assert_eq!(count, Ok(fixtures::brute_projected_count(&connected(), 0..8)));
+    assert_eq!(count, Ok(fixtures::brute_projected_count(&fixtures::connected_eight_var_formula(), 0..8)));
 }
 
 /// A wall no step reaches changes nothing: the pass answers the count.
@@ -99,7 +82,7 @@ fn a_wall_no_step_reaches_leaves_the_count_alone() {
     let rule = StallRule { wall: Duration::from_secs(600), min_left: 0 };
     let (count, stall) = run_watched(&Engine::new(), rule);
     assert_eq!(stall, None);
-    assert_eq!(count, Ok(fixtures::brute_projected_count(&connected(), 0..8)));
+    assert_eq!(count, Ok(fixtures::brute_projected_count(&fixtures::connected_eight_var_formula(), 0..8)));
 }
 
 /// A step gets a wall of its own only when the rule bounds its position and

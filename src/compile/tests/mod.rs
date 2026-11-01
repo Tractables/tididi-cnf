@@ -1,27 +1,13 @@
 use super::*;
 use tididi::Engine;
 use tididi::limits::StopAt;
-use crate::test_support::clause;
+use crate::test_support::{clause, connected_eight_var_formula};
 use std::time::Duration;
-use tididi::diagram::RationalWeights;
 use num_bigint::{BigInt, BigUint};
 use num_rational::BigRational;
 
-/// Connected 3-CNF: every variable shares a clause with another, so the
-/// clauses land at internal vtree nodes.
-const CLAUSES: &[&[i32]] = &[
-    &[1, 2, 3],
-    &[-2, 4, 5],
-    &[3, -5, 6],
-    &[-1, 6, 7],
-    &[4, -7, 8],
-    &[-3, 5, -8],
-    &[2, -6, 8],
-    &[-4, 7, 1],
-];
-
 fn subject() -> (CnfFormula, Vec<Component>) {
-    let formula = crate::test_support::formula(8, CLAUSES.iter().map(|c| clause(c)).collect());
+    let formula = connected_eight_var_formula();
     let components = vec![Component {
         clause_indices: (0..formula.clauses().len()).collect(),
         local_to_global: (1..=8).map(VarId).collect(),
@@ -174,11 +160,12 @@ fn split_plan_preserves_weighted_projected_count_across_components() {
     };
     let tdd = compile_cnf(eng, &formula, &root, opts).expect("split weighted-projected compile").diagram;
     let integer = |value: i64| BigRational::from_integer(BigInt::from(value));
-    let weights = RationalWeights::from_polarities(tididi::diagram::LiteralWeights {
-        positive: vec![integer(2), integer(1), integer(3), integer(1)],
-        negative: vec![integer(5), integer(1), integer(7), integer(1)],
-    })
-    .expect("both polarity vectors have one entry per variable");
+    let weights = crate::convert::rational_weight_algebra(&[
+        (integer(5), integer(2)),
+        (integer(1), integer(1)),
+        (integer(7), integer(3)),
+        (integer(1), integer(1)),
+    ]);
     let value = tdd.evaluate(&weights).unwrap() / integer(4);
 
     assert_eq!(value, integer(70));
@@ -222,11 +209,7 @@ fn a_free_projected_variable_counts_as_forgotten_on_every_route() {
         );
 
         let function = compile(Output::ProjectedFunction(&projected));
-        let weights = RationalWeights::from_polarities(tididi::diagram::LiteralWeights {
-            positive: pairs.iter().map(|(_, positive)| positive.clone()).collect(),
-            negative: pairs.iter().map(|(negative, _)| negative.clone()).collect(),
-        })
-        .expect("both polarity vectors have one entry per variable");
+        let weights = crate::convert::rational_weight_algebra(&pairs);
         assert_eq!(
             function.diagram.evaluate(&weights).unwrap() / integer(1i64 << function.forgotten),
             crate::test_support::brute_projected_weighted_count(formula, show.iter().copied(), &pairs),

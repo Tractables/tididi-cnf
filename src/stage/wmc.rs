@@ -10,8 +10,7 @@
 use std::time::Instant;
 
 use vitri::cnf::CnfFormula;
-use crate::problem::WeightedCount;
-use crate::problem::Weighted;
+use crate::problem::{Problem, Weighted, WeightedCount};
 use crate::frontend::record::Outcome;
 
 use crate::vtree::{VtreeBuild, VtreeOptions};
@@ -32,16 +31,16 @@ const ARITHMETIC: Arithmetic = Arithmetic::SignedLog;
 const ARJUN_SHARE: f64 = 0.25;
 
 /// One weighted compile under panic isolation: the caller's bound root and
-/// component vtrees for `formula` when it has them, otherwise a fresh
+/// component vtrees for `problem.formula` when it has them, otherwise a fresh
 /// `portfolio` vtree whose construction is bounded by `deadline`; then the
-/// rational semiring over `weights` (reduced-space `(w_neg, w_pos)` pairs) and
-/// the marginalizing count, with the diagram's verdict. A panic, such as an
-/// allocation failure, is logged as `[wmc] compile: panicked` and returns `None`,
-/// handing the time to the next attempt; so does a vtree that cannot be built.
+/// rational semiring over `problem.weights` (reduced-space `(w_neg, w_pos)`
+/// pairs), the marginalizing count, and `problem.lift` applied to the
+/// diagram's answer. A panic, such as an allocation failure, is logged as
+/// `[wmc] compile: panicked` and returns `None`, handing the time to the next
+/// attempt; so does a vtree that cannot be built.
 fn compile_weighted(
     run: &Run<'_>,
-    formula: &CnfFormula,
-    weights: &[(num_rational::BigRational, num_rational::BigRational)],
+    problem: &Problem<Weighted>,
     prebuilt: Option<VtreeBuild>,
     deadline: Option<Instant>,
 ) -> Option<WeightedCount<WeightValue>> {
@@ -51,7 +50,7 @@ fn compile_weighted(
             Some(built) => built,
             None => crate::vtree::built_or_give_up(run.config.vtree_time.time(|| {
                 crate::vtree::build_vtree_with_components(
-                    formula,
+                    &problem.formula,
                     super::PORTFOLIO_VTREE_SPEC,
                     &VtreeOptions::default()
                         .with_deadline(crate::budget::vtree_deadline(deadline))
@@ -62,13 +61,14 @@ fn compile_weighted(
         };
         crate::compile::weighted_count(
             eng,
-            formula,
+            &problem.formula,
             &vtree,
             crate::compile::ComponentPlan::from_components(components.as_deref()),
-            crate::convert::rational_weight_algebra(weights),
+            crate::convert::rational_weight_algebra(&problem.weights),
             ARITHMETIC,
             deadline,
         )
+        .map(|raw| raw.map(|raw| raw.mul_rational(&problem.lift)))
     })
 }
 
@@ -133,19 +133,6 @@ pub(crate) fn run_wmc_count(
     // or lossy reduction declines at once and leaves the simplified formula
     // the whole budget, and a useful one compiles first, bounded.
 
-    // The simplified formula: the vitri WMC frontend's exact reduced formula,
-    // weights, vtree and scalar lift, compiled whole.
-    let count_simplified = |deadline: Option<Instant>| -> Option<WeightedCount<WeightValue>> {
-        compile_weighted(
-            run,
-            &simplified_problem.formula,
-            &simplified_problem.weights,
-            Some(simplified_vtree),
-            deadline,
-        )
-        .map(|raw| raw.map(|raw| raw.mul_rational(&simplified_problem.lift)))
-    };
-
     // The reduction's budget is derived inside `count_reduced`, which needs
     // the deadline. Its compile is bounded by `primary_deadline`, which reserves
     // time for the simplified formula when Arjun reduces but does not solve.
@@ -159,7 +146,7 @@ pub(crate) fn run_wmc_count(
     let simplified_clauses = simplified_problem.formula.clauses().len();
     let value = count_reduced(run, formula, &orig_table, simplified_clauses, primary_deadline).or_else(|| {
         eprintln!("[wmc] arjun: no answer; compiling the simplified formula on the reserved time");
-        count_simplified(program_deadline)
+        compile_weighted(run, &simplified_problem, Some(simplified_vtree), program_deadline)
     });
 
     // There is no other path behind the two attempts, so the run ends
@@ -203,7 +190,7 @@ fn count_reduced(
         reduce_budget,
         vitri::config::ArjunClauseGrowth::RejectAgainst(simplified_clauses),
     );
-    let (arj_formula, arj_w, k) = match crate::frontend::record::preprocess_problem::<Weighted>(
+    let reduced = match crate::frontend::record::preprocess_problem::<Weighted>(
         formula,
         None,
         Some(orig_table),
@@ -212,7 +199,7 @@ fn count_reduced(
         Ok((Outcome::Reduced(problem), report))
             if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
         {
-            (problem.formula, problem.weights, problem.lift)
+            problem
         }
         Ok((Outcome::Unsat, report))
             if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
@@ -229,16 +216,15 @@ fn count_reduced(
         "[wmc] arjun: reduced {}v/{}c → {}v/{}c (×{}/{})",
         formula.num_vars(),
         formula.clauses().len(),
-        arj_formula.num_vars(),
-        arj_formula.clauses().len(),
-        k.numer(),
-        k.denom(),
+        reduced.formula.num_vars(),
+        reduced.formula.clauses().len(),
+        reduced.lift.numer(),
+        reduced.lift.denom(),
     );
     // No prebuilt vtree: the compile builds one on the reduction. A compile
     // that runs out of memory gives up fast, leaving the simplified formula
     // the reserved time.
-    compile_weighted(run, &arj_formula, &arj_w, None, compile_deadline)
-        .map(|raw| raw.map(|raw| raw.mul_rational(&k)))
+    compile_weighted(run, &reduced, None, compile_deadline)
 }
 
 /// The weighted count of a vitri bundle, `outcome` as its record describes
@@ -263,8 +249,7 @@ pub(crate) fn run_wmc_bundle(
         return Ok(WeightedCount::Satisfiable(weight_value(problem.lift)));
     };
     let vtree = built.clone().bind(run.eng);
-    compile_weighted(run, &problem.formula, &problem.weights, Some(vtree), run.deadline)
-        .map(|raw| raw.map(|raw| raw.mul_rational(&problem.lift)))
+    compile_weighted(run, &problem, Some(vtree), run.deadline)
         .ok_or_else(crate::Error::compile_gave_up)
 }
 
