@@ -328,6 +328,7 @@ fn pwmc_matches_across_the_sweep_and_the_allsat_walk() {
     use crate::problem::WeightedCount::{Satisfiable, Unsatisfiable};
     let free_show_formula = || dimacs(3, &[&[1, 2]]);
     let contradiction = || dimacs(2, &[&[1, 2][..], &[-1], &[-2]]);
+    let unit2 = || vec![(rat(1, 1), rat(1, 1)), (rat(1, 1), rat(1, 1))];
     // (label, formula, show, (w_neg, w_pos) per variable, expected total)
     let cases = [
         (
@@ -341,12 +342,10 @@ fn pwmc_matches_across_the_sweep_and_the_allsat_walk() {
             "unit weights equal the unweighted PMC count",
             two_show_formula(),
             vec![VarId(1), VarId(2)],
-            vec![(rat(1, 1), rat(1, 1)), (rat(1, 1), rat(1, 1))],
+            unit2(),
             Satisfiable(rat(3, 1)),
         ),
         (
-            // x2 (VarId 2) is a show var absent from all clauses → free show,
-            // factor (w_pos+w_neg)=2 on top of the two-clause core PWMC=39.
             "a free show var's factor",
             free_show_formula(),
             vec![VarId(1), VarId(2), VarId(3)],
@@ -367,20 +366,8 @@ fn pwmc_matches_across_the_sweep_and_the_allsat_walk() {
             vec![(rat(1, 1), rat(1, 1)), (rat(1, 1), rat(1, 1)), (rat(-1, 1), rat(1, 1))],
             Satisfiable(rat(0, 1)),
         ),
-        (
-            "no projection is feasible",
-            contradiction(),
-            vec![VarId(1), VarId(2)],
-            vec![(rat(1, 1), rat(1, 1)), (rat(1, 1), rat(1, 1))],
-            Unsatisfiable,
-        ),
-        (
-            "nothing constrained is shown, and the formula has no model",
-            contradiction(),
-            vec![],
-            vec![(rat(1, 1), rat(1, 1)), (rat(1, 1), rat(1, 1))],
-            Unsatisfiable,
-        ),
+        ("no projection is feasible", contradiction(), vec![VarId(1), VarId(2)], unit2(), Unsatisfiable),
+        ("nothing constrained is shown, and the formula has no model", contradiction(), vec![], unit2(), Unsatisfiable),
     ];
     for (label, f, show, weights, expected) in cases {
         let swept = sweep(&f, &split_show(&f, &show), WeightedModels::new(&weights), None).unwrap();

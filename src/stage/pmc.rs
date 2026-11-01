@@ -303,31 +303,47 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     };
     let pmc = match run_isolated("[pmc] compile", || compile(first_try_deadline)) {
         Some(pmc) => pmc,
-        None => {
-            // Reclaim the failed compile's retained extents so recovery
-            // starts from a clean allocator.
-            let _ = crate::mem::purge_all_arenas();
-            eprintln!("[pmc] compile: gave up (memory or deadline) — condition next");
-            // Show vars are counted, so Σ_X ∃_Y F = Σ over show-cutset
-            // assignments a of (Σ_X ∃_Y F | a). The branches account for the
-            // projection and the free show vars: this is the final count.
-            if let Some(pmc) = problem.show.as_ref().and_then(|show| condition_on_show(run, work, show)) {
-                return Step::Answer(pmc);
-            }
-            eprintln!("[pmc] condition: gave up — one last compile on the time left");
-            // On the run's wall: this is the last thing the instance does, and
-            // with no wall its applies would poll nothing and run until the
-            // external timeout kills the process.
-            let Some(pmc) = compile(run.deadline) else {
-                eprintln!("[pmc] no answer: the last compile gave up");
-                return Step::Decline;
-            };
-            pmc
-        }
+        None => match recover_pmc_compile(run, problem, work, compile) {
+            std::ops::ControlFlow::Break(step) => return step,
+            std::ops::ControlFlow::Continue(pmc) => pmc,
+        },
     };
     let compile_ms = clock.compile_ms(0);
     trace.print_compile("[pmc]", work, vtree_ms, compile_ms, forget_set.len(), problem.show_len());
     Step::Answer(pmc)
+}
+
+/// Recover after the first projected compile attempt gave up: reclaim retained
+/// extents, try conditioning on the show cutset, and fall back to one last
+/// compile on the remaining wall.
+fn recover_pmc_compile<F>(
+    run: &Run<'_>,
+    problem: &Problem<Unweighted>,
+    work: &CnfFormula,
+    compile: F,
+) -> std::ops::ControlFlow<Step<Unweighted>, num_bigint::BigUint>
+where
+    F: FnOnce(Option<Instant>) -> Option<num_bigint::BigUint>,
+{
+    // Reclaim the failed compile's retained extents so recovery
+    // starts from a clean allocator.
+    let _ = crate::mem::purge_all_arenas();
+    eprintln!("[pmc] compile: gave up (memory or deadline) — condition next");
+    // Show vars are counted, so Σ_X ∃_Y F = Σ over show-cutset
+    // assignments a of (Σ_X ∃_Y F | a). The branches account for the
+    // projection and the free show vars: this is the final count.
+    if let Some(pmc) = problem.show.as_ref().and_then(|show| condition_on_show(run, work, show)) {
+        return std::ops::ControlFlow::Break(Step::Answer(pmc));
+    }
+    eprintln!("[pmc] condition: gave up — one last compile on the time left");
+    // On the run's wall: this is the last thing the instance does, and
+    // with no wall its applies would poll nothing and run until the
+    // external timeout kills the process.
+    let Some(pmc) = compile(run.deadline) else {
+        eprintln!("[pmc] no answer: the last compile gave up");
+        return std::ops::ControlFlow::Break(Step::Decline);
+    };
+    std::ops::ControlFlow::Continue(pmc)
 }
 
 /// First-try deadline for reactive recovery: `min(0.2 × wall, 2 s)` from

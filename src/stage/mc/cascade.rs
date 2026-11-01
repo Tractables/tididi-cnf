@@ -307,27 +307,38 @@ pub(super) fn monotone_reduction(
     // repeat that compile.
     if ar.formula.num_vars() >= formula.num_vars() && ar.formula.clauses().len() >= formula.clauses().len() {
         eprintln!("[mc] monotone-reduction: the reduction is no smaller — not compiling it again");
-    } else {
-        // The no-SBVA retry's window comes out of the compile's when it is armed.
-        let compile_deadline = match run.config.time_limit_ms {
-            Some(total_ms) if no_sbva => stage_deadline
-                .checked_sub(no_sbva_retry_want(total_ms))
-                .filter(|&at| at > Instant::now())
-                .unwrap_or(stage_deadline),
-            _ => stage_deadline,
-        };
-        let attempt = attempt_from_vitri_build(ar.formula.clone(), built, ar.lift_pow2);
-        if let Some(counted) = count_attempt(run, attempt, Some(compile_deadline)) {
-            return Some((counted, AnsweredBy::MonotoneReduction));
-        }
-        eprintln!("[mc] monotone-reduction: the compile of the reduction gave up");
-        release_failed_compile(run.eng);
+    } else if let Some(counted) = compile_monotone_reduction(run, &ar, built, stage_deadline, no_sbva) {
+        return Some((counted, AnsweredBy::MonotoneReduction));
     }
     if no_sbva && let Some(counted) = no_sbva_retry(run, formula, session, true) {
         return Some((counted, AnsweredBy::NoSbvaRetry));
     }
     support_enum_stage(&ar.formula, &ar.support, ar.lift_pow2, "monotone reduction", run.deadline)
         .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
+}
+
+fn compile_monotone_reduction(
+    run: &Run<'_>,
+    ar: &crate::frontend::record::ArjunReduction,
+    built: crate::vtree::VtreeBuild,
+    stage_deadline: Instant,
+    no_sbva: bool,
+) -> Option<Counted> {
+    // The no-SBVA retry's window comes out of the compile's when it is armed.
+    let compile_deadline = match run.config.time_limit_ms {
+        Some(total_ms) if no_sbva => stage_deadline
+            .checked_sub(no_sbva_retry_want(total_ms))
+            .filter(|&at| at > Instant::now())
+            .unwrap_or(stage_deadline),
+        _ => stage_deadline,
+    };
+    let attempt = attempt_from_vitri_build(ar.formula.clone(), built, ar.lift_pow2);
+    if let Some(counted) = count_attempt(run, attempt, Some(compile_deadline)) {
+        return Some(counted);
+    }
+    eprintln!("[mc] monotone-reduction: the compile of the reduction gave up");
+    release_failed_compile(run.eng);
+    None
 }
 
 /// The portfolio entry the stall recompile builds its tree from: goatd's

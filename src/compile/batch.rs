@@ -17,6 +17,7 @@ use tididi::diagram::Tdd;
 use tididi::vtree::{Vtree, VtreeIdx};
 
 use crate::budget::deadline_passed;
+use super::component::PassOutput;
 use super::marginalize::summable;
 use super::minimize::{MinimizeGate, minimize_contract_only};
 use super::schedule::step_completions;
@@ -118,31 +119,15 @@ pub(crate) fn batch_accumulate(
     while i < clauses.len() {
         if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
         let start_clause = i;
-        let acc_width = acc.as_ref().map_or(0, Tdd::max_width);
-        let stop = BatchStop {
-            vtree,
-            clauses,
-            width_cap: batch_width_cap(acc_width, floor.width_limit),
-            guard: batch_width_cap(acc_width, BATCH_WIDTH_GUARD),
-            floor: floor.size,
-            limit,
-            acc: acc.as_ref(),
-            streaming: streaming.as_ref(),
-        };
-        let (mut batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
+        let stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
+        let (batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
         i = next;
         // Absorption decides whether the next batch may extend, so it is only
         // measured when enough clauses remain for the next batch to pass the
         // floor. It needs the accumulator's pairs, which the stop rule may
         // already have read.
         let acc_pairs = (clauses.len() - i > floor.size).then(|| stop.acc_pairs());
-        // The first batch becomes the accumulator when there is none yet: a
-        // diagram the pass creates.
-        if acc.is_none()
-            && let BuiltBatch::Diagram(local) = batch
-        {
-            batch = BuiltBatch::Diagram(Box::new(ctx.job.output.with_store(*local)));
-        }
+        let batch = batch.with_initial_store(acc.is_none(), ctx.job.output);
         // The targets this merge may sum out: a projecting compile keeps its
         // leaf levels Boolean, which can leave a merge that completes targets
         // with none to sum out.
@@ -266,6 +251,17 @@ enum BuiltBatch<'a> {
     SingleClause(&'a [Literal]),
 }
 
+impl<'a> BuiltBatch<'a> {
+    /// The first batch becomes the accumulator when there is none yet: a
+    /// diagram the pass creates.
+    fn with_initial_store(self, first_batch: bool, output: PassOutput<'_>) -> Self {
+        match self {
+            Self::Diagram(local) if first_batch => Self::Diagram(Box::new(output.with_store(*local))),
+            other => other,
+        }
+    }
+}
+
 /// What one merge told the fold.
 struct Merged {
     /// The merged accumulator is UNSAT, and stays so whatever clauses remain,
@@ -308,6 +304,29 @@ fn merge_batch(
     let unsat = !eng.is_sat(&merged)?;
     *acc = Some(merged);
     Ok(Merged { unsat, absorbed })
+}
+
+/// Initialize the running union of the folded clauses' spines, from which the
+/// stop checks read the batch's max width and pairs instead of sweeping every
+/// level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a width
+/// cap is on or the batch may extend. All false on entry: only spine entries
+/// are ever set, and they are reset from `touched` before returning. An error
+/// return skips the reset, but an error ends the pass, whose state the scratch
+/// is part of.
+fn init_batch_spine(
+    track_spine: bool,
+    vtree: &Vtree,
+    first_clause: &[Literal],
+    on_spine: &mut Vec<bool>,
+) -> Vec<VtreeIdx> {
+    let mut touched = Vec::new();
+    if track_spine {
+        if on_spine.len() < vtree.num_nodes() {
+            on_spine.resize(vtree.num_nodes(), false);
+        }
+        mark_clause_levels(vtree, first_clause, on_spine, &mut touched);
+    }
+    touched
 }
 
 /// Accumulate the ancestor paths of a batch's variables, recording only new marks.
@@ -406,6 +425,27 @@ struct BatchStop<'a> {
 }
 
 impl<'a> BatchStop<'a> {
+    fn for_fold(
+        vtree: &'a Arc<Vtree>,
+        clauses: &'a [usize],
+        floor: BatchFloor,
+        limit: usize,
+        acc: Option<&'a Tdd>,
+        streaming: Option<&'a StreamTargets>,
+    ) -> Self {
+        let acc_width = acc.map_or(0, Tdd::max_width);
+        Self {
+            vtree,
+            clauses,
+            width_cap: batch_width_cap(acc_width, floor.width_limit),
+            guard: batch_width_cap(acc_width, BATCH_WIDTH_GUARD),
+            floor: floor.size,
+            limit,
+            acc,
+            streaming,
+        }
+    }
+
     fn completes(&self, p: usize) -> bool {
         self.streaming.is_some_and(|s| s.completes(p))
     }
@@ -482,22 +522,8 @@ impl<'a> BatchStop<'a> {
 
         let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
         let may_extend = self.limit > self.floor;
-        // Spine bookkeeping: the running union of the folded clauses' spines, from
-        // which the stop checks read the batch's max width and pairs instead of
-        // sweeping every level (`batch_max_width`, `batch_spine_pairs`). Tracked
-        // only when a width cap is on or the batch may extend.
         let track_spine = self.width_cap != usize::MAX || may_extend;
-        let mut touched: Vec<VtreeIdx> = Vec::new();
-        // All false on entry: only spine entries are ever set, and they are reset
-        // from `touched` before returning. An error return skips the reset, but
-        // an error ends the pass, whose state the scratch is part of.
-        if track_spine {
-            if on_spine.len() < vtree.num_nodes() { on_spine.resize(vtree.num_nodes(), false); }
-            mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
-        }
-        // Extension state, kept only when the batch may extend: the build cost so
-        // far (`P_1 + ... + P_{k-1}`), the current pairs `P_k`, and whether a
-        // folded clause is a marginalize target's last mention.
+        let mut touched = init_batch_spine(track_spine, vtree, diagram_clauses.get(clauses[start]), on_spine);
         let mut built = 0usize;
         let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
         let mut holds_completion = self.completes(start);
@@ -513,8 +539,6 @@ impl<'a> BatchStop<'a> {
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            // A disabled cap can never fire, and the spine union `batch_max_width`
-            // reads is only tracked when a cap is on or the batch may extend.
             let width = if track_spine { batch_max_width(&local, &touched) } else { 0 };
             if may_extend {
                 built += pairs;
@@ -524,7 +548,6 @@ impl<'a> BatchStop<'a> {
                 break;
             }
         }
-        // Restore the scratch's all-false invariant.
         for &t in &touched { on_spine[t.idx()] = false; }
         Ok((BuiltBatch::Diagram(Box::new(local)), i))
     }

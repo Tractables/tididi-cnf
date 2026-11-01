@@ -90,32 +90,11 @@ pub(crate) fn run_wmc_count(
     // The declared table as vitri reads it: its count chain resolves every
     // literal the table leaves out.
     let orig_table = declared_weights.cloned().unwrap_or_default();
-    let crate::frontend::WmcFrontend { outcome, vtree, report } =
-        crate::frontend::wmc_frontend(formula, &orig_table, run.config, program_deadline)
-            .map_err(crate::Error::stage_failed("wmc preprocessing"))?;
-    let (simplified_problem, simplified_vtree) = match (outcome, vtree) {
-        (Outcome::Unsat, _) => {
-            render_wmc_report(&report, "UNSAT");
-            return Ok(WeightedCount::Unsatisfiable);
-        }
-        // Nothing is left to compile and nothing was refuted: every clause is
-        // satisfied, and the lift is the whole count.
-        (Outcome::Reduced(problem), None) => {
-            render_wmc_report(&report, "fully resolved");
-            return Ok(WeightedCount::Satisfiable(weight_value(problem.lift)));
-        }
-        (Outcome::Reduced(problem), Some(vtree)) => {
-            render_wmc_report(
-                &report,
-                &format!(
-                    "{}v/{}c reduced",
-                    problem.formula.num_vars(),
-                    problem.formula.clauses().len()
-                ),
-            );
-            // Bound before any diagram is built on it, as every fresh tree is.
-            (problem, vtree.bind(run.eng))
-        }
+    let frontend = crate::frontend::wmc_frontend(formula, &orig_table, run.config, program_deadline)
+        .map_err(crate::Error::stage_failed("wmc preprocessing"))?;
+    let (simplified_problem, simplified_vtree) = match unpack_wmc_frontend(run.eng, frontend) {
+        std::ops::ControlFlow::Break(count) => return Ok(count),
+        std::ops::ControlFlow::Continue(ready) => ready,
     };
     let t_compile = Instant::now();
 
@@ -148,6 +127,34 @@ pub(crate) fn run_wmc_count(
     };
     eprintln!("[wmc] compile: counted in {}ms", t_compile.elapsed().as_millis());
     Ok(value)
+}
+
+fn unpack_wmc_frontend(
+    eng: &tididi::Engine,
+    frontend: crate::frontend::WmcFrontend,
+) -> std::ops::ControlFlow<WeightedCount<WeightValue>, (Problem<Weighted>, crate::vtree::VtreeBuild)> {
+    let crate::frontend::WmcFrontend { outcome, vtree, report } = frontend;
+    match (outcome, vtree) {
+        (Outcome::Unsat, _) => {
+            render_wmc_report(&report, "UNSAT");
+            std::ops::ControlFlow::Break(WeightedCount::Unsatisfiable)
+        }
+        (Outcome::Reduced(problem), None) => {
+            render_wmc_report(&report, "fully resolved");
+            std::ops::ControlFlow::Break(WeightedCount::Satisfiable(weight_value(problem.lift)))
+        }
+        (Outcome::Reduced(problem), Some(vtree)) => {
+            render_wmc_report(
+                &report,
+                &format!(
+                    "{}v/{}c reduced",
+                    problem.formula.num_vars(),
+                    problem.formula.clauses().len()
+                ),
+            );
+            std::ops::ControlFlow::Continue((problem, vtree.bind(eng)))
+        }
+    }
 }
 
 fn render_wmc_report(report: &crate::frontend::record::Report, result: &str) {
@@ -191,27 +198,9 @@ fn count_reduced(
         reduce_budget,
         vitri::config::ArjunClauseGrowth::RejectAgainst(simplified_clauses),
     );
-    let reduced = match crate::frontend::record::preprocess_problem::<Weighted>(
-        formula,
-        None,
-        Some(orig_table),
-        &arjun_config,
-    ) {
-        Ok((Outcome::Reduced(problem), report))
-            if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
-        {
-            problem
-        }
-        Ok((Outcome::Unsat, report))
-            if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
-        {
-            eprintln!("[wmc] arjun: refuted the formula");
-            return Some(WeightedCount::Unsatisfiable);
-        }
-        _ => {
-            eprintln!("[wmc] arjun: no usable reduction — skipped");
-            return None;
-        }
+    let reduced = match run_arjun_wmc_reduction(formula, orig_table, &arjun_config)? {
+        std::ops::ControlFlow::Break(unsat) => return Some(unsat),
+        std::ops::ControlFlow::Continue(problem) => problem,
     };
     eprintln!(
         "[wmc] arjun: reduced {}v/{}c → {}v/{}c (×{}/{})",
@@ -226,6 +215,30 @@ fn count_reduced(
     // that runs out of memory gives up fast, leaving the simplified formula
     // the reserved time.
     compile_weighted(run, &reduced, None, compile_deadline)
+}
+
+fn run_arjun_wmc_reduction(
+    formula: &CnfFormula,
+    orig_table: &vitri::cnf::WeightTable,
+    arjun_config: &vitri::RunConfig,
+) -> Option<std::ops::ControlFlow<WeightedCount<WeightValue>, Problem<Weighted>>> {
+    match crate::frontend::record::preprocess_problem::<Weighted>(formula, None, Some(orig_table), arjun_config) {
+        Ok((Outcome::Reduced(problem), report))
+            if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
+        {
+            Some(std::ops::ControlFlow::Continue(problem))
+        }
+        Ok((Outcome::Unsat, report))
+            if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>
+        {
+            eprintln!("[wmc] arjun: refuted the formula");
+            Some(std::ops::ControlFlow::Break(WeightedCount::Unsatisfiable))
+        }
+        _ => {
+            eprintln!("[wmc] arjun: no usable reduction — skipped");
+            None
+        }
+    }
 }
 
 /// The weighted count of a vitri bundle, `outcome` as its record describes

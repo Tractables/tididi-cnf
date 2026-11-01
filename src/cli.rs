@@ -149,7 +149,16 @@ Options:
                        `ulimit -v` does; the memory-adaptive stages read it back.
                        It only lowers the limit, and 0 leaves it unchanged.
                        Default: {DEFAULT_MEM_LIMIT_MB}.
-  -h, --help           Print this text and exit
+"
+    );
+    append_usage_footer(&mut text);
+    append_vtree_specs(&mut text);
+    text
+}
+
+fn append_usage_footer(text: &mut String) {
+    text.push_str(
+        "  -h, --help           Print this text and exit
   -V, --version        Print the version and exit
 
 Exit status: 0 with an answer; 1 without one (the run gave up), or for an input
@@ -157,10 +166,8 @@ it cannot read, a vtree spec it cannot use or an output it cannot write; 2 for a
 usage error, a refused instance or environment setting, or a failed stage.
 
 Vtree specs:
-"
+",
     );
-    append_vtree_specs(&mut text);
-    text
 }
 
 fn append_vtree_specs(text: &mut String) {
@@ -222,6 +229,14 @@ fn record_input_path(prog: &str, slot: &mut Option<PathBuf>, arg: std::ffi::OsSt
     Ok(())
 }
 
+fn record_flag_seen(prog: &str, given: &mut Vec<String>, flag: &str) -> Result<(), Error> {
+    if given.iter().any(|seen| seen == flag) {
+        return Err(usage_error(prog, format!("{flag} is given twice; a run takes one value for each flag.")));
+    }
+    given.push(flag.to_owned());
+    Ok(())
+}
+
 fn parse_args() -> Result<Request, Error> {
     let mut args = std::env::args_os();
     let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
@@ -245,10 +260,7 @@ fn parse_args() -> Result<Request, Error> {
             continue;
         }
         let flag = arg.to_string_lossy();
-        if given.iter().any(|seen| *seen == flag) {
-            return Err(usage_error(&prog, format!("{flag} is given twice; a run takes one value for each flag.")));
-        }
-        given.push(flag.clone().into_owned());
+        record_flag_seen(&prog, &mut given, &flag)?;
         match flag.as_ref() {
             "--vtree" => vtree_spec = Some(next_text(&prog, "--vtree", &mut args)?),
             "--save-tdd" => save_tdd_path = Some(next_value(&prog, "--save-tdd", &mut args)?.into()),
@@ -272,23 +284,11 @@ fn parse_args() -> Result<Request, Error> {
         }
     }
 
-    let dimacs_path = dimacs_path.ok_or_else(|| usage_error(&prog, "no DIMACS file or vitri bundle given."))?;
+    let path = dimacs_path.ok_or_else(|| usage_error(&prog, "no DIMACS file or vitri bundle given."))?;
     let (time_limit_ms, sat_prune) = parse_env_overrides(time_limit_ms)?;
-
-    Ok(Request::Run(Cli {
-        path: dimacs_path,
-        mode: mode_flag,
-        limits: Limits { time_limit_ms, mem_limit_mb },
-        settings: Settings {
-            vtree: vtree_spec,
-            preprocess,
-            save_tdd: save_tdd_path.is_some(),
-            sat_prune,
-        },
-        output_format,
-        stats_path,
-        save_tdd_path,
-    }))
+    let settings = Settings { vtree: vtree_spec, preprocess, save_tdd: save_tdd_path.is_some(), sat_prune };
+    let limits = Limits { time_limit_ms, mem_limit_mb };
+    Ok(Request::Run(Cli { path, mode: mode_flag, limits, settings, output_format, stats_path, save_tdd_path }))
 }
 
 /// Read `TIDIDI_TIME_LIMIT_MS` (when `flag_time_limit_ms` is absent, though an

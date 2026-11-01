@@ -85,12 +85,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
         ("a free show variable, its positive literal named", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(3, 10))]),
         ("a free show variable, its negative literal named", fixtures::formula(1, vec![]), vec![1], vec![(-1, rat(3, 10))]),
         ("a named literal weighing 1/2", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1, 2))]),
-        (
-            "show 1 over projected 2, 1 ∨ 2",
-            dimacs(2, &[&[1, 2]]),
-            vec![1],
-            vec![(1, rat(3, 10))],
-        ),
+        ("show 1 over projected 2, 1 ∨ 2", dimacs(2, &[&[1, 2]]), vec![1], vec![(1, rat(3, 10))]),
         (
             "show 1 and 2 kept by 1 ∨ 2, projected 3 ↔ 1 ∧ 2",
             dimacs(3, &[&[1, 2][..], &[-3, 1], &[-3, 2], &[3, -1, -2]]),
@@ -108,9 +103,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
             show_idx,
             declared.resolve::<Original>(n as usize).as_pairs(),
         );
-        let show_set = show_set(&show);
-
-        let (outcome, report) = preprocess_problem::<Weighted>(&formula, Some(&show_set), Some(&declared), &config)
+        let (outcome, report) = preprocess_problem::<Weighted>(&formula, Some(&show_set(&show)), Some(&declared), &config)
             .expect("PWMC preprocessing must cross the boundary");
         assert_eq!(
             report.stages.arjun,

@@ -249,7 +249,7 @@ fn run_support_enum(
     probe_wall_ms: u64,
     enum_wall_ms: u64,
 ) -> Option<num_bigint::BigUint> {
-    use crate::enumeration::{AllsatStop, AllsatCtl, Models};
+    use crate::enumeration::{AllsatCtl, Models};
     use tididi::vtree::VarId;
     use std::time::Duration;
 
@@ -292,20 +292,26 @@ fn run_support_enum(
             Some(count)
         }
         None => {
-            eprintln!(
-                "[mc] support-enumeration: enumeration stopped: {} ({} models tallied)",
-                match ctl.bust {
-                    Some(AllsatStop::TallyCeiling) => format!(
-                        "{} (tally > {TALLY_CEILING}, the count the entry gate admits)",
-                        ctl.stop_reason()
-                    ),
-                    _ => ctl.stop_reason().to_string(),
-                },
-                ctl.models,
-            );
+            log_support_enum_stop(&ctl);
             None
         }
     }
+}
+
+fn log_support_enum_stop(ctl: &crate::enumeration::AllsatCtl<'_>) {
+    use crate::enumeration::AllsatStop;
+
+    let reason = match ctl.bust {
+        Some(AllsatStop::TallyCeiling) => format!(
+            "{} (tally > {TALLY_CEILING}, the count the entry gate admits)",
+            ctl.stop_reason()
+        ),
+        _ => ctl.stop_reason().to_string(),
+    };
+    eprintln!(
+        "[mc] support-enumeration: enumeration stopped: {reason} ({} models tallied)",
+        ctl.models,
+    );
 }
 
 /// The stage body, shared by both fallback sites (behind the primary compile

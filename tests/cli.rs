@@ -101,7 +101,7 @@ fn refusals_name_what_is_wrong() {
     let skip: Env = &[("VITRI_PORTFOLIO_SKIP", "not-a-candidate")];
 
     // (exit code, arguments, environment, what stderr names)
-    let rows: Vec<(i32, Vec<&str>, Env, Vec<&str>)> = vec![
+    let mut rows: Vec<(i32, Vec<&str>, Env, Vec<&str>)> = vec![
         (1, vec!["--vtree", "nonexistent", TINY], &[], vec!["unknown vtree type"]),
         (2, vec!["--preprocess", "half", TINY], &[], vec!["half", "none, full"]),
         (2, vec![], &[], vec!["no DIMACS file", "Usage:"]),
@@ -110,16 +110,6 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--time-limit-ms", "2s", TINY], &[], vec!["--time-limit-ms", "\"2s\""]),
         (2, vec!["--mem-limit-mb", "lots", TINY], &[], vec!["--mem-limit-mb", "\"lots\""]),
         (2, vec!["--mode", "count", TINY], &[], vec!["--mode", "\"count\"", "compile, mc, wmc, pmc, pwmc"]),
-        // A flag is read once, whether or not its values agree.
-        (2, vec!["--mode", "mc", "--mode", "wmc", TINY], &[], vec!["--mode is given twice"]),
-        (2, vec!["--mode", "mc", "--mode", "mc", TINY], &[], vec!["--mode is given twice"]),
-        (2, vec!["--vtree", "portfolio", "--vtree", "balanced", TINY], &[], vec!["--vtree is given twice"]),
-        (2, vec!["--preprocess", "none", "--preprocess", "full", TINY], &[], vec!["--preprocess is given twice"]),
-        (2, vec!["--output-format", "mcc", "--output-format", "plain", TINY], &[], vec!["--output-format is given twice"]),
-        (2, vec!["--time-limit-ms", "1", "--time-limit-ms", "60000", TINY], &[], vec!["--time-limit-ms is given twice"]),
-        (2, vec!["--mem-limit-mb", "0", "--mem-limit-mb", "0", TINY], &[], vec!["--mem-limit-mb is given twice"]),
-        (2, vec!["--stats", "-", "--stats", "-", TINY], &[], vec!["--stats is given twice"]),
-        (2, vec!["--save-tdd", saved, "--save-tdd", saved, TINY], &[], vec!["--save-tdd is given twice"]),
         (2, vec!["--output-format", "sharp", TINY], &[], vec!["--output-format", "\"sharp\"", "plain", "mcc"]),
         (2, vec![TINY, "tests/data/mc_header_tiny.cnf"], &[], vec!["tests/data/mc_header_tiny.cnf", "one DIMACS file"]),
         (1, vec!["/nonexistent/tididi_test.cnf"], &[], vec!["error: could not open"]),
@@ -150,6 +140,7 @@ fn refusals_name_what_is_wrong() {
         (2, vec!["--mode", "wmc", TINY], &[("TIDIDI_SAT_PRUNE", "off")], vec!["TIDIDI_SAT_PRUNE", "--mode wmc", "compile, mc, pmc and pwmc"]),
         (2, vec![weighted.path()], &[("TIDIDI_SAT_PRUNE", "on")], vec!["TIDIDI_SAT_PRUNE", "c t wmc"]),
     ];
+    rows.extend(duplicate_flag_refusal_rows(saved));
 
     for (code, args, env, names) in rows {
         let out = run(&args, env);
@@ -157,6 +148,20 @@ fn refusals_name_what_is_wrong() {
         assert_stderr_names(&out.stderr, &names, format_args!("{args:?}"));
     }
     assert!(!std::path::Path::new(saved).exists(), "a refused --save-tdd wrote a diagram");
+}
+
+fn duplicate_flag_refusal_rows(saved: &str) -> Vec<(i32, Vec<&str>, Env<'_>, Vec<&str>)> {
+    vec![
+        (2, vec!["--mode", "mc", "--mode", "wmc", TINY], &[], vec!["--mode is given twice"]),
+        (2, vec!["--mode", "mc", "--mode", "mc", TINY], &[], vec!["--mode is given twice"]),
+        (2, vec!["--vtree", "portfolio", "--vtree", "balanced", TINY], &[], vec!["--vtree is given twice"]),
+        (2, vec!["--preprocess", "none", "--preprocess", "full", TINY], &[], vec!["--preprocess is given twice"]),
+        (2, vec!["--output-format", "mcc", "--output-format", "plain", TINY], &[], vec!["--output-format is given twice"]),
+        (2, vec!["--time-limit-ms", "1", "--time-limit-ms", "60000", TINY], &[], vec!["--time-limit-ms is given twice"]),
+        (2, vec!["--mem-limit-mb", "0", "--mem-limit-mb", "0", TINY], &[], vec!["--mem-limit-mb is given twice"]),
+        (2, vec!["--stats", "-", "--stats", "-", TINY], &[], vec!["--stats is given twice"]),
+        (2, vec!["--save-tdd", saved, "--save-tdd", saved, TINY], &[], vec!["--save-tdd is given twice"]),
+    ]
 }
 
 /// A reader that stops early closes stdout under the run, which still ends

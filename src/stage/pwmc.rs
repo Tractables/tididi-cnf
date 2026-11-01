@@ -131,7 +131,6 @@ fn pwmc_compile_evaluate(
 ) -> Option<WeightedCount<BigRational>> {
     let eng = run.eng;
     let PwmcCase { show, weights } = case;
-    use num_bigint::BigInt;
 
     // The projection-aware vtree places the projected-out (weight-1) vars deep,
     // so the compile forgets them before the show-cone combine at the top of
@@ -163,25 +162,32 @@ fn pwmc_compile_evaluate(
         let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
         // An apply-deadline cut returns `None` here: scored unsolved.
         let compiled = crate::compile::settle(crate::compile::compile_with(eng, work, &vtree, compile, run.compile))?;
-        let g = &compiled.diagram;
         let compile_ms = clock.compile_ms(0);
-
-        // The diagram says whether `work` has a model; the fold cannot, since a
-        // zero or cancelling weight makes a satisfiable formula weigh zero.
-        let value = if eng.is_sat(g).ok()? {
-            // Each forgotten var weighs 2 in the fold, as it doubles a count
-            // (`Compiled::projected_count`): through the marginalize-of-One,
-            // or through `evaluate` weighting a free leaf ×2. Without a show
-            // set nothing is forgotten and the divisor is 1.
-            let sr = crate::convert::rational_weight_algebra(weights);
-            let value = eng.evaluate(g, &sr).ok()?;
-            WeightedCount::Satisfiable(value / BigRational::from_integer(BigInt::from(1) << compiled.forgotten))
-        } else {
-            WeightedCount::Unsatisfiable
-        };
+        let value = evaluate_weighted_diagram(eng, &compiled, weights)?;
         trace.print_compile("[pwmc]", work, vtree_ms, compile_ms, projected_in_vtree.len(), show.map_or(0, ShowSet::len));
         Some(value)
     })
+}
+
+/// Fold `compiled` under `weights`: the diagram says whether `work` has a model
+/// (since a zero or cancelling weight makes a satisfiable formula weigh zero),
+/// and each forgotten variable divides the fold by 2.
+fn evaluate_weighted_diagram(
+    eng: &tididi::Engine,
+    compiled: &crate::compile::Compiled,
+    weights: &LiteralWeights,
+) -> Option<WeightedCount<BigRational>> {
+    use num_bigint::BigInt;
+
+    let g = &compiled.diagram;
+    if !eng.is_sat(g).ok()? {
+        return Some(WeightedCount::Unsatisfiable);
+    }
+    let sr = crate::convert::rational_weight_algebra(weights);
+    let value = eng.evaluate(g, &sr).ok()?;
+    Some(WeightedCount::Satisfiable(
+        value / BigRational::from_integer(BigInt::from(1) << compiled.forgotten),
+    ))
 }
 
 /// Solve a single independent component's PWMC standalone: bounded show-enumeration
@@ -196,35 +202,7 @@ fn pwmc_solve_component(
     local_show: &ShowSet,
     weights: &LiteralWeights,
 ) -> Option<WeightedCount<BigRational>> {
-    /// The most show vars a component may have for AllSAT to exhaust its
-    /// projections.
-    const EXHAUSTIBLE_SHOW_MAX: u32 = 21;
-    /// The wall an exhausting AllSAT leaves the component's compile.
-    const COMPILE_RESERVE_MS: u64 = 15_000;
-    /// The wall an exhausting AllSAT counts from when the run has none.
-    const NO_WALL_MS: u64 = 120_000;
-    /// The probe of a component AllSAT cannot exhaust, and the floor of one it
-    /// can.
-    const TIGHT_ALLSAT_MS: u64 = 4000;
-    // The AllSAT budget depends on the component's show count. A component
-    // with 1 to `EXHAUSTIBLE_SHOW_MAX` show vars has at most 2^show feasible
-    // projections, which AllSAT can exhaust: it gets the remaining wall less
-    // `COMPILE_RESERVE_MS`, or `NO_WALL_MS` less it when the run has no wall,
-    // and a model cap of 2^show (under the default cap it would decline, and
-    // its projected-var compile can then run out of memory). A larger
-    // component cannot be enumerated, so its probe stops after
-    // `TIGHT_ALLSAT_MS` and the compile answers it. The components come
-    // cheapest first, so the wall is still close to full when the one hard
-    // component is reached. An empty local show still enumerates: the
-    // component is then a feasibility factor, 1 if SAT and 0 if UNSAT. Both
-    // budgets, the floor included, stop at the run's wall.
-    let show_ct = local_show.len() as u32;
-    let (allsat_ms, model_override) = if (1..=EXHAUSTIBLE_SHOW_MAX).contains(&show_ct) {
-        let remaining_ms = crate::budget::left_ms(run.deadline).unwrap_or(NO_WALL_MS);
-        (remaining_ms.saturating_sub(COMPILE_RESERVE_MS).max(TIGHT_ALLSAT_MS), Some(1u64 << show_ct))
-    } else {
-        (TIGHT_ALLSAT_MS, None)
-    };
+    let (allsat_ms, model_override) = allsat_component_budget(run.deadline, local_show.len() as u32);
     let case = PwmcCase { show: Some(local_show), weights };
     let asker = PwmcEnumeration::ReducedComponent { allsat_wall_ms: allsat_ms, model_budget_override: model_override };
     if let Some(v) = pwmc_show_enum_fastpath(run, sub, case, asker) {
@@ -255,6 +233,23 @@ fn pwmc_solve_component(
     pwmc_compile_evaluate(run, formula, &trace, case)
 }
 
+/// The AllSAT budget for one component with `show_ct` show variables: a
+/// component with 1..=21 show vars has at most 2^show feasible projections that
+/// AllSAT can exhaust, whereas a larger component gets a short 4s probe.
+fn allsat_component_budget(deadline: Option<Instant>, show_ct: u32) -> (u64, Option<u64>) {
+    const EXHAUSTIBLE_SHOW_MAX: u32 = 21;
+    const COMPILE_RESERVE_MS: u64 = 15_000;
+    const NO_WALL_MS: u64 = 120_000;
+    const TIGHT_ALLSAT_MS: u64 = 4000;
+
+    if (1..=EXHAUSTIBLE_SHOW_MAX).contains(&show_ct) {
+        let remaining_ms = crate::budget::left_ms(deadline).unwrap_or(NO_WALL_MS);
+        (remaining_ms.saturating_sub(COMPILE_RESERVE_MS).max(TIGHT_ALLSAT_MS), Some(1u64 << show_ct))
+    } else {
+        (TIGHT_ALLSAT_MS, None)
+    }
+}
+
 /// Evaluate a one-variable component `group` over `var`: each clause is a unit
 /// forcing `var`. Returns `None` when both polarities are forced, or the forced
 /// literal's weight in `weights` (1 for a projected variable, which
@@ -282,16 +277,20 @@ fn eval_singleton(
     Some(if pos { w_pos.clone() } else { w_neg.clone() })
 }
 
+struct PartitionedComponents<'a> {
+    substantial: Vec<(usize, &'a Vec<usize>)>,
+    singletons: Vec<(vitri::cnf::VarId, &'a Vec<usize>)>,
+}
+
 /// Partition component clause-groups into substantial (>= 2 variables) and
 /// singleton (1 variable) components, enforcing `policy`'s minimum component
 /// count, show cap, and sort order.
-#[allow(clippy::type_complexity)]
 fn partition_components<'a>(
     formula: &CnfFormula,
     groups: &'a [Vec<usize>],
     mask: &vitri::cnf::ShowMask,
     policy: DecomposePolicy,
-) -> Option<(Vec<(usize, &'a Vec<usize>)>, Vec<(vitri::cnf::VarId, &'a Vec<usize>)>)> {
+) -> Option<PartitionedComponents<'a>> {
     let mut substantial: Vec<(usize, &'a Vec<usize>)> = Vec::new();
     let mut singletons: Vec<(vitri::cnf::VarId, &'a Vec<usize>)> = Vec::new();
     for g in groups {
@@ -311,7 +310,7 @@ fn partition_components<'a>(
     if policy.sort_cheap_first {
         substantial.sort_by_key(|&(nvars, _)| nvars);
     }
-    Some((substantial, singletons))
+    Some(PartitionedComponents { substantial, singletons })
 }
 
 /// Independent-component decomposition for PWMC, behind [`decompose_input`] and
@@ -342,7 +341,8 @@ where
     let mask = show.mask(formula.num_vars());
     let weights = problem_weight_tables(problem);
     let groups = formula.detect_components()?;
-    let (substantial, singletons) = partition_components(formula, &groups, &mask, policy)?;
+    let PartitionedComponents { substantial, singletons } =
+        partition_components(formula, &groups, &mask, policy)?;
     // An empty clause anywhere ⇒ UNSAT ⇒ PWMC 0. `detect_components` puts the
     // empty clauses in a group of their own, which names no variable and which
     // the singleton loop below cannot read, so answer here.
@@ -352,19 +352,8 @@ where
     let mut product = <Weighted as Domain>::one();
     let mut covered: HashSet<vitri::cnf::VarId> = HashSet::new();
     for &(_, group) in &substantial {
-        let (sub, local_to_global) = formula.extract_component(group);
-        let local_show = problem_show(&mask.restrict(&local_to_global));
-        let local_weights: Vec<_> = local_to_global
-            .iter()
-            .map(|&global| {
-                if mask.is_show(global) {
-                    covered.insert(global);
-                }
-                weights[global.idx()].clone()
-            })
-            .collect();
-        let comp_val = solve(&sub, &local_show, &local_weights);
-        product = product * comp_val?;
+        let comp_val = solve_substantial_component(formula, group, &mask, &weights, &mut covered, &mut solve)?;
+        product = product * comp_val;
     }
     // Singleton (1-var) components: each clause is a unit forcing that var. Both
     // polarities forced ⇒ UNSAT ⇒ 0. A forced show var contributes its forced
@@ -388,6 +377,31 @@ where
         formula.num_vars(),
     );
     Some(product)
+}
+
+fn solve_substantial_component<F>(
+    formula: &CnfFormula,
+    group: &[usize],
+    mask: &vitri::cnf::ShowMask,
+    weights: &LiteralWeights,
+    covered: &mut std::collections::HashSet<vitri::cnf::VarId>,
+    solve: &mut F,
+) -> Option<WeightedCount<BigRational>>
+where
+    F: FnMut(&CnfFormula, &ShowSet, &LiteralWeights) -> Option<WeightedCount<BigRational>>,
+{
+    let (sub, local_to_global) = formula.extract_component(group);
+    let local_show = problem_show(&mask.restrict(&local_to_global));
+    let local_weights: Vec<_> = local_to_global
+        .iter()
+        .map(|&global| {
+            if mask.is_show(global) {
+                covered.insert(global);
+            }
+            weights[global.idx()].clone()
+        })
+        .collect();
+    solve(&sub, &local_show, &local_weights)
 }
 
 fn multiply_free_show_weights(

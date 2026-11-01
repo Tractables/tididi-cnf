@@ -66,6 +66,10 @@ pub(crate) struct PassState {
     /// grown on first use and all false between batches, so the zeroing is
     /// paid once per pass rather than once per batch.
     pub(crate) on_spine: Vec<bool>,
+    /// The marginal-clustering rotation scratch (`Engine::rotate_marginal_cluster`).
+    pub(crate) cluster_tried: Vec<u8>,
+    /// The largest pair count any step's diagram reached during the pass.
+    pub(crate) peak_size: usize,
 }
 
 impl PassState {
@@ -174,20 +178,9 @@ pub(crate) fn compile_component(
         clauses_at: &clauses_at,
         marginalize_schedule: marginalize_schedule.as_deref(),
     };
-    let mut peak_size: usize = 0;
 
-    // Leaf levels: accumulate clauses local to this leaf (never has children).
-    // Each step, leaf or internal, first tests the deadline; the deadline or
-    // an apply error aborts the pass, and the caller decides what runs next.
-    for (t, _var) in vtree.leaf_bottomup() {
-        let step = if deadline_passed(ctx.job.deadline) {
-            Err(OperationError::Stopped)
-        } else {
-            fold_step(eng, t, &ctx, &mut state, &current_vtree, None)
-        };
-        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &state, t, job, &mut peak_size) {
-            return out;
-        }
+    if let ControlFlow::Break(out) = run_leaf_steps(eng, vtree, &ctx, &mut state, &current_vtree) {
+        return out;
     }
 
     // Internal levels: conjoin child TDDs, then accumulate any clauses scoped
@@ -195,16 +188,36 @@ pub(crate) fn compile_component(
     // after marginal-cluster rotations, which only swap slot content inside
     // already-consumed `subtree(t)`.
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
-    let mut cluster_tried: Vec<u8> = Vec::new();
     for (k, &t) in topo.iter().enumerate() {
-        if let ControlFlow::Break(out) = run_walled_internal_step(
-            eng, vtree, t, k, topo.len(), &ctx, &mut state, &mut current_vtree, &mut cluster_tried, &mut peak_size,
-        ) {
+        if let ControlFlow::Break(out) =
+            run_walled_internal_step(eng, vtree, t, (k, topo.len()), &ctx, &mut state, &mut current_vtree)
+        {
             return out;
         }
     }
 
-    Ok(finish_component_pass(vtree, state, job, eng, peak_size))
+    Ok(finish_component_pass(vtree, state, job, eng))
+}
+
+/// Leaf levels: accumulate clauses local to each leaf (never has children).
+/// Each step first tests the deadline; the deadline or an apply error aborts
+/// the pass, and the caller decides what runs next.
+fn run_leaf_steps(
+    eng: &Engine,
+    vtree: &Arc<Vtree>,
+    ctx: &StepContext<'_>,
+    state: &mut PassState,
+    current_vtree: &Arc<Vtree>,
+) -> ControlFlow<Result<Compiled, GiveUp>> {
+    for (t, _var) in vtree.leaf_bottomup() {
+        let step = if deadline_passed(ctx.job.deadline) {
+            Err(OperationError::Stopped)
+        } else {
+            fold_step(eng, t, ctx, state, current_vtree, None)
+        };
+        check_step(eng, vtree, step, state, t, ctx.job)?;
+    }
+    ControlFlow::Continue(())
 }
 
 /// Absorb the completed pass's SAT-pruning stats into the run and extract the
@@ -214,31 +227,26 @@ fn finish_component_pass(
     mut state: PassState,
     job: CompileJob<'_>,
     eng: &Engine,
-    peak_pairs: usize,
 ) -> Compiled {
     if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
         job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
-    Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs }
+    Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size }
 }
 
 /// Run internal step `t` under any active [`super::StallWatch`] per-step
 /// deadline, check its outcome, and apply its scheduled marginalization and
 /// rotation.
-#[allow(clippy::too_many_arguments)]
 fn run_walled_internal_step(
     eng: &Engine,
     vtree: &Arc<Vtree>,
     t: VtreeIdx,
-    k: usize,
-    total: usize,
+    (k, total): (usize, usize),
     ctx: &StepContext<'_>,
     state: &mut PassState,
     current_vtree: &mut Arc<Vtree>,
-    cluster_tried: &mut Vec<u8>,
-    peak_size: &mut usize,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
     let walled =
         ctx.job.run.stall_watch.and_then(|watch| watch.start_step(eng, t, k, total, ctx.job.deadline));
@@ -258,10 +266,10 @@ fn run_walled_internal_step(
     } else {
         run_internal_step(eng, t, ctx, state, current_vtree)
     };
-    if let ControlFlow::Break(out) = check_step(eng, vtree, step, state, t, ctx.job, peak_size) {
+    if let ControlFlow::Break(out) = check_step(eng, vtree, step, state, t, ctx.job) {
         return ControlFlow::Break(out.map_err(stopped));
     }
-    if let Err(e) = marginalize_and_rotate(eng, t, ctx, state, current_vtree, cluster_tried) {
+    if let Err(e) = marginalize_and_rotate(eng, t, ctx, state, current_vtree) {
         return ControlFlow::Break(Err(stopped(GiveUp::from_operation(eng, e))));
     }
     ControlFlow::Continue(())
@@ -275,19 +283,18 @@ fn check_step(
     eng: &Engine,
     vtree: &Arc<Vtree>,
     step: Result<usize, OperationError>,
-    state: &PassState,
+    state: &mut PassState,
     t: VtreeIdx,
     job: CompileJob<'_>,
-    peak_size: &mut usize,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
-    let step = step.inspect(|&pairs| *peak_size = (*peak_size).max(pairs));
+    let step = step.inspect(|&pairs| state.peak_size = state.peak_size.max(pairs));
     let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| eng.is_sat(tdd)));
     match sat {
         Ok(true) => ControlFlow::Continue(()),
         Ok(false) => ControlFlow::Break(Ok(Compiled {
             diagram: job.output.with_store(eng.zero(vtree)),
             forgotten: state.forgotten.len(),
-            peak_pairs: *peak_size,
+            peak_pairs: state.peak_size,
         })),
         Err(error) => ControlFlow::Break(Err(GiveUp::from_operation(eng, error))),
     }
@@ -304,13 +311,13 @@ fn marginalize_and_rotate(
     ctx: &StepContext<'_>,
     state: &mut PassState,
     current_vtree: &mut Arc<Vtree>,
-    cluster_tried: &mut Vec<u8>,
 ) -> Result<(), OperationError> {
     run_marginalize_at(eng, t, ctx, state, current_vtree)?;
-    if let Some(tdd) = state.tdds[t.idx()].as_mut() {
+    let PassState { tdds, cluster_tried, .. } = state;
+    if let Some(tdd) = tdds[t.idx()].as_mut() {
         eng.rotate_marginal_cluster(tdd, t, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
     }
-    propagate_vtree_arc(&mut state.tdds, current_vtree, t);
+    propagate_vtree_arc(tdds, current_vtree, t);
     Ok(())
 }
 

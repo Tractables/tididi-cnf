@@ -456,10 +456,7 @@ fn allsat<T: Tally>(
             return bust(ctl, AllsatStop::Wall, count);
         }
         // The count forecast, once, between solves (see `AllsatCtl::forecast`).
-        if let Some(at) = forecast_at
-            && count > 0
-            && start.elapsed() >= at
-        {
+        if forecast_at.is_some_and(|at| count > 0 && start.elapsed() >= at) {
             forecast_at = None;
             if let Some(estimate) = forecast(formula, constrained, count, start, window.budget) {
                 return bust(ctl, AllsatStop::Forecast(estimate), count);
@@ -473,12 +470,9 @@ fn allsat<T: Tally>(
         match status {
             Status::Unsatisfiable => break,
             Status::Unknown => {
-                // The wall terminator cut the solve at the deadline; CaDiCaL
-                // remains in a valid incremental state if `at_wall` extends.
-                if window.at_wall(ctl, count, start.elapsed()) {
-                    continue;
+                if !window.at_wall(ctl, count, start.elapsed()) {
+                    return bust(ctl, AllsatStop::Terminated, count);
                 }
-                return bust(ctl, AllsatStop::Terminated, count);
             }
             Status::Satisfiable => {
                 count += 1;

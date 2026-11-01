@@ -574,13 +574,11 @@ where
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
-        let (sub_count, sub_peak) = {
-            let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
-            let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
-            let compiled = settle(compile_component(eng, sub_formula, &sub_vtree, job))?;
-            (compiled.projected_count(eng).ok()?, compiled.peak_pairs)
-        };
-        peak = peak.max(sub_peak);
+        let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
+        let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
+        let compiled = settle(compile_component(eng, sub_formula, &sub_vtree, job))?;
+        let sub_count = compiled.projected_count(eng).ok()?;
+        peak = peak.max(compiled.peak_pairs);
         // A zero component zeroes the product: skip the rest of the loop.
         if sub_count == BigUint::ZERO {
             return Some((sub_count, peak));
