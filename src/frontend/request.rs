@@ -173,7 +173,7 @@ fn base_run_config(
     parent: &Config,
     mode: vitri::cnf::Mode,
     deadline: Option<std::time::Instant>,
-  ) -> vitri::RunConfig {
+) -> vitri::RunConfig {
     vitri::RunConfig {
         budget_ms: None,
         deadline,

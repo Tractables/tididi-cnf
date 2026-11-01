@@ -6,18 +6,10 @@
 import { isLeaf, parseVtree } from "./vtree.js";
 import { layout, prepareStep, render } from "./picture.js";
 import { diagramValue, leafValues, marginals, nodeAt, nodeValues, parseTdd, readWeights } from "./tdd.js";
-import { plural } from "./words.js";
+import { element, make, plural } from "./words.js";
 
 // The pause between steps while the compile plays.
 const PLAY_MS = 1100;
-
-const element = (id) => document.getElementById(id);
-const make = (name, className, text) => {
-  const node = document.createElement(name);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-};
 
 const card = element("compile-card");
 const picture = element("picture");

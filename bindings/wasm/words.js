@@ -58,3 +58,12 @@ export function duration(ms) {
   if (ms < 10000) return `${Math.round(ms)} ms`;
   return `${(ms / 1000).toFixed(1)} s`;
 }
+
+export const element = (id) => document.getElementById(id);
+
+export const make = (name, className, text) => {
+  const node = document.createElement(name);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};

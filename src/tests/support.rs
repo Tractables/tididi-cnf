@@ -118,3 +118,8 @@ pub(crate) fn sat_prune_ctx(formula: &CnfFormula) -> crate::compile::sat_prune::
         .context(formula, false, 0)
         .expect("CaDiCaL builds a solver")
 }
+
+/// A path in the temp directory, unique to this test process.
+pub(crate) fn temp_path(name: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("tididi_unit_{}_{name}", std::process::id()))
+}

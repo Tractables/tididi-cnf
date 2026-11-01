@@ -54,10 +54,6 @@ const modules = {
     markDrawingStale() { element("compile-stale").hidden = false; },
   },
   "./examples.js": { EXAMPLES: [["example", "Example", "example.cnf"]], fetchExample: () => new Promise(() => {}) },
-  "./words.js": {
-    ANSWERED_BY: {}, ANSWER_LABELS: {}, ERROR_KINDS: {}, MODE_NAMES: {},
-    duration: String, megabytes: String, plural: String,
-  },
 };
 const sourceModule = (name) => new vm.SourceTextModule(fs.readFileSync(new URL(name, import.meta.url), "utf8"), {
   context,
@@ -65,7 +61,7 @@ const sourceModule = (name) => new vm.SourceTextModule(fs.readFileSync(new URL(n
 });
 const app = sourceModule("app.js");
 await app.link((name) => {
-  if (name === "./runner.js") return sourceModule("runner.js");
+  if (name === "./runner.js" || name === "./words.js") return sourceModule(name);
   const exports = modules[name];
   return new vm.SyntheticModule(Object.keys(exports), function () {
     for (const [key, value] of Object.entries(exports)) this.setExport(key, value);

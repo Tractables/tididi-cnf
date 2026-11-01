@@ -11,16 +11,22 @@ use tididi_cnf::{Answer, Count, Limits, Mode, count};
 
 const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
 
+/// The bundle vitri writes for `dimacs` under the request `request`, in a
+/// temporary directory named from `tag` and `request`.
+fn bundle_bytes(tag: &str, dimacs: &[u8], request: &str) -> PathBuf {
+    let name = format!("{tag}_{request}").replace(|c: char| !c.is_ascii_alphanumeric(), "_");
+    let dir = common::tmp_path(&name);
+    let _ = std::fs::remove_dir_all(&dir);
+    let request = vitri::request::Request::from_json(request).unwrap();
+    vitri::request::prepare(dimacs, &request).unwrap().write_to_dir(&dir).unwrap();
+    dir
+}
+
 /// The bundle vitri writes for the DIMACS file at `path`, relative to the
 /// crate root, under the request `request`.
 fn bundle(path: &str, request: &str) -> PathBuf {
     let dimacs = std::fs::read(format!("{}/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap();
-    let name = format!("{path}_{request}").replace(|c: char| !c.is_ascii_alphanumeric(), "_");
-    let dir = common::tmp_path(&name);
-    let _ = std::fs::remove_dir_all(&dir);
-    let request = vitri::request::Request::from_json(request).unwrap();
-    vitri::request::prepare(&dimacs, &request).unwrap().write_to_dir(&dir).unwrap();
-    dir
+    bundle_bytes(path, &dimacs, request)
 }
 
 fn answer(input: impl Into<tididi_cnf::Input>, mode: Mode) -> Answer {
@@ -78,13 +84,11 @@ fn a_bundle_answers_what_its_formula_answers() {
 /// bundle.
 #[test]
 fn a_bundle_split_into_components_counts_them_all() {
-    let path = common::tmp_path("two_components.cnf");
-    std::fs::write(&path, "p cnf 6 4\n1 2 0\n-1 3 0\n4 5 0\n-5 6 0\n").unwrap();
-    let request = r#"{"mode": "mc", "simplify": false, "arjun": false}"#;
-    let dir = common::tmp_path("two_components");
-    let _ = std::fs::remove_dir_all(&dir);
-    let request = vitri::request::Request::from_json(request).unwrap();
-    vitri::request::prepare(&std::fs::read(&path).unwrap(), &request).unwrap().write_to_dir(&dir).unwrap();
+    let dir = bundle_bytes(
+        "two_components",
+        b"p cnf 6 4\n1 2 0\n-1 3 0\n4 5 0\n-5 6 0\n",
+        r#"{"mode": "mc", "simplify": false, "arjun": false}"#,
+    );
     let manifest = std::fs::read_to_string(dir.join("components.json")).unwrap();
     let manifest: serde_json::Value = serde_json::from_str(&manifest).unwrap();
     assert_eq!(manifest["components"].as_array().map(Vec::len), Some(2));

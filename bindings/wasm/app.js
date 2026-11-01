@@ -5,7 +5,7 @@
 import { markDrawingStale, showDrawing } from "./compile-view.js";
 import { EXAMPLES, fetchExample } from "./examples.js";
 import { Runner } from "./runner.js";
-import { ANSWERED_BY, ANSWER_LABELS, ERROR_KINDS, MODE_NAMES, duration, megabytes, plural } from "./words.js";
+import { ANSWERED_BY, ANSWER_LABELS, ERROR_KINDS, MODE_NAMES, duration, element, make, megabytes, plural } from "./words.js";
 
 // An input past this size stays out of the text box, which becomes slow on
 // multi-megabyte text; it is held in memory and sent as it is.
@@ -13,14 +13,6 @@ const HELD_INPUT_BYTES = 1024 * 1024;
 
 // This file's version stamp (see README.md), passed on to the worker.
 const stamp = new URL(import.meta.url).search;
-
-const element = (id) => document.getElementById(id);
-const make = (name, className, text) => {
-  const node = document.createElement(name);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-};
 
 const cnfBox = element("cnf");
 const placeholder = cnfBox.placeholder;

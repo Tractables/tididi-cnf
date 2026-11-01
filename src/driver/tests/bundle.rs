@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// The bundle vitri writes for `dimacs` under the request `request`, in a
 /// directory of this test process named `name`.
 fn bundle_of(dimacs: &str, request: &str, name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("tididi_unit_{}_{name}", std::process::id()));
+    let dir = crate::test_support::temp_path(&format!("bundle_{name}"));
     let _ = std::fs::remove_dir_all(&dir);
     let request = vitri::request::Request::from_json(request).unwrap();
     vitri::request::prepare(dimacs.as_bytes(), &request).unwrap().write_to_dir(&dir).unwrap();
