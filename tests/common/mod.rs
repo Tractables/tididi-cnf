@@ -15,6 +15,9 @@ use vitri::cnf::{Clause, CnfFormula, Literal, VarId};
 
 use tididi::vtree::Vtree;
 
+/// Path to the compiled `tididi` binary under test.
+pub const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
+
 /// Parse the DIMACS file at `path`, relative to the crate root.
 pub fn load_cnf(path: &str) -> CnfFormula {
     let path = format!("{}/{path}", env!("CARGO_MANIFEST_DIR"));

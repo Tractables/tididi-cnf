@@ -86,6 +86,14 @@ fn random_formula(
     formula((pool_size as u32) * 7, clauses)
 }
 
+/// A random subset of `num_clauses` clause indices from `formula`.
+fn random_group(rng: &mut Lcg, formula: &CnfFormula, num_clauses: usize) -> Vec<usize> {
+    let mut group: Vec<usize> = (0..formula.clauses().len()).collect();
+    shuffle(rng, &mut group);
+    group.truncate(num_clauses);
+    group
+}
+
 /// The bitset and marker-array tours place clauses in exactly the order of
 /// the direct version, over every overlap representation.
 #[test]
@@ -105,9 +113,7 @@ fn proximity_reorder_matches_the_hash_set_reference() {
         let formula = random_formula(&mut rng, num_clauses + 20, pool_size, max_len, block, dup_percent);
 
         // A group is any subset of the formula's clauses, in any order.
-        let mut group: Vec<usize> = (0..formula.clauses().len()).collect();
-        shuffle(&mut rng, &mut group);
-        group.truncate(num_clauses);
+        let mut group = random_group(&mut rng, &formula, num_clauses);
         if rng.coin() {
             group.sort_unstable();
         }
@@ -233,9 +239,7 @@ fn completion_order_matches_the_direct_greedy_and_orders_are_permutations() {
         let block = if chance(&mut rng, 25) { draw(&mut rng, 1..8) } else { 0 };
         let dup_percent = [0, 10, 50][draw(&mut rng, 0..3)];
         let formula = random_formula(&mut rng, num_clauses + 10, pool_size, max_len, block, dup_percent);
-        let mut group: Vec<usize> = (0..formula.clauses().len()).collect();
-        shuffle(&mut rng, &mut group);
-        group.truncate(num_clauses);
+        let group = random_group(&mut rng, &formula, num_clauses);
         let finish_percent = [0, 50, 90, 100][case % 4];
         let finishing: rustc_hash::FxHashSet<usize> =
             (0..pool_size * 7).filter(|_| chance(&mut rng, finish_percent)).collect();

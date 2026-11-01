@@ -134,6 +134,13 @@ fn is_token_char(byte: Option<u8>) -> bool {
     matches!(byte, Some(b) if b.is_ascii_alphanumeric() || b == b'_')
 }
 
+fn skip_digits(bytes: &[u8], mut i: usize) -> usize {
+    while bytes.get(i).is_some_and(u8::is_ascii_digit) {
+        i += 1;
+    }
+    i
+}
+
 /// Length-consuming scan of a JSON-shaped number starting at `start`.
 fn scan_number(bytes: &[u8], start: usize) -> usize {
     let mut i = start;
@@ -141,40 +148,27 @@ fn scan_number(bytes: &[u8], start: usize) -> usize {
         i += 1;
     }
     let digits_start = i;
-    while matches!(bytes.get(i), Some(b) if b.is_ascii_digit()) {
-        i += 1;
-    }
+    i = skip_digits(bytes, i);
     if i == digits_start {
         return start;
     }
     if bytes.get(i) == Some(&b'.') {
-        i += 1;
-        while matches!(bytes.get(i), Some(b) if b.is_ascii_digit()) {
-            i += 1;
-        }
+        i = skip_digits(bytes, i + 1);
     }
     if matches!(bytes.get(i), Some(b'e') | Some(b'E')) {
         let mut k = i + 1;
         if matches!(bytes.get(k), Some(b'-') | Some(b'+')) {
             k += 1;
         }
-        if matches!(bytes.get(k), Some(b) if b.is_ascii_digit()) {
-            i = k;
-            while matches!(bytes.get(i), Some(b) if b.is_ascii_digit()) {
-                i += 1;
-            }
+        if bytes.get(k).is_some_and(u8::is_ascii_digit) {
+            i = skip_digits(bytes, k);
         }
     }
     i
 }
 
 fn normalize(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for line in text.lines() {
-        out.push_str(&blank_durations(line));
-        out.push('\n');
-    }
-    out
+    text.lines().map(|line| format!("{}\n", blank_durations(line))).collect()
 }
 
 fn expected_path(row: &str) -> PathBuf {

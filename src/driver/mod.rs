@@ -299,6 +299,11 @@ fn gave_up(give_up: GiveUp) -> Error {
     Error::from(give_up)
 }
 
+/// A failure before the run's stats record is opened.
+fn unrecorded(error: Error) -> Failure {
+    Failure { error, stats: None }
+}
+
 /// The run: read `input`, resolve its mode from `mode_flag` and the header,
 /// and answer that mode under `limits` and `settings`. [`crate::count`] and
 /// the binary both come through here.
@@ -315,10 +320,8 @@ pub(crate) fn solve(
     limits: &Limits,
     settings: &Settings,
 ) -> Result<Answer, Failure> {
-    let vitri = crate::frontend::request::resolve_env_config()
-        .map_err(|error| Failure { error, stats: None })?;
-    let _address_space = crate::mem::limit_address_space(limits.mem_limit_mb)
-        .map_err(|error| Failure { error, stats: None })?;
+    let vitri = crate::frontend::request::resolve_env_config().map_err(unrecorded)?;
+    let _address_space = crate::mem::limit_address_space(limits.mem_limit_mb).map_err(unrecorded)?;
     let context = Arc::new(tididi::Context::new());
     context.run(|eng| solve_on(eng, input, mode_flag, limits, settings, vitri))
 }
@@ -346,7 +349,7 @@ fn solve_on(
 
     // Start the clock, read the instance, resolve the mode.
     let Parsed { formula, meta, record, mut config, program_deadline } =
-        parse_input(input, mode_flag, limits, settings, vitri).map_err(|error| Failure { error, stats: None })?;
+        parse_input(input, mode_flag, limits, settings, vitri).map_err(unrecorded)?;
 
     // The last point before the mode dispatch, so the record opens knowing the
     // mode and the resolved vtree construction and every mode fills the same

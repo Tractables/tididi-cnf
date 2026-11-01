@@ -14,6 +14,10 @@ fn pmc_tail_config() -> vitri::RunConfig {
     )
 }
 
+fn show_set(vars: &[i32]) -> vitri::cnf::ShowSet<vitri::cnf::Original> {
+    vitri::cnf::ShowSet::from_vars(vars.iter().map(|&v| vitri::cnf::VarId::from_dimacs(v)))
+}
+
 #[test]
 fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
     // x1 ≡ ¬x2. Both variables are shown, so projected strengthening may
@@ -31,9 +35,7 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
         formula.num_vars(),
     )
     .expect("the fixture weights name formula variables");
-    let show = vitri::cnf::ShowSet::<vitri::cnf::Original>::from_vars(
-        [vitri::cnf::VarId::from_dimacs(1), vitri::cnf::VarId::from_dimacs(2)],
-    );
+    let show = show_set(&[1, 2]);
     let config = vitri::RunConfig {
         mode: Some(vitri::cnf::Mode::Pwmc),
         stages: vitri::config::PreprocessStages {
@@ -74,7 +76,7 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
 /// At a lone 1/2 the two literals weigh the same.
 #[test]
 fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
-    use vitri::cnf::{Original, ShowSet, VarId, WeightTable};
+    use vitri::cnf::{Original, WeightTable};
 
     // The chain the PWMC stage runs: Arjun, then the projected reduction.
     let config = crate::frontend::request::projection_stage(
@@ -105,13 +107,13 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
     for (label, formula, show, named) in cases {
         let n = formula.num_vars();
         let declared = WeightTable::from_dimacs_pairs(named, n).expect("the case names formula variables");
-        let show_idx: Vec<usize> = show.iter().map(|&v| v - 1).collect();
+        let show_idx: Vec<usize> = show.iter().map(|&v| v as usize - 1).collect();
         let want = fixtures::brute_projected_weighted_count(
             &formula,
             show_idx,
             declared.resolve::<Original>(n as usize).as_pairs(),
         );
-        let show_set = ShowSet::<Original>::from_vars(show.iter().map(|&v| VarId::from_dimacs(v as i32)));
+        let show_set = show_set(&show);
 
         let (outcome, report) = preprocess_problem::<Weighted>(&formula, Some(&show_set), Some(&declared), &config)
             .expect("PWMC preprocessing must cross the boundary");
@@ -191,9 +193,7 @@ fn wmc_outcome_exposes_exact_reduced_weights_and_lift() {
 #[test]
 fn pmc_preprocessing_returns_sorted_show_and_neutral_tail_lift() {
     let formula = fixtures::formula(3, vec![clause(&[1, -3])]);
-    let show = vitri::cnf::ShowSet::<vitri::cnf::Original>::from_vars(
-        [vitri::cnf::VarId::from_dimacs(3), vitri::cnf::VarId::from_dimacs(1), vitri::cnf::VarId::from_dimacs(3)],
-    );
+    let show = show_set(&[3, 1, 3]);
     let config = pmc_tail_config();
 
     let (Outcome::Reduced(Problem { formula, show, lift, .. }), _) =
@@ -213,7 +213,7 @@ fn pmc_preprocessing_returns_sorted_show_and_neutral_tail_lift() {
 #[test]
 fn projected_preprocessing_maps_unsat() {
     let formula = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
-    let show = vitri::cnf::ShowSet::<vitri::cnf::Original>::from_vars([vitri::cnf::VarId::from_dimacs(1)]);
+    let show = show_set(&[1]);
     assert!(matches!(
         preprocess_problem::<Unweighted>(&formula, Some(&show), None, &pmc_tail_config()),
         Ok((Outcome::Unsat, _)),
@@ -238,7 +238,7 @@ fn projected_preprocessing_maps_unsat() {
 #[test]
 fn pmc_outcome_uses_the_recorded_power_of_two_lift() {
     let formula = fixtures::formula(1, vec![clause(&[1])]);
-    let show = vitri::cnf::ShowSet::<vitri::cnf::Original>::from_vars([vitri::cnf::VarId::from_dimacs(1)]);
+    let show = show_set(&[1]);
     let meta = vitri::cnf::CnfMeta::from_parts(
         formula.num_vars(),
         Some(vitri::cnf::Mode::Pmc),

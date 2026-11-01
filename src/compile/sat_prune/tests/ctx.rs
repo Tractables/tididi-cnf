@@ -60,26 +60,18 @@ fn pass_deadline_bounds_single_solve() {
 
     // PHP(8,7): 8 pigeons, 7 holes — 56 variables.
     // UNSAT; refutation requires substantial CDCL work (well over 1ms).
-    let n_pigeons: u32 = 8;
-    let n_holes: u32 = 7;
-    let num_vars = n_pigeons * n_holes; // 56
+    let (n_pigeons, n_holes) = (8i32, 7i32);
+    let num_vars = (n_pigeons * n_holes) as u32;
+    let p = |pigeon: i32, hole: i32| pigeon * n_holes + hole + 1;
 
-    let p = |pigeon: u32, hole: u32| (pigeon * n_holes + hole + 1) as i32;
-
-    let mut clauses = Vec::new();
-    // Each pigeon must be in some hole.
-    for i in 0..n_pigeons {
-        clauses.push(clause(&(0..n_holes).map(|j| p(i, j)).collect::<Vec<_>>()));
-    }
-    // No two pigeons share a hole.
+    let mut clauses: Vec<Clause> = (0..n_pigeons)
+        .map(|i| clause(&(0..n_holes).map(|j| p(i, j)).collect::<Vec<_>>()))
+        .collect();
     for j in 0..n_holes {
         for i1 in 0..n_pigeons {
-            for i2 in (i1 + 1)..n_pigeons {
-                clauses.push(clause(&[-p(i1, j), -p(i2, j)]));
-            }
+            clauses.extend((i1 + 1..n_pigeons).map(|i2| clause(&[-p(i1, j), -p(i2, j)])));
         }
     }
-
     let f = formula(num_vars, clauses);
 
     // TDD: a single clause over two PHP vars (p_{0,0} ∨ p_{0,1}).

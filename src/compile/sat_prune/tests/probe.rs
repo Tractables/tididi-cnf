@@ -25,7 +25,7 @@ fn a_false_diagram_is_a_dead_root() {
 fn inline_marg_fixture() -> (CnfFormula, tididi::diagram::Tdd, VtreeIdx) {
     use std::sync::Arc;
     use tididi::diagram::{
-        ChildPair, LeafLabel, NodeIdx, ValueRef, Tdd, TddNodeId,
+        ChildPair, ValueRef, Tdd, TddNodeId, NEG_LEAF_IDX, ONE_LEAF_IDX, POS_LEAF_IDX,
     };
 
     // x1 ∧ x3 over the 4 vtree vars: every model satisfies the diagram.
@@ -45,19 +45,16 @@ fn inline_marg_fixture() -> (CnfFormula, tididi::diagram::Tdd, VtreeIdx) {
     assert_eq!(donor.level(v_marg).marginal_counts(), Some([].as_slice()));
     b.replace_level(&eng, v_marg, donor.level_view(v_marg)).unwrap();
 
-    let pos = NodeIdx(LeafLabel::Pos as u32);
-    let neg = NodeIdx(LeafLabel::Neg as u32);
-    let one = NodeIdx(LeafLabel::One as u32);
     let live_inline = ValueRef::Inline(5).side().expect("the fixture reference fits its encoding");
     let dead_inline = ValueRef::Inline(0).side().expect("the fixture reference fits its encoding");
 
     // v4: p = [(Pos, Inline(5))] stays live; p2 = [(Neg, Inline(0))] is
     // dead-by-count (its only pair contribution is ⊥).
-    let p = b.push(&eng, v4, &[ChildPair::new(pos, live_inline)]).unwrap();
-    let p2 = b.push(&eng, v4, &[ChildPair::new(neg, dead_inline)]).unwrap();
+    let p = b.push(&eng, v4, &[ChildPair::new(POS_LEAF_IDX, live_inline)]).unwrap();
+    let p2 = b.push(&eng, v4, &[ChildPair::new(NEG_LEAF_IDX, dead_inline)]).unwrap();
 
-    let s0 = b.push(&eng, v5, &[ChildPair::new(pos, one)]).unwrap();
-    let s1 = b.push(&eng, v5, &[ChildPair::new(neg, one)]).unwrap();
+    let s0 = b.push(&eng, v5, &[ChildPair::new(POS_LEAF_IDX, ONE_LEAF_IDX)]).unwrap();
+    let s1 = b.push(&eng, v5, &[ChildPair::new(NEG_LEAF_IDX, ONE_LEAF_IDX)]).unwrap();
 
     let root_node = b.push(&eng, root_idx, &[
         ChildPair::new(p, s0),
@@ -157,7 +154,7 @@ fn marginal_slot_donor(eng: &Engine) -> (tididi::Tdd, VtreeIdx) {
 fn marg_boundary_fixture() -> (CnfFormula, tididi::diagram::Tdd) {
     use std::sync::Arc;
     use tididi::diagram::{
-        ChildPair, LeafLabel, NodeIdx, ValueRef, Tdd, TddNodeId,
+        ChildPair, ValueRef, Tdd, TddNodeId, NEG_LEAF_IDX, ONE_LEAF_IDX, POS_LEAF_IDX,
     };
 
     let f = formula(5, vec![clause(&[3])]);
@@ -182,15 +179,12 @@ fn marg_boundary_fixture() -> (CnfFormula, tididi::diagram::Tdd) {
     let (donor, source) = marginal_slot_donor(&eng);
     b.replace_level(&eng, v_marg, donor.level_view(source)).unwrap();
 
-    let pos = NodeIdx(LeafLabel::Pos as u32);
-    let neg = NodeIdx(LeafLabel::Neg as u32);
-    let one = NodeIdx(LeafLabel::One as u32);
     let slot0 = ValueRef::Slot(0).side().expect("the fixture reference fits its encoding");
     let slot1 = ValueRef::Slot(1).side().expect("the fixture reference fits its encoding");
 
-    let n1 = b.push(&eng, v4, &[ChildPair::new(pos, slot0)]).unwrap();
-    let n2 = b.push(&eng, v4, &[ChildPair::new(neg, slot1)]).unwrap();
-    let s0 = b.push(&eng, v5, &[ChildPair::new(pos, one)]).unwrap();
+    let n1 = b.push(&eng, v4, &[ChildPair::new(POS_LEAF_IDX, slot0)]).unwrap();
+    let n2 = b.push(&eng, v4, &[ChildPair::new(NEG_LEAF_IDX, slot1)]).unwrap();
+    let s0 = b.push(&eng, v5, &[ChildPair::new(POS_LEAF_IDX, ONE_LEAF_IDX)]).unwrap();
     let root_node = b.push(&eng, root_idx, &[
         ChildPair::new(n1, s0),
         ChildPair::new(n2, s0),

@@ -6,7 +6,8 @@ mod common;
 use std::path::PathBuf;
 use std::process::Command;
 
-const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
+use common::BINARY;
+
 const TINY: &str = "tests/data/tiny.cnf";
 
 /// Environment variables a run adds to this process's own.
@@ -131,6 +132,13 @@ fn version_prints_the_crate_version() {
     }
 }
 
+/// Assert that `stderr` mentions every substring in `names`.
+fn assert_stderr_names(stderr: &str, names: &[&str], context: impl std::fmt::Display) {
+    for name in names {
+        assert!(stderr.contains(name), "{context} must name {name:?}: {stderr}");
+    }
+}
+
 /// A refused command line exits with its code and names what is wrong: 2 for
 /// a command line the parser refuses and for a combination or environment the
 /// run validates, 1 for a vtree spec or an input the run cannot use.
@@ -234,9 +242,7 @@ fn refusals_name_what_is_wrong() {
     for (code, args, env, names) in rows {
         let out = run(&args, env);
         assert_eq!(out.code, Some(code), "{args:?}: {}", out.stderr);
-        for name in names {
-            assert!(out.stderr.contains(name), "{args:?} must name {name:?}: {}", out.stderr);
-        }
+        assert_stderr_names(&out.stderr, &names, format_args!("{args:?}"));
     }
     assert!(!std::path::Path::new(saved).exists(), "a refused --save-tdd wrote a diagram");
 }
@@ -358,9 +364,7 @@ fn the_mode_comes_from_the_flag_or_the_header() {
             }
             Err(names) => {
                 assert_eq!(out.code, Some(2), "{mode:?} on {}: {}", cnf.path(), out.stderr);
-                for name in names {
-                    assert!(out.stderr.contains(name), "{mode:?} on {} must name {name:?}: {}", cnf.path(), out.stderr);
-                }
+                assert_stderr_names(&out.stderr, names, format_args!("{mode:?} on {}", cnf.path()));
             }
         }
     }

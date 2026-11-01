@@ -8,7 +8,7 @@ mod common;
 use num_bigint::BigUint;
 use tididi_cnf::{Count, Error, Limits, Mode, count, parse_dimacs};
 
-const BINARY: &str = env!("CARGO_BIN_EXE_tididi");
+use common::BINARY;
 
 fn integer(n: u32) -> Count {
     Count::Integer(BigUint::from(n))
