@@ -5,7 +5,7 @@
 
 use std::time::Instant;
 
-use tididi::{Engine, OperationError};
+use tididi::Engine;
 use tididi::apply::FilterOutcome;
 use tididi::cnf::{ProbeOrder, ProbeOutcome, Witness};
 use tididi::diagram::Tdd;
@@ -83,36 +83,6 @@ impl SatPruneCtx {
         PruneOutcome::Rewritten(Box::new(new_tdd))
     }
 
-    /// Per-node model counts of `tdd`, saturating at `u128::MAX`. The pass
-    /// reads them only for ordering and for exact-zero kills, neither of
-    /// which needs an overflowed node's exact value; zero stays exact. A
-    /// refused fold returns the batch error.
-    fn node_counts(
-        &mut self,
-        eng: &Engine,
-        tdd: &Tdd,
-    ) -> Result<Vec<Vec<u128>>, OperationError> {
-        let t0 = Instant::now();
-        let counts = eng.node_counts_u128(tdd);
-        self.stats.count_order_us += t0.elapsed().as_micros() as u64;
-        counts
-    }
-
-    /// Encode `tdd` into a scoped solver pass, probe its nodes bottom-up by
-    /// `counts`, and retire the pass's activation literal before returning.
-    fn encode_and_probe(&mut self, tdd: &Tdd, counts: &[Vec<u128>]) -> Option<ProbeOutcome> {
-        let rounds = self.limits.allsat_k;
-        let mut solver = PassSolver::open(self);
-        let enc = solver.encode(tdd)?;
-        let witness = if rounds > 0 { Witness::NodeLiterals } else { Witness::None };
-        let probed = tdd.probe_nodes(&enc, ProbeOrder::BottomUp { counts }, rounds, witness, &mut solver);
-        if let Ok(probe) = &probed {
-            solver.record(&probe.stats());
-        }
-        solver.retire();
-        probed.ok()
-    }
-
     /// Run one pass on `tdd`, a diagram of `tdd_size` pairs, as the module
     /// doc describes, and say what replaces it. Adds what the pass did to
     /// the context's tallies, and stops pruning for the compile when one of
@@ -148,10 +118,28 @@ impl SatPruneCtx {
             return PruneOutcome::NoOp;
         }
 
-        let Ok(counts) = self.node_counts(eng, tdd) else {
+        // Per-node model counts saturating at `u128::MAX`: the pass reads them
+        // only for ordering and exact-zero kills, neither of which needs an
+        // overflowed node's exact value; zero stays exact.
+        let t0 = Instant::now();
+        let counts = eng.node_counts_u128(tdd);
+        self.stats.count_order_us += t0.elapsed().as_micros() as u64;
+        let Ok(counts) = counts else {
             return PruneOutcome::NoOp;
         };
-        let Some(probe) = self.encode_and_probe(tdd, &counts) else {
+
+        let rounds = self.limits.allsat_k;
+        let mut solver = PassSolver::open(self);
+        let Some(enc) = solver.encode(tdd) else {
+            return PruneOutcome::NoOp;
+        };
+        let witness = if rounds > 0 { Witness::NodeLiterals } else { Witness::None };
+        let probed = tdd.probe_nodes(&enc, ProbeOrder::BottomUp { counts: &counts }, rounds, witness, &mut solver);
+        if let Ok(probe) = &probed {
+            solver.record(&probe.stats());
+        }
+        solver.retire();
+        let Ok(probe) = probed else {
             return PruneOutcome::NoOp;
         };
 

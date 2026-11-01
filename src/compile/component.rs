@@ -320,38 +320,6 @@ pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<V
         .collect()
 }
 
-/// Compile one remapped component `sub` on `sub_vtree` with `job`'s projected
-/// variables and weights restated in the component's local numbering (`l2g`).
-fn compile_local_component(
-    eng: &Engine,
-    sub: &CnfFormula,
-    sub_vtree: &std::sync::Arc<Vtree>,
-    l2g: &[VarId],
-    job: CompileJob<'_>,
-) -> Result<Compiled, GiveUp> {
-    let comp_forget;
-    let comp_weights;
-    let output = match job.output {
-        PassOutput::Function => PassOutput::Function,
-        PassOutput::Count(weights) => {
-            comp_weights = weights.map(|ws| {
-                let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
-                WeightStore::new(local, ws.arithmetic())
-            });
-            PassOutput::Count(comp_weights.as_ref())
-        }
-        PassOutput::ProjectedCount(forget) => {
-            comp_forget = local_vars_in(l2g, forget);
-            PassOutput::ProjectedCount(&comp_forget)
-        }
-        PassOutput::ProjectedFunction(forget) => {
-            comp_forget = local_vars_in(l2g, forget);
-            PassOutput::ProjectedFunction(&comp_forget)
-        }
-    };
-    compile_component(eng, sub, sub_vtree, CompileJob { output, ..job })
-}
-
 /// Compile each component on its own vtree, under the job's variable sets and
 /// weights restated in its local numbering, and graft the results over the
 /// free variables into one TDD on a new grafted vtree, minimized. Each
@@ -377,7 +345,27 @@ pub(crate) fn compile_split(
     let mut scratch = RemapScratch::default();
     for ComponentVtree { vtree: sub_vtree, component: Component { clause_indices, local_to_global: l2g } } in components {
         remap_component_clauses_into(&mut scratch, formula, clause_indices, l2g);
-        let comp = compile_local_component(eng, scratch.sub(), sub_vtree, l2g, job)?;
+        let comp_forget;
+        let comp_weights;
+        let output = match job.output {
+            PassOutput::Function => PassOutput::Function,
+            PassOutput::Count(weights) => {
+                comp_weights = weights.map(|ws| {
+                    let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
+                    WeightStore::new(local, ws.arithmetic())
+                });
+                PassOutput::Count(comp_weights.as_ref())
+            }
+            PassOutput::ProjectedCount(forget) => {
+                comp_forget = local_vars_in(l2g, forget);
+                PassOutput::ProjectedCount(&comp_forget)
+            }
+            PassOutput::ProjectedFunction(forget) => {
+                comp_forget = local_vars_in(l2g, forget);
+                PassOutput::ProjectedFunction(&comp_forget)
+            }
+        };
+        let comp = compile_component(eng, scratch.sub(), sub_vtree, CompileJob { output, ..job })?;
         forgotten += comp.forgotten;
         peak_pairs = peak_pairs.max(comp.peak_pairs);
         let comp_tdd = comp.diagram;
