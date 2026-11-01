@@ -46,11 +46,14 @@ fn rational_weight_algebra(weights: &[(BigRational, BigRational)]) -> tididi::di
         .expect("both polarity columns come from the same variable pairs")
 }
 
+/// A plain compile of `formula` on `vtree` with default options.
+fn plain_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>) -> Tdd {
+    compile_cnf(eng, formula, vtree, CompileOptions::default()).unwrap().diagram
+}
+
 /// The oracle: a plain compile evaluated under `w`.
 fn oracle(formula: &CnfFormula, vtree: &Arc<Vtree>, w: &[(BigRational, BigRational)]) -> BigRational {
-    compile_cnf(&Engine::new(), formula, vtree, CompileOptions::default())
-        .unwrap()
-        .diagram
+    plain_compile(&Engine::new(), formula, vtree)
         .evaluate(&rational_weight_algebra(w))
         .unwrap()
 }
@@ -60,7 +63,7 @@ fn oracle(formula: &CnfFormula, vtree: &Arc<Vtree>, w: &[(BigRational, BigRation
 /// model, and satisfiable when the count is zero only through its weights.
 fn marginalizing(formula: &CnfFormula, vtree: &Arc<Vtree>, w: &[(BigRational, BigRational)]) -> BigRational {
     let tdd = weighted_mc_compile(&Engine::new(), formula, vtree, w);
-    let satisfiable = compile_cnf(&Engine::new(), formula, vtree, CompileOptions::default()).unwrap().diagram.is_sat().unwrap();
+    let satisfiable = plain_compile(&Engine::new(), formula, vtree).is_sat().unwrap();
     // A weighted compile stores no unsatisfiable node, so it answers
     // unsatisfiable exactly when it returns the false diagram.
     assert_eq!(!tdd.is_zero(), satisfiable, "the weighted compile's verdict is not the formula's");
@@ -139,7 +142,7 @@ fn weighted_counts_match_the_oracle() {
         let vtree = Arc::new(Vtree::balanced(n));
         let expected = oracle(&formula, &vtree, &w);
         assert_eq!(expected, common::brute_force_wmc(&formula, &w), "the oracle, {clauses:?}");
-        let mut plain = compile_cnf(eng, &formula, &vtree, CompileOptions::default()).unwrap().diagram;
+        let mut plain = plain_compile(eng, &formula, &vtree);
         if w.iter().all(|(neg, pos)| neg.is_one() && pos.is_one()) {
             assert_eq!(expected, BigRational::from_integer(plain.model_count().unwrap().into()), "unit weights count models");
         }
@@ -232,7 +235,7 @@ fn a_leaf_target_turns_weight_marginal() {
     for (label, w) in weight_cases() {
         let expected = oracle(&leaf_formula(), &vtree, &w);
         for var in 0..4u32 {
-            let mut tdd = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+            let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
             let leaf = vtree.leaf_of(VarId(var + 1)).expect("the vtree carries this variable");
             marginalize_weighted(eng, &mut tdd, &w, &[leaf]);
             assert_leaf_column(&tdd, &vtree, var, &w[var as usize], label);
@@ -258,7 +261,7 @@ fn a_batch_mixes_leaf_and_internal_targets() {
 
     for (label, w) in weight_cases() {
         let expected = oracle(&leaf_formula(), &vtree, &w);
-        let mut tdd = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+        let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
         marginalize_weighted(eng, &mut tdd, &w, &[internal, leaf]);
         assert!(tdd.levels()[internal.idx()].is_weight_marginal(), "[{label}] internal target");
         assert_leaf_column(&tdd, &vtree, 0, &w[0], label);
@@ -281,7 +284,7 @@ fn leaf_columns_survive_the_slot_prune() {
             ("leaves", vtree.leaf_bottomup().map(|(t, _)| t).collect::<Vec<_>>()),
             ("everything", vtree.bottomup_slice().to_vec()),
         ] {
-            let mut tdd = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+            let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
             marginalize_weighted(eng, &mut tdd, &w, &targets);
             for var in 0..4u32 {
                 assert_leaf_column(&tdd, &vtree, var, &w[var as usize], &format!("{label}/{phase}"));
@@ -314,7 +317,7 @@ fn a_structural_leaf_reads_by_label_under_a_shared_store() {
     let (leaf, _) = vtree.children(parent);
 
     for (label, w) in weight_cases() {
-        let mut a = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+        let mut a = plain_compile(eng, &leaf_formula(), &vtree);
         marginalize_weighted(eng, &mut a, &w, &[parent, leaf]);
         let shared = a.weights().expect("weights attached").clone();
         assert!(
@@ -322,7 +325,7 @@ fn a_structural_leaf_reads_by_label_under_a_shared_store() {
             "[{label}] a subsumed leaf keeps its column"
         );
 
-        let mut b = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+        let mut b = plain_compile(eng, &leaf_formula(), &vtree);
         let expected = b.evaluate(&rational_weight_algebra(&w)).unwrap();
         b.set_weights(shared).expect("the weights cover the diagram's live columns");
         eng.marginalize_levels(&mut b, &[parent]).expect("no wall is armed");
@@ -383,7 +386,7 @@ fn equal_weights_leave_no_neg_slot_refs() {
     let w: Weights = (1..=4).map(|i| (rat(i, 3), rat(i, 3))).collect();
     let expected = oracle(&leaf_formula(), &vtree, &w);
 
-    let mut tdd = compile_cnf(eng, &leaf_formula(), &vtree, CompileOptions::default()).unwrap().diagram;
+    let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
     let leaves: Vec<VtreeIdx> = vtree.leaf_bottomup().map(|(t, _)| t).collect();
     marginalize_weighted(eng, &mut tdd, &w, &leaves);
     assert!(count_canonical_leaf_refs(&tdd, "leaves") > 0, "the leaves-only batch left no ref to inspect");

@@ -120,6 +120,16 @@ impl PruneLimits {
             reset_drop_pct: 50,
         }
     }
+
+    #[inline]
+    fn spend_cap_us(&self) -> u64 {
+        self.spend_cap_ms.saturating_mul(1000)
+    }
+
+    #[inline]
+    fn compile_spend_cap_us(&self) -> u64 {
+        self.compile_spend_cap_ms.saturating_mul(1000)
+    }
 }
 
 /// Long-lived SAT pruning context: one incremental CaDiCaL solver loaded
@@ -228,8 +238,8 @@ impl SatPruneCtx {
     /// Whether the unproductive spend has reached a cap: this context's
     /// own, `spend_cap_ms`, or its compile's, `compile_spend_cap_ms`.
     pub(super) fn spend_cap_reached(&self) -> bool {
-        self.unproductive_us() >= self.limits.spend_cap_ms.saturating_mul(1000)
-            || self.compile_spent_us() >= self.limits.compile_spend_cap_ms.saturating_mul(1000)
+        self.unproductive_us() >= self.limits.spend_cap_us()
+            || self.compile_spent_us() >= self.limits.compile_spend_cap_us()
     }
 
     /// The budget of a pass opening now: `spend_cap_ms`, or what is left of
@@ -238,9 +248,8 @@ impl SatPruneCtx {
     /// whole budget, as the cap was set, while the compile's cap is a ceiling
     /// no pass carries the compile past.
     pub(super) fn pass_budget(&self) -> Duration {
-        let compile_left_us =
-            self.limits.compile_spend_cap_ms.saturating_mul(1000).saturating_sub(self.compile_spent_us());
-        Duration::from_micros(compile_left_us.min(self.limits.spend_cap_ms.saturating_mul(1000)))
+        let compile_left_us = self.limits.compile_spend_cap_us().saturating_sub(self.compile_spent_us());
+        Duration::from_micros(compile_left_us.min(self.limits.spend_cap_us()))
     }
 
     /// Whether a pass fires on a diagram of `current_size` pairs: pruning
@@ -373,8 +382,7 @@ impl<'a> PassSolver<'a> {
     /// Force `¬a` true. Every clause of the pass's encoding contains `¬a`, so
     /// all of them are satisfied and inactive from now on.
     pub(super) fn retire(&mut self) {
-        self.ctx.solver.add(-self.a);
-        self.ctx.solver.add(0);
+        self.add_clause(&[-self.a]);
     }
 
     /// Set the tallies the probe keeps to the pass's base plus `probe`'s

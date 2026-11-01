@@ -347,10 +347,16 @@ fn retained_handle() -> retained_mib {
 /// RLIMIT_AS.
 /// Their sum reproduces VmSize closely enough for the budget check.
 #[inline]
-pub(crate) fn mapped_bytes() -> u64 {
+fn read_mapped_retained() -> (u64, u64) {
     let _ = epoch_handle().advance();
     let m = mapped_handle().read().unwrap_or(0) as u64;
     let r = retained_handle().read().unwrap_or(0) as u64;
+    (m, r)
+}
+
+#[inline]
+pub(crate) fn mapped_bytes() -> u64 {
+    let (m, r) = read_mapped_retained();
     m.saturating_add(r)
 }
 
@@ -372,11 +378,11 @@ pub(crate) struct HeapStats {
 impl HeapStats {
     /// Advance the epoch and read the three counters.
     pub(crate) fn read() -> Self {
-        let _ = epoch_handle().advance();
+        let (mapped, retained) = read_mapped_retained();
         HeapStats {
             allocated: alloc_handle().read().unwrap_or(0) as u64,
-            mapped: mapped_handle().read().unwrap_or(0) as u64,
-            retained: retained_handle().read().unwrap_or(0) as u64,
+            mapped,
+            retained,
         }
     }
 }

@@ -209,7 +209,7 @@ fn sweep<T: Tally>(
     let total: u64 = 1u64 << k;
     let mut assignment: Vec<i32> = Vec::with_capacity(k);
     for mask in 0..total {
-        if start.elapsed() > SWEEP_WALL || deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+        if start.elapsed() > SWEEP_WALL || crate::budget::deadline_passed(deadline) {
             return None;
         }
         assignment.clear();
@@ -858,6 +858,22 @@ pub(crate) fn allsat_share_ms(time_limit_ms: Option<u64>, share: f64) -> u64 {
     crate::budget::resolve_scaled(time_limit_ms, share, 60_000, 10_000, 1_800_000)
 }
 
+/// Near-full skip. The AllSAT enum only wins when the feasible projection set
+/// is small. A near-full projected function (feasible ≈ 2^|show|, e.g. count
+/// 2^32−10) makes the enum grind to its model cap and then bail, starving the
+/// compile path that actually solves these, so a quick random-sample
+/// feasibility estimate routes these to compile with the full wall. The signal
+/// is monotone-safe: a high fraction ⇒ large feasible set ⇒ the enum could not
+/// finish under the cap anyway. Skip when the estimated feasible count,
+/// frac · 2^constrained, exceeds 8 × the model cap (compared in log2 to avoid
+/// overflow).
+fn near_full_projection(formula: &CnfFormula, split: &ShowSplit, model_budget: u64) -> bool {
+    let constrained_show = split.constrained.len();
+    feasible_fraction_estimate(formula, split).is_some_and(|frac| {
+        frac > 0.0 && frac.log2() + constrained_show as f64 > (8.0 * model_budget as f64).log2()
+    })
+}
+
 /// Counts the show set by enumeration: a 2^K sweep first, then, when the sweep
 /// declines and the constrained show set has at most [`MAX_ENUM_SHOW`]
 /// variables, a projected AllSAT enumeration of the feasible projections.
@@ -882,46 +898,29 @@ pub(crate) fn show_enum_fastpath<T: Tally + Clone>(
     }
     let t_enum = Instant::now();
     let split = split_show(formula, &show_vars(show));
-    let mut result = sweep(formula, &split, tally.clone(), deadline).map(|v| (v, "small-show enumeration"));
-
-    // The sweep also declines at small constrained-show counts when a large
-    // formula does not fit in `SWEEP_WALL`, so the AllSAT band starts at 1.
-    // AllSAT enumerates only the feasible projections; the model cap sends an
-    // instance with many of them back to compile.
-    if result.is_none() {
-        let constrained_show = split.constrained.len();
-        if (1..=MAX_ENUM_SHOW).contains(&constrained_show) {
+    let result = sweep(formula, &split, tally.clone(), deadline)
+        .map(|v| (v, "small-show enumeration"))
+        .or_else(|| {
+            // The sweep also declines at small constrained-show counts when a large
+            // formula does not fit in `SWEEP_WALL`, so the AllSAT band starts at 1.
+            // AllSAT enumerates only the feasible projections; the model cap sends an
+            // instance with many of them back to compile.
+            if !(1..=MAX_ENUM_SHOW).contains(&split.constrained.len()) {
+                return None;
+            }
             let model_budget = model_budget_override.unwrap_or(MODEL_CAP);
             // The wall, its 10 s floor included, stops at the run's. Without
             // a run wall it stands as given, zero included: a supervising
             // caller's callback decides at the wall whether to go on.
-            let wall_ms = crate::budget::left_ms(deadline)
-                .map_or(Some(allsat_wall_ms), |left_ms| (left_ms > 0).then_some(allsat_wall_ms.min(left_ms)));
-            // Near-full skip. The AllSAT enum only wins when the feasible
-            // projection set is small. A near-full projected function (feasible
-            // ≈ 2^|show|, e.g. count 2^32−10) makes the enum grind to its model
-            // cap and then bail, starving the compile path that actually solves
-            // these, so a quick random-sample feasibility estimate routes these
-            // to compile with the full wall. The signal is monotone-safe: a high
-            // fraction ⇒ large feasible set ⇒ the enum could not finish under
-            // the cap anyway. Skip when the estimated feasible count,
-            // frac · 2^constrained, exceeds 8 × the model cap (compared in log2
-            // to avoid overflow).
-            let near_full = || {
-                skip_near_full
-                    && feasible_fraction_estimate(formula, &split).is_some_and(|frac| {
-                        frac > 0.0 && frac.log2() + constrained_show as f64 > (8.0 * model_budget as f64).log2()
-                    })
-            };
-            if let Some(wall_ms) = wall_ms
-                && !near_full()
-            {
-                let allsat_budget = Duration::from_millis(wall_ms);
-                result = allsat(formula, &split, model_budget, allsat_budget, ctl, tally)
-                    .map(|v| (v, "projected ALL-SAT"));
+            let wall_ms = crate::budget::left_ms(deadline).map_or(Some(allsat_wall_ms), |left_ms| {
+                (left_ms > 0).then_some(allsat_wall_ms.min(left_ms))
+            })?;
+            if skip_near_full && near_full_projection(formula, &split, model_budget) {
+                return None;
             }
-        }
-    }
+            let allsat_budget = Duration::from_millis(wall_ms);
+            allsat(formula, &split, model_budget, allsat_budget, ctl, tally).map(|v| (v, "projected ALL-SAT"))
+        });
     result.map(|(v, method)| (v, method, t_enum.elapsed().as_millis()))
 }
 

@@ -89,15 +89,7 @@ fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
     );
     assert_eq!(est.mean(), Some(4.0));
     // And that is the count the enumerator itself reports.
-    let exact = allsat(
-        &f,
-        &split_show(&f, &show),
-        1_000_000,
-        Duration::from_secs(10),
-        &mut AllsatCtl::default(),
-        Models(0),
-    );
-    assert_eq!(exact, Some(BigUint::from(4u32)));
+    assert_eq!(allsat_count(&f, &show), Some(BigUint::from(4u32)));
 }
 
 /// The estimator is unbiased on a non-product feasible set too: for
@@ -119,17 +111,7 @@ fn random_path_weights_bracket_a_non_product_count() {
     );
     let mean = est.mean().unwrap();
     assert!((2.0..=4.0).contains(&mean), "mean {mean}");
-    assert_eq!(
-        allsat(
-            &f,
-            &split_show(&f, &show),
-            1_000_000,
-            Duration::from_secs(10),
-            &mut AllsatCtl::default(),
-            Models(0),
-        ),
-        Some(BigUint::from(3u32)),
-    );
+    assert_eq!(allsat_count(&f, &show), Some(BigUint::from(3u32)));
 }
 
 /// A path whose solves outrun the path wall is reported as truncated, not as
@@ -505,6 +487,23 @@ fn random_cnf(vars: u32, clauses: usize, seed: u64) -> CnfFormula {
     )
 }
 
+fn allsat_count(f: &CnfFormula, show: &[VarId]) -> Option<BigUint> {
+    allsat(
+        f,
+        &split_show(f, show),
+        1_000_000,
+        Duration::from_secs(60),
+        &mut AllsatCtl::default(),
+        Models(0),
+    )
+}
+
+fn assert_matches_oracle(f: &CnfFormula, show: &[VarId], label: &str) {
+    let oracle = brute_projected_count(f, show);
+    assert_eq!(allsat_count(f, show), Some(oracle.clone()), "{label}");
+    assert_eq!(sweep(f, &split_show(f, show), Models(0), None), Some(oracle), "sweep, {label}");
+}
+
 /// A differential check against an independent oracle, over the
 /// micro-formulas and a pseudo-random CNF population rather than hand-picked
 /// shapes alone. The blocking enumerator's two failure modes are silent in a
@@ -515,34 +514,14 @@ fn random_cnf(vars: u32, clauses: usize, seed: u64) -> CnfFormula {
 #[test]
 fn projected_allsat_matches_the_oracle_on_a_random_population() {
     for (i, (f, show)) in micro_cases().iter().enumerate() {
-        let oracle = brute_projected_count(f, show);
-        let got = allsat(
-            f,
-            &split_show(f, show),
-            1_000_000,
-            Duration::from_secs(60),
-            &mut AllsatCtl::default(),
-            Models(0),
-        );
-        assert_eq!(got, Some(oracle.clone()), "micro {i}");
-        assert_eq!(sweep(f, &split_show(f, show), Models(0), None), Some(oracle), "sweep, micro {i}");
+        assert_matches_oracle(f, show, &format!("micro {i}"));
     }
     // 10 vars keeps the oracle's 2^n sweep cheap; 6 show vars leave hidden
     // vars for the projection to quantify away.
     let show: Vec<VarId> = (1..=6).map(VarId).collect();
     for seed in 0..40u64 {
         let f = random_cnf(10, 14, seed);
-        let oracle = brute_projected_count(&f, &show);
-        let got = allsat(
-            &f,
-            &split_show(&f, &show),
-            1_000_000,
-            Duration::from_secs(60),
-            &mut AllsatCtl::default(),
-            Models(0),
-        );
-        assert_eq!(got, Some(oracle.clone()), "seed {seed}");
-        assert_eq!(sweep(&f, &split_show(&f, &show), Models(0), None), Some(oracle), "sweep, seed {seed}");
+        assert_matches_oracle(&f, &show, &format!("seed {seed}"));
     }
 }
 
@@ -567,15 +546,5 @@ fn projected_allsat_is_complete_on_a_dense_projection_set() {
         expected,
         "oracle disagrees"
     );
-    assert_eq!(
-        allsat(
-            &f,
-            &split_show(&f, &show),
-            1_000_000,
-            Duration::from_secs(60),
-            &mut AllsatCtl::default(),
-            Models(0),
-        ),
-        Some(expected.clone()),
-    );
+    assert_eq!(allsat_count(&f, &show), Some(expected));
 }

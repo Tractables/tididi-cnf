@@ -192,6 +192,26 @@ fn strengthen_and_eliminate(run: &Run<'_>, problem: &Problem<Unweighted>) -> Ste
 /// and every projected var is ∃-forgotten, as an unknown one is.
 ///
 /// The certified-defined vars are split into marginalize (factor 1) vs ∃-forget.
+/// Positive and negative clause-literal frequencies per variable in `work`.
+fn literal_polarity_counts(work: &CnfFormula) -> Vec<(u64, u64)> {
+    let mut freq = vec![(0u64, 0u64); work.num_vars() as usize];
+    for cl in work.clauses() {
+        for lit in &cl.literals {
+            let (pos, neg) = &mut freq[lit.var.idx()];
+            if lit.positive {
+                *pos += 1;
+            } else {
+                *neg += 1;
+            }
+        }
+    }
+    freq
+}
+
+/// Split the hidden variables into those the vtree construction forgets early
+/// (returned) and the high-fanout show-defined ones, which it leaves for
+/// marginalization during compile.
+///
 /// Both operations are sound for a show-defined var (Prop 1 of Lagniez, Lonca
 /// and Marquis, IJCAI 2016: ∃ ≡ Σ); the split is purely about the diagram peak.
 /// Marginalize only the high-fanout ("declined") defined vars, whose ∃-forget
@@ -222,27 +242,17 @@ fn classify_and_split_defined(
         definability,
     )
     .expect("the shown and hidden variables are disjoint inside this formula");
-    let forget_defined: Vec<VarId> = {
-        // pos/neg clause-literal frequency per var, over `work`.
-        let nv = work.num_vars() as usize;
-        let mut freq = vec![0u64; nv * 2];
-        for cl in work.clauses() {
-            for lit in &cl.literals {
-                freq[lit.var.idx() * 2 + if lit.positive { 0 } else { 1 }] += 1;
-            }
-        }
-        let declined = |v: VarId| -> bool {
-            let vi = v.idx();
-            let (p, n) = (freq[vi * 2], freq[vi * 2 + 1]);
-            p * n > p + n
-        };
-        // marg half = the declined vars; forget half = the rest.
-        cls.defined
-            .iter()
-            .copied()
-            .filter(|&v| !declined(v))
-            .collect()
-    };
+    let freq = literal_polarity_counts(work);
+    // marg half = the declined vars; forget half = the rest.
+    let forget_defined: Vec<VarId> = cls
+        .defined
+        .iter()
+        .copied()
+        .filter(|&v| {
+            let (p, n) = freq[v.idx()];
+            p * n <= p + n
+        })
+        .collect();
     cls.not_defined
         .iter()
         .chain(cls.unknown.iter())

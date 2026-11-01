@@ -176,6 +176,42 @@ fn commit_decision(
     Ok(available_ms)
 }
 
+fn log_path_estimate(est: &PathEstimate, elapsed_ms: u128) {
+    eprintln!(
+        "[mc] support-enumeration: estimate in {elapsed_ms}ms: N̂={} ({} paths, max {:.3e}{}{})",
+        n_hat_text(est),
+        est.weights.len(),
+        est.weights.iter().copied().fold(0.0f64, f64::max),
+        if est.truncated > 0 {
+            format!(", {} cut", est.truncated)
+        } else {
+            String::new()
+        },
+        if est.unsat { ", formula UNSAT" } else { "" },
+    );
+}
+
+fn log_probe_decision(
+    models: u64,
+    elapsed: std::time::Duration,
+    est: &PathEstimate,
+    available_ms: u64,
+    verdict: &Result<u64, &str>,
+) {
+    let rho = models as f64 / elapsed.as_secs_f64().max(1e-3);
+    eprintln!(
+        "[mc] support-enumeration: probe: {models} models in {:.1}s ({rho:.0}/s) — \
+         N̂={} from the entry estimate, {}s of stage wall left ⇒ {}",
+        elapsed.as_secs_f64(),
+        n_hat_text(est),
+        available_ms / 1000,
+        match verdict {
+            Ok(ms) => format!("COMMIT {}s (abort past {TALLY_CEILING} models)", ms / 1000),
+            Err(why) => format!("BAIL ({why})"),
+        },
+    );
+}
+
 /// Run the enumeration: estimate, probe, commit. Returns the model count of
 /// `reduced`, in its own space, or `None` when the stage bailed.
 ///
@@ -203,19 +239,7 @@ fn run_support_enum(
     let show_vec: Vec<VarId> = crate::enumeration::show_vars(support);
     let t_est = Instant::now();
     let est = estimate_projected_count(reduced, &show_vec);
-    eprintln!(
-        "[mc] support-enumeration: estimate in {}ms: N̂={} ({} paths, max {:.3e}{}{})",
-        t_est.elapsed().as_millis(),
-        n_hat_text(&est),
-        est.weights.len(),
-        est.weights.iter().copied().fold(0.0f64, f64::max),
-        if est.truncated > 0 {
-            format!(", {} cut", est.truncated)
-        } else {
-            String::new()
-        },
-        if est.unsat { ", formula UNSAT" } else { "" },
-    );
+    log_path_estimate(&est, t_est.elapsed().as_millis());
     // Nothing tallied and the whole stage wall still ahead, so the only rules
     // that can refuse here are the estimate's own — see [`commit_decision`].
     if let Err(why) = commit_decision(&est, enum_wall_ms, 0) {
@@ -234,23 +258,10 @@ fn run_support_enum(
             return None;
         }
         committed = true;
-        let rho = models as f64 / elapsed.as_secs_f64().max(1e-3);
         let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
         // The same estimate the entry gate admitted on.
         let verdict = commit_decision(&est, available_ms, models);
-        eprintln!(
-            "[mc] support-enumeration: probe: {models} models in {:.1}s ({rho:.0}/s) — \
-             N̂={} from the entry estimate, {}s of stage wall left ⇒ {}",
-            elapsed.as_secs_f64(),
-            n_hat_text(&est),
-            available_ms / 1000,
-            match &verdict {
-                Ok(ms) => {
-                    format!("COMMIT {}s (abort past {TALLY_CEILING} models)", ms / 1000)
-                }
-                Err(why) => format!("BAIL ({why})"),
-            },
-        );
+        log_probe_decision(models, elapsed, &est, available_ms, &verdict);
         // Every commit rests on the same admission (`N̂ ≤ COMMIT_MAX_MODELS`)
         // and so carries the same bound: the gate's own ceiling, attached to
         // the grant (see `WallGrant`).

@@ -226,6 +226,11 @@ impl OrderScratch {
         self.pending.extend(self.occurrence_starts.windows(2).map(|w| w[1] - w[0]));
     }
 
+    #[inline]
+    fn occurrence_range(&self, v: usize) -> std::ops::Range<usize> {
+        self.occurrence_starts[v] as usize..self.occurrence_starts[v + 1] as usize
+    }
+
     /// The open profile of `order`, a permutation of the group's positions.
     fn profile(&mut self, sets: &DenseClauseVars, order: &[usize]) -> OpenProfile {
         self.reset_pending();
@@ -234,7 +239,7 @@ impl OrderScratch {
         for &k in order {
             for &v in sets.vars_of(k) {
                 let v = v as usize;
-                if self.pending[v] == self.occurrence_starts[v + 1] - self.occurrence_starts[v] {
+                if self.pending[v] == self.occurrence_range(v).len() as u32 {
                     open += 1;
                 }
                 self.pending[v] -= 1;
@@ -332,10 +337,9 @@ impl OrderScratch {
             let after = effect(self.open[v], self.pending[v], finishes);
             if after != before {
                 let delta = (after.0 - before.0, after.1 - before.1);
-                let start = self.occurrence_starts[v] as usize;
-                let end = self.occurrence_starts[v + 1] as usize;
+                let range = self.occurrence_range(v);
                 // Placed clauses are updated too; they are never ranked again.
-                for &j in &self.occurrences[start..end] {
+                for &j in &self.occurrences[range] {
                     let rank = &mut self.rank[j as usize];
                     rank.0 += delta.0;
                     rank.1 += delta.1;
