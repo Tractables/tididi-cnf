@@ -1,13 +1,13 @@
 use tididi::vtree::Vtree;
 use tididi::{Engine, Tdd};
-use vitri::cnf::{Clause, CnfFormula};
+use vitri::cnf::CnfFormula;
 
 use crate::compile::sat_prune::{PruneOutcome, PruneStop};
-use crate::test_support::{clause, formula, sat_prune_ctx, with_clause};
+use crate::test_support::{dimacs, formula, sat_prune_ctx, with_clause};
 
-/// The diagram of one formula clause.
-fn clause_tdd(vtree: &std::sync::Arc<Vtree>, c: &Clause) -> Tdd {
-    Tdd::clause(vtree, c.literals.iter().copied().map(crate::convert::diagram_literal)).unwrap()
+/// The diagram of one DIMACS clause.
+fn clause_tdd(vtree: &std::sync::Arc<Vtree>, lits: &[i32]) -> Tdd {
+    Tdd::clause(vtree, lits.iter().copied()).unwrap()
 }
 
 /// A formula with no variable still builds a context.
@@ -21,9 +21,8 @@ fn prefix_fixture() -> (std::sync::Arc<Vtree>, Tdd, CnfFormula) {
     // Two of the three nodes at the bottom internal level require x1=1
     // and are dead under F.
     let vtree = std::sync::Arc::new(Vtree::reverse_linear(3));
-    let s = [clause(&[1, 3]), clause(&[2, -3])];
-    let tdd = clause_tdd(&vtree, &s[0]) & clause_tdd(&vtree, &s[1]);
-    let f = formula(3, [s.to_vec(), vec![clause(&[-1])]].concat());
+    let tdd = clause_tdd(&vtree, &[1, 3]) & clause_tdd(&vtree, &[2, -3]);
+    let f = dimacs(3, &[&[1, 3][..], &[2, -3], &[-1]]);
     (vtree, tdd, f)
 }
 
@@ -44,7 +43,7 @@ fn an_encode_prefix_is_probed() {
         panic!("expected Rewritten, got {outcome:?}");
     };
     assert!(ctx.stats.nodes_pruned >= 2, "both dead bottom nodes are killed");
-    let unit = clause_tdd(&vtree, &clause(&[-1]));
+    let unit = clause_tdd(&vtree, &[-1]);
     let conj = *new_tdd & unit;
     assert_eq!(conj.model_count().unwrap(), num_bigint::BigUint::from(1u32));
 }
@@ -64,21 +63,21 @@ fn pass_deadline_bounds_single_solve() {
     let num_vars = (n_pigeons * n_holes) as u32;
     let p = |pigeon: i32, hole: i32| pigeon * n_holes + hole + 1;
 
-    let mut clauses: Vec<Clause> = (0..n_pigeons)
-        .map(|i| clause(&(0..n_holes).map(|j| p(i, j)).collect::<Vec<_>>()))
+    let mut clauses: Vec<Vec<i32>> = (0..n_pigeons)
+        .map(|i| (0..n_holes).map(|j| p(i, j)).collect())
         .collect();
     for j in 0..n_holes {
         for i1 in 0..n_pigeons {
-            clauses.extend((i1 + 1..n_pigeons).map(|i2| clause(&[-p(i1, j), -p(i2, j)])));
+            clauses.extend((i1 + 1..n_pigeons).map(|i2| vec![-p(i1, j), -p(i2, j)]));
         }
     }
-    let f = formula(num_vars, clauses);
+    let f = dimacs(num_vars, &clauses);
 
     // TDD: a single clause over two PHP vars (p_{0,0} ∨ p_{0,1}).
     // Its nodes are reachable internals to probe; PHP is UNSAT overall,
     // so without the terminator every probe returns UNSAT.
     let vtree = std::sync::Arc::new(Vtree::balanced(num_vars));
-    let tdd = clause_tdd(&vtree, &clause(&[p(0, 0), p(0, 1)]));
+    let tdd = clause_tdd(&vtree, &[p(0, 0), p(0, 1)]);
 
     let mut ctx = sat_prune_ctx(&f);
 
@@ -130,15 +129,15 @@ fn encode_prefix_zero_levels_falls_back_to_abort() {
 /// model of Φ).
 fn wide_alive_fixture(n_vars: u32, span: u32) -> (Tdd, CnfFormula) {
     let vtree = std::sync::Arc::new(Vtree::linear(n_vars));
-    let clauses: Vec<Clause> = (1..=(n_vars - span) as i32)
-        .map(|v| clause(&[v, v + span as i32]))
+    let clauses: Vec<[i32; 2]> = (1..=(n_vars - span) as i32)
+        .map(|v| [v, v + span as i32])
         .collect();
     let tdd = clauses
         .iter()
         .map(|c| clause_tdd(&vtree, c))
         .reduce(|a, b| a & b)
         .expect("fixture has at least one clause");
-    let f = formula(n_vars, clauses);
+    let f = dimacs(n_vars, &clauses);
     (tdd, f)
 }
 
@@ -214,7 +213,7 @@ fn running_rate_keeps_probing_when_kill_rate_clears_threshold() {
     // one of these dies, so probes keep landing UNSAT well past the first
     // check point, while the diagram stays large enough to keep probing.
     for v in 1..=8 {
-        f = with_clause(f, clause(&[-v]));
+        f = with_clause(f, &[-v]);
     }
     let mut ctx = sat_prune_ctx(&f);
     ctx.limits.allsat_k = 0;
@@ -249,7 +248,7 @@ fn running_rate_keeps_probing_when_kill_rate_clears_threshold() {
 /// fixed ceiling.
 #[test]
 fn no_pass_fires_past_the_size_its_budget_allows() {
-    let ctx = sat_prune_ctx(&formula(2, vec![clause(&[1, 2])]));
+    let ctx = sat_prune_ctx(&dimacs(2, &[&[1, 2]]));
     assert_eq!(ctx.limits.spend_cap_ms, 1_000);
     assert_eq!(ctx.limits.max_pairs, 300_000);
     assert!(ctx.should_fire(300_000));
@@ -263,7 +262,7 @@ fn no_pass_fires_past_the_size_its_budget_allows() {
 #[test]
 fn a_pass_budget_is_what_the_compile_cap_has_left() {
     use std::time::Duration;
-    let f = formula(2, vec![clause(&[1, 2])]);
+    let f = dimacs(2, &[&[1, 2]]);
     let mut ctx = sat_prune_ctx(&f);
     let cap = Duration::from_millis(ctx.limits.spend_cap_ms);
     assert_eq!(ctx.pass_budget(), cap);

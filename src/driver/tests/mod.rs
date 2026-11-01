@@ -76,13 +76,12 @@ fn the_retry_needs_the_default_portfolio_another_family_and_time_left() {
 /// `(x_1 ∨ … ∨ x_n) ∧ ⋀_i (x_i ↔ y_i)` over `x_i = i`, `y_i = n + i`: one
 /// connected formula, joined by its long clause, with `2^n − 1` models.
 fn paired(n: i32) -> CnfFormula {
-    use crate::test_support::{clause, formula};
-    let mut clauses = vec![clause(&(1..=n).collect::<Vec<_>>())];
+    let mut clauses = vec![(1..=n).collect::<Vec<_>>()];
     for i in 1..=n {
-        clauses.push(clause(&[-i, n + i]));
-        clauses.push(clause(&[i, -(n + i)]));
+        clauses.push(vec![-i, n + i]);
+        clauses.push(vec![i, -(n + i)]);
     }
-    formula(2 * n as u32, clauses)
+    crate::test_support::dimacs(2 * n as u32, &clauses)
 }
 
 /// The linear vtree reads every `x` before any `y`, so the diagram keeps each

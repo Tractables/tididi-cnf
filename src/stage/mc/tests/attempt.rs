@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::{clause, formula};
+use crate::test_support::dimacs;
 use tididi::Engine;
 use num_bigint::BigUint;
 
@@ -25,7 +25,7 @@ fn identical_components_correct_count() {
     let eng = &Engine::new();
     let config = crate::test_support::minimal_config();
     let run = crate::test_support::run(eng, &config);
-    let formula = formula(4, vec![clause(&[1, 2]), clause(&[3, 4])]);
+    let formula = dimacs(4, &[&[1, 2], &[3, 4]]);
     let (count, _) = count_attempt(&run, attempt(&formula), None).expect("compile failed");
     assert_eq!(count, BigUint::from(9u32));
     let lifted = CompileAttempt { lift_pow2: 3, ..attempt(&formula) };

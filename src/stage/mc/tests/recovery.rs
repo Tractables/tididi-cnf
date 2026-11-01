@@ -1,11 +1,11 @@
 use super::*;
 use tididi::Engine;
-use crate::test_support::{self as fixtures, clause};
+use crate::test_support::{self as fixtures, dimacs};
 
 #[test]
 fn simplify_via_unit_drops_satisfied_and_shortens_falsified() {
     // F = (x0 ∨ x1) ∧ (¬x0 ∨ x2) ∧ (x1 ∨ x2)
-    let f = fixtures::formula(3, vec![clause(&[1, 2]), clause(&[-1, 3]), clause(&[2, 3])]);
+    let f = dimacs(3, &[&[1, 2], &[-1, 3], &[2, 3]]);
     // Force x0 = true → drop C0 (sat), shorten C1 to (x2) → derived unit
     // → C2 contains x2 (sat) → drop.
     let g = simplify_via_unit(&f, Literal::pos(VarId::from_dimacs(1))).expect("not UNSAT");
@@ -23,7 +23,7 @@ fn simplify_via_unit_drops_satisfied_and_shortens_falsified() {
 #[test]
 fn simplify_via_unit_reports_unsat() {
     // F = (x0) ∧ (¬x0)
-    let f = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
+    let f = dimacs(1, &[&[1], &[-1]]);
     // Force x0 = true → ¬x0 clause becomes empty → UNSAT.
     assert!(simplify_via_unit(&f, Literal::pos(VarId::from_dimacs(1))).is_none());
 }
@@ -39,7 +39,7 @@ fn no_cofactor(_: &Run<'_>, _: &CnfFormula) -> Option<Counted> {
 fn recovery_names_the_stage_the_first_call_ran() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(2, vec![clause(&[1])]);
+    let f = dimacs(2, &[&[1]]);
     let first = || Some(((BigUint::from(2u32), 1024usize), AnsweredBy::StallRecompile));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
     assert_eq!(
@@ -53,7 +53,7 @@ fn recovery_names_the_stage_the_first_call_ran() {
 fn recovery_names_the_fallback_that_answers() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(2, vec![clause(&[1, 2])]);
+    let f = dimacs(2, &[&[1, 2]]);
     let first = || -> Option<(Counted, AnsweredBy)> { panic!("the first compile fails") };
     let fallbacks = || Some(((BigUint::from(3u32), 0usize), AnsweredBy::SupportEnumeration));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, Some(&fallbacks), no_cofactor).unwrap();
@@ -67,7 +67,7 @@ fn recovery_names_the_fallback_that_answers() {
 fn recovery_names_the_split_when_no_cofactor_compiles() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
+    let f = dimacs(1, &[&[1], &[-1]]);
     let calls = std::cell::Cell::new(0u32);
     let first = || -> Option<(Counted, AnsweredBy)> {
         calls.set(calls.get() + 1);
@@ -85,7 +85,7 @@ fn recovery_names_the_split_when_no_cofactor_compiles() {
 fn a_compile_that_gives_up_with_time_left_is_split() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(3, vec![clause(&[1, 2]), clause(&[-1, 3])]);
+    let f = dimacs(3, &[&[1, 2], &[-1, 3]]);
     let cofactor = |run: &Run<'_>, form: &CnfFormula| {
         assert!(run.compile.cofactor, "a cofactor compiles as a cofactor's compile");
         Some((fixtures::brute_projected_count(form, 0..form.num_vars() as usize), 0))
@@ -101,7 +101,7 @@ fn a_compile_that_gives_up_with_time_left_is_split() {
 fn mc_recovery_honors_past_deadline_without_compiling() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(3, vec![clause(&[1, 2])]);
+    let f = dimacs(3, &[&[1, 2]]);
     let past = std::time::Instant::now() - std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(past), ..fixtures::run(eng, &config) };
     let calls = std::cell::Cell::new(0u32);
@@ -123,7 +123,7 @@ fn mc_recovery_honors_past_deadline_without_compiling() {
 fn mc_recovery_skips_the_fallbacks_once_the_wall_passes_mid_attempt() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
-    let f = fixtures::formula(3, vec![clause(&[1, 2])]);
+    let f = dimacs(3, &[&[1, 2]]);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(deadline), ..fixtures::run(eng, &config) };
     let compile_calls = std::cell::Cell::new(0u32);

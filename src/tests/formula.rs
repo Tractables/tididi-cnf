@@ -2,7 +2,7 @@ use tididi::test_helpers::rat;
 use vitri::cnf::{CnfFormula, CnfMeta, VarId, WeightTable};
 
 use super::{formula_from_clauses, most_frequent_var, parse_dimacs};
-use crate::test_support::{clause, formula};
+use crate::test_support::{dimacs, formula};
 use crate::Error;
 
 /// The pick is the most frequent eligible variable, the lowest index on a
@@ -12,7 +12,7 @@ fn the_most_frequent_eligible_variable_wins_and_a_tie_goes_to_the_lowest() {
     let v = VarId::from_dimacs;
     let any = |_: usize| true;
     // x1 is in 3 clauses, x3 in 2, x2 in 1.
-    let f = formula(3, vec![clause(&[1]), clause(&[1, 3]), clause(&[-1, 2]), clause(&[-3])]);
+    let f = dimacs(3, &[&[1][..], &[1, 3], &[-1, 2], &[-3]]);
     assert_eq!(most_frequent_var(&f, 0, any), Some(v(1)));
     assert_eq!(most_frequent_var(&f, 0, |i| i != 0), Some(v(3)));
     assert_eq!(most_frequent_var(&f, 0, |i| i == 1), Some(v(2)));
@@ -23,11 +23,11 @@ fn the_most_frequent_eligible_variable_wins_and_a_tie_goes_to_the_lowest() {
     assert_eq!(most_frequent_var(&f, 2, any), Some(v(1)));
     assert_eq!(most_frequent_var(&f, 2, |i| i != 0), Some(v(2)));
     // A variable only in unit clauses is no candidate at length two.
-    let g = formula(4, vec![clause(&[4]), clause(&[-4])]);
+    let g = dimacs(4, &[&[4], &[-4]]);
     assert_eq!(most_frequent_var(&g, 0, any), Some(v(4)));
     assert_eq!(most_frequent_var(&g, 2, any), None);
     // A three-way tie goes to the lowest index.
-    let h = formula(3, vec![clause(&[3, 2]), clause(&[-1, -3]), clause(&[2, 1])]);
+    let h = dimacs(3, &[&[3, 2], &[-1, -3], &[2, 1]]);
     assert_eq!(most_frequent_var(&h, 0, any), Some(v(1)));
     assert_eq!(most_frequent_var(&h, 0, |i| i != 0), Some(v(2)));
 }

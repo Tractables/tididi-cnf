@@ -1,8 +1,7 @@
 use super::*;
 use crate::problem::{Unweighted, Weighted};
-use crate::test_support::{self as fixtures, clause};
+use crate::test_support::{self as fixtures, dimacs};
 use tididi::test_helpers::rat;
-use vitri::cnf::{Clause, Literal};
 
 fn pmc_tail_config() -> vitri::RunConfig {
     crate::frontend::request::projection_stage(
@@ -22,14 +21,10 @@ fn show_set(vars: &[i32]) -> vitri::cnf::ShowSet<vitri::cnf::Original> {
 fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
     // x1 ≡ ¬x2. Both variables are shown, so projected strengthening may
     // drop one only by folding its weights crosswise into the survivor.
-    let formula = fixtures::formula(4, vec![
-        clause(&[1, 2]),
-        clause(&[-1, -2]),
-        clause(&[1, 3]),
-        clause(&[-3, 4]),
-        clause(&[2, 4]),
-        clause(&[-1, -3, -4]),
-    ]);
+    let formula = dimacs(
+        4,
+        &[&[1, 2][..], &[-1, -2], &[1, 3], &[-3, 4], &[2, 4], &[-1, -3, -4]],
+    );
     let weights = vitri::cnf::WeightTable::from_dimacs_pairs(
         [(1, rat(2, 1)), (-1, rat(3, 1)), (2, rat(5, 1)), (-2, rat(7, 1))],
         formula.num_vars(),
@@ -92,13 +87,13 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
         ("a named literal weighing 1/2", fixtures::formula(1, vec![]), vec![1], vec![(1, rat(1, 2))]),
         (
             "show 1 over projected 2, 1 ∨ 2",
-            fixtures::formula(2, vec![clause(&[1, 2])]),
+            dimacs(2, &[&[1, 2]]),
             vec![1],
             vec![(1, rat(3, 10))],
         ),
         (
             "show 1 and 2 kept by 1 ∨ 2, projected 3 ↔ 1 ∧ 2",
-            fixtures::formula(3, vec![clause(&[1, 2]), clause(&[-3, 1]), clause(&[-3, 2]), clause(&[3, -1, -2])]),
+            dimacs(3, &[&[1, 2][..], &[-3, 1], &[-3, 2], &[3, -1, -2]]),
             vec![1, 2],
             vec![(1, rat(3, 10)), (2, rat(1, 4)), (-2, rat(1, 2))],
         ),
@@ -139,7 +134,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
 
 #[test]
 fn wmc_outcome_exposes_exact_reduced_weights_and_lift() {
-    let formula = fixtures::formula(2, vec![clause(&[1, -2])]);
+    let formula = dimacs(2, &[&[1, -2]]);
     let table = vitri::cnf::WeightTable::from_dimacs_pairs(
         [(1, rat(3, 1)), (-1, rat(2, 1)), (2, rat(7, 1)), (-2, rat(5, 1))],
         formula.num_vars(),
@@ -192,7 +187,7 @@ fn wmc_outcome_exposes_exact_reduced_weights_and_lift() {
 
 #[test]
 fn pmc_preprocessing_returns_sorted_show_and_neutral_tail_lift() {
-    let formula = fixtures::formula(3, vec![clause(&[1, -3])]);
+    let formula = dimacs(3, &[&[1, -3]]);
     let show = show_set(&[3, 1, 3]);
     let config = pmc_tail_config();
 
@@ -212,7 +207,7 @@ fn pmc_preprocessing_returns_sorted_show_and_neutral_tail_lift() {
 /// show set or reduced weights to carry.
 #[test]
 fn projected_preprocessing_maps_unsat() {
-    let formula = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
+    let formula = dimacs(1, &[&[1], &[-1]]);
     let show = show_set(&[1]);
     assert!(matches!(
         preprocess_problem::<Unweighted>(&formula, Some(&show), None, &pmc_tail_config()),
@@ -237,7 +232,7 @@ fn projected_preprocessing_maps_unsat() {
 
 #[test]
 fn pmc_outcome_uses_the_recorded_power_of_two_lift() {
-    let formula = fixtures::formula(1, vec![clause(&[1])]);
+    let formula = dimacs(1, &[&[1]]);
     let show = show_set(&[1]);
     let meta = vitri::cnf::CnfMeta::from_parts(
         formula.num_vars(),
@@ -261,10 +256,7 @@ fn pmc_outcome_uses_the_recorded_power_of_two_lift() {
 }
 
 fn identity_compile_record(num_vars: u32) -> vitri::bundle::PreprocessRecord {
-    let formula = fixtures::formula(
-        num_vars,
-        vec![Clause::new(vitri::cnf::VarId::all(num_vars).map(Literal::pos).collect())],
-    );
+    let formula = dimacs(num_vars, &[(1..=num_vars as i32).collect::<Vec<_>>()]);
     vitri::bundle::preprocess(
         &formula,
         &vitri::cnf::CnfMeta::default(),

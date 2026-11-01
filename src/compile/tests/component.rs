@@ -2,7 +2,7 @@ use super::*;
 use std::sync::Arc;
 use tididi::Engine;
 use crate::compile::Output;
-use crate::test_support::{self as fixtures, clause};
+use crate::test_support::dimacs;
 
 /// A split whose second component is UNSAT answers ⊥ on the vtree the
 /// grafted result would have had: the components' own vtrees, as the
@@ -14,9 +14,7 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
     use tididi::vtree::{VtreeIdx, VtreeNode};
     let eng = &Engine::new();
     // Component (x1 ∨ x2) ∧ (x2 ∨ x3) ∧ (¬x1 ∨ x3), then x4 ∧ ¬x4; x5 free.
-    let formula = fixtures::formula(5, vec![
-        clause(&[1, 2]), clause(&[2, 3]), clause(&[-1, 3]), clause(&[4]), clause(&[-4]),
-    ]);
+    let formula = dimacs(5, &[&[1, 2][..], &[2, 3], &[-1, 3], &[4], &[-4]]);
     let split = [
         ComponentVtree {
             vtree: Arc::new(Vtree::balanced(3)),

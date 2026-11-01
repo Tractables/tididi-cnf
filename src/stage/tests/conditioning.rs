@@ -6,8 +6,7 @@
 use super::*;
 
 use tididi::Engine;
-use vitri::cnf::Clause;
-use crate::test_support::{brute_projected_count, lit};
+use crate::test_support::{brute_projected_count, dimacs};
 
 /// show = {0,1,2}, hidden = {3}. x0 is the hub (occurs most): under x0=T the
 /// clause ¬x0∨x2 forces the show var x2=T, and the x0=F branch is UNSAT —
@@ -15,13 +14,16 @@ use crate::test_support::{brute_projected_count, lit};
 /// is a clean partition ({x0=T}, {x0=F UNSAT}): one branch carries the whole
 /// count, the other's leaf compile must return zero.
 fn fixture() -> CnfFormula {
-    crate::test_support::formula(4, vec![
-        Clause::new(vec![lit(0, true), lit(3, true)]), // x0 ∨ x3   ┐ x0=F ⊢ □
-        Clause::new(vec![lit(0, true), lit(3, false)]), // x0 ∨ ¬x3  ┘
-        Clause::new(vec![lit(0, false), lit(2, true)]), // ¬x0 ∨ x2  (x0=T BCP-forces x2)
-        Clause::new(vec![lit(1, true), lit(2, true)]), // x1 ∨ x2   (coupling)
-        Clause::new(vec![lit(1, false), lit(2, true), lit(3, true)]), // ¬x1 ∨ x2 ∨ x3
-    ])
+    dimacs(
+        4,
+        &[
+            &[1, 4][..],     // x0 ∨ x3   ┐ x0=F ⊢ □
+            &[1, -4],        // x0 ∨ ¬x3  ┘
+            &[-1, 3],        // ¬x0 ∨ x2  (x0=T BCP-forces x2)
+            &[2, 3],         // x1 ∨ x2   (coupling)
+            &[-2, 3, 4],     // ¬x1 ∨ x2 ∨ x3
+        ],
+    )
 }
 
 #[test]
@@ -131,12 +133,7 @@ fn the_projected_compile_answers_to_the_deadline_it_is_handed() {
 /// conditioning; an empty one leaves nothing to split on.
 #[test]
 fn conditioning_declines_an_empty_show_set() {
-    use vitri::cnf::{Clause, Literal};
-    let lit = |v: u32| Literal::new(vitri::cnf::VarId::new(v + 1).unwrap(), true);
-    let f = crate::test_support::formula(3, vec![
-        Clause::new(vec![lit(0), lit(1)]),
-        Clause::new(vec![lit(1), lit(2)]),
-    ]);
+    let f = dimacs(3, &[&[1, 2], &[2, 3]]);
     let eng = &Engine::new();
     let config = crate::test_support::minimal_config();
     let empty = ShowSet::empty();

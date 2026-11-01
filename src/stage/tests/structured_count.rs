@@ -1,6 +1,6 @@
 use super::*;
 use tididi::Engine;
-use crate::test_support::{self as fixtures, brute_projected_count, clause, with_clause};
+use crate::test_support::{brute_projected_count, dimacs, with_clause};
 
 /// Brute-force w(a): the number of own-show assignments of `formula`
 /// feasible under each boundary assignment `a`, every other variable
@@ -10,7 +10,7 @@ fn brute_boundary(formula: &CnfFormula, own: &[VarId], boundary: &[VarId]) -> Ve
         .map(|a| {
             let fixed = boundary.iter().enumerate().fold(formula.clone(), |f, (k, v)| {
                 let d = v.0 as i32;
-                with_clause(f, clause(&[if (a >> k) & 1 == 1 { d } else { -d }]))
+                with_clause(f, &[if (a >> k) & 1 == 1 { d } else { -d }])
             });
             brute_projected_count(&fixed, own.iter().map(|v| v.idx()))
         })
@@ -30,7 +30,7 @@ fn component(
 #[test]
 fn boundary_count_refuses_expired_batch_and_recovers() {
     let eng = &Engine::new();
-    let formula = fixtures::formula(2, vec![clause(&[1, 2])]);
+    let formula = dimacs(2, &[&[1, 2]]);
     let comp = component(formula, vec![], vec![VarId(2)], vec![VarId(1)]);
     let vtree = Arc::new(Vtree::balanced(2));
     {
@@ -46,7 +46,7 @@ fn boundary_count_refuses_expired_batch_and_recovers() {
 #[test]
 fn component_without_boundary_counts_once() {
     let eng = &Engine::new();
-    let formula = fixtures::formula(2, vec![clause(&[1, 2])]);
+    let formula = dimacs(2, &[&[1, 2]]);
     let comp = component(formula, vec![VarId(2)], vec![VarId(1)], vec![]);
     let tree = eng.bind_vtree(Vtree::balanced(2));
     let counts = comp.boundary_function(eng, Default::default(), &tree).unwrap();
@@ -60,13 +60,7 @@ fn boundary_function_matches_bruteforce() {
     let boundary = vec![VarId(1), VarId(2)];
     let own = vec![VarId(3), VarId(4)];
     let hidden = vec![VarId(5)];
-    let clauses = vec![
-        clause(&[3, 1]),
-        clause(&[-3, 5]),
-        clause(&[4, -2, 5]),
-        clause(&[1, 2]),
-    ];
-    let formula = fixtures::formula(5, clauses);
+    let formula = dimacs(5, &[&[3, 1][..], &[-3, 5], &[4, -2, 5], &[1, 2]]);
     let vtree = Arc::new(Vtree::balanced(5));
     let want = brute_boundary(&formula, &own, &boundary);
     let comp = component(formula, hidden, own, boundary);
@@ -83,11 +77,7 @@ fn decomposable_boundary_function_reads_the_supplied_whole_vtree() {
     // deliberately indexes and marginalizes against this supplied Whole root.
     // b0=false forces own s1; b0=true leaves it free. The second component
     // admits both values of own s2 after existentially forgetting h3.
-    let formula = fixtures::formula(4, vec![
-        clause(&[1, 2]),
-        clause(&[3, 4]),
-        clause(&[-3, -4]),
-    ]);
+    let formula = dimacs(4, &[&[1, 2], &[3, 4], &[-3, -4]]);
     assert!(
         formula.detect_components().is_some(),
         "fixture must exercise the decomposable Whole-vs-Detect boundary",
@@ -111,19 +101,21 @@ fn detect_and_count_matches_bruteforce() {
     // Separator var 0 (show, high occ). Component A over {1 own, 2 hidden},
     // component B over {3 own, 4 hidden}, both sharing only var 0. Plus an
     // S-only clause (0) to exercise the indicator-component path.
-    let clauses = vec![
-        // component A
-        clause(&[2, 1]),
-        clause(&[-2, 3]),
-        clause(&[1, 3]),
-        // component B
-        clause(&[4, 1]),
-        clause(&[-4, 5]),
-        clause(&[1, 5]),
-        // S-only unit clause over the separator (forces var 0 = true)
-        clause(&[1]),
-    ];
-    let formula = fixtures::formula(5, clauses);
+    let formula = dimacs(
+        5,
+        &[
+            // component A
+            &[2, 1][..],
+            &[-2, 3],
+            &[1, 3],
+            // component B
+            &[4, 1],
+            &[-4, 5],
+            &[1, 5],
+            // S-only unit clause over the separator (forces var 0 = true)
+            &[1],
+        ],
+    );
     let show = ShowSet::from_dimacs_ids(&[1, 2, 4]).unwrap();
 
     let cfg = ShatterCfg {

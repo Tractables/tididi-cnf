@@ -129,6 +129,38 @@ pub(super) fn projected_compile(
     compiled.projected_count(run.eng).ok()
 }
 
+/// Re-run projected Arjun inside a conditioned branch. This is deliberately an
+/// Arjun-only vitri bundle: the branch's own compile performs projection, and
+/// `KeepSound` accepts any correctly mapped checkpoint, including one with no
+/// projection gain.
+fn reduce_branch(
+    run: &Run<'_>,
+    formula: &CnfFormula,
+    show: &ShowSet,
+    deadline: Option<Instant>,
+    arjun_ms: u64,
+) -> Step<Unweighted> {
+    let Some(exact_arjun) = crate::budget::clamped_to_deadline_ms(arjun_ms, deadline, Instant::now())
+        .map(std::time::Duration::from_millis)
+    else {
+        return Step::Decline;
+    };
+    let input = Problem::<Unweighted> {
+        formula: formula.clone(),
+        show: Some(show.clone()),
+        weights: (),
+        lift: 0,
+    };
+    let preprocess_config = crate::frontend::request::projection_stage(
+        run.config,
+        vitri::cnf::Mode::Pmc,
+        deadline,
+        Some(exact_arjun),
+        vitri::config::ProjectionPolicy::ArjunOnly(vitri::config::ProjectionNoGain::KeepSound),
+    );
+    projection_step(&input, None, &preprocess_config, "[pmc] condition", "the branch input")
+}
+
 /// One projected compile of `formula`, rebuilding the vtree on this
 /// (conditioned) formula. Returns the branch's projected model count, lifted
 /// by the re-reduction's lift, or `None` if the compile trips `deadline`.
@@ -152,40 +184,16 @@ fn pmc_branch_count(
     deadline: Option<Instant>,
     arjun_ms: u64,
 ) -> Option<num_bigint::BigUint> {
-    // Re-run projected Arjun inside a conditioned branch. This is deliberately
-    // an Arjun-only vitri bundle: the branch's own compile performs projection,
-    // and `KeepSound` accepts any correctly mapped checkpoint, including one
-    // with no projection gain.
     // The local reduced numbering never leaves this compile attempt.
-    let exact_arjun = crate::budget::clamped_to_deadline_ms(arjun_ms, deadline, Instant::now())
-        .map(std::time::Duration::from_millis);
     let (rewritten_formula, rewritten_show);
-    let (cformula, cshow, inner_shift) = match exact_arjun {
-        Some(exact_arjun) => {
-            let input = Problem::<Unweighted> {
-                formula: formula.clone(),
-                show: Some(show.clone()),
-                weights: (),
-                lift: 0,
-            };
-            let preprocess_config = crate::frontend::request::projection_stage(
-                run.config,
-                vitri::cnf::Mode::Pmc,
-                deadline,
-                Some(exact_arjun),
-                vitri::config::ProjectionPolicy::ArjunOnly(vitri::config::ProjectionNoGain::KeepSound),
-            );
-            match projection_step(&input, None, &preprocess_config, "[pmc] condition", "the branch input") {
-                Step::Answer(zero) => return Some(zero),
-                Step::Rewrite(branch) => {
-                    rewritten_formula = branch.formula;
-                    rewritten_show = branch.show.unwrap_or_else(ShowSet::empty);
-                    (&rewritten_formula, &rewritten_show, branch.lift as usize)
-                }
-                Step::Decline => (formula, show, 0),
-            }
+    let (cformula, cshow, inner_shift) = match reduce_branch(run, formula, show, deadline, arjun_ms) {
+        Step::Answer(zero) => return Some(zero),
+        Step::Rewrite(branch) => {
+            rewritten_formula = branch.formula;
+            rewritten_show = branch.show.unwrap_or_else(ShowSet::empty);
+            (&rewritten_formula, &rewritten_show, branch.lift as usize)
         }
-        None => (formula, show, 0),
+        Step::Decline => (formula, show, 0),
     };
 
     // Trivially-SAT branch: conditioning + re-Arjun can collapse a branch to an

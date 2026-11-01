@@ -1,10 +1,10 @@
 use super::*;
-use crate::test_support::{self as fixtures, clause, three_variable_formula};
+use crate::test_support::{self as fixtures, dimacs, three_variable_formula};
 use tididi::test_helpers::rat;
 
 #[test]
 fn wmc_frontend_returns_one_aligned_bundle() {
-    let formula = fixtures::formula(2, vec![clause(&[1, -2])]);
+    let formula = dimacs(2, &[&[1, -2]]);
     let weights = vec![
         (rat(2, 3), rat(5, 7)),
         (rat(11, 13), rat(17, 19)),
@@ -53,7 +53,7 @@ fn wmc_frontend_returns_one_aligned_bundle() {
 
 #[test]
 fn wmc_frontend_maps_unsat_without_a_weight_table() {
-    let formula = fixtures::formula(1, vec![clause(&[1]), clause(&[-1])]);
+    let formula = dimacs(1, &[&[1], &[-1]]);
     let table = vitri::cnf::WeightTable::from_dimacs_pairs(
         [(1, rat(5, 7)), (-1, rat(2, 3))],
         formula.num_vars(),

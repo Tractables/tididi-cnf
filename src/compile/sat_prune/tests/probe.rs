@@ -3,13 +3,13 @@ use tididi::vtree::{Vtree, VtreeIdx};
 use vitri::cnf::CnfFormula;
 
 use super::*;
-use crate::test_support::{clause, formula, sat_prune_ctx};
+use crate::test_support::{dimacs, sat_prune_ctx};
 
 /// A false diagram is dead at its root without a probe.
 #[test]
 fn a_false_diagram_is_a_dead_root() {
     let eng = &Engine::new();
-    let f = formula(2, vec![clause(&[1, 2])]);
+    let f = dimacs(2, &[&[1, 2]]);
     let mut ctx = sat_prune_ctx(&f);
     let vtree = std::sync::Arc::new(Vtree::balanced(2));
     assert!(matches!(ctx.probe_tdd(eng, &Tdd::zero(&vtree), 0), PruneOutcome::DeadRoot));
@@ -29,7 +29,7 @@ fn inline_marg_fixture() -> (CnfFormula, tididi::diagram::Tdd, VtreeIdx) {
     };
 
     // x1 ∧ x3 over the 4 vtree vars: every model satisfies the diagram.
-    let f = formula(4, vec![clause(&[1]), clause(&[3])]);
+    let f = dimacs(4, &[&[1], &[3]]);
 
     let vtree = Arc::new(Vtree::balanced(4));
     let root_idx = vtree.root();
@@ -157,7 +157,7 @@ fn marg_boundary_fixture() -> (CnfFormula, tididi::diagram::Tdd) {
         ChildPair, ValueRef, Tdd, TddNodeId, NEG_LEAF_IDX, ONE_LEAF_IDX, POS_LEAF_IDX,
     };
 
-    let f = formula(5, vec![clause(&[3])]);
+    let f = dimacs(5, &[&[3]]);
 
     // The marginal boundary level must be internal: a count-marginal leaf
     // carries only its fixed label column, so the donor's two slots sit on a

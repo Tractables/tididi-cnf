@@ -4,17 +4,17 @@
 /// counts 0.
 #[test]
 fn a_cofactor_is_counted_in_its_own_space() {
-    use crate::test_support::{brute_projected_count, clause, formula};
+    use crate::test_support::{brute_projected_count, dimacs};
     let eng = &tididi::Engine::new();
     let config = crate::test_support::minimal_config();
     let run = crate::test_support::run(eng, &config);
     let cofactors = [
         // x1 pinned as a split leaves it, x5 free, a core to compile.
-        formula(5, vec![clause(&[1]), clause(&[2, 3]), clause(&[-2, 4]), clause(&[3, -4])]),
+        dimacs(5, &[&[1][..], &[2, 3], &[-2, 4], &[3, -4]]),
         // Every variable pinned or free.
-        formula(3, vec![clause(&[1]), clause(&[-2])]),
+        dimacs(3, &[&[1], &[-2]]),
         // No unit, and no model.
-        formula(2, vec![clause(&[1, 2]), clause(&[1, -2]), clause(&[-1, 2]), clause(&[-1, -2])]),
+        dimacs(2, &[&[1, 2], &[1, -2], &[-1, 2], &[-1, -2]]),
     ];
     for cofactor in &cofactors {
         let (count, _) = super::count_cofactor(&run, cofactor).expect("a small cofactor counts");
@@ -31,15 +31,12 @@ fn a_cofactor_is_counted_in_its_own_space() {
 fn a_stalled_primary_is_answered_by_the_stall_recompile() {
     use crate::compile::StallRule;
     use crate::output::AnsweredBy;
-    use crate::test_support::clause;
+    use crate::test_support::dimacs;
     use std::time::{Duration, Instant};
 
     // The data format's example (`tests/data/mcc_mc_sat.cnf`): Arjun keeps
     // its reduction, so the count goes through the primary compile.
-    let formula = crate::test_support::formula(
-        6,
-        vec![clause(&[-1, -2]), clause(&[2, 3, -4]), clause(&[4, 5]), clause(&[4, 6])],
-    );
+    let formula = dimacs(6, &[&[-1, -2][..], &[2, 3, -4], &[4, 5], &[4, 6]]);
     let want = crate::test_support::brute_projected_count(&formula, 0..6);
     let eng = &tididi::Engine::new();
     let mc_config = || crate::config::Config {
@@ -69,12 +66,12 @@ fn a_stalled_primary_is_answered_by_the_stall_recompile() {
 /// a model count skips Arjun on, through the monotone reduction alone: the count, in
 /// the input's space, and the stage that answered.
 fn count_a_monotone_product(n: i32) -> (num_bigint::BigUint, Option<(num_bigint::BigUint, crate::output::AnsweredBy)>) {
-    use crate::test_support::clause;
+    use crate::test_support::dimacs;
     use std::time::{Duration, Instant};
     use vitri::bundle::{SkipReason, StageOutcome};
 
-    let clauses = (1..=n).flat_map(|a| (n + 1..=2 * n).map(move |x| clause(&[a, x]))).collect();
-    let formula = crate::test_support::formula(2 * n as u32, clauses);
+    let clauses: Vec<[i32; 2]> = (1..=n).flat_map(|a| (n + 1..=2 * n).map(move |x| [a, x])).collect();
+    let formula = dimacs(2 * n as u32, &clauses);
     let want = crate::test_support::brute_projected_count(&formula, 0..2 * n as usize);
     let eng = &tididi::Engine::new();
     let config = crate::config::Config {

@@ -162,21 +162,12 @@ fn the_entry_gate_never_refuses_what_the_exit_gate_would_admit() {
 /// Arjun. With `k > 16` the cheap 2^K sweep declines and the projected
 /// AllSAT band (the path the stage actually relies on) runs.
 fn chain_with_defined_var(k: u32) -> (CnfFormula, ShowSet) {
-    use vitri::cnf::{Clause, Literal};
-    let lit = |v: u32, pos: bool| Literal::new(vitri::cnf::VarId::new(v + 1).unwrap(), pos);
-    let mut clauses: Vec<Clause> = (0..k - 1)
-        .map(|i| Clause::new(vec![lit(i, false), lit(i + 1, true)]))
-        .collect();
+    let end = k as i32;
+    let mut clauses: Vec<Vec<i32>> = (1..end).map(|i| vec![-i, i + 1]).collect();
     // x(k) ≡ x0 ∧ x(k-1)
-    clauses.push(Clause::new(vec![
-        lit(0, false),
-        lit(k - 1, false),
-        lit(k, true),
-    ]));
-    clauses.push(Clause::new(vec![lit(0, true), lit(k, false)]));
-    clauses.push(Clause::new(vec![lit(k - 1, true), lit(k, false)]));
+    clauses.extend([vec![-1, -end, end + 1], vec![1, -(end + 1)], vec![end, -(end + 1)]]);
     (
-        crate::test_support::formula(k + 1, clauses),
+        crate::test_support::dimacs(k + 1, &clauses),
         ShowSet::from_vars((0..k as usize).map(vitri::cnf::VarId::from_idx)),
     )
 }

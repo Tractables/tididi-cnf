@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use num_bigint::BigUint;
-use vitri::cnf::{Clause, CnfFormula};
+use vitri::cnf::CnfFormula;
 
 use tididi::test_helpers::rat;
 use tididi::vtree::VarId;
@@ -10,17 +10,13 @@ use super::{
     AllsatStop, AllsatCtl, Models, WallGrant, WeightedModels, allsat, constrained_show_count,
     estimate_by_paths, forecast_exceeds_wall, path_seed, split_show, sweep,
 };
-use crate::test_support::lit;
+use crate::test_support::dimacs;
 
 /// Show vars 0 and 2 occur (2 three times) and are constrained; show var 3
 /// does not occur and is free; var 1 is hidden.
 #[test]
 fn counts_each_occurring_show_var_once() {
-    let f = crate::test_support::formula(4, vec![
-        Clause::new(vec![lit(2, true), lit(0, true)]),
-        Clause::new(vec![lit(2, false), lit(1, true)]),
-        Clause::new(vec![lit(2, true)]),
-    ]);
+    let f = dimacs(4, &[&[3, 1][..], &[-3, 2], &[3]]);
     assert_eq!(constrained_show_count(&f, &crate::problem::ShowSet::from_dimacs_ids(&[1, 3, 4]).unwrap()), 2);
 }
 
@@ -29,41 +25,34 @@ fn counts_each_occurring_show_var_once() {
 /// is exactly the shape the wall enforcement has to bound.
 fn pigeonhole(pigeons: u32) -> CnfFormula {
     let holes = pigeons - 1;
-    let v = |p: u32, h: u32| p * holes + h;
+    let v = |p: u32, h: u32| (p * holes + h + 1) as i32;
     let mut clauses = Vec::new();
     for p in 0..pigeons {
-        clauses.push(Clause::new(
-            (0..holes).map(|h| lit(v(p, h), true)).collect(),
-        ));
+        clauses.push((0..holes).map(|h| v(p, h)).collect::<Vec<_>>());
     }
     for h in 0..holes {
         for p1 in 0..pigeons {
             for p2 in (p1 + 1)..pigeons {
-                clauses.push(Clause::new(vec![
-                    lit(v(p1, h), false),
-                    lit(v(p2, h), false),
-                ]));
+                clauses.push(vec![-v(p1, h), -v(p2, h)]);
             }
         }
     }
-    crate::test_support::formula(pigeons * holes, clauses)
+    dimacs(pigeons * holes, &clauses)
 }
 
 /// A show set whose feasible projections are a subcube: `forced` vars pinned
 /// by unit clauses, `free` vars occurring but unconstrained. Feasible
 /// projections = 2^free, and every random path must weigh exactly that.
 fn subcube_formula(forced: u32, free: u32) -> CnfFormula {
-    let mut clauses = Vec::new();
-    for v in 0..forced {
-        clauses.push(Clause::new(vec![lit(v, true)]));
-    }
+    let mut clauses: Vec<Vec<i32>> = (1..=forced as i32).map(|v| vec![v]).collect();
     // Each free var occurs (so it counts as constrained in the split sense)
     // in a clause already satisfied by a forced var, leaving it a free choice.
-    for v in 0..free {
-        clauses.push(Clause::new(vec![lit(0, true), lit(forced + v, true)]));
-        clauses.push(Clause::new(vec![lit(0, true), lit(forced + v, false)]));
+    for v in 1..=free as i32 {
+        let free_var = forced as i32 + v;
+        clauses.push(vec![1, free_var]);
+        clauses.push(vec![1, -free_var]);
     }
-    crate::test_support::formula(forced + free, clauses)
+    dimacs(forced + free, &clauses)
 }
 
 /// The count estimate does not collapse to zero when most show vars are
@@ -97,10 +86,7 @@ fn random_paths_are_exact_on_a_subcube_of_mostly_forced_vars() {
 /// possible path weights (2 and 4) average to it.
 #[test]
 fn random_path_weights_bracket_a_non_product_count() {
-    let f = crate::test_support::formula(3, vec![
-        Clause::new(vec![lit(0, true)]),
-        Clause::new(vec![lit(1, true), lit(2, true)]),
-    ]);
+    let f = dimacs(3, &[&[1][..], &[2, 3]]);
     let show = [VarId(1), VarId(2), VarId(3)];
     let est = estimate_by_paths(&f, &show, 16, 16, Duration::from_secs(5), None);
     assert_eq!(est.weights.len(), 16);
@@ -133,7 +119,7 @@ fn a_cut_path_reports_truncated_and_no_mean() {
 /// forever.
 #[test]
 fn an_unconstrained_show_set_leaves_the_estimate_unmeasured() {
-    let f = crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true)])]);
+    let f = dimacs(3, &[&[1]]);
     let est = estimate_by_paths(&f, &[VarId(2), VarId(3)], 4, 4, Duration::from_secs(1), None);
     assert!(est.weights.is_empty());
     assert_eq!(est.truncated, 0);
@@ -328,7 +314,7 @@ fn path_seeds_give_distinct_generator_states() {
 /// {TT, TF, FT} (FF excluded), so PMC = 3, and with weights a and b on x0 and
 /// ¬x0, c and d on x1 and ¬x1, PWMC = ac+ad+bc.
 fn two_show_formula() -> CnfFormula {
-    crate::test_support::formula(2, vec![Clause::new(vec![lit(0, true), lit(1, true)])])
+    dimacs(2, &[&[1, 2]])
 }
 
 /// The weighted-enumeration cases — feasible-projection weights, unit
@@ -340,16 +326,8 @@ fn two_show_formula() -> CnfFormula {
 #[test]
 fn pwmc_matches_across_the_sweep_and_the_allsat_walk() {
     use crate::problem::WeightedCount::{Satisfiable, Unsatisfiable};
-    let free_show_formula = || {
-        crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true), lit(1, true)])])
-    };
-    let contradiction = || {
-        crate::test_support::formula(2, vec![
-            Clause::new(vec![lit(0, true), lit(1, true)]),
-            Clause::new(vec![lit(0, false)]),
-            Clause::new(vec![lit(1, false)]),
-        ])
-    };
+    let free_show_formula = || dimacs(3, &[&[1, 2]]);
+    let contradiction = || dimacs(2, &[&[1, 2][..], &[-1], &[-2]]);
     // (label, formula, show, (w_neg, w_pos) per variable, expected total)
     let cases = [
         (
@@ -428,48 +406,18 @@ fn micro_cases() -> Vec<(CnfFormula, Vec<VarId>)> {
         // (x0∨x1): feasible {TT,TF,FT} → 3.
         (two_show_formula(), vec![VarId(1), VarId(2)]),
         // (x0∨x1)∧(¬x0∨¬x1): feasible {TF,FT} → 2.
-        (
-            crate::test_support::formula(2, vec![
-                Clause::new(vec![lit(0, true), lit(1, true)]),
-                Clause::new(vec![lit(0, false), lit(1, false)]),
-            ]),
-            vec![VarId(1), VarId(2)],
-        ),
+        (dimacs(2, &[&[1, 2], &[-1, -2]]), vec![VarId(1), VarId(2)]),
         // free show var x2 absent from clauses → factor 2 (3<<1=6).
-        (
-            crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true), lit(1, true)])]),
-            vec![VarId(1), VarId(2), VarId(3)],
-        ),
+        (dimacs(3, &[&[1, 2]]), vec![VarId(1), VarId(2), VarId(3)]),
         // projected (hidden) var p=x2: clauses (x0∨p)∧(x1∨¬p), show={x0,x1}.
         // Feasible projections: TT,TF,FT (FF needs p=T and p=F) → 3.
-        (
-            crate::test_support::formula(3, vec![
-                Clause::new(vec![lit(0, true), lit(2, true)]),
-                Clause::new(vec![lit(1, true), lit(2, false)]),
-            ]),
-            vec![VarId(1), VarId(2)],
-        ),
+        (dimacs(3, &[&[1, 3], &[2, -3]]), vec![VarId(1), VarId(2)]),
         // projection-UNSAT: (x0)∧(¬x0) → 0 feasible.
-        (
-            crate::test_support::formula(1, vec![
-                Clause::new(vec![lit(0, true)]),
-                Clause::new(vec![lit(0, false)]),
-            ]),
-            vec![VarId(1)],
-        ),
+        (dimacs(1, &[&[1], &[-1]]), vec![VarId(1)]),
         // all-free show over a SAT formula → 2^2 = 4 (empty constrained set).
-        (
-            crate::test_support::formula(3, vec![Clause::new(vec![lit(0, true)])]),
-            vec![VarId(2), VarId(3)],
-        ),
+        (dimacs(3, &[&[1]]), vec![VarId(2), VarId(3)]),
         // 3 constrained show, mixed: (x0∨x1∨x2)∧(¬x0∨¬x1) → 5.
-        (
-            crate::test_support::formula(3, vec![
-                Clause::new(vec![lit(0, true), lit(1, true), lit(2, true)]),
-                Clause::new(vec![lit(0, false), lit(1, false)]),
-            ]),
-            vec![VarId(1), VarId(2), VarId(3)],
-        ),
+        (dimacs(3, &[&[1, 2, 3][..], &[-1, -2]]), vec![VarId(1), VarId(2), VarId(3)]),
     ]
 }
 
@@ -481,10 +429,7 @@ fn random_cnf(vars: u32, clauses: usize, seed: u64) -> CnfFormula {
     let mut rng = tididi::test_helpers::Lcg::new(seed);
     let shape = tididi::test_helpers::CnfShape { clauses, width: 3 };
     let raw = tididi::test_helpers::rand_cnf(&mut rng, vars, shape);
-    crate::test_support::formula(
-        vars,
-        raw.iter().map(|c| crate::test_support::clause(c)).collect(),
-    )
+    dimacs(vars, &raw)
 }
 
 fn allsat_count(f: &CnfFormula, show: &[VarId]) -> Option<BigUint> {
@@ -535,9 +480,7 @@ fn projected_allsat_matches_the_oracle_on_a_random_population() {
 #[test]
 fn projected_allsat_is_complete_on_a_dense_projection_set() {
     const K: u32 = 14;
-    let mut clauses = vec![Clause::new((0..K).map(|v| lit(v, true)).collect())];
-    clauses.push(Clause::new(vec![lit(0, false), lit(1, false)]));
-    let f = crate::test_support::formula(K, clauses);
+    let f = dimacs(K, &[(1..=K as i32).collect::<Vec<_>>(), vec![-1, -2]]);
     let show: Vec<VarId> = (1..=K).map(VarId).collect();
     let expected = BigUint::from((1u32 << K) - 1 - (1u32 << (K - 2)));
 

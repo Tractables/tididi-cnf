@@ -66,7 +66,7 @@ fn brute_projections(formula: &CnfFormula, show: &[usize]) -> std::collections::
 }
 
 /// A clause from DIMACS literals.
-pub(crate) fn clause(dimacs: &[i32]) -> Clause {
+fn clause(dimacs: &[i32]) -> Clause {
     Clause::new(dimacs.iter().map(|&l| Literal::new(VarId::from_dimacs(l), l > 0)).collect())
 }
 
@@ -75,11 +75,11 @@ pub(crate) fn dimacs(num_vars: u32, clauses: &[impl AsRef<[i32]>]) -> CnfFormula
     formula(num_vars, clauses.iter().map(|c| clause(c.as_ref())).collect())
 }
 
-/// `formula` with one more clause, for a fixture built from another.
-pub(crate) fn with_clause(formula: CnfFormula, clause: Clause) -> CnfFormula {
+/// `formula` with one more DIMACS clause, for a fixture built from another.
+pub(crate) fn with_clause(formula: CnfFormula, dimacs: &[i32]) -> CnfFormula {
     let num_vars = formula.num_vars();
     let mut clauses = formula.into_clauses();
-    clauses.push(clause);
+    clauses.push(clause(dimacs));
     self::formula(num_vars, clauses)
 }
 
