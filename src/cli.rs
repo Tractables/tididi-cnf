@@ -149,16 +149,7 @@ Options:
                        `ulimit -v` does; the memory-adaptive stages read it back.
                        It only lowers the limit, and 0 leaves it unchanged.
                        Default: {DEFAULT_MEM_LIMIT_MB}.
-"
-    );
-    append_usage_footer(&mut text);
-    append_vtree_specs(&mut text);
-    text
-}
-
-fn append_usage_footer(text: &mut String) {
-    text.push_str(
-        "  -h, --help           Print this text and exit
+  -h, --help           Print this text and exit
   -V, --version        Print the version and exit
 
 Exit status: 0 with an answer; 1 without one (the run gave up), or for an input
@@ -166,11 +157,8 @@ it cannot read, a vtree spec it cannot use or an output it cannot write; 2 for a
 usage error, a refused instance or environment setting, or a failed stage.
 
 Vtree specs:
-",
+"
     );
-}
-
-fn append_vtree_specs(text: &mut String) {
     for base in vitri::spec::vtree_spec_bases() {
         let params = vitri::spec::spec_param_docs(&base);
         if params.is_empty() {
@@ -184,6 +172,7 @@ fn append_vtree_specs(text: &mut String) {
             text.push_str(&format!("  {base}[:{keys}]\n"));
         }
     }
+    text
 }
 
 fn usage_error(prog: &str, what: impl std::fmt::Display) -> Error {
@@ -218,25 +207,6 @@ fn next_u64(prog: &str, flag: &str, args: &mut std::env::ArgsOs, unit: &str) -> 
     val.parse().map_err(|_| usage_error(prog, format!("{flag} {val:?} is not a whole number of {unit}")))
 }
 
-fn record_input_path(prog: &str, slot: &mut Option<PathBuf>, arg: std::ffi::OsString) -> Result<(), Error> {
-    if let Some(first) = slot {
-        return Err(usage_error(
-            prog,
-            format!("a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."),
-        ));
-    }
-    *slot = Some(arg.into());
-    Ok(())
-}
-
-fn record_flag_seen(prog: &str, given: &mut Vec<String>, flag: &str) -> Result<(), Error> {
-    if given.iter().any(|seen| seen == flag) {
-        return Err(usage_error(prog, format!("{flag} is given twice; a run takes one value for each flag.")));
-    }
-    given.push(flag.to_owned());
-    Ok(())
-}
-
 fn parse_args() -> Result<Request, Error> {
     let mut args = std::env::args_os();
     let prog = args.next().map_or_else(|| "tididi".to_owned(), |prog| prog.to_string_lossy().into_owned());
@@ -256,12 +226,21 @@ fn parse_args() -> Result<Request, Error> {
         // Anything that is not a flag is the input, a file or a bundle's
         // directory, taken as the system gave it: a path need not be text.
         if !arg.as_encoded_bytes().starts_with(b"-") {
-            record_input_path(&prog, &mut dimacs_path, arg)?;
+            if let Some(first) = &dimacs_path {
+                return Err(usage_error(
+                    &prog,
+                    format!("a second input {arg:?} after {first:?}; tididi reads one DIMACS file or vitri bundle."),
+                ));
+            }
+            dimacs_path = Some(arg.into());
             continue;
         }
         let flag = arg.to_string_lossy();
-        record_flag_seen(&prog, &mut given, &flag)?;
-        match flag.as_ref() {
+        if given.iter().any(|seen| seen == &flag) {
+            return Err(usage_error(&prog, format!("{flag} is given twice; a run takes one value for each flag.")));
+        }
+        given.push(flag.into_owned());
+        match given.last().expect("just pushed").as_str() {
             "--vtree" => vtree_spec = Some(next_text(&prog, "--vtree", &mut args)?),
             "--save-tdd" => save_tdd_path = Some(next_value(&prog, "--save-tdd", &mut args)?.into()),
             "--stats" => stats_path = Some(next_value(&prog, "--stats", &mut args)?.into()),

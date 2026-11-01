@@ -179,8 +179,18 @@ pub(crate) fn compile_component(
         marginalize_schedule: marginalize_schedule.as_deref(),
     };
 
-    if let ControlFlow::Break(out) = run_leaf_steps(eng, vtree, &ctx, &mut state, &current_vtree) {
-        return out;
+    // Leaf levels: accumulate clauses local to each leaf (never has children).
+    // Each step first tests the deadline; the deadline or an apply error aborts
+    // the pass, and the caller decides what runs next.
+    for (t, _var) in vtree.leaf_bottomup() {
+        let step = if deadline_passed(job.deadline) {
+            Err(OperationError::Stopped)
+        } else {
+            fold_step(eng, t, &ctx, &mut state, &current_vtree, None)
+        };
+        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t, job) {
+            return out;
+        }
     }
 
     // Internal levels: conjoin child TDDs, then accumulate any clauses scoped
@@ -189,90 +199,37 @@ pub(crate) fn compile_component(
     // already-consumed `subtree(t)`.
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
     for (k, &t) in topo.iter().enumerate() {
-        if let ControlFlow::Break(out) =
-            run_walled_internal_step(eng, vtree, t, (k, topo.len()), &ctx, &mut state, &mut current_vtree)
-        {
-            return out;
+        let walled = job.run.stall_watch.and_then(|watch| watch.start_step(eng, t, k, topo.len(), job.deadline));
+        let stopped = |give_up: GiveUp| {
+            if let (GiveUp::Stopped, Some(step)) = (&give_up, &walled) {
+                step.note_stop();
+            }
+            give_up
+        };
+        let walled_ctx = walled.as_ref().map(|step| StepContext {
+            job: CompileJob { deadline: Some(step.deadline), ..job },
+            ..ctx
+        });
+        let step_ctx = walled_ctx.as_ref().unwrap_or(&ctx);
+        let step = if deadline_passed(step_ctx.job.deadline) {
+            Err(OperationError::Stopped)
+        } else {
+            run_internal_step(eng, t, step_ctx, &mut state, &current_vtree)
+        };
+        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t, step_ctx.job) {
+            return out.map_err(stopped);
+        }
+        if let Err(e) = marginalize_and_rotate(eng, t, step_ctx, &mut state, &mut current_vtree) {
+            return Err(stopped(GiveUp::from_operation(eng, e)));
         }
     }
 
-    Ok(finish_component_pass(vtree, state, job, eng))
-}
-
-/// Leaf levels: accumulate clauses local to each leaf (never has children).
-/// Each step first tests the deadline; the deadline or an apply error aborts
-/// the pass, and the caller decides what runs next.
-fn run_leaf_steps(
-    eng: &Engine,
-    vtree: &Arc<Vtree>,
-    ctx: &StepContext<'_>,
-    state: &mut PassState,
-    current_vtree: &Arc<Vtree>,
-) -> ControlFlow<Result<Compiled, GiveUp>> {
-    for (t, _var) in vtree.leaf_bottomup() {
-        let step = if deadline_passed(ctx.job.deadline) {
-            Err(OperationError::Stopped)
-        } else {
-            fold_step(eng, t, ctx, state, current_vtree, None)
-        };
-        check_step(eng, vtree, step, state, t, ctx.job)?;
-    }
-    ControlFlow::Continue(())
-}
-
-/// Absorb the completed pass's SAT-pruning stats into the run and extract the
-/// root diagram (or `1` when no clauses were scoped to the component).
-fn finish_component_pass(
-    vtree: &Arc<Vtree>,
-    mut state: PassState,
-    job: CompileJob<'_>,
-    eng: &Engine,
-) -> Compiled {
     if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
         job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
-    Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size }
-}
-
-/// Run internal step `t` under any active [`super::StallWatch`] per-step
-/// deadline, check its outcome, and apply its scheduled marginalization and
-/// rotation.
-fn run_walled_internal_step(
-    eng: &Engine,
-    vtree: &Arc<Vtree>,
-    t: VtreeIdx,
-    (k, total): (usize, usize),
-    ctx: &StepContext<'_>,
-    state: &mut PassState,
-    current_vtree: &mut Arc<Vtree>,
-) -> ControlFlow<Result<Compiled, GiveUp>> {
-    let walled =
-        ctx.job.run.stall_watch.and_then(|watch| watch.start_step(eng, t, k, total, ctx.job.deadline));
-    let stopped = |give_up: GiveUp| {
-        if let (GiveUp::Stopped, Some(step)) = (&give_up, &walled) {
-            step.note_stop();
-        }
-        give_up
-    };
-    let walled_ctx = walled.as_ref().map(|step| StepContext {
-        job: CompileJob { deadline: Some(step.deadline), ..ctx.job },
-        ..*ctx
-    });
-    let ctx = walled_ctx.as_ref().unwrap_or(ctx);
-    let step = if deadline_passed(ctx.job.deadline) {
-        Err(OperationError::Stopped)
-    } else {
-        run_internal_step(eng, t, ctx, state, current_vtree)
-    };
-    if let ControlFlow::Break(out) = check_step(eng, vtree, step, state, t, ctx.job) {
-        return ControlFlow::Break(out.map_err(stopped));
-    }
-    if let Err(e) = marginalize_and_rotate(eng, t, ctx, state, current_vtree) {
-        return ControlFlow::Break(Err(stopped(GiveUp::from_operation(eng, e))));
-    }
-    ControlFlow::Continue(())
+    Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the

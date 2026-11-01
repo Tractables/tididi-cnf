@@ -290,7 +290,14 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
 
     let t_compile = Instant::now();
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
-    let first_try_deadline = first_try_deadline(run.config.time_limit_ms, t_compile, program_deadline);
+    // First-try deadline for reactive recovery: `min(0.2 × wall, 2 s)` from
+    // `t_compile`, capped at `program_deadline`. The compile arms it on the
+    // engine and checks it between steps so a stalled compile yields to
+    // conditioning.
+    let first_try_deadline = run.config.time_limit_ms.map(|ms| {
+        let frac_ms = (ms as f64 * 0.2) as u64;
+        crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)
+    });
     let compile = |deadline| {
         projected_compile(
             run,
@@ -303,61 +310,31 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     };
     let pmc = match run_isolated("[pmc] compile", || compile(first_try_deadline)) {
         Some(pmc) => pmc,
-        None => match recover_pmc_compile(run, problem, work, compile) {
-            std::ops::ControlFlow::Break(step) => return step,
-            std::ops::ControlFlow::Continue(pmc) => pmc,
-        },
+        None => {
+            // Reclaim the failed compile's retained extents so recovery
+            // starts from a clean allocator.
+            let _ = crate::mem::purge_all_arenas();
+            eprintln!("[pmc] compile: gave up (memory or deadline) — condition next");
+            // Show vars are counted, so Σ_X ∃_Y F = Σ over show-cutset
+            // assignments a of (Σ_X ∃_Y F | a). The branches account for the
+            // projection and the free show vars: this is the final count.
+            if let Some(pmc) = problem.show.as_ref().and_then(|show| condition_on_show(run, work, show)) {
+                return Step::Answer(pmc);
+            }
+            eprintln!("[pmc] condition: gave up — one last compile on the time left");
+            // On the run's wall: this is the last thing the instance does, and
+            // with no wall its applies would poll nothing and run until the
+            // external timeout kills the process.
+            let Some(pmc) = compile(run.deadline) else {
+                eprintln!("[pmc] no answer: the last compile gave up");
+                return Step::Decline;
+            };
+            pmc
+        }
     };
     let compile_ms = clock.compile_ms(0);
     trace.print_compile("[pmc]", work, vtree_ms, compile_ms, forget_set.len(), problem.show_len());
     Step::Answer(pmc)
-}
-
-/// Recover after the first projected compile attempt gave up: reclaim retained
-/// extents, try conditioning on the show cutset, and fall back to one last
-/// compile on the remaining wall.
-fn recover_pmc_compile<F>(
-    run: &Run<'_>,
-    problem: &Problem<Unweighted>,
-    work: &CnfFormula,
-    compile: F,
-) -> std::ops::ControlFlow<Step<Unweighted>, num_bigint::BigUint>
-where
-    F: FnOnce(Option<Instant>) -> Option<num_bigint::BigUint>,
-{
-    // Reclaim the failed compile's retained extents so recovery
-    // starts from a clean allocator.
-    let _ = crate::mem::purge_all_arenas();
-    eprintln!("[pmc] compile: gave up (memory or deadline) — condition next");
-    // Show vars are counted, so Σ_X ∃_Y F = Σ over show-cutset
-    // assignments a of (Σ_X ∃_Y F | a). The branches account for the
-    // projection and the free show vars: this is the final count.
-    if let Some(pmc) = problem.show.as_ref().and_then(|show| condition_on_show(run, work, show)) {
-        return std::ops::ControlFlow::Break(Step::Answer(pmc));
-    }
-    eprintln!("[pmc] condition: gave up — one last compile on the time left");
-    // On the run's wall: this is the last thing the instance does, and
-    // with no wall its applies would poll nothing and run until the
-    // external timeout kills the process.
-    let Some(pmc) = compile(run.deadline) else {
-        eprintln!("[pmc] no answer: the last compile gave up");
-        return std::ops::ControlFlow::Break(Step::Decline);
-    };
-    std::ops::ControlFlow::Continue(pmc)
-}
-
-/// First-try deadline for reactive recovery: `min(0.2 × wall, 2 s)` from
-/// `t_compile`, capped at `program_deadline`. The compile arms it on the engine
-/// and checks it between steps so a stalled compile yields to conditioning.
-fn first_try_deadline(
-    time_limit_ms: Option<u64>,
-    t_compile: Instant,
-    program_deadline: Option<Instant>,
-) -> Option<Instant> {
-    time_limit_ms.map(|ms| {
-        let frac_ms = (ms as f64 * 0.2) as u64;
-        crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)
-    })
 }
 
 /// The projected count of a vitri bundle, `outcome` as its record describes

@@ -96,7 +96,7 @@ fn run_mc_cascade(
     attempt: crate::frontend::McFrontendAttempt,
     session: &vitri::bundle::FrontendSession<'_>,
 ) -> Option<McOutcome> {
-    let bundle = attempt.preprocessed;
+    let mut bundle = attempt.preprocessed;
     let simplify_pow2 = bundle.count_lift.simplify_pow2;
     let preprocessing = bundle.telemetry;
     let reduction = reduction(bundle.stages.arjun.as_ref());
@@ -104,10 +104,39 @@ fn run_mc_cascade(
     // fully resolved one the lift alone.
     let primary_vtree = match attempt.vtree {
         crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
-        _ => return Some(preprocessed_mc_outcome(&bundle, reduction, preprocessing)),
+        _ => {
+            let count = if bundle.record.unsat {
+                num_bigint::BigUint::from(0u32)
+            } else {
+                num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
+            };
+            return Some(McOutcome {
+                count,
+                peak_pairs: 0,
+                cascade_ms: None,
+                answered_by: AnsweredBy::Preprocessing,
+                reduction,
+                preprocessing,
+            });
+        }
     };
     let recovered = if matches!(bundle.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) {
-        run_arjun_mc_cascade(run, compile_formula, bundle, primary_vtree, session, no_sbva_retry_armed, stall_rule)
+        let arjun_input = bundle.arjun_input.take().unwrap_or_else(|| compile_formula.clone());
+        eprintln!(
+            "[mc] arjun: reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
+            bundle.telemetry.arjun_ms.unwrap_or(0) as u128,
+            arjun_input.num_vars(),
+            arjun_input.clauses().len(),
+            bundle.reduced.num_vars(),
+            bundle.reduced.clauses().len(),
+            bundle.count_lift.arjun_pow2,
+        );
+        let no_sbva_retry = (no_sbva_retry_armed
+            && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
+        .then_some(session);
+        let ar = crate::frontend::record::arjun_reduction(bundle)
+            .expect("a kept plain-MC Arjun result carries its support");
+        count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
     } else {
         count_without_reduction(
             run,
@@ -130,53 +159,6 @@ fn run_mc_cascade(
         reduction,
         preprocessing,
     })
-}
-
-fn run_arjun_mc_cascade(
-    run: &Run<'_>,
-    compile_formula: &CnfFormula,
-    mut bundle: vitri::bundle::PreprocessBundle,
-    primary_vtree: crate::vtree::VtreeBuild,
-    session: &vitri::bundle::FrontendSession<'_>,
-    no_sbva_retry_armed: bool,
-    stall_rule: Option<StallRule>,
-) -> Option<Recovered> {
-    let arjun_input = bundle.arjun_input.take().unwrap_or_else(|| compile_formula.clone());
-    eprintln!(
-        "[mc] arjun: reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{}",
-        bundle.telemetry.arjun_ms.unwrap_or(0) as u128,
-        arjun_input.num_vars(),
-        arjun_input.clauses().len(),
-        bundle.reduced.num_vars(),
-        bundle.reduced.clauses().len(),
-        bundle.count_lift.arjun_pow2,
-    );
-    let no_sbva_retry = (no_sbva_retry_armed
-        && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
-    .then_some(session);
-    let ar = crate::frontend::record::arjun_reduction(bundle)
-        .expect("a kept plain-MC Arjun result carries its support");
-    count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
-}
-
-fn preprocessed_mc_outcome(
-    bundle: &vitri::bundle::PreprocessBundle,
-    reduction: Option<crate::output::Reduction>,
-    preprocessing: vitri::bundle::PreprocessTelemetry,
-) -> McOutcome {
-    let count = if bundle.record.unsat {
-        num_bigint::BigUint::from(0u32)
-    } else {
-        num_bigint::BigUint::from(1u32) << bundle.count_lift.total_pow2()
-    };
-    McOutcome {
-        count,
-        peak_pairs: 0,
-        cascade_ms: None,
-        answered_by: AnsweredBy::Preprocessing,
-        reduction,
-        preprocessing,
-    }
 }
 
 /// No kept reduction: say why, then compile the simplified formula on the

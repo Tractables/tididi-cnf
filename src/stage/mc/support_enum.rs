@@ -212,27 +212,6 @@ fn log_probe_decision(
     );
 }
 
-/// Weigh the entry estimate against what the probe tallied and either grant
-/// the remaining stage wall or bail. Fires at most once (`*committed`).
-fn grant_after_probe(
-    est: &PathEstimate,
-    stage_deadline: Instant,
-    committed: &mut bool,
-    models: u64,
-    elapsed: std::time::Duration,
-) -> Option<crate::enumeration::WallGrant> {
-    if std::mem::replace(committed, true) {
-        return None;
-    }
-    let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
-    let verdict = commit_decision(est, available_ms, models);
-    log_probe_decision(models, elapsed, est, available_ms, &verdict);
-    verdict.ok().map(|ms| crate::enumeration::WallGrant {
-        extra: std::time::Duration::from_millis(ms),
-        abort_at_models: TALLY_CEILING,
-    })
-}
-
 /// Run the enumeration: estimate, probe, commit. Returns the model count of
 /// `reduced`, in its own space, or `None` when the stage bailed.
 ///
@@ -249,7 +228,7 @@ fn run_support_enum(
     probe_wall_ms: u64,
     enum_wall_ms: u64,
 ) -> Option<num_bigint::BigUint> {
-    use crate::enumeration::{AllsatCtl, Models};
+    use crate::enumeration::{AllsatCtl, AllsatStop, Models, WallGrant};
     use tididi::vtree::VarId;
     use std::time::Duration;
 
@@ -266,7 +245,16 @@ fn run_support_enum(
     let stage_deadline = Instant::now() + Duration::from_millis(enum_wall_ms);
     let mut committed = false;
     let mut at_wall = |models: u64, elapsed: Duration| {
-        grant_after_probe(&est, stage_deadline, &mut committed, models, elapsed)
+        if std::mem::replace(&mut committed, true) {
+            return None;
+        }
+        let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
+        let verdict = commit_decision(&est, available_ms, models);
+        log_probe_decision(models, elapsed, &est, available_ms, &verdict);
+        verdict.ok().map(|ms| WallGrant {
+            extra: Duration::from_millis(ms),
+            abort_at_models: TALLY_CEILING,
+        })
     };
     let mut ctl = AllsatCtl {
         at_wall: Some(&mut at_wall),
@@ -292,26 +280,20 @@ fn run_support_enum(
             Some(count)
         }
         None => {
-            log_support_enum_stop(&ctl);
+            let reason = match ctl.bust {
+                Some(AllsatStop::TallyCeiling) => format!(
+                    "{} (tally > {TALLY_CEILING}, the count the entry gate admits)",
+                    ctl.stop_reason()
+                ),
+                _ => ctl.stop_reason().to_string(),
+            };
+            eprintln!(
+                "[mc] support-enumeration: enumeration stopped: {reason} ({} models tallied)",
+                ctl.models,
+            );
             None
         }
     }
-}
-
-fn log_support_enum_stop(ctl: &crate::enumeration::AllsatCtl<'_>) {
-    use crate::enumeration::AllsatStop;
-
-    let reason = match ctl.bust {
-        Some(AllsatStop::TallyCeiling) => format!(
-            "{} (tally > {TALLY_CEILING}, the count the entry gate admits)",
-            ctl.stop_reason()
-        ),
-        _ => ctl.stop_reason().to_string(),
-    };
-    eprintln!(
-        "[mc] support-enumeration: enumeration stopped: {reason} ({} models tallied)",
-        ctl.models,
-    );
 }
 
 /// The stage body, shared by both fallback sites (behind the primary compile

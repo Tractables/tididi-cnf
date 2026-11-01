@@ -99,9 +99,28 @@ impl Settings {
         // A bundle brings the formula vitri preprocessed and the vtree vitri
         // built for it, so the run neither preprocesses nor builds a vtree.
         if bundle {
-            self.refuse_bundle_flags()?;
+            if self.vtree.is_some() {
+                return Err(crate::Error::Usage(
+                    "--vtree applies to a DIMACS file, but the input is a vitri bundle, which \
+                     brings its own vtree. Drop --vtree, or give the original formula to compile \
+                     on that construction."
+                        .to_owned(),
+                ));
+            }
+            if self.preprocess.is_some() {
+                return Err(crate::Error::Usage(
+                    "--preprocess applies to a DIMACS file, but the input is a vitri bundle, whose \
+                     formula vitri has already preprocessed. Drop --preprocess."
+                        .to_owned(),
+                ));
+            }
         }
-        let cause = || mode_cause(flag, meta, bundle);
+        let cause = || match (flag, Mode::declared(meta)) {
+            (Some(flag), _) => format!("--mode {flag}"),
+            _ if bundle => "the bundle's preprocess.json".to_owned(),
+            (None, Some((_, lines))) => lines,
+            (None, None) => "the default".to_owned(),
+        };
         // Only a compile builds the circuit over every original variable
         // whose count is the one reported.
         if self.save_tdd && mode != Mode::Compile {
@@ -146,34 +165,6 @@ impl Settings {
             )));
         }
         Ok(())
-    }
-
-    fn refuse_bundle_flags(&self) -> Result<(), crate::Error> {
-        if self.vtree.is_some() {
-            return Err(crate::Error::Usage(
-                "--vtree applies to a DIMACS file, but the input is a vitri bundle, which \
-                 brings its own vtree. Drop --vtree, or give the original formula to compile \
-                 on that construction."
-                    .to_owned(),
-            ));
-        }
-        if self.preprocess.is_some() {
-            return Err(crate::Error::Usage(
-                "--preprocess applies to a DIMACS file, but the input is a vitri bundle, whose \
-                 formula vitri has already preprocessed. Drop --preprocess."
-                    .to_owned(),
-            ));
-        }
-        Ok(())
-    }
-}
-
-fn mode_cause(flag: Option<Mode>, meta: &vitri::cnf::CnfMeta, bundle: bool) -> String {
-    match (flag, Mode::declared(meta)) {
-        (Some(flag), _) => format!("--mode {flag}"),
-        _ if bundle => "the bundle's preprocess.json".to_owned(),
-        (None, Some((_, lines))) => lines,
-        (None, None) => "the default".to_owned(),
     }
 }
 

@@ -87,7 +87,29 @@ fn parse_input(
         .time_limit_ms
         .map(|ms| program_start + std::time::Duration::from_millis(ms));
 
-    let (formula, meta, bundle) = load_input(input)?;
+    let (formula, meta, bundle) = match input {
+        Input::File(path) if path.is_dir() => {
+            let bundle::Bundle { reduced, meta, record, vtree } = bundle::read_bundle(&path)?;
+            (reduced, meta, Some((record, vtree)))
+        }
+        Input::File(path) => {
+            let (formula, meta) = read_dimacs(&path)?;
+            (formula, meta, None)
+        }
+        Input::Formula(formula, meta) => {
+            // A caller can pair a formula with metadata built for another
+            // variable space. Rebuild through vitri's range gate before any
+            // stage reads the show set or resolves the weights.
+            let meta = vitri::cnf::CnfMeta::from_parts(
+                formula.num_vars(),
+                meta.declared_track(),
+                meta.declared_show_vars().cloned(),
+                meta.declared_weights().cloned(),
+            )
+            .map_err(|error| Error::Input(error.to_string()))?;
+            (formula, meta, None)
+        }
+    };
 
     // `--mode` and the instance header (`c t`, `c p show`), or a bundle's
     // record, decide the mode; this is the one place it is decided.
@@ -110,34 +132,6 @@ fn parse_input(
     let (record, input_vtree) = bundle.unzip();
     let config = Config::new(limits, settings, vitri, mode, input_vtree);
     Ok(Parsed { formula, meta, record, config, program_deadline })
-}
-
-type LoadedBundle = (vitri::bundle::PreprocessRecord, crate::frontend::FrontendVtree);
-
-fn load_input(input: Input) -> Result<(CnfFormula, vitri::cnf::CnfMeta, Option<LoadedBundle>), Error> {
-    match input {
-        Input::File(path) if path.is_dir() => {
-            let bundle::Bundle { reduced, meta, record, vtree } = bundle::read_bundle(&path)?;
-            Ok((reduced, meta, Some((record, vtree))))
-        }
-        Input::File(path) => {
-            let (formula, meta) = read_dimacs(&path)?;
-            Ok((formula, meta, None))
-        }
-        Input::Formula(formula, meta) => {
-            // A caller can pair a formula with metadata built for another
-            // variable space. Rebuild through vitri's range gate before any
-            // stage reads the show set or resolves the weights.
-            let meta = vitri::cnf::CnfMeta::from_parts(
-                formula.num_vars(),
-                meta.declared_track(),
-                meta.declared_show_vars().cloned(),
-                meta.declared_weights().cloned(),
-            )
-            .map_err(|error| Error::Input(error.to_string()))?;
-            Ok((formula, meta, None))
-        }
-    }
 }
 
 /// The ordinary non-counting route: vitri's `compile` preprocessing, the
@@ -341,7 +335,16 @@ fn solve_on(
     settings: &Settings,
     vitri: vitri::RunConfig,
 ) -> Result<Answer, Failure> {
-    let _mem_pressure = install_memory_hooks(eng);
+    // Install the jemalloc-backed memory probes for the duration of the run so
+    // every compile sees real address-space pressure.
+    let _mem_pressure = eng.limits().edit(|s| {
+        s.with_memory_hooks(tididi::limits::MemoryHooks::new(
+            crate::mem::preflight_alloc_decay_check,
+            crate::mem::mapped_bytes,
+            crate::mem::rlimit_as_bytes,
+            || crate::mem::preflight_alloc_decay_check(0),
+        ))
+    });
 
     // Start the clock, read the instance, resolve the mode.
     let Parsed { formula, meta, record, mut config, program_deadline } =
@@ -382,19 +385,6 @@ fn solve_on(
         }
         Err(error) => Err(Failure { error, stats: Some(Box::new(stats)) }),
     }
-}
-
-/// Install the jemalloc-backed memory probes on `eng` for the duration of the
-/// returned guard so every compile sees real address-space pressure.
-fn install_memory_hooks(eng: &Engine) -> tididi::limits::LimitScope<'_> {
-    eng.limits().edit(|s| {
-        s.with_memory_hooks(tididi::limits::MemoryHooks::new(
-            crate::mem::preflight_alloc_decay_check,
-            crate::mem::mapped_bytes,
-            crate::mem::rlimit_as_bytes,
-            || crate::mem::preflight_alloc_decay_check(0),
-        ))
-    })
 }
 
 fn dispatch_mode(

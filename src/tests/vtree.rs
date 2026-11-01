@@ -47,7 +47,23 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
     );
     let output = context.run(|engine| {
         let _hooks = engine.limits().edit(|config| config.with_memory_hooks(hooks));
-        let built = sample_two_component_build().bind(engine);
+        let built = VtreeBuild {
+            root: Arc::new(Vtree::balanced(6)),
+            components: Some(vec![
+                ComponentVtree {
+                    vtree: Arc::new(Vtree::balanced(2)),
+                    component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+                },
+                ComponentVtree {
+                    vtree: Arc::new(Vtree::balanced(4)),
+                    component: Component {
+                        clause_indices: vec![1],
+                        local_to_global: vec![VarId(3), VarId(4), VarId(5), VarId(6)],
+                    },
+                },
+            ]),
+        }
+        .bind(engine);
         assert!(Arc::ptr_eq(built.root.context(), &context));
         for component in built.components.as_ref().unwrap() {
             assert!(Arc::ptr_eq(component.vtree.context(), &context));
@@ -77,25 +93,6 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
         engine.clause(&tree, [1, 2]).unwrap();
     });
     assert_eq!(allocations.load(Ordering::Relaxed), before);
-}
-
-fn sample_two_component_build() -> VtreeBuild {
-    VtreeBuild {
-        root: Arc::new(Vtree::balanced(6)),
-        components: Some(vec![
-            ComponentVtree {
-                vtree: Arc::new(Vtree::balanced(2)),
-                component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
-            },
-            ComponentVtree {
-                vtree: Arc::new(Vtree::balanced(4)),
-                component: Component {
-                    clause_indices: vec![1],
-                    local_to_global: vec![VarId(3), VarId(4), VarId(5), VarId(6)],
-                },
-            },
-        ]),
-    }
 }
 
 /// vitri's linear vtree arrives as the library's linear vtree over the same
