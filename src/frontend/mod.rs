@@ -94,8 +94,9 @@ pub(crate) fn wmc_frontend(
         Some(weights.clone()),
     )?;
     let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
+    let selection = run_selection(parent)?;
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
-        vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
+        parent.vtree_time.count(|| vitri::bundle::run(formula, &meta, &config, &selection))?;
     let PreprocessBundle { reduced, record, stages, telemetry, .. } = preprocessed;
     let outcome = outcome::<Weighted>(reduced, &record)?;
     let vtree = match frontend_vtree(vtree, &parent.vtree_time) {
@@ -126,8 +127,9 @@ pub(crate) fn compile_frontend(
 ) -> Result<CompileFrontendAttempt, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
     let config = frontend_config(parent, vitri::cnf::Mode::Compile, deadline, true);
+    let selection = run_selection(parent)?;
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
-        vitri::bundle::run(formula, &meta, &config, &run_selection(parent)?)?;
+        parent.vtree_time.count(|| vitri::bundle::run(formula, &meta, &config, &selection))?;
     let PreprocessBundle { reduced, record, telemetry, .. } = preprocessed;
     let expansion = original_expansion(&record, reduced.num_vars());
     Ok(CompileFrontendAttempt {
@@ -174,8 +176,9 @@ pub(crate) fn with_mc_frontend<R>(
 ) -> Result<R, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
     let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
-    let mut session = vitri::bundle::frontend(formula, &meta, &config, &run_selection(parent)?)?;
-    let run = session.prepare()?;
+    let selection = run_selection(parent)?;
+    let mut session = vitri::bundle::frontend(formula, &meta, &config, &selection)?;
+    let run = parent.vtree_time.count(|| session.prepare())?;
     let attempt = mc_frontend_attempt(run, &parent.vtree_time);
     Ok(continuation(attempt, &session))
 }

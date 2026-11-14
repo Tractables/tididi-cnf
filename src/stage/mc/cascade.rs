@@ -124,7 +124,7 @@ fn retry_frontend_session(
 ) -> Option<std::ops::ControlFlow<Counted, (vitri::bundle::PreprocessBundle, crate::vtree::VtreeBuild)>> {
     let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(window / 2);
     let budget = vitri::bundle::RetryBudget::new(stage_deadline, arjun_budget).ok()?;
-    let retried = match session.retry(budget, retry) {
+    let retried = match run.config.vtree_time.count(|| session.retry(budget, retry)) {
         Ok(Some(retried)) => retried,
         Ok(None) => {
             eprintln!("{}: {} — {}", log.tag, log.declined, log.next);

@@ -95,27 +95,47 @@ pub(crate) fn vtree_deadline(program_deadline: Option<Instant>) -> Option<Instan
     Some(not_past(now + budget, program_deadline))
 }
 
-/// The time a run spends building vtrees: the record's `vtree_ms`.
+/// The time a run spends building vtrees, the record's `vtree_ms`, and the
+/// instructions it spends in the vitri calls that build them, the record's
+/// `vtree_instructions`.
 ///
 /// The run's `Config` holds one, so every stage reaches it. A stage that
-/// builds a vtree times the build with [`VtreeTime::time`], and a frontend,
-/// which interleaves preprocessing and construction in one vitri call, adds
-/// the construction time vitri reports with [`VtreeTime::add`].
+/// builds a vtree times the build with [`VtreeTime::time`]. A frontend, which
+/// interleaves preprocessing and construction in one vitri call, counts the
+/// call with [`VtreeTime::count`] and adds the construction time vitri
+/// reports with [`VtreeTime::add`]; its preprocessing is in the count.
 #[derive(Debug, Default)]
-pub(crate) struct VtreeTime(std::cell::Cell<Option<Duration>>);
+pub(crate) struct VtreeTime {
+    spent: std::cell::Cell<Option<Duration>>,
+    instructions: InstructionTally,
+}
 
 impl VtreeTime {
-    /// Run the construction `build` and add its wall-clock time.
+    /// Run the construction `build`, adding its wall-clock time and counting
+    /// its instructions.
     pub(crate) fn time<T>(&self, build: impl FnOnce() -> T) -> T {
         let started = Instant::now();
-        let built = build();
+        let built = self.count(build);
         self.add(started.elapsed());
         built
     }
 
+    /// Run a vitri call that builds a vtree and reports its construction time
+    /// itself, counting its instructions.
+    pub(crate) fn count<T>(&self, call: impl FnOnce() -> T) -> T {
+        self.instructions.count(call)
+    }
+
     /// Add one construction that took `spent`.
     pub(crate) fn add(&self, spent: Duration) {
-        self.0.set(Some(self.0.get().unwrap_or_default() + spent));
+        self.spent.set(Some(self.spent.get().unwrap_or_default() + spent));
+    }
+
+    /// The user-mode instructions counted so far; `None` when nothing was
+    /// counted, or when the counter could not be opened or read for some
+    /// call (`Some` is never a partial sum).
+    pub(crate) fn instructions(&self) -> Option<u64> {
+        self.instructions.total()
     }
 
     /// The time spent so far, or `None` when nothing built a vtree.
@@ -124,7 +144,120 @@ impl VtreeTime {
     /// a 0 that would read like a timer that missed the work, so `Some(0)`
     /// carries "built, in under a millisecond".
     pub(crate) fn total(&self) -> Option<Duration> {
-        self.0.get()
+        self.spent.get()
+    }
+}
+
+/// A sum of user-mode instructions over calls, read from a Linux perf counter
+/// on this thread opened at the first call. Unlike the run's time, the count
+/// of a call does not depend on the machine's load, so a benchmark can take a
+/// time-budgeted phase out of a whole-process count.
+#[derive(Debug, Default)]
+struct InstructionTally {
+    counter: std::cell::OnceCell<Option<counter::Counter>>,
+    sum: std::cell::Cell<Option<u64>>,
+    lost: std::cell::Cell<bool>,
+}
+
+impl InstructionTally {
+    fn count<T>(&self, call: impl FnOnce() -> T) -> T {
+        let counter = self.counter.get_or_init(counter::Counter::open).as_ref();
+        let before = counter.and_then(counter::Counter::read);
+        let result = call();
+        match (before, counter.and_then(counter::Counter::read)) {
+            (Some(before), Some(after)) => {
+                self.sum.set(Some(self.sum.get().unwrap_or(0) + after.saturating_sub(before)));
+            }
+            _ => self.lost.set(true),
+        }
+        result
+    }
+
+    fn total(&self) -> Option<u64> {
+        if self.lost.get() { None } else { self.sum.get() }
+    }
+}
+
+#[cfg(all(target_os = "linux", target_endian = "little"))]
+mod counter {
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+
+    /// `struct perf_event_attr` up to `config2` (`PERF_ATTR_SIZE_VER1`); the
+    /// kernel takes the fields after it as zero. The bit-field word `flags`
+    /// is laid out low bit first, which holds on little-endian targets only.
+    #[repr(C)]
+    struct Attr {
+        kind: u32,
+        size: u32,
+        config: u64,
+        sample_period: u64,
+        sample_type: u64,
+        read_format: u64,
+        flags: u64,
+        wakeup_events: u32,
+        bp_type: u32,
+        config1: u64,
+        config2: u64,
+    }
+
+    const PERF_TYPE_HARDWARE: u32 = 0;
+    const PERF_COUNT_HW_INSTRUCTIONS: u64 = 1;
+    const READ_TIME_ENABLED_AND_RUNNING: u64 = 0b11;
+    const EXCLUDE_KERNEL_AND_HV: u64 = (1 << 5) | (1 << 6);
+
+    #[derive(Debug)]
+    pub(super) struct Counter(OwnedFd);
+
+    impl Counter {
+        /// `None` where the kernel refuses the counter (no PMU, a sandbox,
+        /// `perf_event_paranoid` above 2).
+        pub(super) fn open() -> Option<Counter> {
+            let attr = Attr {
+                kind: PERF_TYPE_HARDWARE,
+                size: std::mem::size_of::<Attr>() as u32,
+                config: PERF_COUNT_HW_INSTRUCTIONS,
+                sample_period: 0,
+                sample_type: 0,
+                read_format: READ_TIME_ENABLED_AND_RUNNING,
+                flags: EXCLUDE_KERNEL_AND_HV,
+                wakeup_events: 0,
+                bp_type: 0,
+                config1: 0,
+                config2: 0,
+            };
+            // SAFETY: `attr` is a valid `perf_event_attr` of the size it
+            // declares; pid 0 and cpu -1 count this thread on any CPU.
+            let fd = unsafe { libc::syscall(libc::SYS_perf_event_open, &attr as *const Attr, 0, -1, -1, 0) };
+            // SAFETY: a non-negative return is a new descriptor this owns.
+            (fd >= 0).then(|| Counter(unsafe { OwnedFd::from_raw_fd(fd as i32) }))
+        }
+
+        /// The count so far; `None` when the read fails or the counter was
+        /// off the PMU for part of its enabled time (multiplexed), since the
+        /// count is then an estimate.
+        pub(super) fn read(&self) -> Option<u64> {
+            let mut value = [0u64; 3];
+            // SAFETY: reads at most the 24 bytes `value` holds.
+            let n = unsafe { libc::read(self.0.as_raw_fd(), value.as_mut_ptr().cast(), 24) };
+            let [count, enabled, running] = value;
+            (n == 24 && enabled == running).then_some(count)
+        }
+    }
+}
+
+#[cfg(not(all(target_os = "linux", target_endian = "little")))]
+mod counter {
+    #[derive(Debug)]
+    pub(super) struct Counter;
+
+    impl Counter {
+        pub(super) fn open() -> Option<Counter> {
+            None
+        }
+
+        pub(super) fn read(&self) -> Option<u64> {
+            None
+        }
     }
 }
 

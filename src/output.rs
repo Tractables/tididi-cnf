@@ -203,6 +203,15 @@ pub struct Stats {
     /// Wall-clock time building vtrees, over the whole run, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_ms: Option<u64>,
+    /// User-mode instructions in the calls that build vtrees, over the whole
+    /// run, read from a Linux perf counter on the run's thread: the
+    /// portfolio's trial compiles included, and the preprocessing a vitri
+    /// frontend does in the same call. Unlike `vtree_ms` it does not move
+    /// with the machine's load, but the construction stops at a deadline, so
+    /// it does move with the time the construction got. Absent when nothing
+    /// built a vtree or the counter could not be opened or read.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vtree_instructions: Option<u64>,
     /// Wall-clock time compiling, in milliseconds, less every phase with its
     /// own key: preprocessing, Arjun and vtree construction.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -278,8 +287,8 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 /// Close the run's record once its mode has returned.
 ///
 /// The last facts land here rather than with the answer, because they are
-/// the run's and not any one stage's: how the run ended, the time its vtree
-/// constructions took (`vtree_time`), the tree its main compile last started
+/// the run's and not any one stage's: how the run ended, the time and
+/// instructions its vtree constructions took (`vtree`), the tree its main compile last started
 /// on (`started_on`), which names the run's `vtree_candidate` when no answer
 /// named one, and the SAT-pruning tallies of its compiles (`sat_prune`).
 /// Recording each in one place is also what keeps the record of a run that
@@ -287,7 +296,7 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
-    vtree_time: Option<std::time::Duration>,
+    vtree: &crate::budget::VtreeTime,
     started_on: Option<String>,
     sat_prune: Option<crate::compile::sat_prune::SatPruneStats>,
 ) {
@@ -303,7 +312,8 @@ pub(crate) fn close_record(
         stats.weighted_count_sign = None;
         stats.answered_by = None;
     }
-    stats.vtree_ms = vtree_time.map(|time| time.as_millis() as u64);
+    stats.vtree_ms = vtree.total().map(|time| time.as_millis() as u64);
+    stats.vtree_instructions = vtree.instructions();
     if stats.vtree_candidate.is_none() {
         stats.vtree_candidate = started_on;
     }

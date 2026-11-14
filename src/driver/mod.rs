@@ -375,7 +375,7 @@ fn solve_on(
     crate::output::close_record(
         &mut stats,
         &verdict,
-        config.vtree_time.total(),
+        &config.vtree_time,
         started_on.into_inner(),
         sat_prune.into_stats(),
     );

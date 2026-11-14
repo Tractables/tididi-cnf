@@ -8,7 +8,7 @@ fn an_expired_run_drops_a_late_answer_from_its_record() {
     let mut stats = super::open_record(&config, &formula);
     let answer = Projected { value: BigUint::from(4u32), show_vars: Some(1), compile_ms: 0 };
     super::record_pmc(&mut stats, answer);
-    super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), None, None, None);
+    super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), &Default::default(), None, None);
     assert!(stats.model_count.is_none());
     assert!(stats.satisfiable.is_none());
     assert_eq!(stats.show_vars, Some(1));
@@ -24,11 +24,11 @@ fn a_run_that_gives_up_names_the_tree_its_compile_started_on() {
     let formula = crate::test_support::formula(2, vec![]);
     let gave_up = || Err(crate::Error::Incomplete(String::new()));
     let mut stats = super::open_record(&config, &formula);
-    super::close_record(&mut stats, &gave_up(), None, Some("force".to_owned()), None);
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some("force".to_owned()), None);
     assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
     let mut stats = super::open_record(&config, &formula);
     stats.vtree_candidate = Some("goatd-primal".to_owned());
-    super::close_record(&mut stats, &gave_up(), None, Some("force".to_owned()), None);
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some("force".to_owned()), None);
     assert_eq!(stats.vtree_candidate.as_deref(), Some("goatd-primal"));
 }
 

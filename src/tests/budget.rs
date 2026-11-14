@@ -54,6 +54,20 @@ fn deadline_never_exceeds_the_program_deadline() {
     assert_eq!(vtree_deadline(Some(pd)), Some(pd));
 }
 
+/// A counted call adds no time, and where the kernel grants the perf counter
+/// its instructions are in the count; where it does not, the count is absent
+/// rather than zero.
+#[test]
+fn a_counted_call_adds_its_instructions_and_no_time() {
+    let time = VtreeTime::default();
+    assert_eq!(time.instructions(), None);
+    time.count(|| (0..1_000_000u64).fold(0, |acc, x| std::hint::black_box(acc ^ x)));
+    assert_eq!(time.total(), None);
+    if let Some(counted) = time.instructions() {
+        assert!(counted >= 1_000_000, "a million iterations counted as {counted} instructions");
+    }
+}
+
 /// A run's vtree time is absent until something is built, and then counts
 /// even a build too quick to reach a millisecond.
 #[test]
