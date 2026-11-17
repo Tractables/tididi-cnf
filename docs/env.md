@@ -79,7 +79,9 @@ refuses whenever they are set, and one it refuses where it would do nothing:
   formula itself, and no other mode can use the skip.
 - **`VITRI_IMPLICATES_MS`.** Every mode conjoins the clauses vitri finds over
   the tree its main compile runs on, each component's after the component's
-  own. They leave every count and the compiled function unchanged. The
+  own. They leave every count and the compiled function unchanged. `wmc`
+  looks for the simplified formula's clauses only when it compiles that
+  formula, after the Arjun-reduced formula gives no answer. The
   variable is refused in `mc` under `--vtree` and on a bundle, which brings
   its clauses in its own files. A tree built after a compile gives up gets no
   clauses, and neither do the trees of a projected count's conditioning

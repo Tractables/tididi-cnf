@@ -68,7 +68,7 @@ pub(crate) struct WmcFrontend {
     pub(crate) outcome: Outcome<Weighted>,
     /// The vtree built for the simplified formula; `None` when nothing is
     /// left to compile, because the record is UNSAT or fully resolved.
-    pub(crate) vtree: Option<VtreeBuild>,
+    pub(crate) vtree: Option<WmcVtree>,
     /// What each preprocessing stage did, and the wall it spent.
     pub(crate) report: Report,
 }
@@ -93,17 +93,43 @@ pub(crate) fn wmc_frontend(
         None,
         Some(weights.clone()),
     )?;
-    let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
+    let mut config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
+    // Only the fallback compiles on this tree, so the implied-clause pass
+    // waits for it ([`WmcVtree::for_fallback`]).
+    config.implicates_ms = None;
     let selection = run_selection(parent)?;
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
         parent.vtree_time.count(|| vitri::bundle::run(formula, &meta, &config, &selection))?;
     let PreprocessBundle { reduced, record, stages, telemetry, .. } = preprocessed;
     let outcome = outcome::<Weighted>(reduced, &record)?;
-    let vtree = match frontend_vtree(vtree, &parent.vtree_time) {
-        FrontendVtree::Built(built) => Some(built),
-        FrontendVtree::FullyResolved | FrontendVtree::Refuted => None,
+    let vtree = match charged(vtree, &parent.vtree_time) {
+        vitri::bundle::RunVtree::Built(built) => Some(WmcVtree(built)),
+        vitri::bundle::RunVtree::FullyResolved | vitri::bundle::RunVtree::Refuted => None,
     };
     Ok(WmcFrontend { outcome, vtree, report: Report { stages, telemetry } })
+}
+
+/// The WMC frontend's vtree for the simplified formula, built with no
+/// implied-clause pass.
+pub(crate) struct WmcVtree(vitri::component::VtreeBuild);
+
+impl WmcVtree {
+    /// The tree for the fallback compile of `formula`, the simplified formula
+    /// it was built for, with the clauses `formula` implies over it when the
+    /// run asks for vitri's pass. The pass stops at `deadline` and its time
+    /// counts as vtree time.
+    pub(crate) fn for_fallback(
+        self,
+        formula: &CnfFormula,
+        parent: &Config,
+        deadline: Option<std::time::Instant>,
+    ) -> VtreeBuild {
+        let Self(mut built) = self;
+        let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
+        built.implied_clauses =
+            parent.vtree_time.time(|| vitri::component::implied_clauses(formula, &built, &config));
+        vtree_build_from_vitri(built)
+    }
 }
 
 /// Simplify-only preprocessing for the streaming model count (an explicit
@@ -147,18 +173,24 @@ pub(crate) fn mc_frontend_attempt(run: vitri::bundle::VitriRun, vtree_time: &Vtr
     McFrontendAttempt { preprocessed: run.preprocessed, vtree: frontend_vtree(run.vtree, vtree_time) }
 }
 
-/// Every frontend's vtree crosses here, and the construction time vitri
-/// reports for it is added to the run's `vtree_time` here: the frontend's one
-/// call also preprocesses, so timing the call would count that too.
+/// A frontend's vtree in the compiler's type, its construction time charged
+/// ([`charged`]).
 fn frontend_vtree(vtree: vitri::bundle::RunVtree, vtree_time: &VtreeTime) -> FrontendVtree {
-    match vtree {
-        vitri::bundle::RunVtree::Built(built) => {
-            vtree_time.add(std::time::Duration::from_millis(built.construction_ms));
-            FrontendVtree::Built(vtree_build_from_vitri(built))
-        }
+    match charged(vtree, vtree_time) {
+        vitri::bundle::RunVtree::Built(built) => FrontendVtree::Built(vtree_build_from_vitri(built)),
         vitri::bundle::RunVtree::FullyResolved => FrontendVtree::FullyResolved,
         vitri::bundle::RunVtree::Refuted => FrontendVtree::Refuted,
     }
+}
+
+/// Every frontend's vtree crosses here, and the construction time vitri
+/// reports for it is added to the run's `vtree_time` here: the frontend's one
+/// call also preprocesses, so timing the call would count that too.
+fn charged(vtree: vitri::bundle::RunVtree, vtree_time: &VtreeTime) -> vitri::bundle::RunVtree {
+    if let vitri::bundle::RunVtree::Built(built) = &vtree {
+        vtree_time.add(std::time::Duration::from_millis(built.construction_ms));
+    }
+    vtree
 }
 
 /// Run vitri's whole plain-MC frontend while keeping its borrowing session

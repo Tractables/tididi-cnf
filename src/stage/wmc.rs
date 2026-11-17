@@ -112,7 +112,7 @@ pub(crate) fn run_wmc_count(
                     problem.formula.clauses().len()
                 ),
             );
-            (problem, vtree.bind(run.eng))
+            (problem, vtree)
         }
     };
     let t_compile = Instant::now();
@@ -132,11 +132,13 @@ pub(crate) fn run_wmc_count(
     });
 
     // The reduced attempt on its share of the time, then the simplified
-    // formula on all of it when the reduced attempt declined or gave up.
+    // formula on all of it when the reduced attempt declined or gave up. Only
+    // then are the simplified formula's implied clauses looked for.
     let simplified_clauses = simplified_problem.formula.clauses().len();
     let value = count_reduced(run, formula, &orig_table, simplified_clauses, primary_deadline).or_else(|| {
         eprintln!("[wmc] arjun: no answer; compiling the simplified formula on the reserved time");
-        compile_weighted(run, &simplified_problem, Some(simplified_vtree), program_deadline)
+        let vtree = simplified_vtree.for_fallback(&simplified_problem.formula, run.config, program_deadline);
+        compile_weighted(run, &simplified_problem, Some(vtree.bind(run.eng)), program_deadline)
     });
 
     // There is no other path behind the two attempts, so the run ends
