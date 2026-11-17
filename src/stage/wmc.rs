@@ -46,8 +46,7 @@ fn compile_weighted(
 ) -> Option<WeightedCount<WeightValue>> {
     let eng = run.eng;
     run_isolated("[wmc] compile", || {
-        // Only the model count's frontend asks vitri for implied clauses.
-        let VtreeBuild { root: vtree, components, implied: _ } = match prebuilt {
+        let built = match prebuilt {
             Some(built) => built,
             None => crate::vtree::built_or_give_up(run.config.vtree_time.time(|| {
                 crate::vtree::build_vtree_with_components(
@@ -55,16 +54,17 @@ fn compile_weighted(
                     super::PORTFOLIO_VTREE_SPEC,
                     &VtreeOptions::default()
                         .with_deadline(crate::budget::vtree_deadline(deadline))
-                        .with_run_policy(run.config),
+                        .with_run_policy(run.config)
+                        .with_implied_clauses(run.config),
                 )
             }))?
             .bind(eng),
         };
         crate::compile::weighted_count(
             eng,
-            &problem.formula,
-            &vtree,
-            crate::compile::ComponentPlan::from_components(components.as_deref()),
+            &built.conjoined(&problem.formula),
+            &built.root,
+            crate::compile::ComponentPlan::from_components(built.components.as_deref()),
             crate::convert::rational_weight_algebra(&problem.weights),
             ARITHMETIC,
             deadline,

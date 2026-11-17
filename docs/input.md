@@ -139,6 +139,5 @@ The run compiles `reduced.cnf` on `vtree.vtree`, one tree per component when
 `components.json` lists several, and preprocesses nothing. The mode is the one
 `preprocess.json` records, and the answer is the original formula's: the
 record's lift is applied to the count, and a compile's diagram is over the
-original variables. A model count conjoins each component's implied clauses,
-the file its `components.json` entry names, after the component's own; a
-bundle made for another mode that names such a file is refused.
+original variables. The compile conjoins each component's implied clauses,
+the file its `components.json` entry names, after the component's own.

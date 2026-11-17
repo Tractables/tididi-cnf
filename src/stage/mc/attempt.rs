@@ -74,10 +74,6 @@ pub(super) fn attempt_from_vitri_build(
         let component = Component { implied: built.implied, ..whole_formula_component(&formula) };
         vec![ComponentVtree { vtree: built.root, component }]
     });
-    let implied: usize = components.iter().map(|c| c.component.implied.len()).sum();
-    if implied > 0 {
-        eprintln!("[mc] implied clauses: {implied}");
-    }
     CompileAttempt { formula, components, lift_pow2 }
 }
 

@@ -139,11 +139,7 @@ fn pwmc_compile_evaluate(
     // projecting after the compile would materialize a diagram far wider than
     // the show-projected result needs.
     let vtree_started = Instant::now();
-    let CountVtree {
-        vtree,
-        component_vtrees,
-        projected: projected_in_vtree,
-    } = counting_vtree(run, work, show)?;
+    let CountVtree { built, projected: projected_in_vtree } = counting_vtree(run, work, show)?;
     let vtree_ms = vtree_started.elapsed().as_millis();
 
     // Panic-isolated: a compile OOM becomes `None`, scored unsolved, instead of
@@ -158,11 +154,17 @@ fn pwmc_compile_evaluate(
         } else {
             crate::compile::Output::Function
         };
-        let plan = crate::compile::ComponentPlan::from_components(component_vtrees.as_deref());
+        let plan = crate::compile::ComponentPlan::from_components(built.components.as_deref());
         let compile = crate::compile::CompileOptions { plan, output, ..crate::compile::CompileOptions::default() };
         let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
         // An apply-deadline cut returns `None` here: scored unsolved.
-        let compiled = crate::compile::settle(crate::compile::compile_with(eng, work, &vtree, compile, run.compile))?;
+        let compiled = crate::compile::settle(crate::compile::compile_with(
+            eng,
+            &built.conjoined(work),
+            &built.root,
+            compile,
+            run.compile,
+        ))?;
         let compile_ms = clock.compile_ms(0);
         let value = evaluate_weighted_diagram(eng, &compiled, weights)?;
         trace.print_compile("[pwmc]", work, vtree_ms, compile_ms, projected_in_vtree.len(), show.map_or(0, ShowSet::len));

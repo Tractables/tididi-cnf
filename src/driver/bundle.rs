@@ -56,7 +56,7 @@ pub(super) fn read_bundle(dir: &Path) -> Result<Bundle, Error> {
     } else if reduced.num_vars() == 0 {
         FrontendVtree::FullyResolved
     } else {
-        FrontendVtree::Built(read_vtree_build(dir, &reduced, record.mode)?)
+        FrontendVtree::Built(read_vtree_build(dir, &reduced)?)
     };
     Ok(Bundle { reduced, meta, record, vtree })
 }
@@ -79,23 +79,11 @@ pub(super) fn bundle_mode(flag: Option<Mode>, record: &PreprocessRecord) -> Resu
 /// The vtree over `reduced` and, when `components.json` lists two or more
 /// components, the tree of each, with the implied clauses of each component
 /// its entry names. A connected formula's manifest lists the whole formula as
-/// its one component, on `vtree.vtree` itself. Only the model count conjoins
-/// implied clauses, so a bundle preprocessed for another `mode` that names
-/// some is refused.
-fn read_vtree_build(dir: &Path, reduced: &CnfFormula, mode: vitri::cnf::Mode) -> Result<VtreeBuild, Error> {
+/// its one component, on `vtree.vtree` itself.
+fn read_vtree_build(dir: &Path, reduced: &CnfFormula) -> Result<VtreeBuild, Error> {
     let root = read_vtree(&dir.join("vtree.vtree"), reduced.num_vars())?;
     let manifest_path = dir.join("components.json");
     let manifest: ComponentsManifest = read_json(&manifest_path)?;
-    if mode != vitri::cnf::Mode::Mc
-        && let Some(path) = manifest.components.iter().find_map(|entry| entry.implied.as_ref())
-    {
-        return Err(Error::Input(format!(
-            "{} names implied clauses ({path}), which only the model count conjoins, but the \
-             bundle was preprocessed for mode {}",
-            manifest_path.display(),
-            mode.token(),
-        )));
-    }
     let implied_of = |entry: &vitri::bundle::components::ComponentEntry, num_vars: usize| match &entry.implied {
         Some(path) => read_implied(&dir.join(path), num_vars),
         None => Ok(Vec::new()),

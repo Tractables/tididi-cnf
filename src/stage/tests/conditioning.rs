@@ -96,19 +96,12 @@ fn the_projected_compile_answers_to_the_deadline_it_is_handed() {
     let config = crate::test_support::minimal_config();
     let run = &crate::test_support::run(eng, &config);
     let f = wide_formula(40, 150);
-    let vtree =
+    let root =
         crate::vtree::build_vtree(&f, "minfill-primal", &crate::vtree::VtreeOptions::default()).unwrap();
+    let built = crate::vtree::VtreeBuild { root, components: None, implied: Vec::new() };
     let forget: Vec<tididi::vtree::VarId> = (1..=8).map(tididi::vtree::VarId).collect();
 
-    let g = projected_compile(
-        run,
-        &f,
-        &vtree,
-        crate::compile::ComponentPlan::Whole,
-        &forget,
-        None,
-    )
-    .expect("an unbounded projected compile declined");
+    let g = projected_compile(run, &f, &built, &forget, None).expect("an unbounded projected compile declined");
     assert!(
         g > num_bigint::BigUint::ZERO,
         "the fixture compiled to zero; the test guards nothing"
@@ -116,15 +109,7 @@ fn the_projected_compile_answers_to_the_deadline_it_is_handed() {
 
     let past = Instant::now() - std::time::Duration::from_secs(1);
     assert!(
-        projected_compile(
-            run,
-            &f,
-            &vtree,
-            crate::compile::ComponentPlan::Whole,
-            &forget,
-            Some(past),
-        )
-        .is_none(),
+        projected_compile(run, &f, &built, &forget, Some(past)).is_none(),
         "the projected compile ran past a deadline that had already gone",
     );
 }

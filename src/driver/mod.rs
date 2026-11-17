@@ -270,12 +270,13 @@ fn compile_on_bisection(run: &Run<'_>, reduced: &CnfFormula) -> Result<Compiled,
     }
 }
 
-/// One compile of `reduced` on `built`, its component vtrees as the plan, to
-/// the run's wall. The vtrees are dropped when it returns.
+/// One compile of `reduced` on `built`, its component vtrees as the plan and
+/// its implied clauses conjoined, to the run's wall. The vtrees are dropped
+/// when it returns.
 fn compile_on(run: &Run<'_>, reduced: &CnfFormula, built: VtreeBuild) -> Result<Compiled, GiveUp> {
     let plan = ComponentPlan::from_components(built.components.as_deref());
     let options = CompileOptions { plan, deadline: run.deadline, ..CompileOptions::default() };
-    compile_with(run.eng, reduced, &built.root, options, run.compile)
+    compile_with(run.eng, &built.conjoined(reduced), &built.root, options, run.compile)
 }
 
 /// Whether a plain compile that gave up gets the retry on

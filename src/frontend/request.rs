@@ -62,11 +62,11 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
 }
 
 /// [`Error`] when `VITRI_IMPLICATES_MS` asks for vitri's implied-clause pass
-/// in a run that would not conjoin the clauses: the model count conjoins
-/// them on the tree its frontend builds, so the pass is inert in every other
-/// `mode`, under an explicit `--vtree` (`explicit_vtree`), whose route builds
-/// no tree in the frontend, and on a bundle, whose clauses vitri already
-/// wrote.
+/// in a run that would not conjoin the clauses. Every mode conjoins them on
+/// the tree its main compile runs on, except the model count under an
+/// explicit `--vtree` (`explicit_vtree`), whose streaming route builds each
+/// component's tree as it reaches it; and a bundle brings the clauses vitri
+/// wrote for it.
 pub(crate) fn refuse_inert_implicates(
     config: &vitri::RunConfig,
     mode: Mode,
@@ -77,12 +77,10 @@ pub(crate) fn refuse_inert_implicates(
         return Ok(());
     }
     let why = if bundle {
-        "the input is a vitri bundle, which brings any implied clauses in its own files".to_owned()
-    } else if mode != Mode::Mc {
-        format!("this run's mode is {mode}, and only the model count (mode mc) conjoins them")
-    } else if explicit_vtree {
-        "--vtree compiles on a tree vitri's frontend does not build, and the clauses are found over that tree"
-            .to_owned()
+        "the input is a vitri bundle, which brings any implied clauses in its own files"
+    } else if mode == Mode::Mc && explicit_vtree {
+        "the model count under --vtree builds each component's tree as its compile reaches it, \
+         and finds no clauses over them"
     } else {
         return Ok(());
     };

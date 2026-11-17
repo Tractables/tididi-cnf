@@ -205,6 +205,7 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
         "linear",
         Some(deadline),
         vitri::config::ComponentPolicy::Whole,
+        None,
     );
 
     assert_eq!(
@@ -253,4 +254,42 @@ fn a_one_entry_portfolio_builds_on_that_entry_alone() {
     build_vtree(&formula, "portfolio", &options).expect("the portfolio builds");
     let winner = options.portfolio_history.last_winning_spec().expect("the portfolio recorded its winner");
     assert_eq!(spec_family(&winner), "goatd-primal", "the winner was {winner}");
+}
+
+/// A build that did not split hands its implied clauses to the compile after
+/// the formula's own, and the count stays the formula's; with none it hands
+/// the formula over as it is.
+#[test]
+fn a_whole_build_conjoins_its_implied_clauses_and_keeps_the_count() {
+    use crate::compile::{CompileOptions, ComponentPlan, compile_cnf};
+    // (x1 ∨ x2) ∧ (¬x2 ∨ x3) implies x1 ∨ x3.
+    let formula = dimacs(3, &[[1, 2], [-2, 3]]);
+    let lit = |var: usize| vitri::cnf::Literal::new(vitri::cnf::VarId::from_idx(var - 1), true);
+    let implied = vitri::cnf::Clause { literals: vec![lit(1), lit(3)] };
+    let built = VtreeBuild { root: Arc::new(Vtree::balanced(3)), components: None, implied: vec![implied.clone()] };
+
+    let conjoined = built.conjoined(&formula);
+    assert_eq!(conjoined.clauses().len(), 3);
+    assert_eq!(conjoined.clauses()[2], implied);
+    let none = VtreeBuild { implied: Vec::new(), ..built.clone() };
+    assert!(matches!(none.conjoined(&formula), Cow::Borrowed(_)));
+
+    let eng = tididi::Engine::new();
+    let count = |f: &CnfFormula| {
+        let options = CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() };
+        eng.model_count(&compile_cnf(&eng, f, &built.root, options).unwrap().diagram).unwrap()
+    };
+    assert_eq!(count(&conjoined), count(&formula));
+}
+
+/// A stage that asks for implied clauses asks vitri with the run's budget;
+/// one that does not runs no pass.
+#[test]
+fn a_build_asked_for_implied_clauses_carries_the_runs_budget() {
+    let base = crate::test_support::minimal_config();
+    let config = Config { vitri: vitri::RunConfig { implicates_ms: Some(500), ..base.vitri.clone() }, ..base };
+    let asked = VtreeOptions::default().with_implied_clauses(&config);
+    let request = vitri_vtree_build_config("portfolio", None, vitri::config::ComponentPolicy::Split, asked.implicates_ms);
+    assert_eq!(request.implicates_ms, Some(500));
+    assert_eq!(VtreeOptions::default().with_run_policy(&config).implicates_ms, None);
 }

@@ -170,3 +170,17 @@ fn projected_stages_keep_simplify() {
     assert_eq!(tail.arjun_budget, vitri::config::ArjunBudget::Derived);
     assert_eq!(tail.projection_policy, vitri::config::ProjectionPolicy::Full);
 }
+
+/// The implied-clause pass is refused only where no compile conjoins its
+/// clauses: the model count under `--vtree`, and a bundle.
+#[test]
+fn implied_clauses_are_refused_only_where_nothing_conjoins_them() {
+    use crate::config::Mode;
+    let on = vitri::RunConfig { implicates_ms: Some(2_000), ..vitri::RunConfig::default() };
+    for mode in [Mode::Compile, Mode::Mc, Mode::Wmc, Mode::Pmc, Mode::Pwmc] {
+        assert!(refuse_inert_implicates(&on, mode, false, false).is_ok(), "{mode}");
+        assert!(refuse_inert_implicates(&on, mode, false, true).is_err(), "{mode} on a bundle");
+        assert_eq!(refuse_inert_implicates(&on, mode, true, false).is_err(), mode == Mode::Mc, "{mode} under --vtree");
+    }
+    assert!(refuse_inert_implicates(&vitri::RunConfig::default(), Mode::Mc, true, true).is_ok());
+}

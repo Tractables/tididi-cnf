@@ -21,6 +21,7 @@
 //! have vitri build a vtree beside its preprocessing, use the same selection
 //! context and conversion.
 
+use std::borrow::Cow;
 use std::sync::Arc;
 use vitri::cnf::CnfFormula;
 use tididi::vtree::{VarId, Vtree};
@@ -49,6 +50,10 @@ pub struct VtreeOptions {
     /// default portfolio. The model count's stall recompile asks for one. Read
     /// in one place, [`resolve_vitri_selection_ctx`].
     pub(crate) only_portfolio_entry: Option<&'static str>,
+    /// The budget, in milliseconds, of vitri's implied-clause pass over the
+    /// finished trees ([`VtreeBuild::implied`], [`Component::implied`]);
+    /// `None` runs no pass. Set by [`Self::with_implied_clauses`].
+    pub(crate) implicates_ms: Option<u64>,
 }
 
 /// Clause-balance selection, no deadline, a fresh portfolio history, the
@@ -61,6 +66,7 @@ impl Default for VtreeOptions {
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             source_structure_profile: None,
             only_portfolio_entry: None,
+            implicates_ms: None,
         }
     }
 }
@@ -92,6 +98,16 @@ impl VtreeOptions {
         self.source_structure_profile = config.source_structure_profile;
         self
     }
+
+    /// Have vitri find the clauses the formula implies over the finished
+    /// trees, on the budget the run's `VITRI_IMPLICATES_MS` sets, as the
+    /// run's frontend does. A stage asks for it on the tree its main compile
+    /// runs on, not on the trees it builds after a compile gives up.
+    #[must_use]
+    pub(crate) fn with_implied_clauses(mut self, config: &Config) -> Self {
+        self.implicates_ms = config.vitri.implicates_ms;
+        self
+    }
 }
 
 /// What a build returns: the vtree over every variable of the formula, and
@@ -108,9 +124,10 @@ pub struct VtreeBuild {
     /// takes.
     pub components: Option<Vec<ComponentVtree>>,
     /// Clauses the formula implies, over its variables, which a compile of
-    /// the whole formula on `root` conjoins after the formula's own; a split
-    /// build carries each component's on its [`Component`] instead. Empty
-    /// unless vitri's implied-clause pass ran and found some.
+    /// the whole formula on `root` conjoins after the formula's own
+    /// ([`Self::conjoined`]); a split build carries each component's on its
+    /// [`Component`] instead. Empty unless vitri's implied-clause pass ran
+    /// and found some.
     pub implied: Vec<vitri::cnf::Clause>,
 }
 
@@ -118,6 +135,11 @@ impl VtreeBuild {
     /// Attach freshly built trees to the run's engine before any diagram is
     /// built on them.
     pub(crate) fn bind(mut self, engine: &tididi::Engine) -> Self {
+        let implied = self.implied.len()
+            + self.components.iter().flatten().map(|c| c.component.implied.len()).sum::<usize>();
+        if implied > 0 {
+            eprintln!("[vtree] implied clauses: {implied}");
+        }
         self.root = engine.bind_vtree(Arc::unwrap_or_clone(self.root));
         self.components = self.components.map(|components| {
             components.into_iter().map(|mut component| {
@@ -126,6 +148,17 @@ impl VtreeBuild {
             }).collect()
         });
         self
+    }
+
+    /// `formula`, the formula this build is over, with [`Self::implied`]
+    /// after its own clauses: what a compile on `root` with no split
+    /// compiles. The models are the same.
+    pub(crate) fn conjoined<'f>(&self, formula: &'f CnfFormula) -> Cow<'f, CnfFormula> {
+        if self.implied.is_empty() {
+            return Cow::Borrowed(formula);
+        }
+        let clauses = formula.clauses().iter().chain(&self.implied).cloned().collect();
+        Cow::Owned(CnfFormula::new(formula.num_vars(), clauses).expect("implied clauses name only the formula's variables"))
     }
 }
 
@@ -193,9 +226,11 @@ fn vitri_vtree_build_config(
     spec: &str,
     deadline: Option<std::time::Instant>,
     components: vitri::config::ComponentPolicy,
+    implicates_ms: Option<u64>,
 ) -> vitri::RunConfig {
     vitri::RunConfig {
         deadline,
+        implicates_ms,
         construction_budget: vitri::config::ConstructionBudget::WholeRemaining,
         vtree_spec: spec.to_owned(),
         components,
@@ -309,7 +344,7 @@ fn build(
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.
-    let config = vitri_vtree_build_config(spec, options.deadline, components);
+    let config = vitri_vtree_build_config(spec, options.deadline, components, options.implicates_ms);
     vitri::component::build_vtree(formula, &config, &selection)
         .map(vtree_build_from_vitri)
         .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))

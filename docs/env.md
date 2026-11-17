@@ -77,11 +77,13 @@ refuses whenever they are set, and one it refuses where it would do nothing:
   `tididi` does not use.
 - **`VITRI_ARJUN_SKIP_MONOTONE`.** `mc` asks vitri to skip Arjun on a monotone
   formula itself, and no other mode can use the skip.
-- **`VITRI_IMPLICATES_MS`.** A model count conjoins the clauses vitri finds
-  for each component of the tree its frontend builds, after the component's
-  own. The variable is refused in every other mode, under `--vtree` and on a
-  bundle, which brings its clauses in its own files. A tree built after a
-  compile gives up gets no clauses.
+- **`VITRI_IMPLICATES_MS`.** Every mode conjoins the clauses vitri finds over
+  the tree its main compile runs on, each component's after the component's
+  own. They leave every count and the compiled function unchanged. The
+  variable is refused in `mc` under `--vtree` and on a bundle, which brings
+  its clauses in its own files. A tree built after a compile gives up gets no
+  clauses, and neither do the trees of a projected count's conditioning
+  branches.
 
 Two settings are overridden by design:
 

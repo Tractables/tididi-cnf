@@ -11,10 +11,8 @@
 //! that rewrites the problem hands back the reduction alone, and the seam
 //! composes its lift with the one already carried.
 
-use std::sync::Arc;
 use std::time::Instant;
 
-use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
 use super::Run;
@@ -272,7 +270,8 @@ pub(super) fn counting_vtree(
         work,
         run.config.vtree_spec(),
         &ctx.with_deadline(crate::budget::vtree_deadline(run.deadline))
-            .with_run_policy(run.config),
+            .with_run_policy(run.config)
+            .with_implied_clauses(run.config),
         show,
     )
 }
@@ -293,8 +292,8 @@ pub(super) fn count_vtree(
 
 /// The counting vtree and the variables it places.
 pub(super) struct CountVtree {
-    pub(super) vtree: Arc<Vtree>,
-    pub(super) component_vtrees: Option<Vec<crate::vtree::ComponentVtree>>,
+    /// The bound trees, with the clauses found over them.
+    pub(super) built: crate::vtree::VtreeBuild,
     /// The vtree's leaves outside the show set, bottom-up; empty without a
     /// show set.
     pub(super) projected: Vec<tididi::vtree::VarId>,
@@ -303,16 +302,15 @@ pub(super) struct CountVtree {
 impl CountVtree {
     /// The bound trees of `built`, with the leaves outside `show`.
     fn over(built: crate::vtree::VtreeBuild, show: Option<&ShowSet>) -> Self {
-        // Only the model count's frontend asks vitri for implied clauses.
-        let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees, implied: _ } = built;
         let projected = show.map_or_else(Vec::new, |show| {
-            vtree
+            built
+                .root
                 .leaf_bottomup()
                 .map(|(_, v)| v)
                 .filter(|&v| !show.contains(crate::convert::formula_var(v)))
                 .collect()
         });
-        CountVtree { vtree, component_vtrees, projected }
+        CountVtree { built, projected }
     }
 }
 
