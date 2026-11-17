@@ -25,6 +25,7 @@ mod cofactor;
 mod component;
 mod marginalize;
 mod minimize;
+mod reach;
 pub(crate) mod sat_prune;
 mod schedule;
 mod scope;

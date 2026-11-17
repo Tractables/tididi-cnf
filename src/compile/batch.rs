@@ -19,6 +19,7 @@ use tididi::vtree::{Vtree, VtreeIdx};
 use crate::budget::deadline_passed;
 use super::marginalize::summable;
 use super::minimize::{MinimizeGate, minimize_contract_only};
+use super::reach::ReachScratch;
 use super::schedule::step_completions;
 use super::step::{DiagramClauses, PassState, StepContext};
 
@@ -317,52 +318,21 @@ fn mark_clause_levels(
     }
 }
 
-/// `local.max_width()` for a batch diagram under construction, read off the
-/// union of the folded clauses' spines (`spine`) instead of sweeping every
-/// vtree level. Returns exactly what `Tdd::max_width` would.
+/// The arena width of a batch diagram under construction on the union of the
+/// folded clauses' spines (`spine`): its `Tdd::max_width`, which counts the
+/// nodes an operation left unnamed as well, read without sweeping every vtree
+/// level. It bounds the reached width ([`ReachScratch::on_spine`]) from above,
+/// so a cap it does not pass needs no reachability walk.
 ///
-/// Why it is exact. Three facts about a batch diagram, all local to
-/// `build_one_batch`:
-///
-/// 1. **Off-spine levels start trivial.** The batch starts as
-///    `Tdd::clause(first clause)`, which gives every internal level outside
-///    that clause's spine a single One node (width 1) and every leaf level no
-///    stored nodes at all (width 0).
-/// 2. **Only spine levels ever grow.** [`Engine::and_clause`] rebuilds only
-///    the paths from the clause's variables to the root and carries every
-///    other level through; `minimize_contract_only` only merges twins, which
-///    can shrink a level but never widen one. So a level outside the running spine union
-///    still has width ≤ 1 at every check.
-/// 3. **The root is always in the union.** A spine is the ancestor-closed
-///    Steiner tree of the clause's leaves, so it contains the vtree root. At
-///    the check point the diagram is satisfiable (the caller tested `is_sat`
-///    first), so the root level holds at least one live node — hence the
-///    spine-restricted maximum is ≥ 1 and dominates every off-spine level.
-///
-/// The single-leaf-vtree corner falls out: there is no internal level, both the
-/// swept and the restricted maximum are 0.
+/// Why the spine suffices. A batch starts as `Tdd::clause(first clause)`, which
+/// gives every internal level outside that clause's spine a single One node
+/// and every leaf level none; [`Engine::and_clause`] rebuilds only the paths
+/// from the clause's variables to the root, and `minimize_contract_only` only
+/// merges twins, so a level off the running spine union keeps width at most 1.
+/// The root is on every spine and holds a live node once the batch is
+/// satisfiable, which the caller tests first.
 fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine.iter().map(|&t| local.level(t).slot_count()).max().unwrap_or(0)
-}
-
-/// The batch diagram's pairs on the spine union `spine`: its `pair_count`
-/// less the one trivial pair of each internal level off the union (fact 1 of
-/// [`batch_max_width`]; off-spine levels never grow). The extension rule
-/// reads it as the cost of conjoining one more clause, which is linear in the
-/// batch's pairs; the off-spine constant does not matter there, and skipping
-/// those levels keeps the read proportional to the batch's spine.
-///
-/// The library publishes the whole diagram's pair count and each node's, but
-/// no count over a chosen set of levels, so the sum is taken here node by
-/// node; a test holds it equal to `Tdd::pair_count` over every level.
-fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
-    spine
-        .iter()
-        .map(|&t| {
-            let level = local.level(t);
-            (0..level.nodes().len()).map(|n| level.pair_count_at(n)).sum::<usize>()
-        })
-        .sum()
 }
 
 /// Where one batch may stop, fixed before it is built.
@@ -453,9 +423,12 @@ impl<'a> BatchStop<'a> {
     ///   never delays a marginalization past the boundary the floor would
     ///   have given it.
     ///
-    /// The pairs are read off the spine union ([`batch_spine_pairs`]), and
-    /// the accumulator's cached pair count by [`BatchStop::acc_pairs`], which
-    /// the extension decision and the merge's absorption check share.
+    /// The width and pairs are those of the nodes the batch's output reaches
+    /// on the spine union ([`ReachScratch::on_spine`]), so that nodes the
+    /// library leaves unnamed move no stop; the width walk runs only when the
+    /// arena width ([`batch_max_width`]) passes the cap that applies. The
+    /// accumulator's pair count is its cached one ([`BatchStop::acc_pairs`]),
+    /// which the extension decision and the merge's absorption check share.
     ///
     /// Returns the built batch and the index of the next clause, at least
     /// `start + 1`: the first clause is always taken. A one-clause batch
@@ -487,14 +460,15 @@ impl<'a> BatchStop<'a> {
 
         let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
         // The running union of the folded clauses' spines, from which the stop
-        // checks read the batch's max width and pairs instead of sweeping every
-        // level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a
+        // checks read the batch's width and pairs instead of sweeping every
+        // level (`batch_max_width`, `ReachScratch::on_spine`). Tracked only when a
         // width cap is on or the batch may extend. All false on entry: only
         // spine entries are ever set, and they are reset from `touched` before
         // returning. An error return skips the reset, but an error ends the
         // pass, whose state the scratch is part of.
         let may_extend = self.limit > self.floor;
         let track_spine = self.width_cap != usize::MAX || may_extend;
+        let mut reach = ReachScratch::default();
         let mut touched = Vec::new();
         if track_spine {
             if on_spine.len() < vtree.num_nodes() {
@@ -503,7 +477,7 @@ impl<'a> BatchStop<'a> {
             mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
         }
         let mut built = 0usize;
-        let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
+        let mut pairs = if may_extend { reach.on_spine(&local, &touched).1 } else { 0 };
         let mut holds_completion = self.completes(start);
         let mut i = start + 1;
         let mut batch_count = 1;
@@ -517,10 +491,18 @@ impl<'a> BatchStop<'a> {
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            let width = if track_spine { batch_max_width(&local, &touched) } else { 0 };
+            let mut reached = None;
+            let mut width = 0;
+            if track_spine {
+                width = batch_max_width(&local, &touched);
+                let cap = if batch_count < self.floor { self.width_cap } else { self.guard };
+                if width > cap {
+                    width = reached.get_or_insert_with(|| reach.on_spine(&local, &touched)).0;
+                }
+            }
             if may_extend {
                 built += pairs;
-                pairs = batch_spine_pairs(&local, &touched);
+                pairs = reached.get_or_insert_with(|| reach.on_spine(&local, &touched)).1;
             }
             if self.stops_after(batch_count, width, holds_completion, built, pairs) {
                 break;
