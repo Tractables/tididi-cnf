@@ -388,11 +388,12 @@ fn run_internal_step(
     // Prune the node's diagram when the pass's trigger fires.
     if let Some(prune) = state.sat_prune.as_mut()
         && let Some(tdd) = state.tdds[t.idx()].as_ref()
-        && prune.should_fire(pairs)
+        && prune.should_fire(trigger_size(tdd, pairs, current_vtree))
     {
+        let size = trigger_size(tdd, pairs, current_vtree);
         let outcome = match ctx.job.run.work {
-            Some(work) => work.budgeted(|| prune.probe_tdd(eng, tdd, pairs)),
-            None => prune.probe_tdd(eng, tdd, pairs),
+            Some(work) => work.budgeted(|| prune.probe_tdd(eng, tdd, size)),
+            None => prune.probe_tdd(eng, tdd, size),
         };
         let pruned = match outcome {
             PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
@@ -405,6 +406,17 @@ fn run_internal_step(
         }
     }
     Ok(pairs)
+}
+
+/// `pairs`, the pair count of `tdd`, as the SAT-prune trigger reads it: on a
+/// projection of `vtree`, one pair more for each leaf of `vtree` the
+/// projection lacks. On `vtree` itself the diagram holds a one-pair node on
+/// each internal level the projection lacks, and there are as many of those,
+/// so the trigger's thresholds, set on `vtree`, fire at the same sizes on
+/// both. A level `vtree` adds between two of the projection's holds as many
+/// nodes as the level under it, which this leaves out.
+fn trigger_size(tdd: &Tdd, pairs: usize, vtree: &Vtree) -> usize {
+    pairs + vtree.num_leaves().saturating_sub(tdd.vtree().num_leaves()) as usize
 }
 
 /// The normal internal step at `t`: conjoin the children's diagrams by an
