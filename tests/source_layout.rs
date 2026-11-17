@@ -39,8 +39,9 @@ use std::path::PathBuf;
 /// Upper-case words that are the ordinary spelling of the thing they name.
 const ACRONYMS: &[&str] = &[
     "API", "ASCII", "BCP", "BVE", "CDCL", "CLI", "CNF", "CPU", "DIMACS", "DVE", "IJCAI", "ISCAS",
-    "JSON", "LCA", "LCG", "MCC", "MIB", "MMIX", "OOM", "PHP", "PMC", "POD", "POSIX", "PRNG", "PWMC",
-    "RAII", "README", "RLIMIT", "SAT", "SBVA", "TDD", "UNSAT", "URL", "VSZ", "WMC", "XOR",
+    "JSON", "LCA", "LCG", "MCC", "MIB", "MMIX", "OOM", "PHP", "PMC", "PMU", "POD", "POSIX", "PRNG",
+    "PWMC", "RAII", "README", "RLIMIT", "SAFETY", "SAT", "SBVA", "TDD", "UNSAT", "URL", "VSZ", "WMC",
+    "XOR",
 ];
 
 fn crate_dir() -> PathBuf {
