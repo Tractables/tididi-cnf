@@ -91,8 +91,26 @@ pub(crate) fn vtree_deadline(program_deadline: Option<Instant>) -> Option<Instan
     let pd = program_deadline?;
     let now = Instant::now();
     let remaining_ms = pd.saturating_duration_since(now).as_millis() as u64;
-    let budget = Duration::from_millis((remaining_ms / 3).clamp(90_000, 900_000));
+    let budget = Duration::from_millis(vtree_share_ms(remaining_ms));
     Some(not_past(now + budget, program_deadline))
+}
+
+/// The construction share of `wall_ms`: a third, clamped to `[90 s, 900 s]`.
+fn vtree_share_ms(wall_ms: u64) -> u64 {
+    (wall_ms / 3).clamp(90_000, 900_000)
+}
+
+/// How much work a vtree construction may do in a run limited to
+/// `time_limit_ms`: the work vitri calibrates to the construction share of the
+/// whole limit, never more than the limit. The amount is read off the limit
+/// rather than the time left, so a construction stops at the same point on
+/// every run of the same input, whatever the machine's load. A run with no
+/// limit builds without a bound, as before.
+pub(crate) fn construction_budget(time_limit_ms: Option<u64>) -> vitri::config::ConstructionBudget {
+    match time_limit_ms {
+        Some(limit) => vitri::config::ConstructionBudget::for_wall_ms(vtree_share_ms(limit).min(limit).max(1)),
+        None => vitri::config::ConstructionBudget::WholeRemaining,
+    }
 }
 
 /// The run's time-budgeted work: the time it spends building vtrees, the

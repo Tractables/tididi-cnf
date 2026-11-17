@@ -49,6 +49,11 @@ pub struct VtreeOptions {
     /// finished trees ([`VtreeBuild::implied`], [`Component::implied`]);
     /// `None` runs no pass. Set by [`Self::with_implied_clauses`].
     pub(crate) implicates_ms: Option<u64>,
+    /// How much the construction may spend: the whole window up to
+    /// [`Self::deadline`] by default, the run's work budget
+    /// ([`crate::budget::construction_budget`]) once
+    /// [`Self::with_run_policy`] has set it.
+    pub(crate) construction: vitri::config::ConstructionBudget,
 }
 
 /// Clause-balance selection, no deadline, a fresh portfolio history.
@@ -60,6 +65,7 @@ impl Default for VtreeOptions {
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             source_structure_profile: None,
             implicates_ms: None,
+            construction: vitri::config::ConstructionBudget::WholeRemaining,
         }
     }
 }
@@ -84,11 +90,13 @@ impl VtreeOptions {
         self
     }
 
-    /// The run's portfolio history and the structure profile of its input.
+    /// The run's portfolio history, the structure profile of its input, and
+    /// the run's construction work budget, which replaces the deadline.
     #[must_use]
     pub(crate) fn with_run_policy(mut self, config: &Config) -> Self {
         self.portfolio_history = config.portfolio_history.clone();
         self.source_structure_profile = config.source_structure_profile;
+        self.construction = crate::budget::construction_budget(config.time_limit_ms);
         self
     }
 
@@ -209,22 +217,24 @@ pub(crate) fn spec_family(spec: &str) -> &str {
     spec.split_once(':').map_or(spec, |(family, _)| family)
 }
 
-/// The vitri request for one construction in the caller's window: the caller
-/// has carved the absolute construction deadline out of its run, so vitri
-/// spends all of what remains of it rather than dividing it again.
+/// The vitri request for one construction under `construction`: in the
+/// caller's window, where the caller has carved the absolute construction
+/// deadline out of its run and vitri spends all of what remains of it rather
+/// than dividing it again, or under a work budget, which ignores the deadline.
 ///
 /// `spec` goes to vitri as written; the caller supplies every policy that has
 /// a vitri representation.
 fn vitri_vtree_build_config(
     spec: &str,
     deadline: Option<std::time::Instant>,
+    construction: vitri::config::ConstructionBudget,
     components: vitri::config::ComponentPolicy,
     implicates_ms: Option<u64>,
 ) -> vitri::RunConfig {
     vitri::RunConfig {
         deadline,
         implicates_ms,
-        construction_budget: vitri::config::ConstructionBudget::WholeRemaining,
+        construction_budget: construction,
         vtree_spec: spec.to_owned(),
         components,
         candidates: 1,
@@ -309,7 +319,8 @@ fn build(
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.
-    let config = vitri_vtree_build_config(spec, options.deadline, components, options.implicates_ms);
+    let config =
+        vitri_vtree_build_config(spec, options.deadline, options.construction, components, options.implicates_ms);
     vitri::component::build_vtree(formula, &config, &selection)
         .map(vtree_build_from_vitri)
         .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))

@@ -204,6 +204,7 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
     let config = vitri_vtree_build_config(
         "linear",
         Some(deadline),
+        vitri::config::ConstructionBudget::WholeRemaining,
         vitri::config::ComponentPolicy::Whole,
         None,
     );
@@ -216,6 +217,18 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
         config.construction_deadline(std::time::Instant::now()),
         Some(deadline)
     );
+}
+
+/// A run with a time limit builds every vtree on a work budget sized from the
+/// limit alone, so a loaded machine stops construction where an idle one does;
+/// a run with none builds without a bound.
+#[test]
+fn run_policy_sets_a_work_budget_from_the_time_limit() {
+    use vitri::config::ConstructionBudget;
+    assert_eq!(crate::budget::construction_budget(Some(120_000)), ConstructionBudget::for_wall_ms(90_000));
+    assert_eq!(crate::budget::construction_budget(Some(30_000)), ConstructionBudget::for_wall_ms(30_000));
+    assert_eq!(crate::budget::construction_budget(Some(3_600_000)), ConstructionBudget::for_wall_ms(900_000));
+    assert_eq!(crate::budget::construction_budget(None), ConstructionBudget::WholeRemaining);
 }
 
 /// A build that did not split hands its implied clauses to the compile after
@@ -251,7 +264,13 @@ fn a_build_asked_for_implied_clauses_carries_the_runs_budget() {
     let base = crate::test_support::minimal_config();
     let config = Config { vitri: vitri::RunConfig { implicates_ms: Some(500), ..base.vitri.clone() }, ..base };
     let asked = VtreeOptions::default().with_implied_clauses(&config);
-    let request = vitri_vtree_build_config("portfolio", None, vitri::config::ComponentPolicy::Split, asked.implicates_ms);
+    let request = vitri_vtree_build_config(
+        "portfolio",
+        None,
+        vitri::config::ConstructionBudget::WholeRemaining,
+        vitri::config::ComponentPolicy::Split,
+        asked.implicates_ms,
+    );
     assert_eq!(request.implicates_ms, Some(500));
     assert_eq!(VtreeOptions::default().with_run_policy(&config).implicates_ms, None);
 }
