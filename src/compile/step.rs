@@ -14,7 +14,6 @@ use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
-use tididi::restructure::EmbedError;
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use vitri::cnf::CnfFormula;
 
@@ -243,32 +242,8 @@ fn compile_pass(
         job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
-    let diagram = match state.tdds[vtree.root().idx()].take() {
-        Some(diagram) if job.run.projections && !Arc::ptr_eq(diagram.vtree(), vtree) => {
-            onto(eng, diagram, vtree).map_err(|error| GiveUp::from_operation(eng, error))?
-        }
-        Some(diagram) => diagram,
-        None => job.output.with_store(eng.one(vtree)),
-    };
+    let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
-}
-
-/// `diagram`, on a projection of `vtree` or of its home, moved onto `vtree`.
-pub(super) fn onto(eng: &Engine, diagram: Tdd, vtree: &Arc<Vtree>) -> Result<Tdd, OperationError> {
-    if diagram.vtree().num_leaves() == vtree.num_leaves() && vtree.home().is_some() {
-        let mut diagram = diagram;
-        // Safety: two projections of one home on one leaf set have the same
-        // nodes, and `vtree`'s leaves hold `diagram`'s.
-        unsafe { diagram.reseat_vtree_unchecked(vtree) };
-        return Ok(diagram);
-    }
-    match eng.embed_moving(diagram, vtree, |var| var) {
-        Ok((moved, _)) => Ok(moved),
-        Err(refused) => Err(match refused.error {
-            EmbedError::Operation(error) => error,
-            other => panic!("a projection embeds in its home: {other}"),
-        }),
-    }
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the

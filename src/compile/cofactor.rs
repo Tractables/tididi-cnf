@@ -255,8 +255,6 @@ fn run_cofactor(
     drop(r);
     let mut joined = if terms.is_empty() {
         ctx.job.output.with_store(eng.zero(vtree))
-    } else if ctx.job.run.projections {
-        eng.or_many(on_one_projection(eng, vtree, terms)?)?
     } else {
         eng.or_many(terms)?
     };
@@ -268,14 +266,6 @@ fn run_cofactor(
         return Err(OperationError::Stopped);
     }
     Ok(pairs)
-}
-
-/// `terms`, on projections of `vtree`, moved onto the projection on the
-/// union of their variables, as [`Engine::or_many`] takes one vtree.
-fn on_one_projection(eng: &Engine, vtree: &Arc<Vtree>, terms: Vec<Tdd>) -> Result<Vec<Tdd>, OperationError> {
-    let vars: Vec<VarId> = terms.iter().flat_map(|term| term.vtree().leaf_bottomup().map(|(_, var)| var)).collect();
-    let union = Vtree::projection(vtree, vars).expect("the terms' variables are leaves of the vtree");
-    terms.into_iter().map(|term| super::step::onto(eng, term, &union)).collect()
 }
 
 #[cfg(test)]
