@@ -107,6 +107,7 @@ pub(crate) fn frontend_config(
     config.budget_ms = parent.time_limit_ms;
     config.deadline = deadline;
     config.construction_budget = crate::budget::construction_budget(parent.time_limit_ms);
+    config.preprocess_clock = crate::budget::preprocess_clock(parent.time_limit_ms);
     config.mode = Some(mode);
     config.stages.simplify = parent.preprocess_level == PreprocessLevel::Full;
     // Only an enabled stage that probes at all takes the budget: a simplify

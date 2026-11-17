@@ -26,6 +26,10 @@ fn frontend_maps_the_parent_wall_and_simplify_level() {
 
     assert_eq!(config.budget_ms, Some(45_000));
     assert_eq!(config.deadline, Some(deadline));
+    assert_eq!(
+        config.preprocess_clock,
+        vitri::config::PreprocessClock::Deterministic { configured_wall_ms: Some(45_000) }
+    );
     assert_eq!(config.mode, Some(Mode::Mc));
     assert_eq!(config.vtree_spec, "portfolio");
     assert!(config.retain_arjun_input);

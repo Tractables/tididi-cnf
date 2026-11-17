@@ -113,6 +113,18 @@ pub(crate) fn construction_budget(time_limit_ms: Option<u64>) -> vitri::config::
     }
 }
 
+/// The clock vitri's frontend preprocessing measures its phase allowances on
+/// in a run limited to `time_limit_ms`: work charges, each allowance clamped
+/// to the limit, so preprocessing reduces a formula to the same result on
+/// every run, whatever the machine's load. A run with no limit keeps the wall
+/// clock, as before.
+pub(crate) fn preprocess_clock(time_limit_ms: Option<u64>) -> vitri::config::PreprocessClock {
+    match time_limit_ms {
+        Some(limit) => vitri::config::PreprocessClock::Deterministic { configured_wall_ms: Some(limit) },
+        None => vitri::config::PreprocessClock::WallClock,
+    }
+}
+
 /// The run's time-budgeted work: the time it spends building vtrees, the
 /// record's `vtree_ms`; the instructions of the vitri calls that build them,
 /// `vtree_instructions`; the instructions of every stage that stops on time or
