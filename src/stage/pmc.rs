@@ -134,7 +134,8 @@ fn minimize_projection(run: &Run<'_>, problem: &Problem<Unweighted>) -> Step<Unw
         Some(std::time::Duration::from_millis(budget_ms)),
         vitri::config::ProjectionPolicy::ArjunOnly(vitri::config::ProjectionNoGain::Reject),
     );
-    projection_step(problem, None, &preprocess_config, "[pmc] minimize-projection", "the raw formula")
+    let work = &run.config.vtree_time;
+    projection_step(problem, None, &preprocess_config, work, "[pmc] minimize-projection", "the raw formula")
 }
 
 /// Stage: small-show enumeration, then projected AllSAT.
@@ -156,7 +157,7 @@ fn enumerate(run: &Run<'_>, problem: &Problem<Unweighted>, small_show: bool) -> 
         skip_near_full: true,
         deadline: run.deadline,
     };
-    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits, true)
+    enumerate_show("[pmc]", &problem.formula, show, Models::default(), limits, true, &run.config.vtree_time)
         .map_or(Step::Decline, Step::Answer)
 }
 
@@ -174,7 +175,8 @@ fn strengthen_and_eliminate(run: &Run<'_>, problem: &Problem<Unweighted>) -> Ste
         None,
         vitri::config::ProjectionPolicy::Full,
     );
-    projection_step(problem, None, &tail_config, "[pmc] strengthen-eliminate", "the first bundle")
+    let work = &run.config.vtree_time;
+    projection_step(problem, None, &tail_config, work, "[pmc] strengthen-eliminate", "the first bundle")
 }
 
 /// Run the SAT-backed definability oracle over the residual projected vars, then

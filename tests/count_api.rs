@@ -329,12 +329,14 @@ fn the_binary_answers_as_the_library_does() {
     }
 }
 
-/// A record without the fields that read the clock, and without
-/// `vtree_instructions`, which moves with the time vtree construction got.
+/// A record without the fields that read the clock, and without the counts
+/// and hashes of the budgeted stages, which move with the time they got.
 fn without_readings(record: serde_json::Value) -> serde_json::Value {
+    const BUDGETED: [&str; 4] =
+        ["vtree_instructions", "budgeted_instructions", "compiled_formulas_hash", "compiled_vtrees_hash"];
     let serde_json::Value::Object(fields) = record else { panic!("a record is an object: {record}") };
     fields
         .into_iter()
-        .filter(|(key, _)| !key.ends_with("_ms") && !key.ends_with("_us") && key != "vtree_instructions")
+        .filter(|(key, _)| !key.ends_with("_ms") && !key.ends_with("_us") && !BUDGETED.contains(&key.as_str()))
         .collect()
 }

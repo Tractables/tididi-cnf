@@ -155,10 +155,12 @@ pub(super) fn enumerate_show<T: Tally + Clone>(
     tally: T,
     limits: EnumLimits,
     forecast: bool,
+    work: &crate::budget::VtreeTime,
 ) -> Option<T::Value> {
     let mut ctl = AllsatCtl::with_forecast(forecast);
     let started = Instant::now();
-    let Some((value, method, elapsed_ms)) = show_enum_fastpath(formula, show, tally, limits, &mut ctl) else {
+    let enumerated = work.budgeted(|| show_enum_fastpath(formula, show, tally, limits, &mut ctl));
+    let Some((value, method, elapsed_ms)) = enumerated else {
         ctl.report_no_count(&format!("{tag} enumerate-show"), started.elapsed().as_millis());
         return None;
     };
@@ -190,6 +192,7 @@ pub(super) fn projection_step<D: Domain>(
     problem: &Problem<D>,
     weights: Option<&vitri::cnf::WeightTable>,
     config: &vitri::RunConfig,
+    work: &crate::budget::VtreeTime,
     tag: &str,
     kept: &str,
 ) -> Step<D> {
@@ -199,6 +202,7 @@ pub(super) fn projection_step<D: Domain>(
         problem.show.as_ref(),
         weights,
         config,
+        work,
     ) {
         Ok((crate::frontend::record::Outcome::Unsat, _)) => Step::Answer(D::zero()),
         Ok((crate::frontend::record::Outcome::Reduced(reduced), _)) => {

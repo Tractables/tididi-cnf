@@ -326,7 +326,7 @@ pub(super) fn monotone_reduction(
     if no_sbva && let Some(counted) = no_sbva_retry(run, formula, session, true) {
         return Some((counted, AnsweredBy::NoSbvaRetry));
     }
-    support_enum_stage(&ar.formula, &ar.support, ar.lift_pow2, "monotone reduction", run.deadline)
+    support_enum_stage(&ar.formula, &ar.support, ar.lift_pow2, "monotone reduction", run.deadline, &run.config.vtree_time)
         .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
 }
 
@@ -499,6 +499,7 @@ pub(super) fn count_primary(
                     ar.lift_pow2,
                     "kept reduction",
                     run.deadline,
+                    &run.config.vtree_time,
                 )
                 .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
             })

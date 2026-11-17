@@ -193,6 +193,7 @@ fn count_reduced(
         None,
         Some(orig_table),
         &arjun_config,
+        &run.config.vtree_time,
     ) {
         Ok((Outcome::Reduced(problem), report))
             if matches!(report.stages.arjun, Some(vitri::bundle::StageOutcome::Ran)) =>

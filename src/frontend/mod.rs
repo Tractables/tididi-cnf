@@ -115,7 +115,7 @@ pub(crate) fn mc_streaming_preprocess(
     deadline: Option<std::time::Instant>,
 ) -> Result<PreprocessBundle, vitri::VitriError> {
     let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, false);
-    vitri::bundle::preprocess(formula, &vitri::cnf::CnfMeta::default(), &config)
+    parent.vtree_time.budgeted(|| vitri::bundle::preprocess(formula, &vitri::cnf::CnfMeta::default(), &config))
 }
 
 /// Run vitri's paired function-preserving preprocess + vtree frontend and
@@ -177,7 +177,7 @@ pub(crate) fn with_mc_frontend<R>(
     let meta = vitri::cnf::CnfMeta::default();
     let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
     let selection = run_selection(parent)?;
-    let mut session = vitri::bundle::frontend(formula, &meta, &config, &selection)?;
+    let mut session = parent.vtree_time.budgeted(|| vitri::bundle::frontend(formula, &meta, &config, &selection))?;
     let run = parent.vtree_time.count(|| session.prepare())?;
     let attempt = mc_frontend_attempt(run, &parent.vtree_time);
     Ok(continuation(attempt, &session))

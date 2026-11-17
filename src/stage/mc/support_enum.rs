@@ -308,6 +308,17 @@ pub(super) fn support_enum_stage(
     // reduction").
     site: &'static str,
     program_deadline: Option<Instant>,
+    work: &crate::budget::VtreeTime,
+) -> Option<num_bigint::BigUint> {
+    work.budgeted(|| support_enum_within(reduced, support, lift_pow2, site, program_deadline))
+}
+
+fn support_enum_within(
+    reduced: &CnfFormula,
+    support: &ShowSet,
+    lift_pow2: u32,
+    site: &'static str,
+    program_deadline: Option<Instant>,
 ) -> Option<num_bigint::BigUint> {
     let remaining_ms = crate::budget::left_ms(program_deadline);
     match plan_support_enum(support.len(), remaining_ms) {
@@ -389,7 +400,9 @@ pub(super) fn reduce_for_support(
         std::time::Duration::from_millis(budget_ms),
         vitri::config::ArjunClauseGrowth::KeepSound,
     );
-    let reduced = vitri::bundle::preprocess(form, &vitri::cnf::CnfMeta::default(), &config)
+    let reduced = parent
+        .vtree_time
+        .budgeted(|| vitri::bundle::preprocess(form, &vitri::cnf::CnfMeta::default(), &config))
         .ok()
         .and_then(crate::frontend::record::arjun_reduction);
     match reduced {

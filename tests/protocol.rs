@@ -46,19 +46,22 @@ fn regenerate() -> String {
 /// 1. A `--stats` field whose key ends in `_ms` or `_us`: its number becomes
 ///    the string `"<t>"`.
 /// 2. A duration in prose, written `123ms`, `123 ms` or `123us`: becomes `<t>`.
-/// 3. The `--stats` field `vtree_instructions`: it is dropped, because it
-///    moves with the time vtree construction got and is absent where the
-///    kernel refuses the counter.
+/// 3. The `--stats` fields in [`BUDGETED_KEYS`]: they are dropped, because
+///    they move with the time the budgeted stages got, and the counts are
+///    absent where the kernel refuses the counter.
 fn blank_durations(line: &str) -> String {
-    let after_keys = blank_stat_fields(&drop_vtree_instructions(line));
-    blank_prose_durations(&after_keys)
+    let dropped = BUDGETED_KEYS.iter().fold(line.to_string(), |line, key| drop_key(&line, key));
+    blank_prose_durations(&blank_stat_fields(&dropped))
 }
 
+const BUDGETED_KEYS: [&str; 4] =
+    ["vtree_instructions", "budgeted_instructions", "compiled_formulas_hash", "compiled_vtrees_hash"];
+
 /// `,"vtree_instructions":159243162` -> nothing.
-fn drop_vtree_instructions(line: &str) -> String {
-    const KEY: &str = ",\"vtree_instructions\":";
-    let Some(start) = line.find(KEY) else { return line.to_string() };
-    let end = scan_number(line.as_bytes(), start + KEY.len());
+fn drop_key(line: &str, key: &str) -> String {
+    let key = format!(",\"{key}\":");
+    let Some(start) = line.find(&key) else { return line.to_string() };
+    let end = scan_number(line.as_bytes(), start + key.len());
     format!("{}{}", &line[..start], &line[end..])
 }
 

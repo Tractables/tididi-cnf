@@ -93,6 +93,10 @@ pub(crate) struct CompileRun<'a> {
     /// reports a step that stopped on it ([`StallWatch`]); `None` for no
     /// per-step wall. Only the model count's primary compile has one.
     pub(crate) stall_watch: Option<&'a StallWatch>,
+    /// The run's budgeted work, which counts the SAT pruning and a compile
+    /// that stopped at a deadline and hashes each compile's input; `None`
+    /// records nothing.
+    pub(crate) work: Option<&'a crate::budget::VtreeTime>,
 }
 
 /// Why a compile has no diagram to return.

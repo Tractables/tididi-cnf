@@ -367,7 +367,11 @@ fn solve_on(
             eng,
             config: &config,
             deadline: program_deadline,
-            compile: CompileRun { sat_prune: config.sat_prune.then_some(&sat_prune), ..CompileRun::default() },
+            compile: CompileRun {
+                sat_prune: config.sat_prune.then_some(&sat_prune),
+                work: Some(&config.vtree_time),
+                ..CompileRun::default()
+            },
             started_on: &started_on,
         };
         dispatch_mode(&run, &mut stats, formula, &meta, record.as_ref())

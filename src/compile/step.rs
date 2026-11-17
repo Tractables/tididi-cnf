@@ -140,7 +140,21 @@ impl DiagramClauses {
 /// [`GiveUp::Stopped`] and [`GiveUp::Refused`] are give-ups: the pass was cut
 /// short by the deadline, or an apply was refused (`OverBudget` / `OutputCap`).
 /// A node proved UNSAT answers ⊥ at once, however much is left uncompiled.
+///
+/// The run's [`VtreeTime`](crate::budget::VtreeTime) notes the formula and
+/// vtree, and counts a compile that stopped at a deadline as budgeted work.
 pub(crate) fn compile_component(
+    eng: &Engine,
+    formula: &CnfFormula,
+    vtree: &Arc<Vtree>,
+    job: CompileJob<'_>,
+) -> Result<Compiled, GiveUp> {
+    let Some(work) = job.run.work else { return compile_pass(eng, formula, vtree, job) };
+    work.note_compile(formula, vtree);
+    work.budgeted_if(|| compile_pass(eng, formula, vtree, job), |compiled| matches!(compiled, Err(GiveUp::Stopped)))
+}
+
+fn compile_pass(
     eng: &Engine,
     formula: &CnfFormula,
     vtree: &Arc<Vtree>,
@@ -346,7 +360,11 @@ fn run_internal_step(
         && let Some(tdd) = state.tdds[t.idx()].as_ref()
         && prune.should_fire(pairs)
     {
-        let pruned = match prune.probe_tdd(eng, tdd, pairs) {
+        let outcome = match ctx.job.run.work {
+            Some(work) => work.budgeted(|| prune.probe_tdd(eng, tdd, pairs)),
+            None => prune.probe_tdd(eng, tdd, pairs),
+        };
+        let pruned = match outcome {
             PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
             PruneOutcome::Rewritten(new_tdd) => Some(*new_tdd),
             PruneOutcome::NoOp => None,

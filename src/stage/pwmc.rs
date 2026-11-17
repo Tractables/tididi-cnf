@@ -112,7 +112,8 @@ fn pwmc_show_enum_fastpath(
         }
     };
     let limits = EnumLimits { allsat_wall_ms, model_budget_override, skip_near_full: false, deadline: run.deadline };
-    enumerate_show("[pwmc]", formula, show?, WeightedModels::new(weights), limits, forecast)
+    let work = &run.config.vtree_time;
+    enumerate_show("[pwmc]", formula, show?, WeightedModels::new(weights), limits, forecast, work)
 }
 
 /// Weighted compile + evaluate — the terminal PWMC phase. Builds the
@@ -471,7 +472,8 @@ fn preprocess(
 ) -> Step<Weighted> {
     let config =
         pwmc_preprocess_config(run.config, problem.formula.num_vars() as u64, run.deadline, Instant::now());
-    projection_step(problem, declared_weights, &config, "[pwmc] preprocessing", "the raw formula")
+    let work = &run.config.vtree_time;
+    projection_step(problem, declared_weights, &config, work, "[pwmc] preprocessing", "the raw formula")
 }
 
 /// Stage: small-show weighted enumeration, then weighted projected AllSAT.

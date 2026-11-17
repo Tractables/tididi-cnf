@@ -204,6 +204,7 @@ fn count_without_reduction(
             ar.lift_pow2,
             "fresh reduction",
             run.deadline,
+            &run.config.vtree_time,
         )?;
         Some(((count, 0), AnsweredBy::SupportEnumeration))
     };

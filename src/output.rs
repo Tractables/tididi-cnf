@@ -212,6 +212,24 @@ pub struct Stats {
     /// built a vtree or the counter could not be opened or read.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_instructions: Option<u64>,
+    /// User-mode instructions in every stage that stops on time or on a
+    /// time-derived cap, over the whole run, counted as `vtree_instructions`
+    /// is and including it: vitri's preprocessing and Arjun (whose forked
+    /// child is counted), SAT pruning, the enumeration oracles, and a compile
+    /// that stopped at a deadline. The rest of the run's instructions do not
+    /// depend on the time those stages got, given what they decided, which
+    /// the two hashes below name. Absent when the counter could not be opened
+    /// or read.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budgeted_instructions: Option<u64>,
+    /// A hash of the formulas the run's compiles started on, in order: what
+    /// preprocessing and Arjun handed on. Equal hashes mean, short of a
+    /// collision, the same compile inputs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compiled_formulas_hash: Option<u64>,
+    /// A hash of the vtrees the run's compiles started on, in order.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compiled_vtrees_hash: Option<u64>,
     /// Wall-clock time compiling, in milliseconds, less every phase with its
     /// own key: preprocessing, Arjun and vtree construction.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -314,6 +332,8 @@ pub(crate) fn close_record(
     }
     stats.vtree_ms = vtree.total().map(|time| time.as_millis() as u64);
     stats.vtree_instructions = vtree.instructions();
+    stats.budgeted_instructions = vtree.budgeted_instructions();
+    (stats.compiled_formulas_hash, stats.compiled_vtrees_hash) = vtree.compiled_hashes();
     if stats.vtree_candidate.is_none() {
         stats.vtree_candidate = started_on;
     }

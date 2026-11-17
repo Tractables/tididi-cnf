@@ -1,6 +1,6 @@
 //! The run's time: how the driver carves its time limit into the sub-budgets
-//! and deadlines it hands down, and the clocks behind the record's `vtree_ms`
-//! and `compile_ms`.
+//! and deadlines it hands down, the clocks behind the record's `vtree_ms`
+//! and `compile_ms`, and the instruction counts of the budgeted stages.
 //!
 //! The budgets are the compiler's policies, since it knows the run's time
 //! limit and the stages that need a share of it; vitri receives the resulting
@@ -95,19 +95,27 @@ pub(crate) fn vtree_deadline(program_deadline: Option<Instant>) -> Option<Instan
     Some(not_past(now + budget, program_deadline))
 }
 
-/// The time a run spends building vtrees, the record's `vtree_ms`, and the
-/// instructions it spends in the vitri calls that build them, the record's
-/// `vtree_instructions`.
+/// The run's time-budgeted work: the time it spends building vtrees, the
+/// record's `vtree_ms`; the instructions of the vitri calls that build them,
+/// `vtree_instructions`; the instructions of every stage that stops on time or
+/// on a time-derived cap, `budgeted_instructions`; and what those stages
+/// handed the compiles, `compiled_formulas_hash` and `compiled_vtrees_hash`.
 ///
 /// The run's `Config` holds one, so every stage reaches it. A stage that
 /// builds a vtree times the build with [`VtreeTime::time`]. A frontend, which
 /// interleaves preprocessing and construction in one vitri call, counts the
 /// call with [`VtreeTime::count`] and adds the construction time vitri
-/// reports with [`VtreeTime::add`]; its preprocessing is in the count.
+/// reports with [`VtreeTime::add`]; its preprocessing is in the count. Any
+/// other budgeted stage runs under [`VtreeTime::budgeted`], and a compile
+/// that may stop at a deadline under [`VtreeTime::budgeted_if`].
 #[derive(Debug, Default)]
 pub(crate) struct VtreeTime {
     spent: std::cell::Cell<Option<Duration>>,
-    instructions: InstructionTally,
+    counter: std::cell::OnceCell<Option<counter::Counter>>,
+    vtree: InstructionTally,
+    budgeted: InstructionTally,
+    formulas: std::cell::Cell<Option<u64>>,
+    vtrees: std::cell::Cell<Option<u64>>,
 }
 
 impl VtreeTime {
@@ -121,9 +129,22 @@ impl VtreeTime {
     }
 
     /// Run a vitri call that builds a vtree and reports its construction time
-    /// itself, counting its instructions.
+    /// itself, counting its instructions as vtree and as budgeted work.
     pub(crate) fn count<T>(&self, call: impl FnOnce() -> T) -> T {
-        self.instructions.count(call)
+        self.budgeted(|| self.vtree.count(self.counter(), call, |_| true))
+    }
+
+    /// Run a stage that stops on time or on a time-derived cap, counting its
+    /// instructions as budgeted work.
+    pub(crate) fn budgeted<T>(&self, call: impl FnOnce() -> T) -> T {
+        self.budgeted_if(call, |_| true)
+    }
+
+    /// Run `call` and count its instructions as budgeted work when `stopped`
+    /// holds of its result: a compile that stopped at a deadline did an
+    /// amount of work the time it got decides, one that finished did not.
+    pub(crate) fn budgeted_if<T>(&self, call: impl FnOnce() -> T, stopped: impl FnOnce(&T) -> bool) -> T {
+        self.budgeted.count(self.counter(), call, stopped)
     }
 
     /// Add one construction that took `spent`.
@@ -131,11 +152,30 @@ impl VtreeTime {
         self.spent.set(Some(self.spent.get().unwrap_or_default() + spent));
     }
 
-    /// The user-mode instructions counted so far; `None` when nothing was
-    /// counted, or when the counter could not be opened or read for some
-    /// call (`Some` is never a partial sum).
+    /// Fold one compile's input, the formula and the vtree the budgeted
+    /// stages left it, into the run's two hashes.
+    pub(crate) fn note_compile(&self, formula: &vitri::cnf::CnfFormula, vtree: &tididi::vtree::Vtree) {
+        fold_hash(&self.formulas, formula_hash(formula));
+        fold_hash(&self.vtrees, text_hash(&vtree.to_text()));
+    }
+
+    /// The user-mode instructions of the vtree constructions; `None` when
+    /// nothing was counted, or when the counter could not be opened or read
+    /// for some call (`Some` is never a partial sum).
     pub(crate) fn instructions(&self) -> Option<u64> {
-        self.instructions.total()
+        self.vtree.total()
+    }
+
+    /// The user-mode instructions of every budgeted stage, vtree construction
+    /// included, as [`VtreeTime::instructions`] reads its own.
+    pub(crate) fn budgeted_instructions(&self) -> Option<u64> {
+        self.budgeted.total()
+    }
+
+    /// The hashes of the formulas and of the vtrees the run's compiles
+    /// started on, in the order they started; `None` when nothing compiled.
+    pub(crate) fn compiled_hashes(&self) -> (Option<u64>, Option<u64>) {
+        (self.formulas.get(), self.vtrees.get())
     }
 
     /// The time spent so far, or `None` when nothing built a vtree.
@@ -146,29 +186,70 @@ impl VtreeTime {
     pub(crate) fn total(&self) -> Option<Duration> {
         self.spent.get()
     }
+
+    fn counter(&self) -> Option<&counter::Counter> {
+        self.counter.get_or_init(counter::Counter::open).as_ref()
+    }
 }
 
-/// A sum of user-mode instructions over calls, read from a Linux perf counter
-/// on this thread opened at the first call. Unlike the run's time, the count
-/// of a call does not depend on the machine's load, so a benchmark can take a
-/// time-budgeted phase out of a whole-process count.
+fn fold_hash(run: &std::cell::Cell<Option<u64>>, one: u64) {
+    use std::hash::Hasher;
+    let mut hasher = rustc_hash::FxHasher::default();
+    hasher.write_u64(run.get().unwrap_or(0));
+    hasher.write_u64(one);
+    run.set(Some(hasher.finish()));
+}
+
+fn formula_hash(formula: &vitri::cnf::CnfFormula) -> u64 {
+    use std::hash::Hasher;
+    let mut hasher = rustc_hash::FxHasher::default();
+    hasher.write_u32(formula.num_vars());
+    for clause in formula.clauses() {
+        hasher.write_usize(clause.literals.len());
+        for literal in &clause.literals {
+            hasher.write_i32(literal.to_dimacs());
+        }
+    }
+    hasher.finish()
+}
+
+fn text_hash(text: &str) -> u64 {
+    use std::hash::Hasher;
+    let mut hasher = rustc_hash::FxHasher::default();
+    hasher.write(text.as_bytes());
+    hasher.finish()
+}
+
+/// A sum of user-mode instructions over calls, read from the run's perf
+/// counter. Unlike the run's time, the count of a call does not depend on the
+/// machine's load, so a benchmark can take a time-budgeted phase out of a
+/// whole-process count.
 #[derive(Debug, Default)]
 struct InstructionTally {
-    counter: std::cell::OnceCell<Option<counter::Counter>>,
     sum: std::cell::Cell<Option<u64>>,
     lost: std::cell::Cell<bool>,
 }
 
 impl InstructionTally {
-    fn count<T>(&self, call: impl FnOnce() -> T) -> T {
-        let counter = self.counter.get_or_init(counter::Counter::open).as_ref();
+    /// A charged call's count replaces what calls nested in it added, which
+    /// it contains; an uncharged one keeps theirs.
+    fn count<T>(
+        &self,
+        counter: Option<&counter::Counter>,
+        call: impl FnOnce() -> T,
+        charge: impl FnOnce(&T) -> bool,
+    ) -> T {
+        let sum_before = self.sum.get();
         let before = counter.and_then(counter::Counter::read);
         let result = call();
-        match (before, counter.and_then(counter::Counter::read)) {
-            (Some(before), Some(after)) => {
-                self.sum.set(Some(self.sum.get().unwrap_or(0) + after.saturating_sub(before)));
+        let after = counter.and_then(counter::Counter::read);
+        if charge(&result) {
+            match (before, after) {
+                (Some(before), Some(after)) => {
+                    self.sum.set(Some(sum_before.unwrap_or(0) + after.saturating_sub(before)));
+                }
+                _ => self.lost.set(true),
             }
-            _ => self.lost.set(true),
         }
         result
     }
@@ -203,6 +284,10 @@ mod counter {
     const PERF_TYPE_HARDWARE: u32 = 0;
     const PERF_COUNT_HW_INSTRUCTIONS: u64 = 1;
     const READ_TIME_ENABLED_AND_RUNNING: u64 = 0b11;
+    /// `inherit`: a child the thread forks counts into this counter once it
+    /// exits. vitri runs Arjun in a child it kills at Arjun's deadline and
+    /// reaps before the call returns, so that work is in the call's count.
+    const INHERIT: u64 = 1 << 1;
     const EXCLUDE_KERNEL_AND_HV: u64 = (1 << 5) | (1 << 6);
 
     #[derive(Debug)]
@@ -219,7 +304,7 @@ mod counter {
                 sample_period: 0,
                 sample_type: 0,
                 read_format: READ_TIME_ENABLED_AND_RUNNING,
-                flags: EXCLUDE_KERNEL_AND_HV,
+                flags: INHERIT | EXCLUDE_KERNEL_AND_HV,
                 wakeup_events: 0,
                 bp_type: 0,
                 config1: 0,

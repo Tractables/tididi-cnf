@@ -51,6 +51,7 @@ pub(crate) fn preprocess_problem<D: Domain>(
     show: Option<&vitri::cnf::ShowSet<vitri::cnf::Original>>,
     weights: Option<&vitri::cnf::WeightTable>,
     config: &vitri::RunConfig,
+    work: &crate::budget::VtreeTime,
 ) -> Result<(Outcome<D>, Report), vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::from_parts(
         formula.num_vars(),
@@ -66,7 +67,7 @@ pub(crate) fn preprocess_problem<D: Domain>(
         stages,
         telemetry,
         ..
-    } = vitri::bundle::preprocess(formula, &meta, config)?;
+    } = work.budgeted(|| vitri::bundle::preprocess(formula, &meta, config))?;
     let outcome = outcome::<D>(reduced, &record)?;
     Ok((outcome, Report { stages, telemetry }))
 }

@@ -41,7 +41,7 @@ fn pwmc_preprocessing_crosses_folded_weights_and_exact_lift() {
     };
 
     let (Outcome::Reduced(Problem { formula, show, weights, lift }), _) =
-        preprocess_problem::<Weighted>(&formula, Some(&show), Some(&weights), &config)
+        preprocess_problem::<Weighted>(&formula, Some(&show), Some(&weights), &config, &Default::default())
             .expect("PWMC preprocessing must cross the boundary")
     else {
         panic!("the anti-equivalence fixture is satisfiable");
@@ -103,7 +103,7 @@ fn pwmc_preprocessing_weighs_an_unnamed_literal_one_minus_its_partner() {
             show_idx,
             declared.resolve::<Original>(n as usize).as_pairs(),
         );
-        let (outcome, report) = preprocess_problem::<Weighted>(&formula, Some(&show_set(&show)), Some(&declared), &config)
+        let (outcome, report) = preprocess_problem::<Weighted>(&formula, Some(&show_set(&show)), Some(&declared), &config, &Default::default())
             .expect("PWMC preprocessing must cross the boundary");
         assert_eq!(
             report.stages.arjun,
@@ -185,7 +185,7 @@ fn pmc_preprocessing_returns_sorted_show_and_neutral_tail_lift() {
     let config = pmc_tail_config();
 
     let (Outcome::Reduced(Problem { formula, show, lift, .. }), _) =
-        preprocess_problem::<Unweighted>(&formula, Some(&show), None, &config)
+        preprocess_problem::<Unweighted>(&formula, Some(&show), None, &config, &Default::default())
             .expect("PMC preprocessing must cross the boundary")
     else {
         panic!("the fixture is satisfiable");
@@ -203,7 +203,7 @@ fn projected_preprocessing_maps_unsat() {
     let formula = dimacs(1, &[&[1], &[-1]]);
     let show = show_set(&[1]);
     assert!(matches!(
-        preprocess_problem::<Unweighted>(&formula, Some(&show), None, &pmc_tail_config()),
+        preprocess_problem::<Unweighted>(&formula, Some(&show), None, &pmc_tail_config(), &Default::default()),
         Ok((Outcome::Unsat, _)),
     ));
 
@@ -218,7 +218,7 @@ fn projected_preprocessing_maps_unsat() {
         ..Default::default()
     };
     assert!(matches!(
-        preprocess_problem::<Weighted>(&formula, Some(&show), Some(&weights), &pwmc),
+        preprocess_problem::<Weighted>(&formula, Some(&show), Some(&weights), &pwmc, &Default::default()),
         Ok((Outcome::Unsat, _)),
     ));
 }

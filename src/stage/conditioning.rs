@@ -158,7 +158,8 @@ fn reduce_branch(
         Some(exact_arjun),
         vitri::config::ProjectionPolicy::ArjunOnly(vitri::config::ProjectionNoGain::KeepSound),
     );
-    projection_step(&input, None, &preprocess_config, "[pmc] condition", "the branch input")
+    let work = &run.config.vtree_time;
+    projection_step(&input, None, &preprocess_config, work, "[pmc] condition", "the branch input")
 }
 
 /// One projected compile of `formula`, rebuilding the vtree on this

@@ -92,3 +92,44 @@ fn the_compile_clock_leaves_out_vtree_time() {
     time.add(Duration::from_secs(3600));
     assert_eq!(clock.compile_ms(0), 0, "construction since the clock started is taken out");
 }
+
+/// A budgeted call that contains a counted one is counted once, and a call
+/// counted only when it stops keeps what the calls nested in it counted.
+#[test]
+fn nested_budgeted_calls_are_counted_once() {
+    let spin = || (0..1_000_000u64).fold(0, |acc, x| std::hint::black_box(acc ^ x));
+    let nested = VtreeTime::default();
+    nested.budgeted(|| nested.count(spin));
+    let alone = VtreeTime::default();
+    alone.count(spin);
+    if let (Some(nested), Some(alone)) = (nested.budgeted_instructions(), alone.budgeted_instructions()) {
+        assert!(nested < alone * 2, "the inner count was added to the outer one: {nested} against {alone}");
+    }
+
+    let finished = VtreeTime::default();
+    finished.budgeted_if(|| finished.budgeted(spin), |_| false);
+    assert_eq!(finished.budgeted_instructions().is_some(), alone.budgeted_instructions().is_some());
+    let skipped = VtreeTime::default();
+    skipped.budgeted_if(spin, |_| false);
+    assert_eq!(skipped.budgeted_instructions(), None);
+}
+
+/// The run's hashes name its compile inputs: absent before a compile, equal
+/// for equal inputs and different when the vtree differs.
+#[test]
+fn compile_hashes_follow_the_inputs() {
+    use crate::test_support::{formula, lit};
+    let formula = formula(4, vec![vitri::cnf::Clause::new(vec![lit(0, true), lit(3, false)])]);
+    let balanced = tididi::vtree::Vtree::balanced(4);
+    let order: Vec<_> = (1..=4).map(tididi::vtree::VarId).collect();
+    let linear = tididi::vtree::Vtree::linear_from_order(&order).unwrap();
+    let [a, b, c] = [&balanced, &balanced, &linear].map(|vtree| {
+        let work = VtreeTime::default();
+        assert_eq!(work.compiled_hashes(), (None, None));
+        work.note_compile(&formula, vtree);
+        work.compiled_hashes()
+    });
+    assert_eq!(a, b);
+    assert_eq!(a.0, c.0);
+    assert_ne!(a.1, c.1);
+}
