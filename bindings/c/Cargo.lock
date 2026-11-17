@@ -344,9 +344,8 @@ dependencies = [
 
 [[package]]
 name = "tididi"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa1d5262a718cc67d17e2691245c7d7eb8549ad451cbaee0696a9e0b724f24d5"
+version = "0.2.0"
+source = "git+https://github.com/Tractables/tididi?branch=main#7a0f20e1740e984cbe46bbe3b45ac7bb24c4b6c3"
 dependencies = [
  "itoa",
  "num-bigint",

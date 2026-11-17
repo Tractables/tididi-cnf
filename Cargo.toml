@@ -50,7 +50,7 @@ name = "tididi"
 path = "src/main.rs"
 
 [dependencies]
-tididi = "0.1.0"
+tididi = { git = "https://github.com/Tractables/tididi", branch = "main" }
 # vitri builds the C++ CaDiCaL and Arjun stack, and takes FlowCutter from the
 # goatd crate. The Git source also supplies browser and release build tools
 # omitted from its registry package.
@@ -93,4 +93,4 @@ opt-level = 1
 [dev-dependencies]
 # The library's oracles and generators (`tididi::test_helpers`) for this
 # crate's tests. The library runs its own tests in its repository.
-tididi = { version = "0.1.0", features = ["testing"] }
+tididi = { git = "https://github.com/Tractables/tididi", branch = "main", features = ["testing"] }
