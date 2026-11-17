@@ -370,6 +370,7 @@ fn solve_on(
             compile: CompileRun {
                 sat_prune: config.sat_prune.then_some(&sat_prune),
                 work: Some(&config.vtree_time),
+                projections: config.mode == Mode::Compile,
                 ..CompileRun::default()
             },
             started_on: &started_on,

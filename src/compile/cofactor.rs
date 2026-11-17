@@ -241,7 +241,11 @@ fn run_cofactor(
             .expect("a fold from a live accumulator returns one");
         // Structural, so an unsatisfiable branch is the false sentinel.
         if !branch.is_zero() {
-            let cube = ctx.job.output.with_store(eng.cube(vtree, assignment(&plan.vars, a))?);
+            let cube_vtree = match ctx.job.run.projections {
+                true => Vtree::projection(vtree, plan.vars.iter().copied()).expect("`vars` are leaves of the vtree"),
+                false => Arc::clone(vtree),
+            };
+            let cube = ctx.job.output.with_store(eng.cube(&cube_vtree, assignment(&plan.vars, a))?);
             terms.push(eng.and(cube, branch)?);
         }
         if deadline_passed(ctx.job.deadline) {
@@ -251,6 +255,8 @@ fn run_cofactor(
     drop(r);
     let mut joined = if terms.is_empty() {
         ctx.job.output.with_store(eng.zero(vtree))
+    } else if ctx.job.run.projections {
+        eng.or_many(on_one_projection(eng, vtree, terms)?)?
     } else {
         eng.or_many(terms)?
     };
@@ -262,6 +268,14 @@ fn run_cofactor(
         return Err(OperationError::Stopped);
     }
     Ok(pairs)
+}
+
+/// `terms`, on projections of `vtree`, moved onto the projection on the
+/// union of their variables, as [`Engine::or_many`] takes one vtree.
+fn on_one_projection(eng: &Engine, vtree: &Arc<Vtree>, terms: Vec<Tdd>) -> Result<Vec<Tdd>, OperationError> {
+    let vars: Vec<VarId> = terms.iter().flat_map(|term| term.vtree().leaf_bottomup().map(|(_, var)| var)).collect();
+    let union = Vtree::projection(vtree, vars).expect("the terms' variables are leaves of the vtree");
+    terms.into_iter().map(|term| super::step::onto(eng, term, &union)).collect()
 }
 
 #[cfg(test)]

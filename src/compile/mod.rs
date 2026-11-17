@@ -97,6 +97,12 @@ pub(crate) struct CompileRun<'a> {
     /// that stopped at a deadline and hashes each compile's input; `None`
     /// records nothing.
     pub(crate) work: Option<&'a crate::budget::VtreeTime>,
+    /// Build each clause, batch and node diagram on the projection of the
+    /// vtree on the variables it has seen, and join a node's children by
+    /// [`Engine::and`] instead of the splice. Taken by an
+    /// [`Output::Function`] compile only, whose result is moved onto the
+    /// vtree.
+    pub(crate) projections: bool,
 }
 
 /// Why a compile has no diagram to return.
@@ -422,6 +428,7 @@ pub(crate) fn compile_with(
             PassOutput::ProjectedFunction(&forget)
         }
     };
+    let run = CompileRun { projections: run.projections && matches!(output, PassOutput::Function), ..run };
     let prune_spent_us = Cell::new(0);
     let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
     eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;

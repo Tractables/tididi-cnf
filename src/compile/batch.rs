@@ -124,7 +124,8 @@ pub(crate) fn batch_accumulate(
     while i < clauses.len() {
         if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
         let start_clause = i;
-        let stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
+        let mut stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
+        stop.projections = ctx.job.run.projections;
         let (mut batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
         i = next;
         // Absorption decides whether the next batch may extend, so it is only
@@ -387,6 +388,10 @@ struct BatchStop<'a> {
     acc: Option<&'a Tdd>,
     /// The node's marginalize targets by clause position, when it streams.
     streaming: Option<&'a StreamTargets>,
+    /// The batch starts on the projection of `vtree` on its first clause's
+    /// variables ([`super::CompileRun::projections`]); its width and pairs
+    /// are then read off the whole diagram.
+    projections: bool,
 }
 
 impl<'a> BatchStop<'a> {
@@ -408,6 +413,7 @@ impl<'a> BatchStop<'a> {
             limit,
             acc,
             streaming,
+            projections: false,
         }
     }
 
@@ -485,7 +491,11 @@ impl<'a> BatchStop<'a> {
             return Ok((BuiltBatch::SingleClause(diagram_clauses.get(clauses[start])), start + 1));
         }
 
-        let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
+        let first = diagram_clauses.get(clauses[start]);
+        let mut local = match self.projections {
+            true => eng.clause(&clause_vtree(vtree, first), first.iter().copied())?,
+            false => eng.clause(vtree, first.iter().copied())?,
+        };
         // The running union of the folded clauses' spines, from which the stop
         // checks read the batch's max width and pairs instead of sweeping every
         // level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a
@@ -494,7 +504,7 @@ impl<'a> BatchStop<'a> {
         // returning. An error return skips the reset, but an error ends the
         // pass, whose state the scratch is part of.
         let may_extend = self.limit > self.floor;
-        let track_spine = self.width_cap != usize::MAX || may_extend;
+        let track_spine = !self.projections && (self.width_cap != usize::MAX || may_extend);
         let mut touched = Vec::new();
         if track_spine {
             if on_spine.len() < vtree.num_nodes() {
@@ -503,7 +513,11 @@ impl<'a> BatchStop<'a> {
             mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
         }
         let mut built = 0usize;
-        let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
+        let spine_pairs = |local: &Tdd, touched: &[VtreeIdx]| match self.projections {
+            true => local.pair_count(),
+            false => batch_spine_pairs(local, touched),
+        };
+        let mut pairs = if may_extend { spine_pairs(&local, &touched) } else { 0 };
         let mut holds_completion = self.completes(start);
         let mut i = start + 1;
         let mut batch_count = 1;
@@ -517,10 +531,16 @@ impl<'a> BatchStop<'a> {
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            let width = if track_spine { batch_max_width(&local, &touched) } else { 0 };
+            let width = if track_spine {
+                batch_max_width(&local, &touched)
+            } else if self.projections && self.width_cap != usize::MAX {
+                local.max_width()
+            } else {
+                0
+            };
             if may_extend {
                 built += pairs;
-                pairs = batch_spine_pairs(&local, &touched);
+                pairs = spine_pairs(&local, &touched);
             }
             if self.stops_after(batch_count, width, holds_completion, built, pairs) {
                 break;
@@ -552,6 +572,11 @@ impl<'a> BatchStop<'a> {
         batch_count.saturating_mul(pairs)
             >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(self.acc_pairs()))
     }
+}
+
+/// The projection of `vtree` on `clause`'s variables.
+pub(super) fn clause_vtree(vtree: &Arc<Vtree>, clause: &[Literal]) -> Arc<Vtree> {
+    Vtree::projection(vtree, clause.iter().map(|lit| lit.var)).expect("the vtree has a leaf for every clause variable")
 }
 
 /// Maximum allowed batch-TDD width before the batch should be flushed into the
