@@ -300,7 +300,7 @@ fn formula_metadata_rejects_a_weighted_variable_outside_the_formula() {
 }
 
 /// The binary and the library make one run: the same count on stdout, and
-/// the same record field for field, clock readings aside.
+/// the same record field for field, clock and counter readings aside.
 #[test]
 fn the_binary_answers_as_the_library_does() {
     for (cnf, plain) in [
@@ -325,12 +325,16 @@ fn the_binary_answers_as_the_library_does() {
             serde_json::from_str(&std::fs::read_to_string(&record_path).unwrap()).unwrap();
         let _ = std::fs::remove_file(&record_path);
         let library = serde_json::to_value(answer.stats()).unwrap();
-        assert_eq!(without_clocks(library), without_clocks(record), "{cnf}");
+        assert_eq!(without_readings(library), without_readings(record), "{cnf}");
     }
 }
 
-/// A record without the fields that read the clock.
-fn without_clocks(record: serde_json::Value) -> serde_json::Value {
+/// A record without the fields that read the clock, and without
+/// `vtree_instructions`, which moves with the time vtree construction got.
+fn without_readings(record: serde_json::Value) -> serde_json::Value {
     let serde_json::Value::Object(fields) = record else { panic!("a record is an object: {record}") };
-    fields.into_iter().filter(|(key, _)| !key.ends_with("_ms") && !key.ends_with("_us")).collect()
+    fields
+        .into_iter()
+        .filter(|(key, _)| !key.ends_with("_ms") && !key.ends_with("_us") && key != "vtree_instructions")
+        .collect()
 }

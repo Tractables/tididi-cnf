@@ -39,16 +39,27 @@ fn regenerate() -> String {
 
 /// Replace the wall-clock carriers in one line of output, and only those.
 ///
-/// Two things in this output move from run to run, both of them clock
-/// readings; everything else — counts, sizes, stage and candidate names, probe
-/// and node tallies, preprocessing shapes — is compared literally.
+/// Three things in this output move from run to run; everything else —
+/// counts, sizes, stage and candidate names, probe and node tallies,
+/// preprocessing shapes — is compared literally.
 ///
 /// 1. A `--stats` field whose key ends in `_ms` or `_us`: its number becomes
 ///    the string `"<t>"`.
 /// 2. A duration in prose, written `123ms`, `123 ms` or `123us`: becomes `<t>`.
+/// 3. The `--stats` field `vtree_instructions`: it is dropped, because it
+///    moves with the time vtree construction got and is absent where the
+///    kernel refuses the counter.
 fn blank_durations(line: &str) -> String {
-    let after_keys = blank_stat_fields(line);
+    let after_keys = blank_stat_fields(&drop_vtree_instructions(line));
     blank_prose_durations(&after_keys)
+}
+
+/// `,"vtree_instructions":159243162` -> nothing.
+fn drop_vtree_instructions(line: &str) -> String {
+    const KEY: &str = ",\"vtree_instructions\":";
+    let Some(start) = line.find(KEY) else { return line.to_string() };
+    let end = scan_number(line.as_bytes(), start + KEY.len());
+    format!("{}{}", &line[..start], &line[end..])
 }
 
 /// `"preprocess_ms":14` -> `"preprocess_ms":"<t>"`, for any `_ms`/`_us` key.
@@ -316,9 +327,9 @@ protocol_rows! {
     stream_mc_onehot:     ["--mode", "mc", "--vtree", "portfolio"], "tests/data/onehot_free_residual.cnf";
 }
 
-/// The normalizer must blank clock readings and nothing else.
+/// The normalizer must blank clock and counter readings and nothing else.
 #[test]
-fn normalization_blanks_only_clock_readings() {
+fn normalization_blanks_only_readings() {
     let stats = r#"{"model_count":"18014398509481984","preprocess_ms":14,"arjun_ms":0,"backbone_probes":37,"sat_prune_probe_us":175411}"#;
     assert_eq!(
         blank_durations(stats),
@@ -332,6 +343,11 @@ fn normalization_blanks_only_clock_readings() {
     assert_eq!(
         blank_durations("[wmc] compile: counted in 138 ms"),
         "[wmc] compile: counted in <t>"
+    );
+
+    assert_eq!(
+        blank_durations(r#"{"vtree_ms":177,"vtree_instructions":159243162,"compile_ms":99}"#),
+        r#"{"vtree_ms":"<t>","compile_ms":"<t>"}"#
     );
 
     // Counts and exponent-form weights stay put.
