@@ -148,7 +148,7 @@ pub(crate) fn batch_accumulate(
             .and_then(|s| s.completed_in(start_clause, i))
             .map(|targets| summable(vtree, targets, ctx.job.output.forget().is_some()));
         let merged =
-            merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets.as_deref(), acc_pairs)?;
+            merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets.as_deref(), acc_pairs, i == clauses.len())?;
         if merged.unsat {
             return Ok(acc);
         }
@@ -267,7 +267,8 @@ struct Merged {
 ///
 /// A [`BuiltBatch::SingleClause`] is conjoined directly into `acc`. That
 /// happens only when no further clause can follow in the batch, so no
-/// absorption is measured.
+/// absorption is measured. `fold_end` marks the fold's last merge, as
+/// [`MinimizeGate::adaptive_minimize`] takes it.
 fn merge_batch(
     eng: &Engine,
     batch: BuiltBatch<'_>,
@@ -275,10 +276,11 @@ fn merge_batch(
     state: &mut MinimizeGate,
     merge_targets: Option<&[VtreeIdx]>,
     acc_pairs: Option<usize>,
+    fold_end: bool,
 ) -> Result<Merged, OperationError> {
     let acc_in = acc.take();
     let (merged, absorbed) = match batch {
-        BuiltBatch::Diagram(batch) => merge_batch_into_acc(eng, acc_in, *batch, state, merge_targets, acc_pairs)?,
+        BuiltBatch::Diagram(batch) => merge_batch_into_acc(eng, acc_in, *batch, state, merge_targets, acc_pairs, fold_end)?,
         BuiltBatch::SingleClause(clause) => (
             merge_clause_into_acc(
                 eng,
@@ -286,6 +288,7 @@ fn merge_batch(
                 clause,
                 state,
                 merge_targets,
+                fold_end,
             )?,
             false,
         ),
@@ -584,6 +587,7 @@ fn merge_batch_into_acc(
     state: &mut MinimizeGate,
     marginalize_targets: Option<&[VtreeIdx]>,
     acc_pairs: Option<usize>,
+    fold_end: bool,
 ) -> Result<(Tdd, bool), OperationError> {
     let Some(a) = acc else {
         // First batch: the batch builder's output is already minimized. If targets
@@ -604,7 +608,7 @@ fn merge_batch_into_acc(
     let (num, den) = BATCH_ABSORB_FACTOR;
     let absorbed = acc_pairs.is_some_and(|n| result.pair_count().saturating_mul(den) <= num.saturating_mul(n));
 
-    state.adaptive_minimize(eng, &mut result)?;
+    state.adaptive_minimize(eng, &mut result, fold_end)?;
 
     Ok((result, absorbed))
 }
@@ -619,9 +623,10 @@ fn merge_clause_into_acc(
     clause: &[Literal],
     state: &mut MinimizeGate,
     marginalize_targets: Option<&[VtreeIdx]>,
+    fold_end: bool,
 ) -> Result<Tdd, OperationError> {
     let mut result = eng.and_clause(acc, clause)?;
-    state.adaptive_minimize(eng, &mut result)?;
+    state.adaptive_minimize(eng, &mut result, fold_end)?;
     if let Some(targets) = marginalize_targets {
         eng.marginalize_levels(&mut result, targets)?;
     }

@@ -23,8 +23,10 @@ pub(crate) fn full_reduction(skip_content_twins: bool, probe: Option<&mut Conten
     ReductionPlan::Full(twins)
 }
 
-/// Full canonical reduction, with the stop rules off; `skip_content_twins`
-/// as [`full_reduction`] takes it.
+/// The full reduction, with the stop rules off; `skip_content_twins` as
+/// [`full_reduction`] takes it. Canonical only without a marginal level: with
+/// one, the content-twin scan makes the result depend on where scans fell
+/// between the conjunctions that built the diagram.
 ///
 /// An allocation refused here is the end of this compile: the diagram is whole
 /// but cannot be reduced, so the caller gives up and the binary reports it as
@@ -210,15 +212,21 @@ impl MinimizeGate {
 
     /// Run the reduction the gate decides on for `result`, and re-anchor the
     /// gate on what it leaves.
+    ///
+    /// Only the last merge of a fold (`fold_end`) may scan content twins.
+    /// Contraction commutes with conjunction and summing out, a content-twin
+    /// merge does not, so a scan inside a fold would make the fold's result
+    /// depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
-        &mut self, eng: &Engine, result: &mut Tdd,
+        &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
 
         match self.decide(cur_nodes, cur_retired) {
             MinimizeAction::Full => {
-                eng.reduce(result, full_reduction(self.skip_content_twins, Some(&mut self.content_twin_schedule)))?;
+                let skip = self.skip_content_twins || !fold_end;
+                eng.reduce(result, full_reduction(skip, Some(&mut self.content_twin_schedule)))?;
                 self.record_full(
                     result.node_count(),
                     result.retired_marginal_slots(),
