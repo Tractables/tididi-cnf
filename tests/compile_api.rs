@@ -102,7 +102,7 @@ fn compile_rejects_invalid_splits_even_when_the_formula_is_constant() {
         let vtree = build_vtree(&formula, "portfolio", &VtreeOptions::default()).unwrap();
         let split = [ComponentVtree {
             vtree: vtree.clone(),
-            component: Component { clause_indices: vec![1], local_to_global: vec![VarId(1), VarId(2)] },
+            component: Component { clause_indices: vec![1], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
         }];
         assert_invalid(&formula, &vtree, CompileOptions {
             plan: ComponentPlan::Split(&split), ..CompileOptions::default()
@@ -113,6 +113,7 @@ fn compile_rejects_invalid_splits_even_when_the_formula_is_constant() {
             component: Component {
                 clause_indices: (0..formula.clauses().len()).collect(),
                 local_to_global: vec![VarId(1)],
+                implied: Vec::new(),
             },
         }];
         assert_invalid(&formula, &vtree, CompileOptions {
@@ -166,7 +167,7 @@ fn a_supplied_component_split_counts_the_whole_formula() {
             .into_iter()
             .map(|(clause_indices, vars)| ComponentVtree {
                 vtree: Arc::new(Vtree::balanced(vars.len() as u32)),
-                component: Component { clause_indices, local_to_global: vars.into_iter().map(VarId).collect() },
+                component: Component { clause_indices, local_to_global: vars.into_iter().map(VarId).collect(), implied: Vec::new() },
             })
             .collect();
         let formula = make_formula(4, clauses.clone());
@@ -226,7 +227,7 @@ fn a_split_that_does_not_partition_the_formula_is_an_error() {
     let pair = || Arc::new(Vtree::balanced(2));
     let component = |clause_indices: Vec<usize>, vars: [u32; 2]| ComponentVtree {
         vtree: pair(),
-        component: Component { clause_indices, local_to_global: vars.map(VarId).to_vec() },
+        component: Component { clause_indices, local_to_global: vars.map(VarId).to_vec(), implied: Vec::new() },
     };
     let malformed = [
         vec![component(vec![0], [1, 2])],
@@ -237,7 +238,7 @@ fn a_split_that_does_not_partition_the_formula_is_an_error() {
             component(vec![0], [1, 2]),
             ComponentVtree {
                 vtree: Arc::new(Vtree::balanced(3)),
-                component: Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)] },
+                component: Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)], implied: Vec::new() },
             },
         ],
     ];

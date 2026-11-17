@@ -303,7 +303,8 @@ pub(super) struct CountVtree {
 impl CountVtree {
     /// The bound trees of `built`, with the leaves outside `show`.
     fn over(built: crate::vtree::VtreeBuild, show: Option<&ShowSet>) -> Self {
-        let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees } = built;
+        // Only the model count's frontend asks vitri for implied clauses.
+        let crate::vtree::VtreeBuild { root: vtree, components: component_vtrees, implied: _ } = built;
         let projected = show.map_or_else(Vec::new, |show| {
             vtree
                 .leaf_bottomup()

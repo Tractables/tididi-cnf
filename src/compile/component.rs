@@ -194,13 +194,10 @@ impl RemapScratch {
 
 /// Remap a component's clauses from global `VarId`s to local `VarId`s (`1..=K`)
 /// into `scratch`, producing a self-contained sub-formula, [`RemapScratch::sub`],
-/// that can be compiled against the component's own vtree.
-pub(crate) fn remap_component_clauses_into(
-    scratch: &mut RemapScratch,
-    formula: &CnfFormula,
-    clause_indices: &[usize],
-    local_to_global: &[VarId],
-) {
+/// that can be compiled against the component's own vtree. The component's
+/// implied clauses, already local, follow its own.
+pub(crate) fn remap_component_clauses_into(scratch: &mut RemapScratch, formula: &CnfFormula, component: &Component) {
+    let Component { clause_indices, local_to_global, implied } = component;
     use vitri::cnf::{Clause, Literal};
     // Invert local_to_global so we can map each global var back to its local index.
     invert_local_to_global_into(&mut scratch.global_to_local, local_to_global);
@@ -213,7 +210,7 @@ pub(crate) fn remap_component_clauses_into(
     // capacity, which is the whole point of the scratch.
     let num_vars = local_to_global.len() as u32;
     let mut clauses = std::mem::replace(&mut scratch.sub, empty_formula()).into_clauses();
-    clauses.resize_with(clause_indices.len(), || Clause { literals: Vec::new() });
+    clauses.resize_with(clause_indices.len() + implied.len(), || Clause { literals: Vec::new() });
     // Literals are pushed into the retained `Vec` rather than handed to
     // `Clause::new`, whose `debug_assert!` re-checks "each variable at most
     // once". `local_to_global` is injective, so the remap is a bijection on the
@@ -228,6 +225,9 @@ pub(crate) fn remap_component_clauses_into(
                 .expect("component clause references variable not in component");
             lits.push(Literal::new(vitri::cnf::VarId::from_idx(local as usize), lit.positive));
         }
+    }
+    for (slot, clause) in clauses[clause_indices.len()..].iter_mut().zip(implied) {
+        slot.literals.clone_from(&clause.literals);
     }
     // Every local index is below `local_to_global.len()`, so the constructor's
     // range check cannot fail; it costs one more pass over the literals.
@@ -343,8 +343,9 @@ pub(crate) fn compile_split(
     let mut forgotten = 0;
     let mut peak_pairs = 0;
     let mut scratch = RemapScratch::default();
-    for ComponentVtree { vtree: sub_vtree, component: Component { clause_indices, local_to_global: l2g } } in components {
-        remap_component_clauses_into(&mut scratch, formula, clause_indices, l2g);
+    for ComponentVtree { vtree: sub_vtree, component } in components {
+        let l2g = &component.local_to_global;
+        remap_component_clauses_into(&mut scratch, formula, component);
         let comp_forget;
         let comp_weights;
         let output = match job.output {

@@ -68,7 +68,7 @@ constructions, and
 [vitri's catalog](https://github.com/Tractables/vitri/blob/main/docs/env.md)
 lists them. `tididi` passes them through, and they reach every run that
 preprocesses or builds a vtree, in every mode, with three exceptions it
-refuses whenever they are set:
+refuses whenever they are set, and one it refuses where it would do nothing:
 
 - **`VITRI_BUDGET_MS`.** `tididi` gives vitri its budget from the run's own
   time limit, so this variable would never take effect. Pass the limit as
@@ -77,6 +77,11 @@ refuses whenever they are set:
   `tididi` does not use.
 - **`VITRI_ARJUN_SKIP_MONOTONE`.** `mc` asks vitri to skip Arjun on a monotone
   formula itself, and no other mode can use the skip.
+- **`VITRI_IMPLICATES_MS`.** A model count conjoins the clauses vitri finds
+  for each component of the tree its frontend builds, after the component's
+  own. The variable is refused in every other mode, under `--vtree` and on a
+  bundle, which brings its clauses in its own files. A tree built after a
+  compile gives up gets no clauses.
 
 Two settings are overridden by design:
 

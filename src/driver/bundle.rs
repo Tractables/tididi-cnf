@@ -56,7 +56,7 @@ pub(super) fn read_bundle(dir: &Path) -> Result<Bundle, Error> {
     } else if reduced.num_vars() == 0 {
         FrontendVtree::FullyResolved
     } else {
-        FrontendVtree::Built(read_vtree_build(dir, &reduced)?)
+        FrontendVtree::Built(read_vtree_build(dir, &reduced, record.mode)?)
     };
     Ok(Bundle { reduced, meta, record, vtree })
 }
@@ -77,14 +77,35 @@ pub(super) fn bundle_mode(flag: Option<Mode>, record: &PreprocessRecord) -> Resu
 }
 
 /// The vtree over `reduced` and, when `components.json` lists two or more
-/// components, the tree of each. A connected formula's manifest lists the
-/// whole formula as its one component, on `vtree.vtree` itself.
-fn read_vtree_build(dir: &Path, reduced: &CnfFormula) -> Result<VtreeBuild, Error> {
+/// components, the tree of each, with the implied clauses of each component
+/// its entry names. A connected formula's manifest lists the whole formula as
+/// its one component, on `vtree.vtree` itself. Only the model count conjoins
+/// implied clauses, so a bundle preprocessed for another `mode` that names
+/// some is refused.
+fn read_vtree_build(dir: &Path, reduced: &CnfFormula, mode: vitri::cnf::Mode) -> Result<VtreeBuild, Error> {
     let root = read_vtree(&dir.join("vtree.vtree"), reduced.num_vars())?;
     let manifest_path = dir.join("components.json");
     let manifest: ComponentsManifest = read_json(&manifest_path)?;
+    if mode != vitri::cnf::Mode::Mc
+        && let Some(path) = manifest.components.iter().find_map(|entry| entry.implied.as_ref())
+    {
+        return Err(Error::Input(format!(
+            "{} names implied clauses ({path}), which only the model count conjoins, but the \
+             bundle was preprocessed for mode {}",
+            manifest_path.display(),
+            mode.token(),
+        )));
+    }
+    let implied_of = |entry: &vitri::bundle::components::ComponentEntry, num_vars: usize| match &entry.implied {
+        Some(path) => read_implied(&dir.join(path), num_vars),
+        None => Ok(Vec::new()),
+    };
     if manifest.components.len() < 2 {
-        return Ok(VtreeBuild { root, components: None });
+        let implied = match manifest.components.first() {
+            Some(entry) => implied_of(entry, reduced.num_vars() as usize)?,
+            None => Vec::new(),
+        };
+        return Ok(VtreeBuild { root, components: None, implied });
     }
     // The component each reduced variable is in. `check_partition` refuses
     // a variable the formula does not have, or one in two components.
@@ -98,7 +119,8 @@ fn read_vtree_build(dir: &Path, reduced: &CnfFormula) -> Result<VtreeBuild, Erro
             }
         }
         let vtree = read_vtree(&dir.join(&entry.vtree), local_to_global.len() as u32)?;
-        components.push(ComponentVtree { vtree, component: Component { clause_indices: Vec::new(), local_to_global } });
+        let implied = implied_of(entry, local_to_global.len())?;
+        components.push(ComponentVtree { vtree, component: Component { clause_indices: Vec::new(), local_to_global, implied } });
     }
     // A clause is in its first variable's component; `check_partition`
     // refuses one whose other variables are not, and one in none.
@@ -108,7 +130,21 @@ fn read_vtree_build(dir: &Path, reduced: &CnfFormula) -> Result<VtreeBuild, Erro
         }
     }
     check_partition(reduced, &components).map_err(|give_up| misfit(&manifest_path, give_up))?;
-    Ok(VtreeBuild { root, components: Some(components) })
+    Ok(VtreeBuild { root, components: Some(components), implied: Vec::new() })
+}
+
+/// The implied clauses at `path`, DIMACS over the `num_vars` variables of
+/// the component they are for.
+fn read_implied(path: &Path, num_vars: usize) -> Result<Vec<vitri::cnf::Clause>, Error> {
+    let (implied, _) = super::read_dimacs(path)?;
+    if implied.num_vars() as usize != num_vars {
+        return Err(Error::Input(format!(
+            "{} has {} variables, but its component has {num_vars}",
+            path.display(),
+            implied.num_vars(),
+        )));
+    }
+    Ok(implied.into_clauses())
 }
 
 /// The vtree at `path`, which must place exactly the `num_vars` variables of

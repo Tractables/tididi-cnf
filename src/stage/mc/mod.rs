@@ -23,7 +23,7 @@
 //! returns, and no caller folds it again.
 
 use vitri::cnf::CnfFormula;
-use crate::compile::{CompileOptions, ComponentPlan, Output, StallRule, compile_with, settle};
+use crate::compile::StallRule;
 use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reduction};
 use crate::stage::Run;
 
@@ -326,11 +326,12 @@ pub(crate) fn run_mc_streaming(run: &Run<'_>, formula: &CnfFormula) -> Result<Mc
     count_preprocessed(run, &reduced, record.unsat, lift_pow2, PreprocessReport::of(&telemetry), compile)
 }
 
-/// Integer MC of a vitri bundle's reduced formula, `reduced`, compiled whole
-/// or by the components the bundle lists, on the bundle's vtree
-/// (`Config::bundle_tree`), with nothing preprocessed. As on an explicit
-/// `--vtree`, a compile that fails is recovered by Shannon split, and the
-/// record's lift is applied once, to the answer.
+/// Integer MC of a vitri bundle's reduced formula, `reduced`, compiled one
+/// component at a time on the bundle's trees (`Config::bundle_tree`) with
+/// their implied clauses, as the cascade compiles the tree its frontend
+/// built, with nothing preprocessed. As on an explicit `--vtree`, a compile
+/// that fails is recovered by Shannon split, and the record's lift is applied
+/// once, to the answer.
 pub(crate) fn run_mc_bundle(
     run: &Run<'_>,
     reduced: &CnfFormula,
@@ -338,12 +339,7 @@ pub(crate) fn run_mc_bundle(
 ) -> Result<McAnswer, crate::Error> {
     let compile = || {
         let built = run.config.bundle_tree().expect("a bundle with a formula to compile has its vtree");
-        let built = built.clone().bind(run.eng);
-        let plan = ComponentPlan::from_components(built.components.as_deref());
-        let options = CompileOptions { plan, output: Output::Count, deadline: run.deadline };
-        let compiled = settle(compile_with(run.eng, reduced, &built.root, options, run.compile))?;
-        let count = run.eng.model_count(&compiled.diagram).ok()?;
-        Some((count, compiled.peak_pairs))
+        count_attempt(run, attempt_from_vitri_build(reduced.clone(), built.clone().bind(run.eng), 0), run.deadline)
     };
     let preprocessing = PreprocessReport::of(&vitri::bundle::PreprocessTelemetry::default());
     count_preprocessed(run, reduced, record.unsat, record.count_lift_pow2 as usize, preprocessing, compile)

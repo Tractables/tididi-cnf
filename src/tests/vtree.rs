@@ -52,16 +52,18 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
             components: Some(vec![
                 ComponentVtree {
                     vtree: Arc::new(Vtree::balanced(2)),
-                    component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+                    component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
                 },
                 ComponentVtree {
                     vtree: Arc::new(Vtree::balanced(4)),
                     component: Component {
                         clause_indices: vec![1],
                         local_to_global: vec![VarId(3), VarId(4), VarId(5), VarId(6)],
+                        implied: Vec::new(),
                     },
                 },
             ]),
+            implied: Vec::new(),
         }
         .bind(engine);
         assert!(Arc::ptr_eq(built.root.context(), &context));
@@ -130,11 +132,11 @@ fn vitri_build_preserves_component_clause_and_variable_mappings() {
     assert_eq!(components.len(), 2);
     assert_eq!(
         components[0].component,
-        Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+        Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
     );
     assert_eq!(
         components[1].component,
-        Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)] },
+        Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)], implied: Vec::new() },
     );
     for component in components {
         let mut local_vars: Vec<_> = component

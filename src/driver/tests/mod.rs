@@ -5,7 +5,7 @@ use tididi::limits::StopAt;
 fn run_deadline_stays_armed_through_final_count_readout() {
     let eng = Engine::new();
     let formula = crate::parse_dimacs("p cnf 3 1\n1 2 3 0\n".as_bytes()).unwrap().0;
-    let crate::vtree::VtreeBuild { root: tree, components } = crate::vtree::build_vtree_with_components(
+    let crate::vtree::VtreeBuild { root: tree, components, .. } = crate::vtree::build_vtree_with_components(
         &formula, "portfolio", &crate::vtree::VtreeOptions::default(),
     ).unwrap();
     let deadline = Instant::now() + std::time::Duration::from_secs(60);
@@ -99,7 +99,7 @@ fn a_compile_out_of_memory_on_its_vtree_answers_on_the_bisection() {
         let _budget = eng.limits().edit(|limits| limits.with_memory_budget_bytes(Some(BUDGET_BYTES)));
         let linear = || {
             let root = crate::vtree::build_vtree(&formula, "linear", &VtreeOptions::default()).unwrap();
-            VtreeBuild { root, components: None }.bind(eng)
+            VtreeBuild { root, components: None, implied: Vec::new() }.bind(eng)
         };
         let explicit = Config { vtree: Some("linear".to_owned()), ..crate::test_support::minimal_config() };
         let refused = compile_with_retry(&crate::test_support::run(eng, &explicit), &formula, linear(), None);

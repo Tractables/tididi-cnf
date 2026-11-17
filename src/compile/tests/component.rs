@@ -18,11 +18,11 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
     let split = [
         ComponentVtree {
             vtree: Arc::new(Vtree::balanced(3)),
-            component: Component { clause_indices: vec![0, 1, 2], local_to_global: vec![VarId(1), VarId(2), VarId(3)] },
+            component: Component { clause_indices: vec![0, 1, 2], local_to_global: vec![VarId(1), VarId(2), VarId(3)], implied: Vec::new() },
         },
         ComponentVtree {
             vtree: Arc::new(Vtree::balanced(1)),
-            component: Component { clause_indices: vec![3, 4], local_to_global: vec![VarId(4)] },
+            component: Component { clause_indices: vec![3, 4], local_to_global: vec![VarId(4)], implied: Vec::new() },
         },
     ];
     let nodes = |v: &Vtree| -> Vec<VtreeNode> {
@@ -52,4 +52,31 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
         assert_eq!(tdd.vtree().root(), expected.root());
         assert_eq!(nodes(tdd.vtree()), nodes(&expected), "weighted = {weighted}");
     }
+}
+
+/// A component's implied clauses follow its own in the remapped sub-formula,
+/// already in its local numbering, and leave its count as it was.
+#[test]
+fn implied_clauses_follow_the_components_own_and_keep_its_count() {
+    use vitri::cnf::{Clause, Literal, VarId as CnfVar};
+    use crate::compile::CompileRun;
+    let eng = &Engine::new();
+    // Components (x1 ∨ x2) ∧ (¬x2 ∨ x3), which implies x1 ∨ x3, and (x4 ∨ x5).
+    let formula = dimacs(5, &[&[1, 2][..], &[-2, 3], &[4, 5]]);
+    let local = |var: usize, positive: bool| Literal::new(CnfVar::from_idx(var - 1), positive);
+    let implied = Clause { literals: vec![local(1, true), local(3, true)] };
+    let mut split = crate::vtree::split_components(&formula, "minfill-primal");
+    let first = split.iter_mut().find(|component| component.clause_indices.contains(&0)).unwrap();
+    first.implied = vec![implied.clone()];
+
+    let mut scratch = RemapScratch::default();
+    remap_component_clauses_into(&mut scratch, &formula, first);
+    assert_eq!(scratch.sub().clauses().len(), 3);
+    assert_eq!(scratch.sub().clauses()[2], implied);
+
+    let balanced = |sub: &CnfFormula| Some(Arc::new(Vtree::balanced(sub.num_vars())));
+    let (count, _) =
+        crate::compile::model_count_streaming(eng, &formula, &split, balanced, None, None, CompileRun::default())
+            .unwrap();
+    assert_eq!(count, crate::test_support::brute_projected_count(&formula, 0..5));
 }

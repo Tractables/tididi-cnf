@@ -19,7 +19,7 @@ use crate::budget::vtree_deadline;
 use crate::compile::model_count_streaming;
 use crate::stage::{PORTFOLIO_VTREE_SPEC, Run, run_isolated};
 use crate::vtree::{
-    ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
+    Component, ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
 };
 
 /// One attempt of a streaming model-count compile: a formula, and its
@@ -71,8 +71,13 @@ pub(super) fn attempt_from_vitri_build(
     lift_pow2: u32,
 ) -> CompileAttempt {
     let components = built.components.unwrap_or_else(|| {
-        vec![ComponentVtree { vtree: built.root, component: whole_formula_component(&formula) }]
+        let component = Component { implied: built.implied, ..whole_formula_component(&formula) };
+        vec![ComponentVtree { vtree: built.root, component }]
     });
+    let implied: usize = components.iter().map(|c| c.component.implied.len()).sum();
+    if implied > 0 {
+        eprintln!("[mc] implied clauses: {implied}");
+    }
     CompileAttempt { formula, components, lift_pow2 }
 }
 

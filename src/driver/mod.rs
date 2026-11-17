@@ -122,6 +122,7 @@ fn parse_input(
         None => Mode::resolve(mode_flag, &meta)?,
     };
     settings.refuse_inert(mode_flag, &meta, mode, bundle.is_some())?;
+    crate::frontend::request::refuse_inert_implicates(&vitri, mode, settings.vtree.is_some(), bundle.is_some())?;
 
     eprintln!(
         "[input] {} variables, {} clauses",

@@ -107,6 +107,11 @@ pub struct VtreeBuild {
     /// turns it into the plan [`compile_cnf`](crate::compile::compile_cnf)
     /// takes.
     pub components: Option<Vec<ComponentVtree>>,
+    /// Clauses the formula implies, over its variables, which a compile of
+    /// the whole formula on `root` conjoins after the formula's own; a split
+    /// build carries each component's on its [`Component`] instead. Empty
+    /// unless vitri's implied-clause pass ran and found some.
+    pub implied: Vec<vitri::cnf::Clause>,
 }
 
 impl VtreeBuild {
@@ -137,6 +142,10 @@ pub struct Component {
     /// The formula variable of each local variable, ascending: entry `i` is
     /// the one local variable `i + 1` stands for.
     pub local_to_global: Vec<VarId>,
+    /// Clauses the component's own clauses imply, over its local variables,
+    /// which its compile conjoins after them. They change no model of the
+    /// component, only how small its diagram stays on the way.
+    pub implied: Vec<vitri::cnf::Clause>,
 }
 
 impl Component {
@@ -147,7 +156,7 @@ impl Component {
             .into_iter()
             .map(diagram_var)
             .collect();
-        Self { clause_indices, local_to_global }
+        Self { clause_indices, local_to_global, implied: Vec::new() }
     }
 }
 
@@ -258,8 +267,12 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
         // A frontend adds it to the run's vtree time; a stage times its own
         // builds (`budget::VtreeTime`).
         construction_ms: _,
+        implied_clauses,
     } = built;
 
+    // One set per component, or one for the whole formula when it did not
+    // split; empty sets when the pass did not run.
+    let mut implied_clauses = implied_clauses.into_iter();
     let components = components.map(|components| {
         components
             .into_iter()
@@ -272,12 +285,14 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
                         .into_iter()
                         .map(diagram_var)
                         .collect(),
+                    implied: implied_clauses.next().unwrap_or_default(),
                 },
             })
             .collect()
     });
+    let implied = if components.is_none() { implied_clauses.next().unwrap_or_default() } else { Vec::new() };
 
-    VtreeBuild { root: Arc::new(vtree_from_vitri(&vtree)), components }
+    VtreeBuild { root: Arc::new(vtree_from_vitri(&vtree)), components, implied }
 }
 
 /// Every standalone construction goes through here, so its selection context
@@ -370,6 +385,7 @@ pub(crate) fn whole_formula_component(formula: &CnfFormula) -> Component {
     Component {
         clause_indices: (0..formula.clauses().len()).collect(),
         local_to_global: (1..=formula.num_vars()).map(VarId).collect(),
+        implied: Vec::new(),
     }
 }
 

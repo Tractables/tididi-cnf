@@ -555,12 +555,7 @@ where
         if deadline_passed(deadline) {
             return None;
         }
-        component::remap_component_clauses_into(
-            scratch,
-            formula,
-            &comp.clause_indices,
-            &comp.local_to_global,
-        );
+        component::remap_component_clauses_into(scratch, formula, comp);
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
         settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;

@@ -46,7 +46,8 @@ fn compile_weighted(
 ) -> Option<WeightedCount<WeightValue>> {
     let eng = run.eng;
     run_isolated("[wmc] compile", || {
-        let VtreeBuild { root: vtree, components } = match prebuilt {
+        // Only the model count's frontend asks vitri for implied clauses.
+        let VtreeBuild { root: vtree, components, implied: _ } = match prebuilt {
             Some(built) => built,
             None => crate::vtree::built_or_give_up(run.config.vtree_time.time(|| {
                 crate::vtree::build_vtree_with_components(

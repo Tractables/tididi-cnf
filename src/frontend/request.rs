@@ -13,7 +13,7 @@
 //! vitri knob this compiler sets is set in one of the two.
 
 use crate::Error;
-use crate::config::{Config, PreprocessLevel};
+use crate::config::{Config, Mode, PreprocessLevel};
 use crate::vtree::{VtreeOptions, resolve_vitri_selection_ctx};
 
 /// Read and check vitri's environment settings for the run starting now.
@@ -59,6 +59,36 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
         ));
     }
     Ok(config)
+}
+
+/// [`Error`] when `VITRI_IMPLICATES_MS` asks for vitri's implied-clause pass
+/// in a run that would not conjoin the clauses: the model count conjoins
+/// them on the tree its frontend builds, so the pass is inert in every other
+/// `mode`, under an explicit `--vtree` (`explicit_vtree`), whose route builds
+/// no tree in the frontend, and on a bundle, whose clauses vitri already
+/// wrote.
+pub(crate) fn refuse_inert_implicates(
+    config: &vitri::RunConfig,
+    mode: Mode,
+    explicit_vtree: bool,
+    bundle: bool,
+) -> Result<(), Error> {
+    if config.implicates_ms.is_none() {
+        return Ok(());
+    }
+    let why = if bundle {
+        "the input is a vitri bundle, which brings any implied clauses in its own files".to_owned()
+    } else if mode != Mode::Mc {
+        format!("this run's mode is {mode}, and only the model count (mode mc) conjoins them")
+    } else if explicit_vtree {
+        "--vtree compiles on a tree vitri's frontend does not build, and the clauses are found over that tree"
+            .to_owned()
+    } else {
+        return Ok(());
+    };
+    Err(Error::Environment(format!(
+        "VITRI_IMPLICATES_MS is set, but {why}, so the variable would do nothing; unset it."
+    )))
 }
 
 /// The run's frontend: the run's vitri settings under its wall, the parent's
