@@ -118,11 +118,10 @@ second and another not finish. Without `--vtree`, the run chooses:
   out of memory with time left compiles once more on a second tree; the record's `answered_by` is then `bisect-retry`.
 - `mc` and `wmc` run the counting cascade: vitri's Arjun preprocessing reduces
   the formula, the portfolio picks a vtree for what is left, and if that
-  compile gives up, further stages follow. Under `mc`, a compile that stalls
-  on one step is given up early and compiled again on another tree
-  (`stall-recompile`), and a monotone formula, in which every variable occurs
-  in one polarity only, is first compiled without Arjun's reduction
-  (`monotone-reduction` when the reduction answers after all).
+  compile gives up, further stages follow. Under `mc`, a monotone formula, in
+  which every variable occurs in one polarity only, is first compiled without
+  Arjun's reduction (`monotone-reduction` when the reduction answers after
+  all).
 
 The record's `answered_by` ([`stats.md`](stats.md)) says which stage produced
 the count, and [`algorithms.md`](algorithms.md#fallback-stages) gives each

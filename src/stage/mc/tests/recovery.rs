@@ -33,19 +33,16 @@ fn no_cofactor(_: &Run<'_>, _: &CnfFormula) -> Option<Counted> {
     unreachable!("no cofactor is compiled here")
 }
 
-/// The first call's count and peak pass through, and it names the stage that
-/// answered it, a stage of the caller's behind the first compile included.
+/// The first compile's count and peak pass through, and the compile answered
+/// it.
 #[test]
-fn recovery_names_the_stage_the_first_call_ran() {
+fn recovery_names_the_first_compile() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = dimacs(2, &[&[1]]);
-    let first = || Some(((BigUint::from(2u32), 1024usize), AnsweredBy::StallRecompile));
+    let first = || Some((BigUint::from(2u32), 1024usize));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
-    assert_eq!(
-        (got.count, got.peak_pairs, got.answered_by),
-        (BigUint::from(2u32), 1024, AnsweredBy::StallRecompile)
-    );
+    assert_eq!((got.count, got.peak_pairs, got.answered_by), (BigUint::from(2u32), 1024, AnsweredBy::Compile));
 }
 
 /// A count a fallback produced is the fallback's.
@@ -54,7 +51,7 @@ fn recovery_names_the_fallback_that_answers() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = dimacs(2, &[&[1, 2]]);
-    let first = || -> Option<(Counted, AnsweredBy)> { panic!("the first compile fails") };
+    let first = || -> Option<Counted> { panic!("the first compile fails") };
     let fallbacks = || Some(((BigUint::from(3u32), 0usize), AnsweredBy::SupportEnumeration));
     let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, Some(&fallbacks), no_cofactor).unwrap();
     assert_eq!((got.count, got.answered_by), (BigUint::from(3u32), AnsweredBy::SupportEnumeration));
@@ -69,7 +66,7 @@ fn recovery_names_the_split_when_no_cofactor_compiles() {
     let config = fixtures::minimal_config();
     let f = dimacs(1, &[&[1], &[-1]]);
     let calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<(Counted, AnsweredBy)> {
+    let first = || -> Option<Counted> {
         calls.set(calls.get() + 1);
         panic!("the first compile fails")
     };
@@ -105,7 +102,7 @@ fn mc_recovery_honors_past_deadline_without_compiling() {
     let past = std::time::Instant::now() - std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(past), ..fixtures::run(eng, &config) };
     let calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<(Counted, AnsweredBy)> {
+    let first = || -> Option<Counted> {
         calls.set(calls.get() + 1);
         panic!("compile forced to fail — must not be reached past the deadline");
     };
@@ -127,7 +124,7 @@ fn mc_recovery_skips_the_fallbacks_once_the_wall_passes_mid_attempt() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
     let run = Run { deadline: Some(deadline), ..fixtures::run(eng, &config) };
     let compile_calls = std::cell::Cell::new(0u32);
-    let first = || -> Option<(Counted, AnsweredBy)> {
+    let first = || -> Option<Counted> {
         compile_calls.set(compile_calls.get() + 1);
         // An attempt (an OOM, say) that eats the rest of the wall before
         // dying.

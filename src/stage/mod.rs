@@ -74,8 +74,7 @@ pub(crate) struct Run<'a> {
     /// The vtree construction the run's main compile last started on, by its
     /// spec: the plain compile's portfolio winner, or its retry's
     /// construction once the retry starts, and the model count's winner as
-    /// its primary compile starts, then the stall recompile's tree as that
-    /// starts. The driver owns it and records it as `vtree_candidate` when no
+    /// its primary compile starts. The driver owns it and records it as `vtree_candidate` when no
     /// answer named one, so a run that gives up still says which tree it was
     /// on.
     pub(crate) started_on: &'a RefCell<Option<String>>,

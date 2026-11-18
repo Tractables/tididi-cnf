@@ -87,17 +87,11 @@ refuses whenever they are set, and one it refuses where it would do nothing:
   clauses, and neither do the trees of a projected count's conditioning
   branches.
 
-Two settings are overridden by design:
-
-- **`VITRI_ARJUN_SBVA`.** With it on, its default, Arjun adds variables to
-  shorten the formula; on a formula that looks like a graph colouring, a
-  model count whose first compile gives up retries with a second reduction
-  that has it off. The record's `answered_by` is `no-sbva-retry` when that
-  retry produced the count ([`stats.md`](stats.md)).
-- **`VITRI_PORTFOLIO_SKIP`.** A model count whose compile stalls recompiles
-  on a tree from the portfolio's `goatd-primal` entry alone
-  ([`tasks.md`](tasks.md#vtrees)), whatever the variable skips; every other
-  portfolio the run builds honours it.
+One setting is overridden by design: with `VITRI_ARJUN_SBVA` on, its
+default, Arjun adds variables to shorten the formula; on a formula that looks
+like a graph colouring, a model count whose first compile gives up retries
+with a second reduction that has it off. The record's `answered_by` is
+`no-sbva-retry` when that retry produced the count ([`stats.md`](stats.md)).
 
 vitri's catalog also lists the variables that act when `tididi` is built
 rather than when it runs, such as the choice of C++ compiler.

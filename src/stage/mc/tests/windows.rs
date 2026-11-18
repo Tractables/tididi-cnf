@@ -1,21 +1,6 @@
 use super::*;
 use std::time::{Duration, Instant};
 
-/// No time limit, no per-step wall.
-#[test]
-fn no_stall_rule_without_a_time_limit() {
-    assert_eq!(stall_rule(None), None);
-}
-
-/// A sixth of the declared limit, on the steps with at least 50 left.
-#[test]
-fn the_stall_rule_is_a_sixth_of_the_limit_on_steps_far_from_the_root() {
-    let rule = stall_rule(Some(120_000)).expect("a time limit arms the rule");
-    assert_eq!(rule.wall, Duration::from_secs(20));
-    assert_eq!(rule.min_left, 50);
-    assert_eq!(stall_rule(Some(3_600_000)).unwrap().wall, Duration::from_secs(600));
-}
-
 #[test]
 fn no_retry_without_a_deadline_or_below_the_floor() {
     assert_eq!(support_enum_arjun_retry_ms(None), None);

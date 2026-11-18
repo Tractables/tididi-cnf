@@ -8,9 +8,8 @@
 //! `run_mc_streaming` and `run_mc_bundle` are the other routes' entries, which
 //! end in the same count of a preprocessed formula. The pieces they compose are
 //! `attempt` (what a compile attempt is built from and how it compiles),
-//! `windows` (what each fallback may spend, and the primary compile's
-//! per-step wall), `cascade` (the primary compile, the stall recompile and
-//! the fallbacks, the monotone reduction among them), `support_enum` (the
+//! `windows` (what each fallback may spend), `cascade` (the primary compile
+//! and the fallbacks, the monotone reduction among them), `support_enum` (the
 //! fallback that enumerates Arjun's independent support) and `recovery` (the
 //! one order every route counts in: the first compile, the fallbacks, Shannon
 //! split). Its stderr lines carry the `[mc]` tag and the stage's record token,
@@ -23,7 +22,6 @@
 //! returns, and no caller folds it again.
 
 use vitri::cnf::CnfFormula;
-use crate::compile::StallRule;
 use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reduction};
 use crate::stage::Run;
 
@@ -31,7 +29,6 @@ use attempt::{attempt_from_vitri_build, count_attempt};
 use cascade::{arm_no_sbva_retry, count_cofactor, count_primary, monotone_reduction};
 use recovery::{Recovered, count_with_recovery};
 use support_enum::{reduce_for_support, support_enum_stage};
-use windows::stall_rule;
 
 mod attempt;
 mod cascade;
@@ -65,17 +62,15 @@ struct McOutcome {
 /// fallbacks and Shannon-split recovery ([`count_primary`]) or, when vitri
 /// kept no reduction, the count without it ([`count_without_reduction`]).
 /// `None` when nothing answered; the stage that gave up has said so on stderr.
-/// It runs the whole front end on the formula it is handed. The primary
-/// compile's steps run under `stall_rule`, the run's per-step wall
-/// ([`windows::stall_rule`]); `None` sets none.
-fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula, stall_rule: Option<StallRule>) -> Option<McOutcome> {
+/// It runs the whole front end on the formula it is handed.
+fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
     let no_sbva_retry_armed = arm_no_sbva_retry(run.config);
     let result = crate::frontend::with_mc_frontend(
         compile_formula,
         run.config,
         run.deadline,
         |attempt, session| {
-            run_mc_cascade(run, compile_formula, stall_rule, no_sbva_retry_armed, attempt, session)
+            run_mc_cascade(run, compile_formula, no_sbva_retry_armed, attempt, session)
         },
     );
     result.unwrap_or_else(|error| {
@@ -91,7 +86,6 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula, stall_rule: Option<Stal
 fn run_mc_cascade(
     run: &Run<'_>,
     compile_formula: &CnfFormula,
-    stall_rule: Option<StallRule>,
     no_sbva_retry_armed: bool,
     attempt: crate::frontend::McFrontendAttempt,
     session: &vitri::bundle::FrontendSession<'_>,
@@ -136,7 +130,7 @@ fn run_mc_cascade(
         .then_some(session);
         let ar = crate::frontend::record::arjun_reduction(bundle)
             .expect("a kept plain-MC Arjun result carries its support");
-        count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry, stall_rule)
+        count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry)
     } else {
         count_without_reduction(
             run,
@@ -191,7 +185,6 @@ fn count_without_reduction(
     // reduction instead.
     let first = || {
         count_attempt(run, attempt_from_vitri_build(fallback_formula.clone(), vtree, 0), run.deadline)
-            .map(|counted| (counted, AnsweredBy::Compile))
     };
     let fallbacks = || {
         if monotone {
@@ -254,8 +247,8 @@ fn reduction(outcome: Option<&vitri::bundle::StageOutcome>) -> Option<Reduction>
     }
 }
 
-/// The cascade's driver entry: count through [`count_mc`], under the
-/// per-step wall the run's time limit sets, and hand back what it answered.
+/// The cascade's driver entry: count through [`count_mc`] and hand back what
+/// it answered.
 /// The compile clock starts here, so `compile_ms` leaves out the
 /// preprocessing and Arjun that [`count_mc`] runs first.
 pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnswer, crate::Error> {
@@ -263,7 +256,7 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
     // The stage that gave up has already said so on stderr, and there is no
     // other path behind this one.
-    let out = count_mc(run, formula, stall_rule(run.config.time_limit_ms)).ok_or_else(crate::Error::compile_gave_up)?;
+    let out = count_mc(run, formula).ok_or_else(crate::Error::compile_gave_up)?;
     let telemetry = out.preprocessing;
     // Arjun has its own key, so preprocessing is the simplify chain alone.
     // The compile is what is left of the wall once all of the frontend's
@@ -384,12 +377,11 @@ fn count_preprocessed(
     eprintln!("[mc] compile: start");
     // In-loop sub-vtree builds bill to `vtree_ms`, not `compile_ms`.
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
-    let first = || compile().map(|counted| (counted, AnsweredBy::Compile));
     // Each cofactor streams over its own components, building each vtree, on
     // the run's construction, as the compile reaches it.
     let cofactor = |run: &Run<'_>, form: &CnfFormula| super::count_streaming(run, form, None);
     let Recovered { count, peak_pairs, answered_by, cascade_ms } =
-        count_with_recovery(run, reduced, first, None, cofactor)
+        count_with_recovery(run, reduced, compile, None, cofactor)
             .ok_or_else(crate::Error::compile_gave_up)?;
     Ok(McAnswer {
         count: count << lift_pow2,
