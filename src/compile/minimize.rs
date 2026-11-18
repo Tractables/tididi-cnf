@@ -131,8 +131,8 @@ pub(crate) struct MinimizeGate {
     fold_start_work: u64,
     /// Whether the current fold is the root's, set by the step that runs it.
     /// Nothing folds the root's diagram again, so where its scans fall moves
-    /// only its own work and size: its full reductions scan by the schedule
-    /// at every merge.
+    /// only its own work and size: any of its merges may scan when the work
+    /// since the fold's start or its last scan pays for it.
     pub(crate) fold_at_root: bool,
 }
 
@@ -228,7 +228,8 @@ impl MinimizeGate {
     /// gate on what it leaves.
     ///
     /// Only the last merge of a fold (`fold_end`) may scan content twins,
-    /// except in the root's fold ([`Self::fold_at_root`]). Contraction
+    /// except in the root's fold ([`Self::fold_at_root`]), where any merge may
+    /// when [`Self::fold_paid_for_scan`] holds. Contraction
     /// commutes with conjunction and summing out, a content-twin merge does
     /// not, so a scan inside a fold makes the fold's result depend on its
     /// batch boundaries.
