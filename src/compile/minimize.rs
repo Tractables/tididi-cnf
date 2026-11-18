@@ -86,6 +86,14 @@ const SCAN_FOLD_WORK_PER_PAIR: u64 = 16;
 /// over about 1,500 pairs however small the diagram.
 const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
 
+/// The most nodes a merge inside a fold that summed levels out may hold and
+/// still scan content twins. Summing out leaves count nodes with equal
+/// contents, and on small diagrams the scan halves the accumulator the fold's
+/// next conjunctions pay for; on larger ones a scan there can leave the fold's
+/// end with more pairs than the fold-end scan alone, which every later fold
+/// pays for.
+const MID_FOLD_SCAN_MAX_NODES: usize = 4096;
+
 /// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
 const SCAN_MAX_BACKOFF: u32 = 16;
 
@@ -242,12 +250,13 @@ impl MinimizeGate {
     ///
     /// Only the last merge of a fold (`fold_end`) may scan content twins,
     /// except in the root's fold ([`Self::fold_at_root`]), where any merge may
-    /// when [`Self::fold_paid_for_scan`] holds. Contraction
-    /// commutes with conjunction and summing out, a content-twin merge does
-    /// not, so a scan inside a fold makes the fold's result depend on its
-    /// batch boundaries.
+    /// when [`Self::fold_paid_for_scan`] holds, and at a merge that summed
+    /// levels out (`summed_out`) into at most [`MID_FOLD_SCAN_MAX_NODES`]
+    /// nodes. Contraction commutes with conjunction and summing out, a
+    /// content-twin merge does not, so a scan inside a fold makes the fold's
+    /// result depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
-        &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool,
+        &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
@@ -256,7 +265,8 @@ impl MinimizeGate {
         let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
         match action {
             MinimizeAction::Full => {
-                let skip = self.skip_content_twins || !(fold_end || rescan);
+                let small_sum = summed_out && cur_nodes <= MID_FOLD_SCAN_MAX_NODES;
+                let skip = self.skip_content_twins || !(fold_end || rescan || small_sum);
                 let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
                 eng.reduce(result, full_reduction(skip, schedule))?;
                 if rescan {

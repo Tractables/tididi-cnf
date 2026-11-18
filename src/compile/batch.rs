@@ -609,7 +609,8 @@ fn merge_batch_into_acc(
     let (num, den) = BATCH_ABSORB_FACTOR;
     let absorbed = acc_pairs.is_some_and(|n| result.pair_count().saturating_mul(den) <= num.saturating_mul(n));
 
-    state.adaptive_minimize(eng, &mut result, fold_end)?;
+    let summed_out = marginalize_targets.is_some_and(|t| !t.is_empty());
+    state.adaptive_minimize(eng, &mut result, fold_end, summed_out)?;
 
     Ok((result, absorbed))
 }
@@ -627,7 +628,7 @@ fn merge_clause_into_acc(
     fold_end: bool,
 ) -> Result<Tdd, OperationError> {
     let mut result = eng.and_clause(acc, clause)?;
-    state.adaptive_minimize(eng, &mut result, fold_end)?;
+    state.adaptive_minimize(eng, &mut result, fold_end, false)?;
     if let Some(targets) = marginalize_targets {
         eng.marginalize_levels(&mut result, targets)?;
     }
