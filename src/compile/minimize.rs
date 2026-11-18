@@ -73,6 +73,12 @@ const CONTRACT_MIN_REMOVAL_FRACTION: f64 = 0.005;
 /// How many contractions a throttle skips.
 const CONTRACT_SKIP_COUNT: usize = 4;
 
+/// The work units per pair of its result from which a fold's last merge scans
+/// content twins whatever the gate and the schedule say. On model counting
+/// instances, the folds a scan paid off on had spent 10 to 570 units per pair
+/// and those it did not at most 9.3; 16 keeps a margin above the latter.
+const SCAN_FOLD_WORK_PER_PAIR: u64 = 16;
+
 /// What the gate decided this call. Each variant maps onto a minimize variant.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum MinimizeAction {
@@ -120,6 +126,9 @@ pub(crate) struct MinimizeGate {
     /// Whether the full minimize skips the content-twin scan, as a recovery
     /// cofactor's compile does.
     pub(crate) skip_content_twins: bool,
+    /// The engine's work clock when the current fold started
+    /// ([`Self::start_fold`]).
+    fold_start_work: u64,
 }
 
 impl MinimizeGate {
@@ -223,10 +232,13 @@ impl MinimizeGate {
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
 
-        match self.decide(cur_nodes, cur_retired) {
+        let rescan = fold_end && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
+        let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
+        match action {
             MinimizeAction::Full => {
                 let skip = self.skip_content_twins || !fold_end;
-                eng.reduce(result, full_reduction(skip, Some(&mut self.content_twin_schedule)))?;
+                let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
+                eng.reduce(result, full_reduction(skip, schedule))?;
                 self.record_full(
                     result.node_count(),
                     result.retired_marginal_slots(),
@@ -253,6 +265,23 @@ impl MinimizeGate {
             }
         }
         Ok(())
+    }
+
+    /// Mark the start of a fold for [`Self::fold_paid_for_scan`].
+    pub(crate) fn start_fold(&mut self, eng: &Engine) {
+        self.fold_start_work = eng.limits().work_units();
+    }
+
+    /// Whether the fold ending in `result` spent enough work per pair of it
+    /// that a content-twin scan, whose cost follows the pairs, is cheap beside
+    /// it. Summing out inside a fold is what leaves count nodes with equal
+    /// contents, and such a fold does much work per pair it leaves; a fold of
+    /// one merge that only grows the diagram does little and leaves few twins
+    /// a later scan would not find anyway.
+    fn fold_paid_for_scan(&self, eng: &Engine, result: &Tdd) -> bool {
+        result.has_marginal_level()
+            && eng.limits().work_units().saturating_sub(self.fold_start_work)
+                >= SCAN_FOLD_WORK_PER_PAIR.saturating_mul(result.pair_count() as u64)
     }
 
     /// Run twin contraction alone and record the fraction of nodes it

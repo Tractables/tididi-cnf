@@ -120,6 +120,7 @@ pub(crate) fn batch_accumulate(
     // merge at this node stays absorbing, then `next_batch_limit` of it. The
     // floor is fixed for the whole fold by the accumulator it starts from.
     let floor = batch_floor(acc.as_ref());
+    state.minimize.start_fold(eng);
     let mut limit = floor.size;
     let mut i = 0;
     while i < clauses.len() {
