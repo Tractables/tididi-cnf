@@ -1,13 +1,13 @@
-//! Sizes counted over the nodes a diagram's output reaches.
+//! Widths counted over the nodes a diagram's output reaches.
 //!
 //! An operation may leave nodes behind that nothing names until a prune drops
-//! them, and how many depends on the library version. A decision that reads a
-//! size reads it here, so that number moves no decision.
+//! them, and how many depends on the library version. The batch stop's width
+//! cap reads its width here, so that number moves no width stop.
 
 use tididi::diagram::{ChildDecoder, ChildRef, EncodedChildRef, NodeIdx, Tdd, ValueRef, ZERO};
 use tididi::vtree::VtreeIdx;
 
-/// Mark rows reused across calls of [`ReachScratch::on_spine`]: one flat row
+/// Mark rows reused across calls of [`ReachScratch::width_on_spine`]: one flat row
 /// of slots, and each spine level's offset into it.
 #[derive(Default)]
 pub(super) struct ReachScratch {
@@ -17,13 +17,12 @@ pub(super) struct ReachScratch {
 }
 
 impl ReachScratch {
-    /// The largest count of reached nodes on one level of `spine`, and the
-    /// pairs of the reached nodes on `spine`, an ancestor-closed set of
-    /// levels, at a cost in proportion to their slots. Levels off `spine` are
-    /// not read; a node there reaches nothing counted.
-    pub(super) fn on_spine(&mut self, tdd: &Tdd, spine: &[VtreeIdx]) -> (usize, usize) {
+    /// The largest count of reached nodes on one level of `spine`, an
+    /// ancestor-closed set of levels, at a cost in proportion to their slots.
+    /// Levels off `spine` are not read; a node there reaches nothing counted.
+    pub(super) fn width_on_spine(&mut self, tdd: &Tdd, spine: &[VtreeIdx]) -> usize {
         if tdd.is_zero() {
-            return (0, 0);
+            return 0;
         }
         let vtree = tdd.vtree();
         self.order.clear();
@@ -45,7 +44,7 @@ impl ReachScratch {
         {
             self.marks[base + out.local.idx()] = true;
         }
-        let (mut width, mut pairs) = (0, 0);
+        let mut width = 0;
         for &t in &self.order {
             let base = self.offset[t.idx()];
             let level = tdd.level(t);
@@ -61,7 +60,6 @@ impl ReachScratch {
                     continue;
                 }
                 here += 1;
-                pairs += level.pair_count_at(i);
                 for pair in level.pairs_iter_of(&node) {
                     for (&(child, decoder), side) in sides.iter().zip([pair.left, pair.right]) {
                         let child_base = self.offset[child.idx()];
@@ -78,7 +76,7 @@ impl ReachScratch {
         for &t in &self.order {
             self.offset[t.idx()] = usize::MAX;
         }
-        (width, pairs)
+        width
     }
 }
 

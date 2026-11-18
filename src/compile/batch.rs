@@ -321,8 +321,8 @@ fn mark_clause_levels(
 /// The arena width of a batch diagram under construction on the union of the
 /// folded clauses' spines (`spine`): its `Tdd::max_width`, which counts the
 /// nodes an operation left unnamed as well, read without sweeping every vtree
-/// level. It bounds the reached width ([`ReachScratch::on_spine`]) from above,
-/// so a cap it does not pass needs no reachability walk.
+/// level. It bounds the reached width ([`ReachScratch::width_on_spine`]) from
+/// above, so a cap it does not pass needs no reachability walk.
 ///
 /// Why the spine suffices. A batch starts as `Tdd::clause(first clause)`, which
 /// gives every internal level outside that clause's spine a single One node
@@ -333,6 +333,23 @@ fn mark_clause_levels(
 /// satisfiable, which the caller tests first.
 fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine.iter().map(|&t| local.level(t).slot_count()).max().unwrap_or(0)
+}
+
+/// The batch diagram's arena pairs on the spine union `spine`: its
+/// `pair_count` less the one trivial pair of each internal level off the union
+/// (off-spine levels never grow, [`batch_max_width`]). The extension rule reads
+/// it as the cost of conjoining one more clause. Unlike the width it counts
+/// the nodes an operation left unnamed: a reached count needs a walk over
+/// every reached pair at every check, which costs Boolean compiles up to 8% of
+/// their instructions, while this sum reads one count per node.
+fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
+    spine
+        .iter()
+        .map(|&t| {
+            let level = local.level(t);
+            (0..level.nodes().len()).map(|n| level.pair_count_at(n)).sum::<usize>()
+        })
+        .sum()
 }
 
 /// Where one batch may stop, fixed before it is built.
@@ -423,12 +440,13 @@ impl<'a> BatchStop<'a> {
     ///   never delays a marginalization past the boundary the floor would
     ///   have given it.
     ///
-    /// The width and pairs are those of the nodes the batch's output reaches
-    /// on the spine union ([`ReachScratch::on_spine`]), so that nodes the
-    /// library leaves unnamed move no stop; the width walk runs only when the
-    /// arena width ([`batch_max_width`]) passes the cap that applies. The
-    /// accumulator's pair count is its cached one ([`BatchStop::acc_pairs`]),
-    /// which the extension decision and the merge's absorption check share.
+    /// The width is that of the nodes the batch's output reaches on the spine
+    /// union ([`ReachScratch::width_on_spine`]), so that nodes the library
+    /// leaves unnamed move no width stop; the walk runs only when the arena width
+    /// ([`batch_max_width`]) passes the cap that applies. The pairs are the
+    /// arena's on the spine union ([`batch_spine_pairs`]). The accumulator's
+    /// pair count is its cached one ([`BatchStop::acc_pairs`]), which the
+    /// extension decision and the merge's absorption check share.
     ///
     /// Returns the built batch and the index of the next clause, at least
     /// `start + 1`: the first clause is always taken. A one-clause batch
@@ -461,7 +479,7 @@ impl<'a> BatchStop<'a> {
         let mut local = eng.clause(vtree, diagram_clauses.get(clauses[start]).iter().copied())?;
         // The running union of the folded clauses' spines, from which the stop
         // checks read the batch's width and pairs instead of sweeping every
-        // level (`batch_max_width`, `ReachScratch::on_spine`). Tracked only when a
+        // level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a
         // width cap is on or the batch may extend. All false on entry: only
         // spine entries are ever set, and they are reset from `touched` before
         // returning. An error return skips the reset, but an error ends the
@@ -477,7 +495,7 @@ impl<'a> BatchStop<'a> {
             mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
         }
         let mut built = 0usize;
-        let mut pairs = if may_extend { reach.on_spine(&local, &touched).1 } else { 0 };
+        let mut pairs = if may_extend { batch_spine_pairs(&local, &touched) } else { 0 };
         let mut holds_completion = self.completes(start);
         let mut i = start + 1;
         let mut batch_count = 1;
@@ -491,18 +509,17 @@ impl<'a> BatchStop<'a> {
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            let mut reached = None;
             let mut width = 0;
             if track_spine {
                 width = batch_max_width(&local, &touched);
                 let cap = if batch_count < self.floor { self.width_cap } else { self.guard };
                 if width > cap {
-                    width = reached.get_or_insert_with(|| reach.on_spine(&local, &touched)).0;
+                    width = reach.width_on_spine(&local, &touched);
                 }
             }
             if may_extend {
                 built += pairs;
-                pairs = reached.get_or_insert_with(|| reach.on_spine(&local, &touched)).1;
+                pairs = batch_spine_pairs(&local, &touched);
             }
             if self.stops_after(batch_count, width, holds_completion, built, pairs) {
                 break;
