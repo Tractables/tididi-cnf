@@ -329,11 +329,14 @@ fn fold_step(
     children: Option<Tdd>,
 ) -> Result<usize, OperationError> {
     let targets = build_marginalize_targets(t.idx(), current_vtree, ctx, &state.forgotten);
-    state.tdds[t.idx()] = batch_accumulate(
+    state.minimize.fold_at_root = t == current_vtree.root();
+    let folded = batch_accumulate(
         eng,
         &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
         state, targets.as_deref(),
-    )?;
+    );
+    state.minimize.fold_at_root = false;
+    state.tdds[t.idx()] = folded?;
     if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
     Ok(state.tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
 }

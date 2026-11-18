@@ -129,6 +129,11 @@ pub(crate) struct MinimizeGate {
     /// The engine's work clock when the current fold started
     /// ([`Self::start_fold`]).
     fold_start_work: u64,
+    /// Whether the current fold is the root's, set by the step that runs it.
+    /// Nothing folds the root's diagram again, so where its scans fall moves
+    /// only its own work and size: its full reductions scan by the schedule
+    /// at every merge.
+    pub(crate) fold_at_root: bool,
 }
 
 impl MinimizeGate {
@@ -222,10 +227,11 @@ impl MinimizeGate {
     /// Run the reduction the gate decides on for `result`, and re-anchor the
     /// gate on what it leaves.
     ///
-    /// Only the last merge of a fold (`fold_end`) may scan content twins.
-    /// Contraction commutes with conjunction and summing out, a content-twin
-    /// merge does not, so a scan inside a fold would make the fold's result
-    /// depend on its batch boundaries.
+    /// Only the last merge of a fold (`fold_end`) may scan content twins,
+    /// except in the root's fold ([`Self::fold_at_root`]). Contraction
+    /// commutes with conjunction and summing out, a content-twin merge does
+    /// not, so a scan inside a fold makes the fold's result depend on its
+    /// batch boundaries.
     pub(crate) fn adaptive_minimize(
         &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool,
     ) -> Result<(), OperationError> {
@@ -236,7 +242,7 @@ impl MinimizeGate {
         let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
         match action {
             MinimizeAction::Full => {
-                let skip = self.skip_content_twins || !fold_end;
+                let skip = self.skip_content_twins || !(fold_end || self.fold_at_root);
                 let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
                 eng.reduce(result, full_reduction(skip, schedule))?;
                 self.record_full(
