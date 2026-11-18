@@ -79,6 +79,16 @@ const CONTRACT_SKIP_COUNT: usize = 4;
 /// and those it did not at most 9.3; 16 keeps a margin above the latter.
 const SCAN_FOLD_WORK_PER_PAIR: u64 = 16;
 
+/// The fraction of nodes below which a scan [`SCAN_FOLD_WORK_PER_PAIR`] forced
+/// counts as wasted and doubles the work per pair the next one needs. On small
+/// count diagrams the test holds at nearly every fold end while the scans
+/// remove under 0.1% of the nodes, and a full reduction costs as much as one
+/// over about 1,500 pairs however small the diagram.
+const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
+
+/// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
+const SCAN_MAX_BACKOFF: u32 = 16;
+
 /// What the gate decided this call. Each variant maps onto a minimize variant.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum MinimizeAction {
@@ -129,6 +139,9 @@ pub(crate) struct MinimizeGate {
     /// The engine's work clock when the current fold started
     /// ([`Self::start_fold`]).
     fold_start_work: u64,
+    /// How many times [`SCAN_FOLD_WORK_PER_PAIR`] is doubled: once for each
+    /// forced scan in a row that removed too little.
+    scan_backoff: u32,
     /// Whether the current fold is the root's, set by the step that runs it.
     /// Nothing folds the root's diagram again, so where its scans fall moves
     /// only its own work and size: any of its merges may scan when the work
@@ -248,6 +261,12 @@ impl MinimizeGate {
                 eng.reduce(result, full_reduction(skip, schedule))?;
                 if rescan {
                     self.fold_start_work = eng.limits().work_units();
+                    let removed = cur_nodes.saturating_sub(result.node_count()) as f64;
+                    self.scan_backoff = if removed < cur_nodes as f64 * SCAN_MIN_REMOVAL_FRACTION {
+                        (self.scan_backoff + 1).min(SCAN_MAX_BACKOFF)
+                    } else {
+                        0
+                    };
                 }
                 self.record_full(
                     result.node_count(),
@@ -287,11 +306,12 @@ impl MinimizeGate {
     /// it. Summing out inside a fold is what leaves count nodes with equal
     /// contents, and such a fold does much work per pair it leaves; a fold of
     /// one merge that only grows the diagram does little and leaves few twins
-    /// a later scan would not find anyway.
+    /// a later scan would not find anyway. The bar doubles after each forced
+    /// scan in a row that removed too little ([`SCAN_MIN_REMOVAL_FRACTION`]).
     fn fold_paid_for_scan(&self, eng: &Engine, result: &Tdd) -> bool {
         result.has_marginal_level()
             && eng.limits().work_units().saturating_sub(self.fold_start_work)
-                >= SCAN_FOLD_WORK_PER_PAIR.saturating_mul(result.pair_count() as u64)
+                >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff).saturating_mul(result.pair_count() as u64)
     }
 
     /// Run twin contraction alone and record the fraction of nodes it
