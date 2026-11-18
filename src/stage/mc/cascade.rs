@@ -72,7 +72,7 @@ fn count_reduced_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
         );
         match attempt.vtree {
             crate::frontend::FrontendVtree::Built(built) => {
-                let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run.eng), lift_pow2);
+                let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run), lift_pow2);
                 count_attempt(run, attempt, run.deadline)
             }
             crate::frontend::FrontendVtree::FullyResolved => Some((num_bigint::BigUint::from(1u32) << lift_pow2, 0)),
@@ -165,7 +165,7 @@ fn retry_frontend_session(
         // reduction. A discarded result returned before this match, so there
         // is no second clause-growth decision here.
         crate::frontend::FrontendVtree::Built(built) => {
-            std::ops::ControlFlow::Continue((preprocessed, built.bind(run.eng)))
+            std::ops::ControlFlow::Continue((preprocessed, built.bind(run)))
         }
     })
 }

@@ -308,13 +308,13 @@ pub(crate) fn check_partition(formula: &CnfFormula, components: &[ComponentVtree
 /// The split [`super::ComponentPlan::Detect`] compiles: each of the
 /// `detected` clause groups with its variables in ascending order and a
 /// balanced vtree over them, the default for a caller that passes one vtree
-/// for the whole formula.
-pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<Vec<usize>>) -> Vec<ComponentVtree> {
+/// for the whole formula. Each vtree is a home when `home` is set.
+pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<Vec<usize>>, home: bool) -> Vec<ComponentVtree> {
     detected
         .into_iter()
         .map(|clause_indices| {
             let component = Component::from_clauses(formula, clause_indices);
-            let vtree = std::sync::Arc::clone(tididi::vtree::Home::new(eng.bind_vtree(Vtree::balanced(component.local_to_global.len() as u32))).vtree());
+            let vtree = crate::vtree::bound(eng, Vtree::balanced(component.local_to_global.len() as u32), home);
             ComponentVtree { vtree, component }
         })
         .collect()

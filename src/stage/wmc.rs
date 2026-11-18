@@ -57,7 +57,7 @@ fn compile_weighted(
                         .with_run_policy(run.config),
                 )
             }))?
-            .bind(eng),
+            .bind(run),
         };
         crate::compile::weighted_count(
             eng,
@@ -111,7 +111,7 @@ pub(crate) fn run_wmc_count(
                     problem.formula.clauses().len()
                 ),
             );
-            (problem, vtree.bind(run.eng))
+            (problem, vtree.bind(run))
         }
     };
     let t_compile = Instant::now();
@@ -247,7 +247,7 @@ pub(crate) fn run_wmc_bundle(
         eprintln!("[wmc] preprocessing: fully resolved");
         return Ok(WeightedCount::Satisfiable(weight_value(problem.lift)));
     };
-    let vtree = built.clone().bind(run.eng);
+    let vtree = built.clone().bind(run);
     compile_weighted(run, &problem, Some(vtree), run.deadline)
         .ok_or_else(crate::Error::compile_gave_up)
 }

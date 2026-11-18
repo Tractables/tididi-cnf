@@ -97,21 +97,22 @@ fn a_compile_out_of_memory_on_its_vtree_answers_on_the_bisection() {
     let context = Arc::new(tididi::Context::new());
     context.run(|eng| {
         let _budget = eng.limits().edit(|limits| limits.with_memory_budget_bytes(Some(BUDGET_BYTES)));
-        let linear = || {
+        let linear = |run: &crate::stage::Run<'_>| {
             let root = crate::vtree::build_vtree(&formula, "linear", &VtreeOptions::default()).unwrap();
-            VtreeBuild { root, components: None }.bind(eng)
+            VtreeBuild { root, components: None }.bind(run)
         };
         let explicit = Config { vtree: Some("linear".to_owned()), ..crate::test_support::minimal_config() };
-        let refused = compile_with_retry(&crate::test_support::run(eng, &explicit), &formula, linear(), None);
+        let explicit = crate::test_support::run(eng, &explicit);
+        let refused = compile_with_retry(&explicit, &formula, linear(&explicit), None);
         assert!(
             matches!(refused, Err(Error::Incomplete(_))),
             "the budget must stop the compile on the linear vtree: {:?}",
             refused.map(|(compiled, by)| (compiled.diagram.pair_count(), by)),
         );
         let config = crate::test_support::minimal_config();
-        let (compiled, answered_by) =
-            compile_with_retry(&crate::test_support::run(eng, &config), &formula, linear(), Some("linear"))
-                .expect("the bisection compiles under the same budget");
+        let run = crate::test_support::run(eng, &config);
+        let (compiled, answered_by) = compile_with_retry(&run, &formula, linear(&run), Some("linear"))
+            .expect("the bisection compiles under the same budget");
         assert_eq!(answered_by, AnsweredBy::BisectRetry);
         assert_eq!(
             eng.model_count(&compiled.diagram).unwrap(),

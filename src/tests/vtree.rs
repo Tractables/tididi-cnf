@@ -63,7 +63,7 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
                 },
             ]),
         }
-        .bind(engine);
+        .bind(&crate::test_support::run(engine, &crate::test_support::minimal_config()));
         assert!(Arc::ptr_eq(built.root.context(), &context));
         for component in built.components.as_ref().unwrap() {
             assert!(Arc::ptr_eq(component.vtree.context(), &context));

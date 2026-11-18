@@ -111,16 +111,32 @@ pub struct VtreeBuild {
 
 impl VtreeBuild {
     /// Attach freshly built trees to the run's engine before any diagram is
-    /// built on them.
-    pub(crate) fn bind(mut self, engine: &tididi::Engine) -> Self {
-        self.root = Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(Arc::unwrap_or_clone(self.root))).vtree());
+    /// built on them, each as a home when the run's compiles build
+    /// projections ([`bound`]).
+    pub(crate) fn bind(mut self, run: &crate::stage::Run<'_>) -> Self {
+        let home = run.compile.projections;
+        self.root = bound(run.eng, Arc::unwrap_or_clone(self.root), home);
         self.components = self.components.map(|components| {
             components.into_iter().map(|mut component| {
-                component.vtree = Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(Arc::unwrap_or_clone(component.vtree))).vtree());
+                component.vtree = bound(run.eng, Arc::unwrap_or_clone(component.vtree), home);
                 component
             }).collect()
         });
         self
+    }
+}
+
+/// `vtree` attached to `engine`, as a home when `home` is set.
+///
+/// Only a compile that builds projections may run on a home: there every
+/// library operation returns the diagram on the projection of the variables
+/// it uses, while a compile without projections names levels by the nodes of
+/// the full vtree, which such a diagram does not have.
+pub(crate) fn bound(engine: &tididi::Engine, vtree: Vtree, home: bool) -> Arc<Vtree> {
+    let vtree = engine.bind_vtree(vtree);
+    match home {
+        true => Arc::clone(tididi::vtree::Home::new(vtree).vtree()),
+        false => vtree,
     }
 }
 

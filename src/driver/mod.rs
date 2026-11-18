@@ -154,7 +154,7 @@ fn compile_attempt(run: &Run<'_>, attempt: CompileFrontendAttempt) -> Result<Com
 
     let (tdd, peak, compile_ms, answered_by) = match vtree {
         crate::frontend::FrontendVtree::Built(built) => {
-            let built = built.bind(eng);
+            let built = built.bind(run);
             // The portfolio's winner, `None` when no portfolio ran.
             let pick = run.announce_tree(&format!("[vtree] {}", config.vtree_name()), ": ");
             eprintln!("[compile] start");
@@ -261,7 +261,7 @@ fn compile_on_bisection(run: &Run<'_>, reduced: &CnfFormula) -> Result<Compiled,
         .with_run_policy(run.config);
     let built = run.config.vtree_time.time(|| build_vtree_with_components(reduced, RETRY_VTREE_SPEC, &options));
     match built {
-        Ok(built) => compile_on(run, reduced, built.bind(run.eng)),
+        Ok(built) => compile_on(run, reduced, built.bind(run)),
         Err(error) => {
             eprintln!("[compile] bisect-retry: no tree: {error}");
             Err(GiveUp::Stopped)

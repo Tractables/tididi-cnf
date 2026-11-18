@@ -450,7 +450,7 @@ pub(crate) fn compile_with(
         }
         ComponentPlan::Detect => {
             if let Some(detected) = formula.detect_components() {
-                return compile_split(eng, formula, &detected_split(eng, formula, detected), job);
+                return compile_split(eng, formula, &detected_split(eng, formula, detected, job.run.projections), job);
             }
         }
         ComponentPlan::Whole => {}

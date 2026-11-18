@@ -103,7 +103,7 @@ fn run_mc_cascade(
     // Both vtree-less outcomes end here: a refuted formula counts 0, a
     // fully resolved one the lift alone.
     let primary_vtree = match attempt.vtree {
-        crate::frontend::FrontendVtree::Built(built) => built.bind(run.eng),
+        crate::frontend::FrontendVtree::Built(built) => built.bind(run),
         _ => {
             let count = if bundle.record.unsat {
                 num_bigint::BigUint::from(0u32)
@@ -338,7 +338,7 @@ pub(crate) fn run_mc_bundle(
 ) -> Result<McAnswer, crate::Error> {
     let compile = || {
         let built = run.config.bundle_tree().expect("a bundle with a formula to compile has its vtree");
-        let built = built.clone().bind(run.eng);
+        let built = built.clone().bind(run);
         let plan = ComponentPlan::from_components(built.components.as_deref());
         let options = CompileOptions { plan, output: Output::Count, deadline: run.deadline };
         let compiled = settle(compile_with(run.eng, reduced, &built.root, options, run.compile))?;

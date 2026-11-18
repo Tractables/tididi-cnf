@@ -208,6 +208,15 @@ fn the_answer_carries_the_verdict_and_the_record() {
     assert_eq!((stats.variables, stats.clauses), (Some(2), Some(4)));
 }
 
+/// A model count's compile answers a formula preprocessing leaves whole,
+/// without the fallbacks that run after a compile gave up.
+#[test]
+fn a_model_count_is_answered_by_its_compile() {
+    let answer = count("tests/data/random3_40.cnf", Some(Mode::Mc), &Limits::default()).unwrap();
+    assert_eq!(answer.count(), &integer(18256));
+    assert_eq!(answer.stats().answered_by, Some("compile"));
+}
+
 /// A projected record names the show set the count was answered over and the
 /// time its counting stages took, whichever stage answered: here the
 /// enumeration ahead of preprocessing, and a split into two components that

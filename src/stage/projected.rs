@@ -264,7 +264,7 @@ pub(super) fn counting_vtree(
     show: Option<&ShowSet>,
 ) -> Option<CountVtree> {
     if let Some(built) = run.config.bundle_tree() {
-        return Some(CountVtree::over(built.clone().bind(run.eng), show));
+        return Some(CountVtree::over(built.clone().bind(run), show));
     }
     let ctx = if show.is_some() { VtreeOptions::by_peak_width() } else { VtreeOptions::default() };
     count_vtree(
@@ -288,7 +288,7 @@ pub(super) fn count_vtree(
     show: Option<&ShowSet>,
 ) -> Option<CountVtree> {
     let built = run.config.vtree_time.time(|| crate::vtree::build_vtree_with_components(work, spec, ctx));
-    Some(CountVtree::over(crate::vtree::built_or_give_up(built)?.bind(run.eng), show))
+    Some(CountVtree::over(crate::vtree::built_or_give_up(built)?.bind(run), show))
 }
 
 /// The counting vtree and the variables it places.
