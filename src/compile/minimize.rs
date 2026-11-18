@@ -238,13 +238,16 @@ impl MinimizeGate {
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
 
-        let rescan = fold_end && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
+        let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
         let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
         match action {
             MinimizeAction::Full => {
-                let skip = self.skip_content_twins || !(fold_end || self.fold_at_root);
+                let skip = self.skip_content_twins || !(fold_end || rescan);
                 let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
                 eng.reduce(result, full_reduction(skip, schedule))?;
+                if rescan {
+                    self.fold_start_work = eng.limits().work_units();
+                }
                 self.record_full(
                     result.node_count(),
                     result.retired_marginal_slots(),
