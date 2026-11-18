@@ -126,7 +126,14 @@ fn marginal_slot_donor(eng: &Engine) -> (tididi::Tdd, VtreeIdx) {
         }
         let (left, right) = vtree.children(level);
         labels[level.idx()] = std::array::from_fn(|label| {
-            builder.push(eng, level, &[ChildPair::new(labels[left.idx()][label], labels[right.idx()][0])]).unwrap()
+            // A level names a leaf child in one form, literal or `One`, so
+            // true over a left leaf is spelled x ∨ ¬x.
+            if label == 0 && vtree.node(left).is_leaf() {
+                let one = labels[right.idx()][0];
+                builder.push(eng, level, &[ChildPair::new(POS_LEAF_IDX, one), ChildPair::new(NEG_LEAF_IDX, one)]).unwrap()
+            } else {
+                builder.push(eng, level, &[ChildPair::new(labels[left.idx()][label], labels[right.idx()][0])]).unwrap()
+            }
         });
     }
     let root = vtree.root();
