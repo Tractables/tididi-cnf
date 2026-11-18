@@ -142,7 +142,7 @@ pub(crate) struct MinimizeGate {
     /// gate because each merge's result is a fresh diagram.
     content_twin_schedule: ContentTwinSchedule,
     /// Whether the full minimize skips the content-twin scan, as a recovery
-    /// cofactor's compile does.
+    /// cofactor's compile and a pass that sums nothing out do.
     pub(crate) skip_content_twins: bool,
     /// The engine's work clock when the current fold started
     /// ([`Self::start_fold`]).

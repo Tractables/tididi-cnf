@@ -84,7 +84,10 @@ impl PassState {
             _ => None,
         };
         let mut state = Self { tdds: vec![None; total_nodes], sat_prune, ..Self::default() };
-        state.minimize.skip_content_twins = job.run.cofactor;
+        // A pass that sums nothing out has no marginal level, so no content
+        // twins: skipping the scan spares the gate's per-fold test a sweep of
+        // the levels.
+        state.minimize.skip_content_twins = job.run.cofactor || !job.output.scheduled();
         state
     }
 }
