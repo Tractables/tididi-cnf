@@ -113,10 +113,10 @@ impl VtreeBuild {
     /// Attach freshly built trees to the run's engine before any diagram is
     /// built on them.
     pub(crate) fn bind(mut self, engine: &tididi::Engine) -> Self {
-        self.root = engine.bind_vtree(Arc::unwrap_or_clone(self.root));
+        self.root = Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(Arc::unwrap_or_clone(self.root))).vtree());
         self.components = self.components.map(|components| {
             components.into_iter().map(|mut component| {
-                component.vtree = engine.bind_vtree(Arc::unwrap_or_clone(component.vtree));
+                component.vtree = Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(Arc::unwrap_or_clone(component.vtree))).vtree());
                 component
             }).collect()
         });

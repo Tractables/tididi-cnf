@@ -576,7 +576,7 @@ impl<'a> BatchStop<'a> {
 
 /// The projection of `vtree` on `clause`'s variables.
 pub(super) fn clause_vtree(vtree: &Arc<Vtree>, clause: &[Literal]) -> Arc<Vtree> {
-    Vtree::projection(vtree, clause.iter().map(|lit| lit.var)).expect("the vtree has a leaf for every clause variable")
+    Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), clause.iter().map(|lit| lit.var)).expect("the vtree has a leaf for every clause variable")
 }
 
 /// Maximum allowed batch-TDD width before the batch should be flushed into the

@@ -242,7 +242,7 @@ fn run_cofactor(
         // Structural, so an unsatisfiable branch is the false sentinel.
         if !branch.is_zero() {
             let cube_vtree = match ctx.job.run.projections {
-                true => Vtree::projection(vtree, plan.vars.iter().copied()).expect("`vars` are leaves of the vtree"),
+                true => Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), plan.vars.iter().copied()).expect("`vars` are leaves of the vtree"),
                 false => Arc::clone(vtree),
             };
             let cube = ctx.job.output.with_store(eng.cube(&cube_vtree, assignment(&plan.vars, a))?);

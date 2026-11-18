@@ -314,7 +314,7 @@ pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<V
         .into_iter()
         .map(|clause_indices| {
             let component = Component::from_clauses(formula, clause_indices);
-            let vtree = eng.bind_vtree(Vtree::balanced(component.local_to_global.len() as u32));
+            let vtree = std::sync::Arc::clone(tididi::vtree::Home::new(eng.bind_vtree(Vtree::balanced(component.local_to_global.len() as u32))).vtree());
             ComponentVtree { vtree, component }
         })
         .collect()
