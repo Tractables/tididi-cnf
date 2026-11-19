@@ -394,9 +394,14 @@ pub(super) fn splice_and_fold(
 ) -> Result<usize, OperationError> {
     let (left, right) = current_vtree.children(t);
     // The larger child's diagram is the bulk of the fold's accumulator, so
-    // its throttle is the one the fold carries on.
+    // its throttle is the one the fold carries on. The size its throttle last
+    // recorded stands in for the diagram's: `pair_count` walks every level of
+    // a diagram changed since it was last counted, which cost model counts on
+    // small instances 0.3%.
     let lineage = match (&state.tdds[left.idx()], &state.tdds[right.idx()]) {
-        (Some(l), Some(r)) => Some(if r.pair_count() > l.pair_count() { right } else { left }),
+        (Some(_), Some(_)) => {
+            Some(if state.throttles[right.idx()].nodes > state.throttles[left.idx()].nodes { right } else { left })
+        }
         (Some(_), None) => Some(left),
         (None, Some(_)) => Some(right),
         (None, None) => None,
