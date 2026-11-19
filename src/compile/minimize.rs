@@ -129,6 +129,67 @@ enum MinimizeAction {
     ContractUnlessThrottled,
 }
 
+/// Skips contractions while the recent ones on a diagram removed too little.
+#[derive(Clone, Default)]
+pub(crate) struct ContractThrottle {
+    /// The fractions of nodes the last `CONTRACT_HISTORY_SIZE` contractions
+    /// removed, a ring written at `cursor`.
+    history: [f64; CONTRACT_HISTORY_SIZE],
+    /// Whether every slot of `history` holds a sample taken since the
+    /// throttle was last rearmed.
+    full: bool,
+    cursor: usize,
+    /// How many more contractions the throttle skips.
+    skip_remaining: usize,
+}
+
+impl ContractThrottle {
+    /// Append a removal fraction to the ring buffer.
+    fn record(&mut self, fraction: f64) {
+        self.history[self.cursor] = fraction;
+        self.cursor = (self.cursor + 1) % CONTRACT_HISTORY_SIZE;
+        if self.cursor == 0 {
+            self.full = true;
+        }
+    }
+
+    /// Forget the recent removal fractions and let the next merge contract.
+    /// Called after a full reduction, whose prune may have uncovered twins.
+    fn rearm(&mut self) {
+        self.skip_remaining = 0;
+        self.full = false;
+        self.cursor = 0;
+    }
+
+    /// The median of the recent removal fractions, or `None` until the ring
+    /// is full: the throttle stays off until then.
+    fn median(&self) -> Option<f64> {
+        if !self.full {
+            return None;
+        }
+        let mut xs = self.history;
+        xs.sort_by(f64::total_cmp);
+        let mid = CONTRACT_HISTORY_SIZE / 2;
+        Some(0.5 * (xs[mid - 1] + xs[mid]))
+    }
+
+    /// Whether to skip this contraction, consuming one slot of the skip
+    /// budget if so. Called only for
+    /// [`MinimizeAction::ContractUnlessThrottled`].
+    fn try_skip(&mut self) -> bool {
+        if self.skip_remaining > 0 {
+            self.skip_remaining -= 1;
+            return true;
+        }
+        if let Some(median) = self.median() && median < CONTRACT_MIN_REMOVAL_FRACTION {
+            // Consume one slot immediately; the rest applies to future merges.
+            self.skip_remaining = CONTRACT_SKIP_COUNT - 1;
+            return true;
+        }
+        false
+    }
+}
+
 /// The adaptive-minimize gate a bottom-up pass carries from merge to merge.
 #[derive(Default)]
 pub(crate) struct MinimizeGate {
@@ -144,15 +205,11 @@ pub(crate) struct MinimizeGate {
     /// `Tdd::retired_marginal_slots()` snapshot paired with `last_prune_nodes`.
     last_prune_retired: usize,
 
-    /// The fractions of nodes the last `CONTRACT_HISTORY_SIZE` contractions
-    /// removed, a ring written at `contract_history_cursor`.
-    contract_history: [f64; CONTRACT_HISTORY_SIZE],
-    /// Whether every slot of `contract_history` holds a sample taken since
-    /// the throttle was last rearmed.
-    contract_history_full: bool,
-    contract_history_cursor: usize,
-    /// How many more contractions the throttle skips.
-    contract_skip_remaining: usize,
+    /// The contraction throttle of the diagram being reduced. A pass keeps
+    /// one per vtree node's diagram and hands it on with the diagram
+    /// ([`Self::swap_throttle`]), so removals measured on one diagram do not
+    /// throttle or rearm another's contractions.
+    throttle: ContractThrottle,
 
     /// The content-twin scan schedule of the full reduction. It lives on the
     /// gate because each merge's result is a fresh diagram.
@@ -215,50 +272,10 @@ impl MinimizeGate {
         self.last_prune_retired = post_retired;
     }
 
-    /// Append a removal fraction to the ring buffer.
-    fn record_contract_removal(&mut self, fraction: f64) {
-        self.contract_history[self.contract_history_cursor] = fraction;
-        self.contract_history_cursor =
-            (self.contract_history_cursor + 1) % CONTRACT_HISTORY_SIZE;
-        if self.contract_history_cursor == 0 {
-            self.contract_history_full = true;
-        }
-    }
-
-    /// Forget the recent removal fractions and let the next merge contract.
-    /// Called after a full reduction, whose prune may have uncovered twins.
-    fn rearm_contract_throttle(&mut self) {
-        self.contract_skip_remaining = 0;
-        self.contract_history_full = false;
-        self.contract_history_cursor = 0;
-    }
-
-    /// The median of the recent removal fractions, or `None` until the ring
-    /// is full: the throttle stays off until then.
-    fn contract_removal_median(&self) -> Option<f64> {
-        if !self.contract_history_full {
-            return None;
-        }
-        let mut xs = self.contract_history;
-        xs.sort_by(f64::total_cmp);
-        let mid = CONTRACT_HISTORY_SIZE / 2;
-        Some(0.5 * (xs[mid - 1] + xs[mid]))
-    }
-
-    /// Whether to skip this contraction, consuming one slot of the skip
-    /// budget if so. Called only for
-    /// [`MinimizeAction::ContractUnlessThrottled`].
-    fn try_skip_contract(&mut self) -> bool {
-        if self.contract_skip_remaining > 0 {
-            self.contract_skip_remaining -= 1;
-            return true;
-        }
-        if let Some(median) = self.contract_removal_median() && median < CONTRACT_MIN_REMOVAL_FRACTION {
-            // Consume one slot immediately; the rest applies to future merges.
-            self.contract_skip_remaining = CONTRACT_SKIP_COUNT - 1;
-            return true;
-        }
-        false
+    /// Make `throttle` the one the gate's contractions read and record, and
+    /// return the one it held.
+    pub(crate) fn swap_throttle(&mut self, throttle: ContractThrottle) -> ContractThrottle {
+        std::mem::replace(&mut self.throttle, throttle)
     }
 
     /// Run the reduction the gate decides on for `result`, and re-anchor the
@@ -319,7 +336,7 @@ impl MinimizeGate {
                     result.node_count(),
                     result.retired_marginal_slots(),
                 );
-                self.rearm_contract_throttle();
+                self.throttle.rearm();
             }
             MinimizeAction::ContractOnly => {
                 self.run_contract_and_record(eng, result, cur_nodes)?;
@@ -335,7 +352,7 @@ impl MinimizeGate {
                 // nodes, not twins, so the removal fractions still hold.
             }
             MinimizeAction::ContractUnlessThrottled => {
-                if !self.try_skip_contract() {
+                if !self.throttle.try_skip() {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
                 }
             }
@@ -386,7 +403,7 @@ impl MinimizeGate {
         let post_nodes = result.node_count();
         let removed = pre_nodes.saturating_sub(post_nodes);
         let fraction = if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 };
-        self.record_contract_removal(fraction);
+        self.throttle.record(fraction);
         Ok(())
     }
 }

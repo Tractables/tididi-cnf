@@ -48,6 +48,7 @@ use tididi::{Engine, Literal, OperationError};
 use crate::budget::deadline_passed;
 use super::batch::{batch_accumulate, batch_floor};
 use super::marginalize::marginalize_scheduled_at;
+use super::minimize::ContractThrottle;
 use super::step::{DiagramClauses, PassState, StepContext};
 
 /// The most variables the smaller child of an internal vtree node may span
@@ -226,8 +227,11 @@ fn run_cofactor(
     plan: CofactorPlan,
 ) -> Result<usize, OperationError> {
     let r = state.tdds[plan.big.idx()].take().expect("the plan read the big side's diagram");
+    let throttle = std::mem::take(&mut state.throttles[plan.big.idx()]);
+    state.minimize.swap_throttle(throttle);
     // The small side's diagram has done its work: it chose the branches.
     state.tdds[plan.small.idx()] = None;
+    state.throttles[plan.small.idx()] = ContractThrottle::default();
     // The branches fold the reduced clauses; marginalization waits for the join.
     let branch_ctx = StepContext {
         job: ctx.job,
@@ -258,6 +262,7 @@ fn run_cofactor(
     marginalize_scheduled_at(eng, &mut joined, t.idx(), vtree, ctx, &state.forgotten)?;
     let pairs = joined.pair_count();
     state.tdds[t.idx()] = Some(joined);
+    state.throttles[t.idx()] = state.minimize.swap_throttle(ContractThrottle::default());
     if deadline_passed(ctx.job.deadline) {
         return Err(OperationError::Stopped);
     }
