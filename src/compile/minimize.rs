@@ -94,6 +94,15 @@ const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
 /// pays for.
 const MID_FOLD_SCAN_MAX_NODES: usize = 4096;
 
+/// The most nodes the reduced result of a summed-out merge inside a fold may
+/// hold for the merge to scan a copy of it, when the merge held more than
+/// [`MID_FOLD_SCAN_MAX_NODES`] and the fold's work pays for a scan
+/// ([`MinimizeGate::fold_paid_for_scan`]). The copy is kept only when the
+/// scan left at most a quarter of the nodes. Kept scans on model counting
+/// instances had removed 84 to 98% of the nodes; scans that removed 8 to 46%
+/// left the fold's end larger. The bound caps what a discarded copy costs.
+const MID_FOLD_TRIAL_MAX_NODES: usize = 65_536;
+
 /// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
 const SCAN_MAX_BACKOFF: u32 = 16;
 
@@ -252,9 +261,11 @@ impl MinimizeGate {
     /// except in the root's fold ([`Self::fold_at_root`]), where any merge may
     /// when [`Self::fold_paid_for_scan`] and then [`Self::root_scan_pays`]
     /// hold, and at a merge that summed levels out (`summed_out`) into at most
-    /// [`MID_FOLD_SCAN_MAX_NODES`] nodes. Contraction commutes with
-    /// conjunction and summing out, a content-twin merge does not, so a scan
-    /// inside a fold makes the fold's result depend on its batch boundaries.
+    /// [`MID_FOLD_SCAN_MAX_NODES`] nodes, or, outside the root's fold, into a
+    /// reduced result of at most [`MID_FOLD_TRIAL_MAX_NODES`] when the scan
+    /// leaves at most a quarter of them. Contraction commutes with conjunction
+    /// and summing out, a content-twin merge does not, so a scan inside a fold
+    /// makes the fold's result depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
         &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
@@ -277,6 +288,16 @@ impl MinimizeGate {
                 let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
                 if !(probed && skip) {
                     eng.reduce(result, full_reduction(skip, schedule))?;
+                }
+                if skip && summed_out && !self.skip_content_twins && !self.fold_at_root
+                    && result.node_count() <= MID_FOLD_TRIAL_MAX_NODES
+                    && self.fold_paid_for_scan(eng, result)
+                {
+                    let mut trial = eng.try_clone(result)?;
+                    eng.reduce(&mut trial, full_reduction(false, None))?;
+                    if trial.node_count().saturating_mul(4) <= result.node_count() {
+                        *result = trial;
+                    }
                 }
                 if rescan {
                     self.fold_start_work = eng.limits().work_units();
