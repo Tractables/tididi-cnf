@@ -1,16 +1,16 @@
-//! Component compilation: the per-component compile-and-graft path driven by
-//! `compile/mod.rs`. The descriptors it works from are
+//! Component compilation: the per-component compile-and-conjoin path driven
+//! by `compile/mod.rs`. The descriptors it works from are
 //! [`crate::vtree::ComponentVtree`] and [`crate::vtree::Component`].
 //! Variable-disjoint components are compiled separately, each by the
-//! bottom-up pass in `step.rs`, and grafted into one TDD here; [`CompileJob`]
+//! bottom-up pass in `step.rs`, and conjoined on one home here; [`CompileJob`]
 //! carries the caller's work order into that pass.
 
 use std::collections::HashSet;
 
 use tididi::Engine;
-use tididi::diagram::{Tdd, WeightStore};
-use tididi::restructure::GraftError;
-use tididi::vtree::{VarId, Vtree};
+use tididi::diagram::{Tdd, Weights};
+use tididi::restructure::TransportError;
+use tididi::vtree::{Home, VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
 use crate::vtree::{Component, ComponentVtree};
@@ -41,15 +41,14 @@ pub(crate) struct CompileJob<'a> {
 }
 
 /// [`super::Output`] as one pass reads it: the forgotten variables as a set
-/// and the weights as the store the diagram carries, both in the pass's own
-/// variable numbering.
+/// in the pass's own variable numbering. The weights are the home's.
 #[derive(Clone, Copy)]
 pub(crate) enum PassOutput<'a> {
     /// [`super::Output::Function`].
     Function,
-    /// [`super::Output::Count`], or [`super::Output::WeightedCount`] when it
-    /// carries a store.
-    Count(Option<&'a WeightStore>),
+    /// [`super::Output::Count`] and [`super::Output::WeightedCount`], which
+    /// differ in their home's weights.
+    Count,
     /// [`super::Output::ProjectedCount`].
     ProjectedCount(&'a HashSet<VarId>),
     /// [`super::Output::ProjectedFunction`].
@@ -66,27 +65,7 @@ impl<'a> PassOutput<'a> {
 
     /// Whether the pass sums levels out.
     pub(crate) fn marginalizes(self) -> bool {
-        matches!(self, PassOutput::Count(_) | PassOutput::ProjectedCount(_))
-    }
-
-    /// The weight store the diagram carries, `None` for an unweighted pass.
-    pub(crate) fn weights(self) -> Option<&'a WeightStore> {
-        match self {
-            PassOutput::Count(weights) => weights,
-            _ => None,
-        }
-    }
-
-    /// A diagram the pass creates, `born`, given an empty store of the pass's
-    /// weights when it counts weights. Weight values travel with the diagram
-    /// that owns them and are merged wherever two diagrams meet, so every
-    /// diagram gets its store where it is created, before it can reach a
-    /// marginalization; the conjunctions and merges that follow carry it.
-    pub(crate) fn with_store(self, mut born: Tdd) -> Tdd {
-        if let Some(weights) = self.weights() {
-            born.set_weights(weights.empty_like()).expect("an empty store covers a fresh diagram's columns");
-        }
-        born
+        matches!(self, PassOutput::Count | PassOutput::ProjectedCount(_))
     }
 
     /// The variables the pass ∃-forgets, `None` when it projects nothing.
@@ -134,8 +113,8 @@ fn collect_free_vars(components: &[ComponentVtree], total_vars: u32) -> Vec<VarI
 /// `num_vars == component.local_to_global.len()` (see
 /// [`remap_component_clauses_into`]), so its product runs only over
 /// clause-appearing vars and drops free vars; the caller folds `2^free` on top.
-/// The grafted (TDD-returning) paths handle this separately via
-/// `collect_free_vars` + `graft_over`, and count a projected free var into
+/// The TDD-returning split handles this separately: the free vars are leaves
+/// of its home (`collect_free_vars`), and a projected one is counted into
 /// [`Compiled::forgotten`] instead of leaving it out.
 pub(crate) fn streaming_free_var_count(
     formula: &CnfFormula,
@@ -320,42 +299,44 @@ pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<V
         .collect()
 }
 
-/// Compile each component on its own vtree, under the job's variable sets and
-/// weights restated in its local numbering, and graft the results over the
-/// free variables into one TDD on a new grafted vtree, minimized. Each
-/// per-component compile uses its own `Arc<Vtree>`, so a marginal-cluster
-/// rotation stays inside it, and each component's sub-formula is remapped
-/// when its turn comes, so only one is alive at a time.
+/// Compile each component on a home of its own, in its local numbering, move
+/// it onto one home over all of the formula's variables, conjoin the parts
+/// there and minimize the result. That home is the components' vtrees
+/// chained with the free variables, weighted by `weights` when the job counts
+/// weights; a component sits on its vtree weighted by the table restated in
+/// its numbering, so its summed regions move onto the whole home under equal
+/// weights. Each
+/// component's sub-formula is remapped when its turn comes, so only one is
+/// alive at a time.
 ///
 /// A component that gives up ends the compile with its give-up; an UNSAT
-/// component makes the result `Tdd::zero` on the grafted vtree, and the rest
+/// component makes the result `Tdd::zero` on the whole home, and the rest
 /// are not compiled.
 pub(crate) fn compile_split(
     eng: &Engine,
     formula: &CnfFormula,
     components: &[ComponentVtree],
+    weights: Option<&Weights>,
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
     let forget = job.output.forget();
-    let weights = job.output.weights();
     let free_vars = collect_free_vars(components, formula.num_vars());
-    let mut comp_tdds: Vec<(Tdd, Vec<VarId>)> = Vec::with_capacity(components.len());
+    let whole = components
+        .iter()
+        .map(|c| c.vtree.renamed(|local| c.component.local_to_global[local.idx()], formula.num_vars()))
+        .collect::<Result<Vec<_>, _>>()
+        .and_then(|renamed| Vtree::graft(&renamed, &free_vars))
+        .map_err(|error| GiveUp::Invalid(format!("the components do not graft: {error}")))?;
+    let home = weighted_home(eng, whole, weights.cloned())?;
+    let job = CompileJob { run: super::CompileRun { projections: true, ..job.run }, ..job };
+    let mut parts: Vec<Tdd> = Vec::with_capacity(components.len());
     let mut forgotten = 0;
     let mut peak_pairs = 0;
     let mut scratch = RemapScratch::default();
     for ComponentVtree { vtree: sub_vtree, component: Component { clause_indices, local_to_global: l2g } } in components {
         remap_component_clauses_into(&mut scratch, formula, clause_indices, l2g);
         let comp_forget;
-        let comp_weights;
         let output = match job.output {
-            PassOutput::Function => PassOutput::Function,
-            PassOutput::Count(weights) => {
-                comp_weights = weights.map(|ws| {
-                    let local = ws.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
-                    WeightStore::new(local, ws.arithmetic())
-                });
-                PassOutput::Count(comp_weights.as_ref())
-            }
             PassOutput::ProjectedCount(forget) => {
                 comp_forget = local_vars_in(l2g, forget);
                 PassOutput::ProjectedCount(&comp_forget)
@@ -364,44 +345,56 @@ pub(crate) fn compile_split(
                 comp_forget = local_vars_in(l2g, forget);
                 PassOutput::ProjectedFunction(&comp_forget)
             }
+            output => output,
         };
-        let comp = compile_component(eng, scratch.sub(), sub_vtree, CompileJob { output, ..job })?;
+        let own = match weights {
+            Some(weights) => {
+                let local = weights.algebra().restated(l2g).expect("a component's variables are the formula's, all weighted");
+                weighted_home(eng, Vtree::clone(sub_vtree), Some(Weights::new(local, weights.arithmetic())))?
+            }
+            None => match sub_vtree.home() {
+                Some(own) => own,
+                None => Home::new(eng.bind_vtree(Vtree::clone(sub_vtree))),
+            },
+        };
+        let comp = compile_component(eng, scratch.sub(), own.vtree(), CompileJob { output, ..job })?;
         forgotten += comp.forgotten;
         peak_pairs = peak_pairs.max(comp.peak_pairs);
-        let comp_tdd = comp.diagram;
-        assert!(
-            weights.is_none() || comp_tdd.weights().is_some(),
-            "a weighted component compiles to a diagram carrying its weight store"
-        );
-        if !eng.is_sat(&comp_tdd).map_err(|e| GiveUp::from_operation(eng, e))? {
-            // The rest need not compile. The graft answers ⊥ with an empty
-            // store when any part is ⊥, on the grafted vtree, so the result
-            // vtree does not depend on the answer.
-            comp_tdds = components.iter().map(|c| (eng.zero(&c.vtree), c.component.local_to_global.clone())).collect();
-            break;
+        if comp.diagram.is_zero() {
+            return Ok(Compiled { diagram: eng.zero(home.vtree()), forgotten: 0, peak_pairs });
         }
-        comp_tdds.push((comp_tdd, l2g.clone()));
+        let (moved, _) = eng.transport(comp.diagram, &home, |v| l2g[v.idx()], 0).map_err(|refused| match refused.error {
+            TransportError::Operation(e) => GiveUp::from_operation(eng, e),
+            structural => GiveUp::Invalid(format!("a component does not move onto the whole home: {structural}")),
+        })?;
+        parts.push(moved);
     }
-    // The free variables are grafted in as unconstrained leaves, ×2 each in the
-    // raw count. No component's compile sees a projected one, so it is counted
-    // as forgotten here: the result's count then covers every projected ×2 on
-    // every plan.
+    // No compile sees a free variable, so a projected one is counted as
+    // forgotten here: the count then covers every projected ×2 on every plan.
     forgotten += forget.map_or(0, |forget| free_vars.iter().filter(|v| forget.contains(v)).count());
-    // Each component's values ride into the merged store the graft fills: the
-    // per-component level numberings collide, so only the graft's own layout can
-    // key them.
-    let (mut grafted, _layout) = Tdd::graft_over(
-        eng, comp_tdds, &free_vars, formula.num_vars(), weights.map(WeightStore::empty_like),
-    )
-    .map_err(|error| match error {
-        GraftError::Operation(e) => GiveUp::from_operation(eng, e),
-        structural => GiveUp::Invalid(format!("the components do not graft: {structural}")),
-    })?;
-    // A ⊥ has nothing to reduce.
-    if !grafted.is_zero() {
-        minimize_full(eng, &mut grafted, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
+    while parts.len() > 1 {
+        let mut pairs = parts.into_iter();
+        let mut folded = Vec::with_capacity(pairs.len().div_ceil(2));
+        while let Some(a) = pairs.next() {
+            folded.push(match pairs.next() {
+                Some(b) => eng.and(a, b).map_err(|e| GiveUp::from_operation(eng, e))?,
+                None => a,
+            });
+        }
+        parts = folded;
     }
-    Ok(Compiled { diagram: grafted, forgotten, peak_pairs })
+    let mut diagram = parts.pop().unwrap_or_else(|| eng.one(home.vtree()));
+    minimize_full(eng, &mut diagram, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
+    Ok(Compiled { diagram, forgotten, peak_pairs })
+}
+
+/// `vtree` bound to `eng` as a home, weighted by `weights` when given.
+pub(crate) fn weighted_home(eng: &Engine, vtree: Vtree, weights: Option<Weights>) -> Result<Home, GiveUp> {
+    let vtree = eng.bind_vtree(vtree);
+    match weights {
+        Some(weights) => Home::weighted(vtree, weights).map_err(|error| GiveUp::Invalid(error.to_string())),
+        None => Ok(Home::new(vtree)),
+    }
 }
 
 #[cfg(test)]

@@ -306,7 +306,12 @@ fn arjun_settings_reach_the_weighted_reduction() {
     let (reduction_without_sbva, count_without_sbva) =
         reduction_and_count(&[("VITRI_ARJUN_SBVA", "off")]);
     assert_ne!(reduction, reduction_without_sbva, "`VITRI_ARJUN_SBVA=off` did not reach Arjun");
-    assert_eq!(count, count_without_sbva);
+    // Two formulas with one count, summed in floating point in their own orders.
+    let value = |out: &str| -> f64 {
+        out.trim().strip_prefix("weighted count: ").and_then(|v| v.parse().ok()).unwrap_or_else(|| panic!("no weighted count: {out}"))
+    };
+    let (with, without) = (value(&count), value(&count_without_sbva));
+    assert!((with - without).abs() <= 1e-12 * with.abs(), "{count} against {count_without_sbva}");
 }
 
 /// A projected count compiles on an explicit `--vtree`, and on `portfolio`

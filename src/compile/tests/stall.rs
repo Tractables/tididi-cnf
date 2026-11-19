@@ -27,7 +27,7 @@ fn run_watched(eng: &Engine, rule: StallRule) -> (Result<BigUint, GiveUp>, Optio
     let prune_spent_us = std::cell::Cell::new(0);
     let job = CompileJob {
         deadline: Some(Instant::now() + Duration::from_secs(3600)),
-        output: PassOutput::Count(None),
+        output: PassOutput::Count,
         run: CompileRun { stall_watch: Some(&watch), ..CompileRun::default() },
         prune_spent_us: &prune_spent_us,
     };

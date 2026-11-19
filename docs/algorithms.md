@@ -170,13 +170,16 @@ compiles against its own small vtree and the results are joined — avoiding
 one identity level per component variable across the full vtree.
 
 `CnfFormula::detect_components` partitions the clauses. Each component
-compiles via `compile_component` against its *own* `Arc<Vtree>`, and
-`Tdd::graft_over` joins the results structurally, with no cross-component
-conjunction: the grafted vtree chains the component trees together, and each
-variable in no clause joins as a free leaf that doubles the model count. The
-compiler then runs a full reduction on the grafted diagram. A weighted
-compile passes the graft an empty store, and each component's values move
-into it.
+compiles via `compile_component` on a home of its *own*, in its local
+variable numbering. The whole home chains the component trees together
+(`Vtree::graft`), and each variable in no clause joins it as a free leaf that
+doubles the model count. `Engine::transport` moves each component's diagram
+onto the whole home, where it sits on the projection of its variables, and
+the parts are conjoined pairwise; a conjunction of diagrams over disjoint
+variables builds no product. The compiler then runs a full reduction on the
+result. A weighted compile weighs the whole home with the formula's table and
+each component's home with that table restated in the component's numbering,
+so the summed regions of a component move under equal weights.
 
 Components must use independent vtrees: if they shared the full vtree,
 rotations during one component's compilation would corrupt sibling TDDs

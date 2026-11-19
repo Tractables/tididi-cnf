@@ -71,7 +71,7 @@ marginal slots.
 
 ## Streaming over components
 
-`compile_cnf` holds every component's diagram and grafts them. For a count
+`compile_cnf` holds every component's diagram and conjoins them. For a count
 alone, `model_count_streaming` (`src/compile/mod.rs`) compiles each
 component, reads its count, drops the diagram and multiplies, so the peak is
 the largest single component rather than the sum. The lift from a preprocessed

@@ -72,12 +72,13 @@ pub(crate) struct PassState {
 }
 
 impl PassState {
-    fn new(formula: &CnfFormula, total_nodes: usize, job: CompileJob<'_>) -> Self {
+    fn new(formula: &CnfFormula, vtree: &Arc<Vtree>, total_nodes: usize, job: CompileJob<'_>) -> Self {
         // A weighted compile builds no pruning context: its marginal levels hold
         // weights, and the per-node counts a pass orders its probes by are
         // refused for them.
+        let weighted = vtree.home().is_some_and(|home| home.weights().is_some());
         let sat_prune = match job.run.sat_prune {
-            Some(run_pass) if job.output.weights().is_none() => {
+            Some(run_pass) if !weighted => {
                 run_pass.context(formula, job.run.cofactor, job.prune_spent_us.get())
             }
             _ => None,
@@ -164,7 +165,7 @@ fn compile_pass(
     // conditioning can produce one when preprocessing a conditioned UNSAT
     // branch.
     if crate::formula::has_empty_clause(formula) {
-        return Ok(Compiled { diagram: job.output.with_store(eng.zero(vtree)), forgotten: 0, peak_pairs: 0 });
+        return Ok(Compiled { diagram: eng.zero(vtree), forgotten: 0, peak_pairs: 0 });
     }
 
     // Decided before the pass starts: which clauses are conjoined at which
@@ -185,7 +186,7 @@ fn compile_pass(
     // rotation search reseats this Arc; downstream ptr_eq checks require
     // every live Tdd in `state.tdds` to share the same Arc, so we propagate.
     let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
-    let mut state = PassState::new(formula, vtree.num_nodes(), job);
+    let mut state = PassState::new(formula, vtree, vtree.num_nodes(), job);
     let ctx = StepContext {
         job,
         clauses: &clauses,
@@ -202,7 +203,7 @@ fn compile_pass(
         } else {
             fold_step(eng, t, &ctx, &mut state, &current_vtree, None)
         };
-        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t, job) {
+        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out;
         }
     }
@@ -230,7 +231,7 @@ fn compile_pass(
         } else {
             run_internal_step(eng, t, step_ctx, &mut state, &current_vtree)
         };
-        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t, step_ctx.job) {
+        if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out.map_err(stopped);
         }
         if let Err(e) = marginalize_and_rotate(eng, t, step_ctx, &mut state, &mut current_vtree) {
@@ -242,8 +243,18 @@ fn compile_pass(
         job.prune_spent_us.set(prune.compile_spent_us());
         run_pass.absorb(prune.into_stats());
     }
-    let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| job.output.with_store(eng.one(vtree)));
+    let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| eng.one(vtree));
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
+}
+
+/// Whether `tdd` is satisfiable. The library does not answer for an output
+/// level that holds weight values; a weighted pass stores no unsatisfiable
+/// node, so there every diagram but ⊥ is.
+pub(super) fn satisfiable(eng: &Engine, tdd: &Tdd) -> Result<bool, OperationError> {
+    match eng.is_sat(tdd) {
+        Err(OperationError::IncompatibleWeights) => Ok(!tdd.is_zero()),
+        answer => answer,
+    }
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the
@@ -256,14 +267,13 @@ fn check_step(
     step: Result<usize, OperationError>,
     state: &mut PassState,
     t: VtreeIdx,
-    job: CompileJob<'_>,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
     let step = step.inspect(|&pairs| state.peak_size = state.peak_size.max(pairs));
-    let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| eng.is_sat(tdd)));
+    let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| satisfiable(eng, tdd)));
     match sat {
         Ok(true) => ControlFlow::Continue(()),
         Ok(false) => ControlFlow::Break(Ok(Compiled {
-            diagram: job.output.with_store(eng.zero(vtree)),
+            diagram: eng.zero(vtree),
             forgotten: state.forgotten.len(),
             peak_pairs: state.peak_size,
         })),
@@ -417,7 +427,7 @@ pub(super) fn splice_and_fold(
     let children_tdd = match (state.tdds[left.idx()].take(), state.tdds[right.idx()].take()) {
         (Some(mut l), Some(r)) => {
             if l.is_zero() || r.is_zero() {
-                Some(ctx.job.output.with_store(eng.zero(current_vtree)))
+                Some(eng.zero(current_vtree))
             } else if ctx.job.run.projections {
                 // On the projections under `t`'s two children, the library
                 // joins them at `t` without a sweep.

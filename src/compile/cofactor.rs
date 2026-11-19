@@ -245,7 +245,7 @@ fn run_cofactor(
                 true => Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), plan.vars.iter().copied()).expect("`vars` are leaves of the vtree"),
                 false => Arc::clone(vtree),
             };
-            let cube = ctx.job.output.with_store(eng.cube(&cube_vtree, assignment(&plan.vars, a))?);
+            let cube = eng.cube(&cube_vtree, assignment(&plan.vars, a))?;
             terms.push(eng.and(cube, branch)?);
         }
         if deadline_passed(ctx.job.deadline) {
@@ -254,7 +254,7 @@ fn run_cofactor(
     }
     drop(r);
     let mut joined = if terms.is_empty() {
-        ctx.job.output.with_store(eng.zero(vtree))
+        eng.zero(vtree)
     } else {
         eng.or_many(terms)?
     };

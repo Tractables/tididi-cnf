@@ -231,7 +231,7 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
     let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)), true);
     let prune_spent_us = Cell::new(0);
     let run = CompileRun { projections: true, ..CompileRun::default() };
-    let job = CompileJob { deadline: None, output: PassOutput::Count(None), run, prune_spent_us: &prune_spent_us };
+    let job = CompileJob { deadline: None, output: PassOutput::Count, run, prune_spent_us: &prune_spent_us };
     let on_home = compile_component(eng, &formula, &home, job).unwrap();
     let (_, streamed_peak) =
         model_count_streaming(eng, &formula, &components, |_| Some(Arc::clone(&vtree)), None, None, CompileRun::default()).unwrap();

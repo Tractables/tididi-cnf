@@ -127,20 +127,13 @@ pub(crate) fn batch_accumulate(
         let start_clause = i;
         let mut stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
         stop.projections = ctx.job.run.projections;
-        let (mut batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
+        let (batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
         i = next;
         // Absorption decides whether the next batch may extend, so it is only
         // measured when enough clauses remain for the next batch to pass the
         // floor. It needs the accumulator's pairs, which the stop rule may
         // already have read.
         let acc_pairs = (clauses.len() - i > floor.size).then(|| stop.acc_pairs());
-        // The first batch becomes the accumulator when there is none yet: a
-        // diagram the pass creates.
-        if acc.is_none()
-            && let BuiltBatch::Diagram(local) = batch
-        {
-            batch = BuiltBatch::Diagram(Box::new(ctx.job.output.with_store(*local)));
-        }
         // The targets this merge may sum out: a projecting compile keeps its
         // leaf levels Boolean, which can leave a merge that completes targets
         // with none to sum out.
@@ -332,7 +325,7 @@ fn merge_batch(
             false,
         ),
     };
-    let unsat = !eng.is_sat(&merged)?;
+    let unsat = !super::step::satisfiable(eng, &merged)?;
     *acc = Some(merged);
     Ok(Merged { unsat, absorbed })
 }

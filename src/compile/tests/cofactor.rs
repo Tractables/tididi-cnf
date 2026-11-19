@@ -8,7 +8,8 @@ use std::cell::Cell;
 
 use num_bigint::BigUint;
 use num_rational::BigRational;
-use tididi::diagram::{Arithmetic, WeightStore};
+use tididi::diagram::{Arithmetic, Weights};
+use tididi::vtree::Home;
 use vitri::cnf::CnfFormula;
 
 use crate::compile::component::{CompileJob, PassOutput};
@@ -16,7 +17,7 @@ use crate::compile::marginalize::{Schedule, run_marginalize_at};
 use crate::compile::schedule::marginalize_schedule;
 use crate::compile::scope::{ScopeGroups, group_clauses_by_scope};
 use crate::compile::step::splice_and_fold;
-use crate::compile::{CompileOptions, ComponentPlan, Output, WeightedCount, compile_cnf, weighted_count};
+use crate::compile::{CompileOptions, CompileRun, ComponentPlan, Output, WeightedCount, compile_cnf, weighted_count};
 use crate::test_support as fixtures;
 
 /// Clauses at `t` in each fixture: at least [`COFACTOR_MIN_CLAUSES`], and
@@ -130,12 +131,12 @@ impl Fixture {
     }
 
     /// The pass state when a pass reaches `t`: each child's diagram in its
-    /// slot, with the store of `output`'s weights.
-    fn children(&self, eng: &Engine, output: PassOutput<'_>) -> PassState {
+    /// slot.
+    fn children(&self, eng: &Engine) -> PassState {
         let mut tdds = vec![None; self.vtree.num_nodes()];
         let (left, right) = self.vtree.children(self.t);
         for side in [left, right] {
-            tdds[side.idx()] = self.conjoined_under(eng, side).map(|d| output.with_store(d));
+            tdds[side.idx()] = self.conjoined_under(eng, side);
         }
         PassState { tdds, ..PassState::default() }
     }
@@ -145,7 +146,7 @@ impl Fixture {
     /// each from the same children.
     fn both_steps(&self, eng: &Engine, ctx: &StepContext<'_>) -> (Option<Tdd>, Tdd) {
         let t = self.t;
-        let mut state = self.children(eng, ctx.job.output);
+        let mut state = self.children(eng);
         let held: Vec<bool> = state.tdds.iter().map(Option::is_some).collect();
         let cofactored = cofactor_step(eng, t, ctx, &mut state, &self.vtree)
             .unwrap()
@@ -157,7 +158,7 @@ impl Fixture {
         if cofactored.is_none() {
             assert_eq!(state.tdds.iter().map(Option::is_some).collect::<Vec<_>>(), held, "a declined step leaves the slots");
         }
-        let mut state = self.children(eng, ctx.job.output);
+        let mut state = self.children(eng);
         splice_and_fold(eng, t, ctx, &mut state, &self.vtree).unwrap();
         (cofactored, state.tdds[t.idx()].take().expect("the normal step stores the node's diagram"))
     }
@@ -167,7 +168,7 @@ impl Fixture {
     /// marginalization, then the root step and its own.
     fn pass(&self, eng: &Engine, ctx: &StepContext<'_>, cofactor: bool) -> Tdd {
         let (t, root) = (self.t, self.vtree.root());
-        let state = &mut self.children(eng, ctx.job.output);
+        let state = &mut self.children(eng);
         if cofactor {
             let taken = cofactor_step(eng, t, ctx, state, &self.vtree).unwrap();
             assert!(taken.is_some(), "the cofactor step fires at t");
@@ -187,8 +188,12 @@ impl Fixture {
             .collect()
     }
 
-    fn weight_store(&self) -> WeightStore {
-        WeightStore::new(crate::convert::rational_weight_algebra(&self.weights()), Arithmetic::ExactRational)
+    /// The fixture on a home weighted by [`Self::weights`], where a weighted
+    /// pass runs.
+    fn weighted(mut self) -> Fixture {
+        let weights = Weights::new(crate::convert::rational_weight_algebra(&self.weights()), Arithmetic::ExactRational);
+        self.vtree = Arc::clone(Home::weighted(Vtree::clone(&self.vtree), weights).unwrap().vtree());
+        self
     }
 
     /// The formula's model count, by brute force.
@@ -285,7 +290,7 @@ fn the_cofactor_step_declines_a_child_with_a_marginal_level() {
     let fx = one_variable_fixture(&[]);
     let ctx = fx.ctx(fx.job(PassOutput::Function), None);
     let big = fx.vtree.children(fx.t).1;
-    let mut state = fx.children(eng, ctx.job.output);
+    let mut state = fx.children(eng);
     // A child index precedes its parent's, so ascending is bottom-up.
     let levels: Vec<VtreeIdx> =
         (0..fx.vtree.num_nodes() as u32).map(VtreeIdx).filter(|&u| fx.under(u, big)).collect();
@@ -306,7 +311,7 @@ fn the_cofactor_step_counts_under_the_marginalize_schedule() {
             !groups[fx.t.idx()].is_empty() && !groups[fx.vtree.root().idx()].is_empty(),
             "levels finish at t and at the root"
         );
-        let ctx = fx.ctx(fx.job(PassOutput::Count(None)), Some(&schedule));
+        let ctx = fx.ctx(fx.job(PassOutput::Count), Some(&schedule));
         let expected = fx.brute_count();
         assert!(expected > BigUint::ZERO, "the planted assignment is a model");
         assert_eq!(fx.pass(eng, &ctx, true).model_count().unwrap(), expected);
@@ -314,16 +319,16 @@ fn the_cofactor_step_counts_under_the_marginalize_schedule() {
     }
 }
 
-/// A weight store holds values only at marginal levels, so the branches,
-/// over children with none, carry no values: the step-end marginalization
-/// weighs the cofactor step's diagram as it weighs the normal step's.
+/// Weight values sit only at summed levels, so the branches, over children
+/// with none, hold no values: the step-end marginalization weighs the
+/// cofactor step's diagram as it weighs the normal step's.
 #[test]
 fn the_cofactor_step_weighs_as_the_normal_step() {
     let eng = &Engine::new();
-    for fx in [one_variable_fixture(&[]), three_variable_fixture(true)] {
-        let schedule = fx.schedule();
-        let store = fx.weight_store();
-        let ctx = fx.ctx(fx.job(PassOutput::Count(Some(&store))), Some(&schedule));
+    for fx in [one_variable_fixture(&[]).weighted(), three_variable_fixture(true).weighted()] {
+        let schedule = Schedule::new(&fx.vtree, &fx.last_scope_pos, PassOutput::Count, true);
+        let job = CompileJob { run: CompileRun { projections: true, ..CompileRun::default() }, ..fx.job(PassOutput::Count) };
+        let ctx = fx.ctx(job, Some(&schedule));
         let value =
             |tdd: Tdd| eng.weighted_value(&tdd).unwrap().expect("a weighted diagram").as_rational().into_owned();
         let expected = fx.brute_weighted_count();

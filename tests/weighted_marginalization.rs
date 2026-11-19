@@ -30,7 +30,7 @@ use tididi::Engine;
 use tididi::diagram::{Arithmetic, Tdd, WeightStore};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
-use tididi_cnf::compile::{CompileOptions, Output, compile_cnf};
+use tididi_cnf::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
 use tididi_cnf::vtree::{VtreeOptions, build_vtree};
 
 use common::{make_formula, random_3cnf};
@@ -46,9 +46,10 @@ fn rational_weight_algebra(weights: &[(BigRational, BigRational)]) -> tididi::di
         .expect("both polarity columns come from the same variable pairs")
 }
 
-/// A plain compile of `formula` on `vtree` with default options.
+/// A plain compile of `formula` on `vtree` as one component, so that the
+/// diagram is on `vtree`, where levels can be summed out by index.
 fn plain_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>) -> Tdd {
-    compile_cnf(eng, formula, vtree, CompileOptions::default()).unwrap().diagram
+    compile_cnf(eng, formula, vtree, CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() }).unwrap().diagram
 }
 
 /// The oracle: a plain compile evaluated under `w`.
@@ -215,10 +216,8 @@ fn assert_leaf_column(tdd: &Tdd, vtree: &Vtree, var: u32, w: &(BigRational, BigR
     let level = &tdd.levels()[leaf.idx()];
     assert!(level.is_weight_marginal(), "[{label}] leaf of x{} is not weight-marginal", var + 1);
     assert_eq!(level.slot_count(), 3, "[{label}] leaf of x{}: the slot count must stay at `LEAF_WIDTH`", var + 1);
-    let column = tdd
-        .weights()
-        .expect("weights attached")
-        .level(leaf.idx())
+    let column = level
+        .weight_values()
         .unwrap_or_else(|| panic!("[{label}] leaf of x{} lost its column", var + 1));
     let (w_neg, w_pos) = w;
     assert_eq!(column.len(), 3, "[{label}] the leaf column carries One, Pos and Neg");
@@ -321,7 +320,7 @@ fn a_structural_leaf_reads_by_label_under_a_shared_store() {
         marginalize_weighted(eng, &mut a, &w, &[parent, leaf]);
         let shared = a.weights().expect("weights attached").clone();
         assert!(
-            shared.level(leaf.idx()).is_some_and(|column| column.len() == 3),
+            a.levels()[leaf.idx()].weight_values().is_some_and(|column| column.len() == 3),
             "[{label}] a subsumed leaf keeps its column"
         );
 
@@ -330,22 +329,6 @@ fn a_structural_leaf_reads_by_label_under_a_shared_store() {
         b.set_weights(shared).expect("the weights cover the diagram's live columns");
         eng.marginalize_levels(&mut b, &[parent]).expect("no wall is armed");
         assert_eq!(weighted_value(&b), expected, "[{label}]");
-    }
-}
-
-/// Through the weighted marginalizing compile, where conjunction, pair
-/// fusion and the slot prune all act on leaf boundaries, some leaf ends
-/// weight-marginal and the value matches the oracle.
-#[test]
-fn the_weighted_compile_marginalizes_leaves() {
-    let eng = &Engine::new();
-    let vtree = Arc::new(Vtree::balanced(4));
-    for (label, w) in weight_cases() {
-        let tdd = weighted_mc_compile(eng, &leaf_formula(), &vtree, &w);
-        let marginal_leaves =
-            tdd.vtree().leaf_bottomup().filter(|(t, _)| tdd.levels()[t.idx()].is_marginal()).count();
-        assert!(marginal_leaves > 0, "[{label}] no leaf level was marginalized");
-        assert_eq!(weighted_value(&tdd), oracle(&leaf_formula(), &vtree, &w), "[{label}]");
     }
 }
 

@@ -4,12 +4,11 @@ use tididi::Engine;
 use crate::compile::Output;
 use crate::test_support::dimacs;
 
-/// A split whose second component is UNSAT answers ⊥ on the vtree the
-/// grafted result would have had: the components' own vtrees, as the
-/// caller gave them, chained with the free variable. That holds weighted
-/// too, where the ⊥ carries an empty store.
+/// A split whose second component is UNSAT answers ⊥ on the split's home:
+/// the components' own vtrees, as the caller gave them, chained with the
+/// free variable. That holds weighted too, where the home is weighted.
 #[test]
-fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
+fn an_unsat_component_answers_zero_on_the_whole_home() {
     use tididi::diagram::RationalWeights;
     use tididi::vtree::{VtreeIdx, VtreeNode};
     let eng = &Engine::new();
@@ -28,13 +27,11 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
     let nodes = |v: &Vtree| -> Vec<VtreeNode> {
         (0..v.num_nodes() as u32).map(|i| v.node(VtreeIdx(i)).clone()).collect()
     };
-    let (expected, _) = Vtree::graft_over(
-        &[&*split[0].vtree, &*split[1].vtree],
-        |k, local| split[k].component.local_to_global[local.idx()],
-        &[VarId(5)],
-        5,
-    )
-    .unwrap();
+    let renamed: Vec<Vtree> = split
+        .iter()
+        .map(|c| c.vtree.renamed(|local| c.component.local_to_global[local.idx()], 5).unwrap())
+        .collect();
+    let expected = Vtree::graft(&renamed, &[VarId(5)]).unwrap();
     let weights = RationalWeights::unit(5);
     let weighted = Output::WeightedCount { weights, arithmetic: tididi::diagram::Arithmetic::ExactRational };
     for output in [Output::Function, Output::Count, weighted] {
@@ -49,7 +46,8 @@ fn an_unsat_component_answers_zero_on_the_grafted_vtree() {
             .diagram;
         assert!(tdd.is_zero(), "weighted = {weighted}");
         assert_eq!(tdd.weights().is_some(), weighted);
-        assert_eq!(tdd.vtree().root(), expected.root());
-        assert_eq!(nodes(tdd.vtree()), nodes(&expected), "weighted = {weighted}");
+        let home = tdd.vtree().home().expect("a split answers on a home");
+        assert_eq!(home.vtree().root(), expected.root());
+        assert_eq!(nodes(home.vtree()), nodes(&expected), "weighted = {weighted}");
     }
 }

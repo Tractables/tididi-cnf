@@ -38,7 +38,7 @@ use std::time::Instant;
 
 use num_bigint::BigUint;
 use tididi::{Engine, OperationError};
-use tididi::diagram::{Arithmetic, RationalWeights, Tdd, WeightStore, WeightValue};
+use tididi::diagram::{Arithmetic, RationalWeights, Tdd, WeightValue, Weights};
 use tididi::vtree::{VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
@@ -307,8 +307,8 @@ pub struct Compiled {
     pub diagram: Tdd,
     /// How many of the variables a projected [`Output`] forgets are free in
     /// `diagram`, each doubling its count: those ∃-forgotten, and those in no
-    /// clause, which a component split grafts in free or a clause-free formula
-    /// leaves unconstrained. Zero for a compile that forgets nothing.
+    /// clause, which a component split leaves as free leaves of its home or a
+    /// clause-free formula leaves unconstrained. Zero for a compile that forgets nothing.
     pub forgotten: usize,
     /// The largest diagram, in pairs, any step of the compile reached; the
     /// largest over the components of a split compile, which run one after
@@ -345,17 +345,18 @@ impl Compiled {
 /// By default ([`ComponentPlan::Detect`]) a formula whose clauses fall into
 /// independent components, groups that share no variable, is compiled one
 /// component at a time, each on a balanced vtree of its own, and the
-/// components' diagrams are grafted into one; a formula with one component
+/// components' diagrams are conjoined on one home; a formula with one component
 /// is compiled on `vtree`. [`CompileOptions::plan`] can instead ask for the
 /// whole formula on `vtree`, or for the caller's own component vtrees.
 ///
 /// The result's vtree, the one its diagram carries, is the vtree to build any
 /// further operand on: [`and`](tididi::and) and the other operations refuse
 /// operands on different vtrees. It is `vtree` itself only when the formula was
-/// compiled whole and no rotation fired. A split compile's result is on a vtree
-/// grafted from the components' vtrees, and a counting compile may rotate its
-/// vtree to bring marginal levels together, onto a copy; `vtree` itself is
-/// never changed.
+/// compiled whole and unweighted and no rotation fired. A weighted compile
+/// runs on a copy of `vtree` made a weighted home. A split compile's result
+/// is on a projection of a home grafted from the components' vtrees and the
+/// free variables, and a counting compile may rotate its vtree to bring
+/// marginal levels together, onto a copy; `vtree` itself is never changed.
 ///
 /// An [`Err`] is a give-up, never a partial diagram, so any count taken from an
 /// `Ok` is exact. A caller that runs this under a deadline it set — an attempt
@@ -403,11 +404,11 @@ pub(crate) fn compile_with(
         component::check_partition(formula, components)?;
     }
 
-    let weights;
+    let mut weights = None;
     let forget: HashSet<VarId>;
     let output = match output {
         Output::Function => PassOutput::Function,
-        Output::Count => PassOutput::Count(None),
+        Output::Count => PassOutput::Count,
         Output::WeightedCount { weights: algebra, arithmetic } => {
             // Literal tables cover a contiguous range starting at one. Ask
             // the library to validate its last required entry before either
@@ -416,8 +417,8 @@ pub(crate) fn compile_with(
                 algebra.restated(&[VarId(formula.num_vars())])
                     .map_err(|error| GiveUp::Invalid(error.to_string()))?;
             }
-            weights = WeightStore::new(algebra, arithmetic);
-            PassOutput::Count(Some(&weights))
+            weights = Some(Weights::new(algebra, arithmetic));
+            PassOutput::Count
         }
         Output::ProjectedCount(vars) => {
             forget = formula_vars(formula, vars)?;
@@ -428,34 +429,45 @@ pub(crate) fn compile_with(
             PassOutput::ProjectedFunction(&forget)
         }
     };
-    let run = CompileRun { projections: run.projections && output.weights().is_none(), ..run };
+    // A weighted compile runs on a home that holds the weights.
+    let run = CompileRun { projections: run.projections || weights.is_some(), ..run };
     let prune_spent_us = Cell::new(0);
     let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
     eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;
 
+    // The empty clause is the constant false, which the whole-formula pass
+    // answers at once: there is nothing to split into components.
+    let plan = if crate::formula::has_empty_clause(formula) { ComponentPlan::Whole } else { plan };
+    if !formula.clauses().is_empty() {
+        match plan {
+            ComponentPlan::Split(component_vtrees) => {
+                return compile_split(eng, formula, component_vtrees, weights.as_ref(), job);
+            }
+            ComponentPlan::Detect => {
+                if let Some(detected) = formula.detect_components() {
+                    let split = detected_split(eng, formula, detected, job.run.projections);
+                    return compile_split(eng, formula, &split, weights.as_ref(), job);
+                }
+            }
+            ComponentPlan::Whole => {}
+        }
+    }
+    let weighted;
+    let vtree = match weights {
+        Some(weights) => {
+            weighted = component::weighted_home(eng, Vtree::clone(vtree), Some(weights))?;
+            weighted.vtree()
+        }
+        None => vtree,
+    };
     if formula.clauses().is_empty() {
-        let diagram = output.with_store(eng.one(vtree));
+        let diagram = eng.one(vtree);
         // Every variable is free, ×2 in the raw count, a projected one included.
         let forgotten = output.forget().map_or(0, |forget| {
             (1..=vtree.num_vars()).filter(|&v| forget.contains(&VarId(v))).count()
         });
         return Ok(Compiled { diagram, forgotten, peak_pairs: 0 });
     }
-    // The empty clause is the constant false, which the whole-formula pass
-    // answers at once: there is nothing to split into components.
-    let plan = if crate::formula::has_empty_clause(formula) { ComponentPlan::Whole } else { plan };
-    match plan {
-        ComponentPlan::Split(component_vtrees) => {
-            return compile_split(eng, formula, component_vtrees, job);
-        }
-        ComponentPlan::Detect => {
-            if let Some(detected) = formula.detect_components() {
-                return compile_split(eng, formula, &detected_split(eng, formula, detected, job.run.projections), job);
-            }
-        }
-        ComponentPlan::Whole => {}
-    }
-
     let mut result = compile_component(eng, formula, vtree, job)?;
     minimize_full(eng, &mut result.diagram, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
     Ok(result)
@@ -574,7 +586,7 @@ where
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
-        let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
+        let output = comp_forget.as_ref().map_or(PassOutput::Count, PassOutput::ProjectedCount);
         let job = CompileJob { deadline, output, run: CompileRun { projections: true, ..run }, prune_spent_us: &prune_spent_us };
         let compiled = settle(compile_component(eng, sub_formula, &home, job))?;
         let sub_count = compiled.projected_count(eng).ok()?;

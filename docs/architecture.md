@@ -97,7 +97,7 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | file | what it holds |
 |---|---|
 | `mod.rs` | `compile_cnf`, its options, result and `GiveUp`; the weighted count and the per-component streaming count the stages call; `release_failed_compile`, which gives back what a failed compile leaves on the engine and in the allocator before another compile starts on it. |
-| `component.rs` | The job one pass runs, the checks that the vtree and the split fit the formula, and the split: each component renumbered, compiled and grafted back. |
+| `component.rs` | The job one pass runs, the checks that the vtree and the split fit the formula, and the split: each component renumbered, compiled, moved onto one home and conjoined there. |
 | `step.rs` | `compile_component`, the bottom-up pass over one vtree, and its per-pass state. |
 | `scope.rs` | The vtree node each clause is conjoined at, and the clause order within a node. |
 | `batch.rs` | One node's clauses folded into its diagram, a batch at a time. |
@@ -171,7 +171,7 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
 ## Design pages
 
 - [Algorithms][algorithms]: the vtree-guided bottom-up compile, the
-  batched clause merge and the component graft.
+  batched clause merge and the component split.
 - [Marginal TDD levels][marginal-tdd-levels]: levels replaced by per-node
   counts once no later step can change them, and the peak size they save.
 - [Weighted marginal levels][weighted-marginal-levels]: the arithmetic a
