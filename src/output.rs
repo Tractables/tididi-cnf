@@ -39,10 +39,6 @@ pub(crate) enum AnsweredBy {
     /// Preprocessing settled the count, so nothing was compiled: the formula
     /// was refuted, or no variable was left and the count is the lift.
     Preprocessing,
-    /// The model count's second compile of the Arjun reduction, on a
-    /// `goatd-primal` tree, after one step of the first compile ran past its
-    /// own wall.
-    StallRecompile,
     /// Support enumeration, the fallback that counts the Arjun-reduced formula
     /// by enumerating assignments to its independent support.
     SupportEnumeration,
@@ -67,7 +63,6 @@ impl AnsweredBy {
         match self {
             AnsweredBy::Compile => "compile",
             AnsweredBy::Preprocessing => "preprocessing",
-            AnsweredBy::StallRecompile => "stall-recompile",
             AnsweredBy::SupportEnumeration => "support-enumeration",
             AnsweredBy::NoSbvaRetry => "no-sbva-retry",
             AnsweredBy::UnreducedRetry => "unreduced-retry",
@@ -140,8 +135,8 @@ pub struct Stats {
     /// The portfolio candidate that won selection, when a portfolio ran. In
     /// the plain compile it is the vtree the answering compile ran on: the
     /// portfolio's winner, or the retry's hypergraph bisection. In the model
-    /// count the primary compile and the stall recompile name theirs as they
-    /// start, so a run that gives up names the last of them.
+    /// count the primary compile names its tree as it starts, so a run that
+    /// gives up names it too.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_candidate: Option<String>,
 
@@ -180,9 +175,8 @@ pub struct Stats {
     pub peak_pairs: Option<u64>,
 
     /// Which stage produced the answer: of a model count, `compile`,
-    /// `preprocessing`, `stall-recompile`, `support-enumeration`,
-    /// `no-sbva-retry`, `unreduced-retry`, `monotone-reduction` or
-    /// `shannon-split`; of a plain compile, `compile`, `preprocessing` or
+    /// `preprocessing`, `support-enumeration`, `no-sbva-retry`,
+    /// `unreduced-retry`, `monotone-reduction` or `shannon-split`; of a plain compile, `compile`, `preprocessing` or
     /// `bisect-retry`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub answered_by: Option<&'static str>,

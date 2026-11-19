@@ -20,6 +20,7 @@ use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use crate::budget::deadline_passed;
 use super::marginalize::{StepTargets, Summing, summable};
 use super::minimize::{MinimizeGate, minimize_contract_only};
+use super::reach::ReachScratch;
 use super::schedule::{StepVars, step_completions, step_last_clauses};
 use super::step::{DiagramClauses, PassState, StepContext};
 
@@ -120,6 +121,7 @@ pub(crate) fn batch_accumulate(
     // merge at this node stays absorbing, then `next_batch_limit` of it. The
     // floor is fixed for the whole fold by the accumulator it starts from.
     let floor = batch_floor(acc.as_ref());
+    state.minimize.start_fold(eng);
     let mut limit = floor.size;
     let mut i = 0;
     while i < clauses.len() {
@@ -146,7 +148,8 @@ pub(crate) fn batch_accumulate(
             Some(Completed::Vars(summing)) => Some(summing),
             None => None,
         };
-        let merged = merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets, acc_pairs)?;
+        let merged =
+            merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets, acc_pairs, i == clauses.len())?;
         if merged.unsat {
             return Ok(acc);
         }
@@ -302,7 +305,8 @@ struct Merged {
 ///
 /// A [`BuiltBatch::SingleClause`] is conjoined directly into `acc`. That
 /// happens only when no further clause can follow in the batch, so no
-/// absorption is measured.
+/// absorption is measured. `fold_end` marks the fold's last merge, as
+/// [`MinimizeGate::adaptive_minimize`] takes it.
 fn merge_batch(
     eng: &Engine,
     batch: BuiltBatch<'_>,
@@ -310,10 +314,11 @@ fn merge_batch(
     state: &mut MinimizeGate,
     merge_targets: Option<Summing<'_>>,
     acc_pairs: Option<usize>,
+    fold_end: bool,
 ) -> Result<Merged, OperationError> {
     let acc_in = acc.take();
     let (merged, absorbed) = match batch {
-        BuiltBatch::Diagram(batch) => merge_batch_into_acc(eng, acc_in, *batch, state, merge_targets, acc_pairs)?,
+        BuiltBatch::Diagram(batch) => merge_batch_into_acc(eng, acc_in, *batch, state, merge_targets, acc_pairs, fold_end)?,
         BuiltBatch::SingleClause(clause) => (
             merge_clause_into_acc(
                 eng,
@@ -321,6 +326,7 @@ fn merge_batch(
                 clause,
                 state,
                 merge_targets,
+                fold_end,
             )?,
             false,
         ),
@@ -353,44 +359,30 @@ fn mark_clause_levels(
     }
 }
 
-/// `local.max_width()` for a batch diagram under construction, read off the
-/// union of the folded clauses' spines (`spine`) instead of sweeping every
-/// vtree level. Returns exactly what `Tdd::max_width` would.
+/// The arena width of a batch diagram under construction on the union of the
+/// folded clauses' spines (`spine`): its `Tdd::max_width`, which counts the
+/// nodes an operation left unnamed as well, read without sweeping every vtree
+/// level. It bounds the reached width ([`ReachScratch::width_on_spine`]) from
+/// above, so a cap it does not pass needs no reachability walk.
 ///
-/// Why it is exact. Three facts about a batch diagram, all local to
-/// `build_one_batch`:
-///
-/// 1. **Off-spine levels start trivial.** The batch starts as
-///    `Tdd::clause(first clause)`, which gives every internal level outside
-///    that clause's spine a single One node (width 1) and every leaf level no
-///    stored nodes at all (width 0).
-/// 2. **Only spine levels ever grow.** [`Engine::and_clause`] rebuilds only
-///    the paths from the clause's variables to the root and carries every
-///    other level through; `minimize_contract_only` only merges twins, which
-///    can shrink a level but never widen one. So a level outside the running spine union
-///    still has width ≤ 1 at every check.
-/// 3. **The root is always in the union.** A spine is the ancestor-closed
-///    Steiner tree of the clause's leaves, so it contains the vtree root. At
-///    the check point the diagram is satisfiable (the caller tested `is_sat`
-///    first), so the root level holds at least one live node — hence the
-///    spine-restricted maximum is ≥ 1 and dominates every off-spine level.
-///
-/// The single-leaf-vtree corner falls out: there is no internal level, both the
-/// swept and the restricted maximum are 0.
+/// Why the spine suffices. A batch starts as `Tdd::clause(first clause)`, which
+/// gives every internal level outside that clause's spine a single One node
+/// and every leaf level none; [`Engine::and_clause`] rebuilds only the paths
+/// from the clause's variables to the root, and `minimize_contract_only` only
+/// merges twins, so a level off the running spine union keeps width at most 1.
+/// The root is on every spine and holds a live node once the batch is
+/// satisfiable, which the caller tests first.
 fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine.iter().map(|&t| local.level(t).slot_count()).max().unwrap_or(0)
 }
 
-/// The batch diagram's pairs on the spine union `spine`: its `pair_count`
-/// less the one trivial pair of each internal level off the union (fact 1 of
-/// [`batch_max_width`]; off-spine levels never grow). The extension rule
-/// reads it as the cost of conjoining one more clause, which is linear in the
-/// batch's pairs; the off-spine constant does not matter there, and skipping
-/// those levels keeps the read proportional to the batch's spine.
-///
-/// The library publishes the whole diagram's pair count and each node's, but
-/// no count over a chosen set of levels, so the sum is taken here node by
-/// node; a test holds it equal to `Tdd::pair_count` over every level.
+/// The batch diagram's arena pairs on the spine union `spine`: its
+/// `pair_count` less the one trivial pair of each internal level off the union
+/// (off-spine levels never grow, [`batch_max_width`]). The extension rule reads
+/// it as the cost of conjoining one more clause. Unlike the width it counts
+/// the nodes an operation left unnamed: a reached count needs a walk over
+/// every reached pair at every check, which costs Boolean compiles up to 8% of
+/// their instructions, while this sum reads one count per node.
 fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
     spine
         .iter()
@@ -494,9 +486,13 @@ impl<'a> BatchStop<'a> {
     ///   never delays a marginalization past the boundary the floor would
     ///   have given it.
     ///
-    /// The pairs are read off the spine union ([`batch_spine_pairs`]), and
-    /// the accumulator's cached pair count by [`BatchStop::acc_pairs`], which
-    /// the extension decision and the merge's absorption check share.
+    /// The width is that of the nodes the batch's output reaches on the spine
+    /// union ([`ReachScratch::width_on_spine`]), so that nodes the library
+    /// leaves unnamed move no width stop; the walk runs only when the arena width
+    /// ([`batch_max_width`]) passes the cap that applies. The pairs are the
+    /// arena's on the spine union ([`batch_spine_pairs`]). The accumulator's
+    /// pair count is its cached one ([`BatchStop::acc_pairs`]), which the
+    /// extension decision and the merge's absorption check share.
     ///
     /// Returns the built batch and the index of the next clause, at least
     /// `start + 1`: the first clause is always taken. A one-clause batch
@@ -532,7 +528,7 @@ impl<'a> BatchStop<'a> {
             false => eng.clause(vtree, first.iter().copied())?,
         };
         // The running union of the folded clauses' spines, from which the stop
-        // checks read the batch's max width and pairs instead of sweeping every
+        // checks read the batch's width and pairs instead of sweeping every
         // level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a
         // width cap is on or the batch may extend. All false on entry: only
         // spine entries are ever set, and they are reset from `touched` before
@@ -540,6 +536,7 @@ impl<'a> BatchStop<'a> {
         // pass, whose state the scratch is part of.
         let may_extend = self.limit > self.floor;
         let track_spine = !self.projections && (self.width_cap != usize::MAX || may_extend);
+        let mut reach = ReachScratch::default();
         let mut touched = Vec::new();
         if track_spine {
             if on_spine.len() < vtree.num_nodes() {
@@ -566,13 +563,19 @@ impl<'a> BatchStop<'a> {
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            let width = if track_spine {
-                batch_max_width(&local, &touched)
+            let mut width = 0;
+            if track_spine {
+                width = batch_max_width(&local, &touched);
             } else if self.projections && self.width_cap != usize::MAX {
-                local.max_width()
-            } else {
-                0
-            };
+                width = local.max_width();
+            }
+            let cap = if batch_count < self.floor { self.width_cap } else { self.guard };
+            if width > cap {
+                width = match self.projections {
+                    true => reach.width_on_spine(&local, local.vtree().internal_bottomup_slice()),
+                    false => reach.width_on_spine(&local, &touched),
+                };
+            }
             if may_extend {
                 built += pairs;
                 pairs = spine_pairs(&local, &touched);
@@ -645,6 +648,7 @@ fn merge_batch_into_acc(
     state: &mut MinimizeGate,
     marginalize_targets: Option<Summing<'_>>,
     acc_pairs: Option<usize>,
+    fold_end: bool,
 ) -> Result<(Tdd, bool), OperationError> {
     let Some(a) = acc else {
         // First batch: the batch builder's output is already minimized. If targets
@@ -665,7 +669,8 @@ fn merge_batch_into_acc(
     let (num, den) = BATCH_ABSORB_FACTOR;
     let absorbed = acc_pairs.is_some_and(|n| result.pair_count().saturating_mul(den) <= num.saturating_mul(n));
 
-    state.adaptive_minimize(eng, &mut result)?;
+    let summed_out = marginalize_targets.is_some_and(|t| !t.is_empty());
+    state.adaptive_minimize(eng, &mut result, fold_end, summed_out)?;
 
     Ok((result, absorbed))
 }
@@ -680,9 +685,10 @@ fn merge_clause_into_acc(
     clause: &[Literal],
     state: &mut MinimizeGate,
     marginalize_targets: Option<Summing<'_>>,
+    fold_end: bool,
 ) -> Result<Tdd, OperationError> {
     let mut result = eng.and_clause(acc, clause)?;
-    state.adaptive_minimize(eng, &mut result)?;
+    state.adaptive_minimize(eng, &mut result, fold_end, false)?;
     if let Some(targets) = marginalize_targets {
         targets.sum_out(eng, &mut result)?;
     }

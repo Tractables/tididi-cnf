@@ -25,10 +25,10 @@ mod cofactor;
 mod component;
 mod marginalize;
 mod minimize;
+mod reach;
 pub(crate) mod sat_prune;
 mod schedule;
 mod scope;
-mod stall;
 mod step;
 
 use std::cell::Cell;
@@ -50,8 +50,6 @@ use component::{CompileJob, PassOutput, compile_split, detected_split};
 pub(crate) use component::{check_partition, check_vtree};
 use minimize::minimize_full;
 use step::compile_component;
-
-pub(crate) use stall::{StallRule, StallWatch};
 
 /// Which independent components a compile splits the formula into.
 #[derive(Clone, Copy, Default)]
@@ -79,7 +77,7 @@ impl<'a> ComponentPlan<'a> {
 
 /// What a run sets for one compile, beyond what the compile is asked to
 /// produce: the run's SAT pruning, whether the compile is a Shannon
-/// cofactor's, and the per-step wall its internal steps run under.
+/// cofactor's, and the run's budgeted work.
 #[derive(Clone, Copy, Default)]
 pub(crate) struct CompileRun<'a> {
     /// The run's SAT pruning, which a compile that runs to its end adds its
@@ -89,10 +87,6 @@ pub(crate) struct CompileRun<'a> {
     /// cascade recompiles cofactors under memory pressure, and scanning a
     /// diagram about to be split or dropped adds no useful work.
     pub(crate) cofactor: bool,
-    /// The per-step wall the compile's internal steps run under, and where it
-    /// reports a step that stopped on it ([`StallWatch`]); `None` for no
-    /// per-step wall. Only the model count's primary compile has one.
-    pub(crate) stall_watch: Option<&'a StallWatch>,
     /// The run's budgeted work, which counts the SAT pruning and a compile
     /// that stopped at a deadline and hashes each compile's input; `None`
     /// records nothing.
@@ -241,9 +235,8 @@ impl Released {
 /// decay setting is left to the pressure check in `crate::mem`, so the
 /// compiles that follow keep their freed pages for reuse until the footprint
 /// nears the address-space cap. Every compile that follows a failed one on
-/// the same engine runs this first: the model count's fallbacks, its stall
-/// recompile and Shannon split, and the plain compile's retry on a second
-/// vtree.
+/// the same engine runs this first: the model count's fallbacks and Shannon
+/// split, and the plain compile's retry on a second vtree.
 pub(crate) fn release_failed_compile(eng: &Engine) -> Released {
     let before = crate::mem::HeapStats::read();
     eng.clear_scratch();
@@ -573,12 +566,7 @@ where
         if deadline_passed(deadline) {
             return None;
         }
-        component::remap_component_clauses_into(
-            scratch,
-            formula,
-            &comp.clause_indices,
-            &comp.local_to_global,
-        );
+        component::remap_component_clauses_into(scratch, formula, comp);
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
         settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;

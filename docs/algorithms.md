@@ -209,17 +209,6 @@ names the one that answered ([`stats.md`](stats.md)).
   `hypergraph-bisect:imbalance=0.40`, unless the portfolio's pick already was
   a `hypergraph-bisect` tree. The retry builds its tree in the time left, and
   one that cannot finish the tree gives up. Nothing follows the retry.
-- **Stall recompile** (`stall-recompile`). Under `mc`, a compile of the
-  reduced formula that stalls is given up early. The compile works up the
-  vtree one node at a time, and with a time limit each node's step may run
-  for a sixth of it, as long as at least 50 steps, that one included, are
-  still to come in its part of the formula. A step that runs longer ends the
-  compile, and the same reduced formula is compiled again, to the end of the
-  run, on a vtree from vitri's portfolio restricted to `goatd-primal`, a
-  construction the portfolio otherwise leaves out; the record's
-  `vtree_candidate` names the tree. A recompile that gives up leaves the
-  formula to the stages that follow any failed compile. Without a time limit,
-  no step has a limit of its own. `wmc` has no such step limit.
 - **Monotone reduction** (`monotone-reduction`). Under `mc`, the run asks
   vitri to skip Arjun on a monotone formula, one in which every variable
   occurs in one polarity only: its compile usually answers sooner without the

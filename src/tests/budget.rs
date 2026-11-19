@@ -133,3 +133,12 @@ fn compile_hashes_follow_the_inputs() {
     assert_eq!(a.0, c.0);
     assert_ne!(a.1, c.1);
 }
+
+/// A run with a time limit preprocesses on vitri's work clock, each phase
+/// allowance clamped to the limit; a run with none keeps the wall clock.
+#[test]
+fn preprocessing_runs_on_the_work_clock_under_a_time_limit() {
+    use vitri::config::PreprocessClock;
+    assert_eq!(preprocess_clock(Some(120_000)), PreprocessClock::Deterministic { configured_wall_ms: Some(120_000) });
+    assert_eq!(preprocess_clock(None), PreprocessClock::WallClock);
+}

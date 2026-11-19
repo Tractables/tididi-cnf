@@ -68,7 +68,7 @@ constructions, and
 [vitri's catalog](https://github.com/Tractables/vitri/blob/main/docs/env.md)
 lists them. `tididi` passes them through, and they reach every run that
 preprocesses or builds a vtree, in every mode, with three exceptions it
-refuses whenever they are set:
+refuses whenever they are set, and one it refuses where it would do nothing:
 
 - **`VITRI_BUDGET_MS`.** `tididi` gives vitri its budget from the run's own
   time limit, so this variable would never take effect. Pass the limit as
@@ -77,18 +77,21 @@ refuses whenever they are set:
   `tididi` does not use.
 - **`VITRI_ARJUN_SKIP_MONOTONE`.** `mc` asks vitri to skip Arjun on a monotone
   formula itself, and no other mode can use the skip.
+- **`VITRI_IMPLICATES_MS`.** Every mode conjoins the clauses vitri finds over
+  the tree its main compile runs on, each component's after the component's
+  own. They leave every count and the compiled function unchanged. `wmc`
+  looks for the simplified formula's clauses only when it compiles that
+  formula, after the Arjun-reduced formula gives no answer. The
+  variable is refused in `mc` under `--vtree` and on a bundle, which brings
+  its clauses in its own files. A tree built after a compile gives up gets no
+  clauses, and neither do the trees of a projected count's conditioning
+  branches.
 
-Two settings are overridden by design:
-
-- **`VITRI_ARJUN_SBVA`.** With it on, its default, Arjun adds variables to
-  shorten the formula; on a formula that looks like a graph colouring, a
-  model count whose first compile gives up retries with a second reduction
-  that has it off. The record's `answered_by` is `no-sbva-retry` when that
-  retry produced the count ([`stats.md`](stats.md)).
-- **`VITRI_PORTFOLIO_SKIP`.** A model count whose compile stalls recompiles
-  on a tree from the portfolio's `goatd-primal` entry alone
-  ([`tasks.md`](tasks.md#vtrees)), whatever the variable skips; every other
-  portfolio the run builds honours it.
+One setting is overridden by design: with `VITRI_ARJUN_SBVA` on, its
+default, Arjun adds variables to shorten the formula; on a formula that looks
+like a graph colouring, a model count whose first compile gives up retries
+with a second reduction that has it off. The record's `answered_by` is
+`no-sbva-retry` when that retry produced the count ([`stats.md`](stats.md)).
 
 vitri's catalog also lists the variables that act when `tididi` is built
 rather than when it runs, such as the choice of C++ compiler.

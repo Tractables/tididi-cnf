@@ -21,6 +21,7 @@
 //! have vitri build a vtree beside its preprocessing, use the same selection
 //! context and conversion.
 
+use std::borrow::Cow;
 use std::sync::Arc;
 use vitri::cnf::CnfFormula;
 use tididi::vtree::{VarId, Vtree};
@@ -44,15 +45,18 @@ pub struct VtreeOptions {
     /// starts an independent history.
     pub(crate) portfolio_history: vitri::decompose::PortfolioBuildHistory,
     pub(crate) source_structure_profile: Option<vitri::score::StructureProfile>,
-    /// Build a portfolio of this one entry of vitri's built-in catalog
-    /// ([`PORTFOLIO_CATALOG`]), every other entry skipped; `None` builds the
-    /// default portfolio. The model count's stall recompile asks for one. Read
-    /// in one place, [`resolve_vitri_selection_ctx`].
-    pub(crate) only_portfolio_entry: Option<&'static str>,
+    /// The budget, in milliseconds, of vitri's implied-clause pass over the
+    /// finished trees ([`VtreeBuild::implied`], [`Component::implied`]);
+    /// `None` runs no pass. Set by [`Self::with_implied_clauses`].
+    pub(crate) implicates_ms: Option<u64>,
+    /// How much the construction may spend: the whole window up to
+    /// [`Self::deadline`] by default, the run's work budget
+    /// ([`crate::budget::construction_budget`]) once
+    /// [`Self::with_run_policy`] has set it.
+    pub(crate) construction: vitri::config::ConstructionBudget,
 }
 
-/// Clause-balance selection, no deadline, a fresh portfolio history, the
-/// default portfolio.
+/// Clause-balance selection, no deadline, a fresh portfolio history.
 impl Default for VtreeOptions {
     fn default() -> Self {
         Self {
@@ -60,7 +64,8 @@ impl Default for VtreeOptions {
             deadline: None,
             portfolio_history: vitri::decompose::PortfolioBuildHistory::default(),
             source_structure_profile: None,
-            only_portfolio_entry: None,
+            implicates_ms: None,
+            construction: vitri::config::ConstructionBudget::WholeRemaining,
         }
     }
 }
@@ -85,11 +90,23 @@ impl VtreeOptions {
         self
     }
 
-    /// The run's portfolio history and the structure profile of its input.
+    /// The run's portfolio history, the structure profile of its input, and
+    /// the run's construction work budget, which replaces the deadline.
     #[must_use]
     pub(crate) fn with_run_policy(mut self, config: &Config) -> Self {
         self.portfolio_history = config.portfolio_history.clone();
         self.source_structure_profile = config.source_structure_profile;
+        self.construction = crate::budget::construction_budget(config.time_limit_ms);
+        self
+    }
+
+    /// Have vitri find the clauses the formula implies over the finished
+    /// trees, on the budget the run's `VITRI_IMPLICATES_MS` sets, as the
+    /// run's frontend does. A stage asks for it on the tree its main compile
+    /// runs on, not on the trees it builds after a compile gives up.
+    #[must_use]
+    pub(crate) fn with_implied_clauses(mut self, config: &Config) -> Self {
+        self.implicates_ms = config.vitri.implicates_ms;
         self
     }
 }
@@ -107,6 +124,12 @@ pub struct VtreeBuild {
     /// turns it into the plan [`compile_cnf`](crate::compile::compile_cnf)
     /// takes.
     pub components: Option<Vec<ComponentVtree>>,
+    /// Clauses the formula implies, over its variables, which a compile of
+    /// the whole formula on `root` conjoins after the formula's own
+    /// (`conjoined`); a split build carries each component's on its
+    /// [`Component`] instead. Empty unless vitri's implied-clause pass ran
+    /// and found some.
+    pub implied: Vec<vitri::cnf::Clause>,
 }
 
 impl VtreeBuild {
@@ -114,6 +137,11 @@ impl VtreeBuild {
     /// built on them, each as a home when the run's compiles build
     /// projections ([`bound`]).
     pub(crate) fn bind(mut self, run: &crate::stage::Run<'_>) -> Self {
+        let implied = self.implied.len()
+            + self.components.iter().flatten().map(|c| c.component.implied.len()).sum::<usize>();
+        if implied > 0 {
+            eprintln!("[vtree] implied clauses: {implied}");
+        }
         let home = run.compile.projections;
         self.root = bound(run.eng, Arc::unwrap_or_clone(self.root), home);
         self.components = self.components.map(|components| {
@@ -123,6 +151,17 @@ impl VtreeBuild {
             }).collect()
         });
         self
+    }
+
+    /// `formula`, the formula this build is over, with [`Self::implied`]
+    /// after its own clauses: what a compile on `root` with no split
+    /// compiles. The models are the same.
+    pub(crate) fn conjoined<'f>(&self, formula: &'f CnfFormula) -> Cow<'f, CnfFormula> {
+        if self.implied.is_empty() {
+            return Cow::Borrowed(formula);
+        }
+        let clauses = formula.clauses().iter().chain(&self.implied).cloned().collect();
+        Cow::Owned(CnfFormula::new(formula.num_vars(), clauses).expect("implied clauses name only the formula's variables"))
     }
 }
 
@@ -153,6 +192,10 @@ pub struct Component {
     /// The formula variable of each local variable, ascending: entry `i` is
     /// the one local variable `i + 1` stands for.
     pub local_to_global: Vec<VarId>,
+    /// Clauses the component's own clauses imply, over its local variables,
+    /// which its compile conjoins after them. They change no model of the
+    /// component, only how small its diagram stays on the way.
+    pub implied: Vec<vitri::cnf::Clause>,
 }
 
 impl Component {
@@ -163,7 +206,7 @@ impl Component {
             .into_iter()
             .map(diagram_var)
             .collect();
-        Self { clause_indices, local_to_global }
+        Self { clause_indices, local_to_global, implied: Vec::new() }
     }
 }
 
@@ -190,20 +233,24 @@ pub(crate) fn spec_family(spec: &str) -> &str {
     spec.split_once(':').map_or(spec, |(family, _)| family)
 }
 
-/// The vitri request for one construction in the caller's window: the caller
-/// has carved the absolute construction deadline out of its run, so vitri
-/// spends all of what remains of it rather than dividing it again.
+/// The vitri request for one construction under `construction`: in the
+/// caller's window, where the caller has carved the absolute construction
+/// deadline out of its run and vitri spends all of what remains of it rather
+/// than dividing it again, or under a work budget, which ignores the deadline.
 ///
 /// `spec` goes to vitri as written; the caller supplies every policy that has
 /// a vitri representation.
 fn vitri_vtree_build_config(
     spec: &str,
     deadline: Option<std::time::Instant>,
+    construction: vitri::config::ConstructionBudget,
     components: vitri::config::ComponentPolicy,
+    implicates_ms: Option<u64>,
 ) -> vitri::RunConfig {
     vitri::RunConfig {
         deadline,
-        construction_budget: vitri::config::ConstructionBudget::WholeRemaining,
+        implicates_ms,
+        construction_budget: construction,
         vtree_spec: spec.to_owned(),
         components,
         candidates: 1,
@@ -222,40 +269,12 @@ fn vitri_selection_ctx(ctx: &VtreeOptions) -> vitri::decompose::SelectionCtx {
     selection
 }
 
-/// The base names of vitri's built-in portfolio catalog, the names its
-/// `PortfolioKnobs::skip` takes. vitri publishes the catalog's candidate specs
-/// but not this list; a test holds the two equal.
-pub(crate) const PORTFOLIO_CATALOG: [&str; 7] = [
-    "flowcutter-incidence",
-    "flowcutter-primal",
-    "goatd-incidence",
-    "goatd-primal",
-    "force",
-    "hypergraph-bisect",
-    "guided-bisect",
-];
-
 /// The selection context for `ctx` with the `VITRI_*` selection settings
 /// applied: every construction's, standalone or in a frontend.
-///
-/// A request for one catalog entry ([`VtreeOptions::only_portfolio_entry`])
-/// skips every other entry, set after the environment's settings, so that
-/// `VITRI_PORTFOLIO_SKIP` can neither add an entry back nor take the one
-/// asked for away.
-///
-/// # Panics
-///
-/// When the entry asked for is not in [`PORTFOLIO_CATALOG`]: the crate asks
-/// only for entries it names.
 pub(crate) fn resolve_vitri_selection_ctx(
     ctx: &VtreeOptions,
 ) -> Result<vitri::decompose::SelectionCtx, vitri::VitriError> {
-    let mut selection = vitri_selection_ctx(ctx).with_env_defaults()?;
-    if let Some(only) = ctx.only_portfolio_entry {
-        assert!(PORTFOLIO_CATALOG.contains(&only), "{only:?} is not a portfolio catalog entry");
-        selection.portfolio.skip = PORTFOLIO_CATALOG.into_iter().filter(|&entry| entry != only).collect();
-    }
-    Ok(selection)
+    vitri_selection_ctx(ctx).with_env_defaults()
 }
 
 /// Convert one vitri construction result into this crate's types.
@@ -274,8 +293,12 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
         // A frontend adds it to the run's vtree time; a stage times its own
         // builds (`budget::VtreeTime`).
         construction_ms: _,
+        implied_clauses,
     } = built;
 
+    // One set per component, or one for the whole formula when it did not
+    // split; empty sets when the pass did not run.
+    let mut implied_clauses = implied_clauses.into_iter();
     let components = components.map(|components| {
         components
             .into_iter()
@@ -288,12 +311,14 @@ pub(crate) fn vtree_build_from_vitri(built: vitri::component::VtreeBuild) -> Vtr
                         .into_iter()
                         .map(diagram_var)
                         .collect(),
+                    implied: implied_clauses.next().unwrap_or_default(),
                 },
             })
             .collect()
     });
+    let implied = if components.is_none() { implied_clauses.next().unwrap_or_default() } else { Vec::new() };
 
-    VtreeBuild { root: Arc::new(vtree_from_vitri(&vtree)), components }
+    VtreeBuild { root: Arc::new(vtree_from_vitri(&vtree)), components, implied }
 }
 
 /// Every standalone construction goes through here, so its selection context
@@ -310,7 +335,8 @@ fn build(
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.
-    let config = vitri_vtree_build_config(spec, options.deadline, components);
+    let config =
+        vitri_vtree_build_config(spec, options.deadline, options.construction, components, options.implicates_ms);
     vitri::component::build_vtree(formula, &config, &selection)
         .map(vtree_build_from_vitri)
         .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))
@@ -386,6 +412,7 @@ pub(crate) fn whole_formula_component(formula: &CnfFormula) -> Component {
     Component {
         clause_indices: (0..formula.clauses().len()).collect(),
         local_to_global: (1..=formula.num_vars()).map(VarId).collect(),
+        implied: Vec::new(),
     }
 }
 

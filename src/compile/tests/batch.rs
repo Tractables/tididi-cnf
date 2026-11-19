@@ -64,3 +64,19 @@ fn batch_spine_pairs_over_every_level_is_the_pair_count() {
     let every: Vec<VtreeIdx> = (0..vtree.num_nodes() as u32).map(VtreeIdx).collect();
     assert_eq!(batch_spine_pairs(&diagram, &every), diagram.pair_count());
 }
+
+/// Over every level of a pruned diagram, the reached width is the library's
+/// width.
+#[test]
+fn reached_on_every_level_of_a_pruned_diagram_is_its_width() {
+    let eng = &Engine::new();
+    let vtree = Arc::new(Vtree::balanced(6));
+    let diagram = eng.clause(&vtree, [Literal::pos(VarId(1)), Literal::neg(VarId(4))]).unwrap();
+    let mut diagram =
+        eng.and_clause(diagram, &[Literal::pos(VarId(2)), Literal::pos(VarId(5)), Literal::neg(VarId(6))]).unwrap();
+    eng.reduce(&mut diagram, tididi::reduce::ReductionPlan::Prune).unwrap();
+    let every: Vec<VtreeIdx> = (0..vtree.num_nodes() as u32).map(VtreeIdx).collect();
+    let mut reach = ReachScratch::default();
+    assert_eq!(reach.width_on_spine(&diagram, &every), diagram.max_width());
+    assert_eq!(reach.width_on_spine(&diagram, &every), diagram.max_width());
+}

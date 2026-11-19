@@ -5,15 +5,13 @@
 //! limit, and sums the branch counts; `pmc_branch_count` compiles one branch
 //! through `projected_compile`, the compile every PMC compile runs.
 
-use std::sync::Arc;
 use std::time::Instant;
 
-use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
 use super::Run;
 use super::projected::{CountVtree, Step, count_vtree, projection_step};
-use crate::vtree::VtreeOptions;
+use crate::vtree::{VtreeBuild, VtreeOptions};
 use crate::problem::{Problem, ShowSet, Unweighted};
 
 /// Dynamic per-branch cutset pick: unit-propagate the conditioned `formula`
@@ -99,9 +97,10 @@ fn condition_and_count(
     Some(a + b)
 }
 
-/// The projected compile every PMC compile runs: marginalize, ∃-forget
-/// `forget_set` during the compile, cuttable mid-apply at `deadline`, under
-/// what the run sets for each compile; then its projected count
+/// The projected compile every PMC compile runs: `work` on `built`'s trees
+/// with their implied clauses, marginalize, ∃-forget `forget_set` during the
+/// compile, cuttable mid-apply at `deadline`, under what the run sets for each
+/// compile; then its projected count
 /// ([`Compiled::projected_count`](crate::compile::Compiled::projected_count)).
 ///
 /// `None` means the compile gave up, cut by the deadline or refused an apply
@@ -110,17 +109,16 @@ fn condition_and_count(
 pub(super) fn projected_compile(
     run: &Run<'_>,
     work: &CnfFormula,
-    vtree: &Arc<Vtree>,
-    components: crate::compile::ComponentPlan<'_>,
+    built: &VtreeBuild,
     forget_set: &[tididi::vtree::VarId],
     deadline: Option<Instant>,
 ) -> Option<num_bigint::BigUint> {
     let compiled = crate::compile::settle(crate::compile::compile_with(
         run.eng,
-        work,
-        vtree,
+        &built.conjoined(work),
+        &built.root,
         crate::compile::CompileOptions {
-            plan: components,
+            plan: crate::compile::ComponentPlan::from_components(built.components.as_deref()),
             output: crate::compile::Output::ProjectedCount(forget_set),
             deadline,
         },
@@ -212,7 +210,7 @@ fn pmc_branch_count(
     // tightest wall that applies — the conditioning cascade builds one vtree
     // per branch, so an unbounded build here multiplies across the whole
     // branch set.
-    let CountVtree { vtree, component_vtrees, projected } = count_vtree(
+    let CountVtree { built, projected } = count_vtree(
         run,
         cformula,
         super::PORTFOLIO_VTREE_SPEC,
@@ -224,14 +222,7 @@ fn pmc_branch_count(
     // readout after it is cut at it too. A cut branch gives up (`None`), and
     // the caller splits it deeper.
     let _deadline = crate::budget::deadline_scope(run.eng, deadline);
-    let count = projected_compile(
-        run,
-        cformula,
-        &vtree,
-        crate::compile::ComponentPlan::from_components(component_vtrees.as_deref()),
-        &projected,
-        deadline,
-    )?;
+    let count = projected_compile(run, cformula, &built, &projected, deadline)?;
     Some(count << inner_shift)
 }
 

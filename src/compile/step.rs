@@ -4,9 +4,7 @@
 //! vtree bottom-up, hands each scope group's clauses to [`super::batch`] to
 //! fold (or, at a node whose smaller child spans a few variables, to the
 //! cofactor step in [`super::cofactor`]), applies the marginalize schedule
-//! through [`super::marginalize`], and stops on the deadline, or, for a
-//! compile handed a [`super::StallWatch`], on a single internal step's own
-//! wall ([`super::stall`]).
+//! through [`super::marginalize`], and stops on the deadline.
 
 use std::collections::HashSet;
 use std::ops::ControlFlow;
@@ -84,7 +82,10 @@ impl PassState {
             _ => None,
         };
         let mut state = Self { tdds: vec![None; total_nodes], sat_prune, ..Self::default() };
-        state.minimize.skip_content_twins = job.run.cofactor;
+        // A pass that sums nothing out has no marginal level, so no content
+        // twins: skipping the scan spares the gate's per-fold test a sweep of
+        // the levels.
+        state.minimize.skip_content_twins = job.run.cofactor || !job.output.scheduled();
         state
     }
 }
@@ -213,29 +214,17 @@ fn compile_pass(
     // after marginal-cluster rotations, which only swap slot content inside
     // already-consumed `subtree(t)`.
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
-    for (k, &t) in topo.iter().enumerate() {
-        let walled = job.run.stall_watch.and_then(|watch| watch.start_step(eng, t, k, topo.len(), job.deadline));
-        let stopped = |give_up: GiveUp| {
-            if let (GiveUp::Stopped, Some(step)) = (&give_up, &walled) {
-                step.note_stop();
-            }
-            give_up
-        };
-        let walled_ctx = walled.as_ref().map(|step| StepContext {
-            job: CompileJob { deadline: Some(step.deadline), ..job },
-            ..ctx
-        });
-        let step_ctx = walled_ctx.as_ref().unwrap_or(&ctx);
-        let step = if deadline_passed(step_ctx.job.deadline) {
+    for &t in topo {
+        let step = if deadline_passed(job.deadline) {
             Err(OperationError::Stopped)
         } else {
-            run_internal_step(eng, t, step_ctx, &mut state, &current_vtree)
+            run_internal_step(eng, t, &ctx, &mut state, &current_vtree)
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
-            return out.map_err(stopped);
+            return out;
         }
-        if let Err(e) = marginalize_and_rotate(eng, t, step_ctx, &mut state, &mut current_vtree) {
-            return Err(stopped(GiveUp::from_operation(eng, e)));
+        if let Err(e) = marginalize_and_rotate(eng, t, &ctx, &mut state, &mut current_vtree) {
+            return Err(GiveUp::from_operation(eng, e));
         }
     }
 
@@ -342,11 +331,14 @@ fn fold_step(
     children: Option<Tdd>,
 ) -> Result<usize, OperationError> {
     let targets = build_marginalize_targets(t, current_vtree, ctx, &state.forgotten);
-    state.tdds[t.idx()] = batch_accumulate(
+    state.minimize.fold_at_root = t == current_vtree.root();
+    let folded = batch_accumulate(
         eng,
         &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
         state, targets.as_ref(),
-    )?;
+    );
+    state.minimize.fold_at_root = false;
+    state.tdds[t.idx()] = folded?;
     if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
     Ok(state.tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
 }

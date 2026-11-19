@@ -1,6 +1,6 @@
 [package]
 name = "tididi-cnf"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2024"
 # The floor let-chains (`if let … && let …`) set for edition 2024, which this
 # crate, the tididi library and vitri use.
@@ -54,7 +54,7 @@ tididi = { git = "https://github.com/Tractables/tididi", branch = "main" }
 # vitri builds the C++ CaDiCaL and Arjun stack, and takes FlowCutter from the
 # goatd crate. The Git source also supplies browser and release build tools
 # omitted from its registry package.
-vitri = { version = "0.3.0", git = "https://github.com/Tractables/vitri", rev = "2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338" }
+vitri = { version = "0.3.0", git = "https://github.com/Tractables/vitri", rev = "0093297950d8e3b815c53fba4919259590c71e5c" }
 num-bigint = "0.4"
 num-rational = "0.4"
 num-traits = "0.2"

@@ -258,7 +258,7 @@ fn run_cofactor(
     } else {
         eng.or_many(terms)?
     };
-    state.minimize.adaptive_minimize(eng, &mut joined)?;
+    state.minimize.adaptive_minimize(eng, &mut joined, true, false)?;
     marginalize_scheduled_at(eng, &mut joined, t, vtree, ctx, &state.forgotten)?;
     let pairs = joined.pair_count();
     state.tdds[t.idx()] = Some(joined);

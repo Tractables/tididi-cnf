@@ -42,13 +42,39 @@ fn wmc_frontend_returns_one_aligned_bundle() {
     assert_eq!(reduced.clauses(), formula.clauses());
     assert_eq!(reduced_weights, weights);
     assert_eq!(lift, rat(1, 1));
-    assert_eq!(vtree.root.num_leaves(), reduced.num_vars());
+    assert_eq!(vtree.for_fallback(&reduced, &parent, None).root.num_leaves(), reduced.num_vars());
     assert_eq!(
         report.stages.arjun,
         Some(vitri::bundle::StageOutcome::Skipped(
             vitri::bundle::SkipReason::NotRequested,
         )),
     );
+}
+
+/// The WMC frontend runs no implied-clause pass; the fallback runs it on the
+/// frontend's tree, on the run's budget, when it takes that tree.
+#[test]
+fn the_wmc_fallback_runs_the_implied_clause_pass_itself() {
+    let clauses: Vec<[i32; 2]> = (1..8).map(|i| [-i, i + 1]).collect();
+    let formula = dimacs(8, &clauses);
+    let mut parent = crate::config::Config {
+        preprocess_level: crate::config::PreprocessLevel::None,
+        ..fixtures::minimal_config()
+    };
+    parent.vitri.implicates_ms = Some(10_000);
+    let WmcFrontend { outcome: Outcome::Reduced(problem), vtree: Some(vtree), .. } =
+        wmc_frontend(&formula, &vitri::cnf::WeightTable::default(), &parent, None)
+            .expect("the WMC frontend must run")
+    else {
+        panic!("disabled simplify must preserve the chain");
+    };
+    assert!(vtree.0.implied_clauses.iter().all(Vec::is_empty), "the frontend ran the pass");
+    let on = vitri::RunConfig { implicates_ms: Some(10_000), ..vitri::RunConfig::default() };
+    let expected: usize = vitri::component::implied_clauses(&problem.formula, &vtree.0, &on).iter().map(Vec::len).sum();
+    let built = vtree.for_fallback(&problem.formula, &parent, None);
+    let found = built.implied.len()
+        + built.components.iter().flatten().map(|c| c.component.implied.len()).sum::<usize>();
+    assert_eq!(found, expected);
 }
 
 #[test]

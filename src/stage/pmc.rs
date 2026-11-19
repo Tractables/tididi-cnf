@@ -271,7 +271,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
     let work = &problem.formula;
 
     let vtree_started = Instant::now();
-    let Some(CountVtree { vtree, component_vtrees, projected: projected_in_vtree }) =
+    let Some(CountVtree { built, projected: projected_in_vtree }) =
         counting_vtree(run, work, problem.show.as_ref())
     else {
         return Step::Decline;
@@ -300,16 +300,7 @@ fn compile_projected(run: &Run<'_>, problem: &Problem<Unweighted>, trace: &Trace
         let frac_ms = (ms as f64 * 0.2) as u64;
         crate::budget::not_past(t_compile + std::time::Duration::from_millis(frac_ms.min(2_000)), program_deadline)
     });
-    let compile = |deadline| {
-        projected_compile(
-            run,
-            work,
-            &vtree,
-            crate::compile::ComponentPlan::from_components(component_vtrees.as_deref()),
-            &forget_set,
-            deadline,
-        )
-    };
+    let compile = |deadline| projected_compile(run, work, &built, &forget_set, deadline);
     let pmc = match run_isolated("[pmc] compile", || compile(first_try_deadline)) {
         Some(pmc) => pmc,
         None => {

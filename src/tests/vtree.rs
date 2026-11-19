@@ -52,16 +52,18 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
             components: Some(vec![
                 ComponentVtree {
                     vtree: Arc::new(Vtree::balanced(2)),
-                    component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+                    component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
                 },
                 ComponentVtree {
                     vtree: Arc::new(Vtree::balanced(4)),
                     component: Component {
                         clause_indices: vec![1],
                         local_to_global: vec![VarId(3), VarId(4), VarId(5), VarId(6)],
+                        implied: Vec::new(),
                     },
                 },
             ]),
+            implied: Vec::new(),
         }
         .bind(&crate::test_support::run(engine, &crate::test_support::minimal_config()));
         assert!(Arc::ptr_eq(built.root.context(), &context));
@@ -130,11 +132,11 @@ fn vitri_build_preserves_component_clause_and_variable_mappings() {
     assert_eq!(components.len(), 2);
     assert_eq!(
         components[0].component,
-        Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+        Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
     );
     assert_eq!(
         components[1].component,
-        Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)] },
+        Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)], implied: Vec::new() },
     );
     for component in components {
         let mut local_vars: Vec<_> = component
@@ -202,7 +204,9 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
     let config = vitri_vtree_build_config(
         "linear",
         Some(deadline),
+        vitri::config::ConstructionBudget::WholeRemaining,
         vitri::config::ComponentPolicy::Whole,
+        None,
     );
 
     assert_eq!(
@@ -215,40 +219,58 @@ fn vtree_build_config_uses_the_callers_whole_remaining_window() {
     );
 }
 
-/// The catalog's base names here are vitri's: every candidate vitri can
-/// publish belongs to one of them, and each of them has a candidate. A
-/// catalog entry vitri adds would otherwise slip into every one-entry
-/// portfolio.
+/// A run with a time limit builds every vtree on a work budget sized from the
+/// limit alone, so a loaded machine stops construction where an idle one does;
+/// a run with none builds without a bound.
 #[test]
-fn the_portfolio_catalog_is_vitris() {
-    let vitris: std::collections::BTreeSet<String> = vitri::decompose::PortfolioKnobs::candidate_names()
-        .iter()
-        .map(|name| spec_family(name).to_owned())
-        .collect();
-    let ours: std::collections::BTreeSet<String> =
-        PORTFOLIO_CATALOG.iter().map(|&entry| entry.to_owned()).collect();
-    assert_eq!(ours, vitris);
+fn run_policy_sets_a_work_budget_from_the_time_limit() {
+    use vitri::config::ConstructionBudget;
+    assert_eq!(crate::budget::construction_budget(Some(120_000)), ConstructionBudget::for_wall_ms(90_000));
+    assert_eq!(crate::budget::construction_budget(Some(30_000)), ConstructionBudget::for_wall_ms(30_000));
+    assert_eq!(crate::budget::construction_budget(Some(3_600_000)), ConstructionBudget::for_wall_ms(900_000));
+    assert_eq!(crate::budget::construction_budget(None), ConstructionBudget::WholeRemaining);
 }
 
-/// A portfolio of one entry skips every other, and the tree it builds is
-/// that entry's.
+/// A build that did not split hands its implied clauses to the compile after
+/// the formula's own, and the count stays the formula's; with none it hands
+/// the formula over as it is.
 #[test]
-fn a_one_entry_portfolio_builds_on_that_entry_alone() {
-    let options = VtreeOptions { only_portfolio_entry: Some("goatd-primal"), ..VtreeOptions::default() };
-    let selection = resolve_vitri_selection_ctx(&options).expect("the selection resolves");
-    let mut skipped = selection.portfolio.skip.clone();
-    skipped.sort_unstable();
-    let mut others: Vec<&str> = PORTFOLIO_CATALOG.into_iter().filter(|&e| e != "goatd-primal").collect();
-    others.sort_unstable();
-    assert_eq!(skipped, others);
+fn a_whole_build_conjoins_its_implied_clauses_and_keeps_the_count() {
+    use crate::compile::{CompileOptions, ComponentPlan, compile_cnf};
+    // (x1 ∨ x2) ∧ (¬x2 ∨ x3) implies x1 ∨ x3.
+    let formula = dimacs(3, &[[1, 2], [-2, 3]]);
+    let lit = |var: usize| vitri::cnf::Literal::new(vitri::cnf::VarId::from_idx(var - 1), true);
+    let implied = vitri::cnf::Clause { literals: vec![lit(1), lit(3)] };
+    let built = VtreeBuild { root: Arc::new(Vtree::balanced(3)), components: None, implied: vec![implied.clone()] };
 
-    // A connected 3-CNF over ten variables, built on the one entry.
-    let clauses = [
-        [1, 2, 3], [-2, 4, 5], [3, -5, 6], [-1, 6, 7], [4, -7, 8],
-        [-3, 5, -8], [2, -6, 9], [-4, 7, 10], [8, -9, -10], [1, -5, 10],
-    ];
-    let formula = dimacs(10, &clauses);
-    build_vtree(&formula, "portfolio", &options).expect("the portfolio builds");
-    let winner = options.portfolio_history.last_winning_spec().expect("the portfolio recorded its winner");
-    assert_eq!(spec_family(&winner), "goatd-primal", "the winner was {winner}");
+    let conjoined = built.conjoined(&formula);
+    assert_eq!(conjoined.clauses().len(), 3);
+    assert_eq!(conjoined.clauses()[2], implied);
+    let none = VtreeBuild { implied: Vec::new(), ..built.clone() };
+    assert!(matches!(none.conjoined(&formula), Cow::Borrowed(_)));
+
+    let eng = tididi::Engine::new();
+    let count = |f: &CnfFormula| {
+        let options = CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() };
+        eng.model_count(&compile_cnf(&eng, f, &built.root, options).unwrap().diagram).unwrap()
+    };
+    assert_eq!(count(&conjoined), count(&formula));
+}
+
+/// A stage that asks for implied clauses asks vitri with the run's budget;
+/// one that does not runs no pass.
+#[test]
+fn a_build_asked_for_implied_clauses_carries_the_runs_budget() {
+    let base = crate::test_support::minimal_config();
+    let config = Config { vitri: vitri::RunConfig { implicates_ms: Some(500), ..base.vitri.clone() }, ..base };
+    let asked = VtreeOptions::default().with_implied_clauses(&config);
+    let request = vitri_vtree_build_config(
+        "portfolio",
+        None,
+        vitri::config::ConstructionBudget::WholeRemaining,
+        vitri::config::ComponentPolicy::Split,
+        asked.implicates_ms,
+    );
+    assert_eq!(request.implicates_ms, Some(500));
+    assert_eq!(VtreeOptions::default().with_run_policy(&config).implicates_ms, None);
 }

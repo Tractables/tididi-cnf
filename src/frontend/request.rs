@@ -13,7 +13,7 @@
 //! vitri knob this compiler sets is set in one of the two.
 
 use crate::Error;
-use crate::config::{Config, PreprocessLevel};
+use crate::config::{Config, Mode, PreprocessLevel};
 use crate::vtree::{VtreeOptions, resolve_vitri_selection_ctx};
 
 /// Read and check vitri's environment settings for the run starting now.
@@ -61,6 +61,34 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
     Ok(config)
 }
 
+/// [`Error`] when `VITRI_IMPLICATES_MS` asks for vitri's implied-clause pass
+/// in a run that would not conjoin the clauses. Every mode conjoins them on
+/// the tree its main compile runs on, except the model count under an
+/// explicit `--vtree` (`explicit_vtree`), whose streaming route builds each
+/// component's tree as it reaches it; and a bundle brings the clauses vitri
+/// wrote for it.
+pub(crate) fn refuse_inert_implicates(
+    config: &vitri::RunConfig,
+    mode: Mode,
+    explicit_vtree: bool,
+    bundle: bool,
+) -> Result<(), Error> {
+    if config.implicates_ms.is_none() {
+        return Ok(());
+    }
+    let why = if bundle {
+        "the input is a vitri bundle, which brings any implied clauses in its own files"
+    } else if mode == Mode::Mc && explicit_vtree {
+        "the model count under --vtree builds each component's tree as its compile reaches it, \
+         and finds no clauses over them"
+    } else {
+        return Ok(());
+    };
+    Err(Error::Environment(format!(
+        "VITRI_IMPLICATES_MS is set, but {why}, so the variable would do nothing; unset it."
+    )))
+}
+
 /// The run's frontend: the run's vitri settings under its wall, the parent's
 /// simplify level with [`equivalence_budget_ms`] for its SAT equivalence
 /// probing, and a portfolio vtree paired with the reduced formula.
@@ -78,6 +106,8 @@ pub(crate) fn frontend_config(
     let mut config = parent.vitri.clone();
     config.budget_ms = parent.time_limit_ms;
     config.deadline = deadline;
+    config.construction_budget = crate::budget::construction_budget(parent.time_limit_ms);
+    config.preprocess_clock = crate::budget::preprocess_clock(parent.time_limit_ms);
     config.mode = Some(mode);
     config.stages.simplify = parent.preprocess_level == PreprocessLevel::Full;
     // Only an enabled stage that probes at all takes the budget: a simplify

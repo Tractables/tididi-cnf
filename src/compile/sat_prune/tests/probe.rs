@@ -125,15 +125,16 @@ fn marginal_slot_donor(eng: &Engine) -> (tididi::Tdd, VtreeIdx) {
             continue;
         }
         let (left, right) = vtree.children(level);
+        let sub = labels[right.idx()][0];
         labels[level.idx()] = std::array::from_fn(|label| {
-            // A level names a leaf child in one form, literal or `One`, so
-            // true over a left leaf is spelled x ∨ ¬x.
-            if label == 0 && vtree.node(left).is_leaf() {
-                let one = labels[right.idx()][0];
-                builder.push(eng, level, &[ChildPair::new(POS_LEAF_IDX, one), ChildPair::new(NEG_LEAF_IDX, one)]).unwrap()
-            } else {
-                builder.push(eng, level, &[ChildPair::new(labels[left.idx()][label], labels[right.idx()][0])]).unwrap()
-            }
+            // The builder refuses a level that names a leaf both as One and as
+            // a literal, so true over a leaf prime is the pair of its literals.
+            let primes = match (vtree.node(left).is_leaf(), label) {
+                (true, 0) => vec![POS_LEAF_IDX, NEG_LEAF_IDX],
+                _ => vec![labels[left.idx()][label]],
+            };
+            let pairs: Vec<_> = primes.into_iter().map(|prime| ChildPair::new(prime, sub)).collect();
+            builder.push(eng, level, &pairs).unwrap()
         });
     }
     let root = vtree.root();

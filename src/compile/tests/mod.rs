@@ -11,6 +11,7 @@ fn subject() -> (CnfFormula, Vec<Component>) {
     let components = vec![Component {
         clause_indices: (0..formula.clauses().len()).collect(),
         local_to_global: (1..=8).map(VarId).collect(),
+        implied: Vec::new(),
     }];
     (formula, components)
 }
@@ -75,11 +76,11 @@ fn decomposable_formula_and_split() -> (CnfFormula, Arc<Vtree>, Vec<ComponentVtr
     let components = vec![
         ComponentVtree {
             vtree: Arc::new(Vtree::linear_from_order(&[VarId(2), VarId(1)]).unwrap()),
-            component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)] },
+            component: Component { clause_indices: vec![0], local_to_global: vec![VarId(1), VarId(2)], implied: Vec::new() },
         },
         ComponentVtree {
             vtree: Arc::new(Vtree::linear_from_order(&[VarId(1), VarId(2)]).unwrap()),
-            component: Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)] },
+            component: Component { clause_indices: vec![1], local_to_global: vec![VarId(3), VarId(4)], implied: Vec::new() },
         },
     ];
     (formula, root, components)
@@ -294,6 +295,7 @@ fn streaming_projected_counts_match_brute_force() {
         let component = Component {
             clause_indices: (0..formula.clauses().len()).collect(),
             local_to_global: (1..=num_vars).map(VarId).collect(),
+            implied: Vec::new(),
         };
         assert_eq!(
             streaming_projected(&formula, &show, std::slice::from_ref(&component)),
@@ -389,6 +391,7 @@ fn projected_counts_on_a_home_and_on_a_bare_root_agree() {
         let component = Component {
             clause_indices: (0..formula.clauses().len()).collect(),
             local_to_global: (1..=num_vars).map(VarId).collect(),
+            implied: Vec::new(),
         };
         assert_eq!(
             streaming_projected(&formula, &show, std::slice::from_ref(&component)),

@@ -102,7 +102,6 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `scope.rs` | The vtree node each clause is conjoined at, and the clause order within a node. |
 | `batch.rs` | One node's clauses folded into its diagram, a batch at a time. |
 | `cofactor.rs` | The cofactor step: a node whose smaller child spans a few variables folds its clauses once per assignment of them, into the other child's diagram alone. |
-| `stall.rs` | The per-step wall: the rule that bounds each step's time, and the watch that keeps a step stopped on it for the caller to read. |
 | `schedule.rs` | When each level may be summed out: after which step, and after which clause within it. |
 | `marginalize.rs` | Summing levels out as the pass climbs, a projection's ∃-forget, and the shield that keeps the levels a pending forget reads. |
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |
@@ -116,7 +115,7 @@ for the driver to record.
 | file | what it holds |
 |---|---|
 | `mod.rs` | `Run`, what every stage reads: the engine, the configuration, the run's deadline, the SAT-pruning pass its compiles share and where the run names the tree its main compile starts on. `run_isolated`, which a leaf compile that may panic runs under, and `count_streaming`, the component-at-a-time count the model count and the projected weighted count share. |
-| `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, the stall recompile takes over from a primary compile whose step ran past its wall, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
+| `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
 | `wmc.rs` | The weighted count: Arjun's reduction first, then the simplified formula. |
 | `pmc.rs` | The projected count: a first compile, show-variable conditioning when it fails, and a last compile on the time left. |
 | `pwmc.rs` | The projected weighted count, the independent-component decomposition two of its stages share, and the weighted compile it ends in. |

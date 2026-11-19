@@ -345,7 +345,7 @@ dependencies = [
 [[package]]
 name = "tididi"
 version = "0.2.0"
-source = "git+https://github.com/Tractables/tididi?branch=main#2d43f74360a38966d15397aa02b69fec85d8703e"
+source = "git+https://github.com/Tractables/tididi?branch=main#419ede25001410efd6654469faf46b1d15209cee"
 dependencies = [
  "itoa",
  "num-bigint",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "tididi-cnf"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "libc",
  "num-bigint",
@@ -375,7 +375,7 @@ dependencies = [
 
 [[package]]
 name = "tididi-cnf-wasm"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "serde_json",
  "tididi-cnf",
@@ -428,7 +428,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "vitri"
 version = "0.3.0"
-source = "git+https://github.com/Tractables/vitri?rev=2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338#2c6bb08ea8db1e499a5b7cd940b9d31aa1aa8338"
+source = "git+https://github.com/Tractables/vitri?rev=0093297950d8e3b815c53fba4919259590c71e5c#0093297950d8e3b815c53fba4919259590c71e5c"
 dependencies = [
  "goatd",
  "libc",

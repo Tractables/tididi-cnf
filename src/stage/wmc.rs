@@ -46,7 +46,7 @@ fn compile_weighted(
 ) -> Option<WeightedCount<WeightValue>> {
     let eng = run.eng;
     run_isolated("[wmc] compile", || {
-        let VtreeBuild { root: vtree, components } = match prebuilt {
+        let built = match prebuilt {
             Some(built) => built,
             None => crate::vtree::built_or_give_up(run.config.vtree_time.time(|| {
                 crate::vtree::build_vtree_with_components(
@@ -54,16 +54,17 @@ fn compile_weighted(
                     super::PORTFOLIO_VTREE_SPEC,
                     &VtreeOptions::default()
                         .with_deadline(crate::budget::vtree_deadline(deadline))
-                        .with_run_policy(run.config),
+                        .with_run_policy(run.config)
+                        .with_implied_clauses(run.config),
                 )
             }))?
             .bind(run),
         };
         crate::compile::weighted_count(
             eng,
-            &problem.formula,
-            &vtree,
-            crate::compile::ComponentPlan::from_components(components.as_deref()),
+            &built.conjoined(&problem.formula),
+            &built.root,
+            crate::compile::ComponentPlan::from_components(built.components.as_deref()),
             crate::convert::rational_weight_algebra(&problem.weights),
             ARITHMETIC,
             deadline,
@@ -111,7 +112,7 @@ pub(crate) fn run_wmc_count(
                     problem.formula.clauses().len()
                 ),
             );
-            (problem, vtree.bind(run))
+            (problem, vtree)
         }
     };
     let t_compile = Instant::now();
@@ -131,11 +132,13 @@ pub(crate) fn run_wmc_count(
     });
 
     // The reduced attempt on its share of the time, then the simplified
-    // formula on all of it when the reduced attempt declined or gave up.
+    // formula on all of it when the reduced attempt declined or gave up. Only
+    // then are the simplified formula's implied clauses looked for.
     let simplified_clauses = simplified_problem.formula.clauses().len();
     let value = count_reduced(run, formula, &orig_table, simplified_clauses, primary_deadline).or_else(|| {
         eprintln!("[wmc] arjun: no answer; compiling the simplified formula on the reserved time");
-        compile_weighted(run, &simplified_problem, Some(simplified_vtree), program_deadline)
+        let vtree = simplified_vtree.for_fallback(&simplified_problem.formula, run.config, program_deadline);
+        compile_weighted(run, &simplified_problem, Some(vtree.bind(run)), program_deadline)
     });
 
     // There is no other path behind the two attempts, so the run ends

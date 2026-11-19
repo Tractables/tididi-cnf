@@ -3,8 +3,7 @@
 //! One attempt is one formula plus the per-component vtrees it will be compiled
 //! on. The primary compile, the no-SBVA retry and a Shannon cofactor's compile
 //! take the tree vitri built beside the reduction each is made of; the
-//! unreduced retry, the stall recompile and a cofactor compiled as it stands
-//! have no such pairing and build their own trees through
+//! unreduced retry and a cofactor compiled as it stands have no such pairing and build their own trees through
 //! [`portfolio_attempt`], bounded by the time limit the attempt will be
 //! compiled against, then hand them to the same constructor. All end at the
 //! same `CompileAttempt`, so an attempt cannot arrive at the compile
@@ -19,7 +18,7 @@ use crate::budget::vtree_deadline;
 use crate::compile::model_count_streaming;
 use crate::stage::{PORTFOLIO_VTREE_SPEC, Run, run_isolated};
 use crate::vtree::{
-    ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
+    Component, ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
 };
 
 /// One attempt of a streaming model-count compile: a formula, and its
@@ -71,16 +70,15 @@ pub(super) fn attempt_from_vitri_build(
     lift_pow2: u32,
 ) -> CompileAttempt {
     let components = built.components.unwrap_or_else(|| {
-        vec![ComponentVtree { vtree: built.root, component: whole_formula_component(&formula) }]
+        let component = Component { implied: built.implied, ..whole_formula_component(&formula) };
+        vec![ComponentVtree { vtree: built.root, component }]
     });
     CompileAttempt { formula, components, lift_pow2 }
 }
 
 /// An attempt for `formula` on vitri's portfolio, every component's vtree built
-/// up front by vitri, with no Arjun lift: the unreduced retry's, a cofactor's
-/// compiled as it stands, and the stall recompile's, whose caller sets the lift
-/// of the reduction it compiles. The portfolio is vitri's default, or the one
-/// catalog entry `only_entry` names. `None` when the construction fails, as
+/// up front by vitri, with no Arjun lift: the unreduced retry's and a
+/// cofactor's compiled as it stands. `None` when the construction fails, as
 /// [`built_or_give_up`] reads it.
 ///
 /// `deadline` is the wall the attempt will be compiled against, and its vtree
@@ -90,9 +88,8 @@ pub(super) fn portfolio_attempt(
     run: &Run<'_>,
     formula: &CnfFormula,
     deadline: Option<Instant>,
-    only_entry: Option<&'static str>,
 ) -> Option<CompileAttempt> {
-    let ctx = VtreeOptions { only_portfolio_entry: only_entry, ..VtreeOptions::default() }
+    let ctx = VtreeOptions::default()
         .with_deadline(vtree_deadline(deadline))
         .with_run_policy(run.config);
     let built = run.config.vtree_time.time(|| build_vtree_with_components(formula, PORTFOLIO_VTREE_SPEC, &ctx));

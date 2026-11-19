@@ -23,8 +23,10 @@ pub(crate) fn full_reduction(skip_content_twins: bool, probe: Option<&mut Conten
     ReductionPlan::Full(twins)
 }
 
-/// Full canonical reduction, with the stop rules off; `skip_content_twins`
-/// as [`full_reduction`] takes it.
+/// The full reduction, with the stop rules off; `skip_content_twins` as
+/// [`full_reduction`] takes it. Canonical only without a marginal level: with
+/// one, the content-twin scan makes the result depend on where scans fell
+/// between the conjunctions that built the diagram.
 ///
 /// An allocation refused here is the end of this compile: the diagram is whole
 /// but cannot be reduced, so the caller gives up and the binary reports it as
@@ -71,6 +73,46 @@ const CONTRACT_MIN_REMOVAL_FRACTION: f64 = 0.005;
 /// How many contractions a throttle skips.
 const CONTRACT_SKIP_COUNT: usize = 4;
 
+/// The work units per pair of its result from which a fold's last merge scans
+/// content twins whatever the gate and the schedule say. On model counting
+/// instances, the folds a scan paid off on had spent 10 to 570 units per pair
+/// and those it did not at most 9.3; 16 keeps a margin above the latter.
+const SCAN_FOLD_WORK_PER_PAIR: u64 = 16;
+
+/// The pairs [`MinimizeGate::fold_paid_for_scan`] adds to a result's own for
+/// what a full reduction costs whatever the diagram's size. The reduction
+/// walks every level: on model counting instances one of a diagram of 1 to 3
+/// nodes cost 240 to 300 instructions per level, and a fit of the reductions'
+/// instructions to their pairs gave about 330,000 plus 370 per pair, about
+/// what 900 pairs cost.
+const SCAN_FIXED_COST_PAIRS: u64 = 900;
+
+/// The fraction of nodes below which a scan [`SCAN_FOLD_WORK_PER_PAIR`] forced
+/// counts as wasted and doubles the work per pair the next one needs. On small
+/// count diagrams the test holds at nearly every fold end while the scans
+/// remove under 0.1% of the nodes.
+const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
+
+/// The most nodes a merge inside a fold that summed levels out may hold and
+/// still scan content twins. Summing out leaves count nodes with equal
+/// contents, and on small diagrams the scan halves the accumulator the fold's
+/// next conjunctions pay for; on larger ones a scan there can leave the fold's
+/// end with more pairs than the fold-end scan alone, which every later fold
+/// pays for.
+const MID_FOLD_SCAN_MAX_NODES: usize = 4096;
+
+/// The most nodes the reduced result of a summed-out merge inside a fold may
+/// hold for the merge to scan a copy of it, when the merge held more than
+/// [`MID_FOLD_SCAN_MAX_NODES`] and the fold's work pays for a scan
+/// ([`MinimizeGate::fold_paid_for_scan`]). The copy is kept only when the
+/// scan left at most a quarter of the nodes. Kept scans on model counting
+/// instances had removed 84 to 98% of the nodes; scans that removed 8 to 46%
+/// left the fold's end larger. The bound caps what a discarded copy costs.
+const MID_FOLD_TRIAL_MAX_NODES: usize = 65_536;
+
+/// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
+const SCAN_MAX_BACKOFF: u32 = 16;
+
 /// What the gate decided this call. Each variant maps onto a minimize variant.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum MinimizeAction {
@@ -116,8 +158,19 @@ pub(crate) struct MinimizeGate {
     /// gate because each merge's result is a fresh diagram.
     content_twin_schedule: ContentTwinSchedule,
     /// Whether the full minimize skips the content-twin scan, as a recovery
-    /// cofactor's compile does.
+    /// cofactor's compile and a pass that sums nothing out do.
     pub(crate) skip_content_twins: bool,
+    /// The engine's work clock when the current fold started
+    /// ([`Self::start_fold`]).
+    fold_start_work: u64,
+    /// How many times [`SCAN_FOLD_WORK_PER_PAIR`] is doubled: once for each
+    /// forced scan in a row that removed too little.
+    scan_backoff: u32,
+    /// Whether the current fold is the root's, set by the step that runs it.
+    /// Nothing folds the root's diagram again, so where its scans fall moves
+    /// only its own work and size: any of its merges may scan when the work
+    /// since the fold's start or its last scan pays for it.
+    pub(crate) fold_at_root: bool,
 }
 
 impl MinimizeGate {
@@ -210,15 +263,58 @@ impl MinimizeGate {
 
     /// Run the reduction the gate decides on for `result`, and re-anchor the
     /// gate on what it leaves.
+    ///
+    /// Only the last merge of a fold (`fold_end`) may scan content twins,
+    /// except in the root's fold ([`Self::fold_at_root`]), where any merge may
+    /// when [`Self::fold_paid_for_scan`] and then [`Self::root_scan_pays`]
+    /// hold, and at a merge that summed levels out (`summed_out`) into at most
+    /// [`MID_FOLD_SCAN_MAX_NODES`] nodes, or, outside the root's fold, into a
+    /// reduced result of at most [`MID_FOLD_TRIAL_MAX_NODES`] when the scan
+    /// leaves at most a quarter of them. Contraction commutes with conjunction
+    /// and summing out, a content-twin merge does not, so a scan inside a fold
+    /// makes the fold's result depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
-        &mut self, eng: &Engine, result: &mut Tdd,
+        &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
         let cur_retired = result.retired_marginal_slots();
 
-        match self.decide(cur_nodes, cur_retired) {
+        let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
+        let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
+        match action {
             MinimizeAction::Full => {
-                eng.reduce(result, full_reduction(self.skip_content_twins, Some(&mut self.content_twin_schedule)))?;
+                let probed = rescan && self.fold_at_root && !fold_end;
+                let mut rescan = rescan;
+                if probed {
+                    let (pairs, work) = (result.pair_count(), eng.limits().work_units().saturating_sub(self.fold_start_work));
+                    eng.reduce(result, full_reduction(true, None))?;
+                    rescan = self.root_scan_pays(work, pairs, result.pair_count());
+                }
+                let small_sum = summed_out && cur_nodes <= MID_FOLD_SCAN_MAX_NODES;
+                let skip = self.skip_content_twins || !(fold_end || rescan || small_sum);
+                let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
+                if !(probed && skip) {
+                    eng.reduce(result, full_reduction(skip, schedule))?;
+                }
+                if skip && summed_out && !self.skip_content_twins && !self.fold_at_root
+                    && result.node_count() <= MID_FOLD_TRIAL_MAX_NODES
+                    && self.fold_paid_for_scan(eng, result)
+                {
+                    let mut trial = eng.try_clone(result)?;
+                    eng.reduce(&mut trial, full_reduction(false, None))?;
+                    if trial.node_count().saturating_mul(4) <= result.node_count() {
+                        *result = trial;
+                    }
+                }
+                if rescan {
+                    self.fold_start_work = eng.limits().work_units();
+                    let removed = cur_nodes.saturating_sub(result.node_count()) as f64;
+                    self.scan_backoff = if removed < cur_nodes as f64 * SCAN_MIN_REMOVAL_FRACTION {
+                        (self.scan_backoff + 1).min(SCAN_MAX_BACKOFF)
+                    } else {
+                        0
+                    };
+                }
                 self.record_full(
                     result.node_count(),
                     result.retired_marginal_slots(),
@@ -245,6 +341,39 @@ impl MinimizeGate {
             }
         }
         Ok(())
+    }
+
+    /// Mark the start of a fold for [`Self::fold_paid_for_scan`].
+    pub(crate) fn start_fold(&mut self, eng: &Engine) {
+        self.fold_start_work = eng.limits().work_units();
+    }
+
+    /// Whether the fold ending in `result` spent enough work per pair of it,
+    /// counting [`SCAN_FIXED_COST_PAIRS`] more, that a content-twin scan is
+    /// cheap beside it. Summing out inside a fold is what leaves count nodes
+    /// with equal contents, and such a fold does much work per pair it leaves;
+    /// a fold of one merge that only grows the diagram does little and leaves
+    /// few twins a later scan would not find anyway. The bar doubles after
+    /// each forced scan in a row that removed too little
+    /// ([`SCAN_MIN_REMOVAL_FRACTION`]).
+    fn fold_paid_for_scan(&self, eng: &Engine, result: &Tdd) -> bool {
+        result.has_marginal_level()
+            && eng.limits().work_units().saturating_sub(self.fold_start_work)
+                >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff)
+                    .saturating_mul(result.pair_count() as u64 + SCAN_FIXED_COST_PAIRS)
+    }
+
+    /// Whether a scan inside the root's fold pays, after a prune and
+    /// contraction took a merge's result from `before` pairs to `after`. No
+    /// later fold reads the root's diagram, so the scan saves only on the
+    /// fold's later conjunctions. Taking the share of pairs the contraction
+    /// removed as the share the scan would remove, and the fold's work so far
+    /// (`work`) as what its later conjunctions do, the saving must cover what
+    /// [`Self::fold_paid_for_scan`] charges for a scan of `after` pairs.
+    fn root_scan_pays(&self, work: u64, before: usize, after: usize) -> bool {
+        let removed = before.saturating_sub(after) as u128;
+        let bar = u128::from(SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff);
+        removed * u128::from(work) >= bar * (after as u128 + u128::from(SCAN_FIXED_COST_PAIRS)) * before as u128
     }
 
     /// Run twin contraction alone and record the fraction of nodes it

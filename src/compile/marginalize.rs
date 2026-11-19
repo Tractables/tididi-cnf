@@ -136,6 +136,13 @@ impl Summing<'_> {
         step.summable(var) && last.and_then(|last| last.get(&var)).is_none_or(|&at| at <= *through)
     }
 
+    /// Whether `self` names nothing to sum out. A `Vars` sum is built only
+    /// once a clause completes a variable, so it is never empty, though a
+    /// projecting compile may still sum nothing at it.
+    pub(crate) fn is_empty(&self) -> bool {
+        matches!(self, Summing::Nodes(targets) if targets.is_empty())
+    }
+
     /// Sum `self` out of `tdd`.
     pub(crate) fn sum_out(self, eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError> {
         match self {

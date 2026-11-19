@@ -89,10 +89,8 @@ pub(super) struct Recovered {
 /// Count `formula` by `first`, the first compile, and on its failure by the
 /// recovery the module doc describes: `fallbacks`, when the caller has any,
 /// then a Shannon split whose cofactors `cofactor` counts, on the run as a
-/// cofactor's compile sees it. `first` and each fallback name the stage that
-/// answered: the first compile is [`AnsweredBy::Compile`] unless the caller's
-/// first call ran a stage of its own behind it. Peak sizes combine by `max`
-/// across the split.
+/// cofactor's compile sees it. Each fallback names the stage that answered.
+/// Peak sizes combine by `max` across the split.
 ///
 /// Prints the stage that answered and the wall it took. `None` when nothing
 /// answered: the run's wall passed, or the split ran out of variables to
@@ -100,7 +98,7 @@ pub(super) struct Recovered {
 pub(super) fn count_with_recovery(
     run: &Run<'_>,
     formula: &CnfFormula,
-    first: impl FnOnce() -> Option<(Counted, AnsweredBy)>,
+    first: impl FnOnce() -> Option<Counted>,
     fallbacks: Option<&dyn Fn() -> Option<(Counted, AnsweredBy)>>,
     cofactor: impl Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
 ) -> Option<Recovered> {
@@ -114,7 +112,7 @@ pub(super) fn count_with_recovery(
         return None;
     }
     let trigger = match failure(run, first) {
-        Ok((counted, answered_by)) => return answered(counted, answered_by),
+        Ok(counted) => return answered(counted, AnsweredBy::Compile),
         Err(trigger) => trigger?,
     };
     // The failed attempt may have burned the rest of the wall before it
@@ -137,7 +135,7 @@ pub(super) fn count_with_recovery(
 /// `compile` under panic isolation: its answer, or why it failed — the panic's
 /// message, or a give-up with the run's wall left — or `Err(None)` when it
 /// gave up with the wall gone, which ends the count.
-fn failure<T>(run: &Run<'_>, compile: impl FnOnce() -> Option<T>) -> Result<T, Option<String>> {
+fn failure(run: &Run<'_>, compile: impl FnOnce() -> Option<Counted>) -> Result<Counted, Option<String>> {
     match panic::catch_unwind(panic::AssertUnwindSafe(compile)) {
         Ok(Some(counted)) => Ok(counted),
         Ok(None) if deadline_passed(run.deadline) => Err(None),
