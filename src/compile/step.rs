@@ -23,10 +23,9 @@ use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
 use super::cofactor::cofactor_step;
 use super::component::CompileJob;
-use super::marginalize::{build_marginalize_targets, run_marginalize_at};
+use super::marginalize::{Schedule, build_marginalize_targets, run_marginalize_at};
 use super::minimize::MinimizeGate;
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
-use super::schedule::marginalize_schedule;
 use super::scope::{ScopeGroups, group_clauses_by_scope};
 
 /// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
@@ -44,9 +43,9 @@ pub(crate) struct StepContext<'a> {
     /// Clauses grouped by vtree scope. `clauses_at[t.idx()]` is the list of
     /// clause indices whose scope is vtree node `t`.
     pub(crate) clauses_at: &'a [Vec<usize>],
-    /// Per-vtree-node lists of levels to marginalize after each step.
-    /// `None` for an output that follows no schedule.
-    pub(crate) marginalize_schedule: Option<&'a [Vec<VtreeIdx>]>,
+    /// What each step may marginalize. `None` for an output that follows no
+    /// schedule.
+    pub(crate) marginalize_schedule: Option<&'a Schedule>,
 }
 
 /// What one bottom-up pass changes as it goes.
@@ -172,7 +171,8 @@ fn compile_pass(
     // vtree node and in what order, and (for a scheduled output) when each
     // variable may be marginalized.
     let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(formula, vtree);
-    let marginalize_schedule = job.output.scheduled().then(|| marginalize_schedule(vtree, &last_scope_pos));
+    let marginalize_schedule =
+        job.output.scheduled().then(|| Schedule::new(vtree, &last_scope_pos, job.output, job.run.projections));
     // Converted once for the bottom-up pass.
     let clauses = DiagramClauses::new(formula);
 
@@ -190,7 +190,7 @@ fn compile_pass(
         job,
         clauses: &clauses,
         clauses_at: &clauses_at,
-        marginalize_schedule: marginalize_schedule.as_deref(),
+        marginalize_schedule: marginalize_schedule.as_ref(),
     };
 
     // Leaf levels: accumulate clauses local to each leaf (never has children).
@@ -275,7 +275,8 @@ fn check_step(
 /// internal step `t`: after step `t` marginalized levels in `subtree(t)`, try
 /// rotations that bring two marginal levels under one parent so it too
 /// collapses to counts, shrinking the in-flight diagram (see
-/// `Engine::rotate_marginal_cluster`).
+/// `Engine::rotate_marginal_cluster`). On a home this merges sibling regions
+/// and leaves the home as it is.
 fn marginalize_and_rotate(
     eng: &Engine,
     t: VtreeIdx,
@@ -284,12 +285,19 @@ fn marginalize_and_rotate(
     current_vtree: &mut Arc<Vtree>,
 ) -> Result<(), OperationError> {
     run_marginalize_at(eng, t, ctx, state, current_vtree)?;
-    // A Boolean function has no marginal level to cluster, and `t` is not a
-    // node of a projection.
+    let PassState { tdds, cluster_tried, .. } = state;
     if ctx.job.run.projections {
+        // The rotation changes the diagram's own vtree only. A Boolean
+        // function has no marginal level to cluster.
+        if let Some(tdd) = tdds[t.idx()].as_mut()
+            && tdd.has_marginal_level()
+        {
+            cluster_tried.clear();
+            let root = tdd.vtree().root();
+            eng.rotate_marginal_cluster(tdd, root, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
+        }
         return Ok(());
     }
-    let PassState { tdds, cluster_tried, .. } = state;
     if let Some(tdd) = tdds[t.idx()].as_mut() {
         eng.rotate_marginal_cluster(tdd, t, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
     }
@@ -333,11 +341,11 @@ fn fold_step(
     current_vtree: &Arc<Vtree>,
     children: Option<Tdd>,
 ) -> Result<usize, OperationError> {
-    let targets = build_marginalize_targets(t.idx(), current_vtree, ctx, &state.forgotten);
+    let targets = build_marginalize_targets(t, current_vtree, ctx, &state.forgotten);
     state.tdds[t.idx()] = batch_accumulate(
         eng,
         &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
-        state, targets.as_deref(),
+        state, targets.as_ref(),
     )?;
     if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
     Ok(state.tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
@@ -394,8 +402,9 @@ fn trigger_size(tdd: &Tdd, pairs: usize, vtree: &Vtree) -> usize {
     pairs + vtree.num_leaves().saturating_sub(tdd.vtree().num_leaves()) as usize
 }
 
-/// The normal internal step at `t`: conjoin the children's diagrams by an
-/// O(1) splice, fold the node's clauses into the result ([`fold_step`]) and
+/// The normal internal step at `t`: conjoin the children's diagrams, by
+/// [`Engine::and`] on a home and by an O(1) splice on a bare root (a weighted
+/// compile), fold the node's clauses into the result ([`fold_step`]) and
 /// store it in `state.tdds[t]`. Returns its pair count.
 pub(super) fn splice_and_fold(
     eng: &Engine,

@@ -10,16 +10,17 @@
 //! The width caps and the spine marking that reads a batch's width and pairs
 //! are here as well. `step.rs` decides which node is folded and when.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
-use tididi::vtree::{Vtree, VtreeIdx};
+use tididi::vtree::{VarId, Vtree, VtreeIdx};
 
 use crate::budget::deadline_passed;
-use super::marginalize::summable;
+use super::marginalize::{StepTargets, Summing, summable};
 use super::minimize::{MinimizeGate, minimize_contract_only};
-use super::schedule::step_completions;
+use super::schedule::{StepVars, step_completions, step_last_clauses};
 use super::step::{DiagramClauses, PassState, StepContext};
 
 /// Clauses per batch below which a batch never stops for its cost, the floor
@@ -101,7 +102,7 @@ pub(crate) fn batch_accumulate(
     vtree: &Arc<Vtree>,
     mut acc: Option<Tdd>,
     state: &mut PassState,
-    marginalize_targets: Option<&[VtreeIdx]>,
+    marginalize_targets: Option<&StepTargets<'_>>,
 ) -> Result<Option<Tdd>, OperationError> {
     if clauses.is_empty() {
         return Ok(acc);
@@ -143,12 +144,16 @@ pub(crate) fn batch_accumulate(
         // The targets this merge may sum out: a projecting compile keeps its
         // leaf levels Boolean, which can leave a merge that completes targets
         // with none to sum out.
-        let merge_targets = streaming
-            .as_mut()
-            .and_then(|s| s.completed_in(start_clause, i))
-            .map(|targets| summable(vtree, targets, ctx.job.output.forget().is_some()));
-        let merged =
-            merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets.as_deref(), acc_pairs)?;
+        let kept;
+        let merge_targets = match streaming.as_mut().and_then(|s| s.completed_in(start_clause, i)) {
+            Some(Completed::Nodes(targets)) => {
+                kept = summable(vtree, targets, ctx.job.output.forget().is_some());
+                Some(Summing::Nodes(&kept))
+            }
+            Some(Completed::Vars(summing)) => Some(summing),
+            None => None,
+        };
+        let merged = merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets, acc_pairs)?;
         if merged.unsat {
             return Ok(acc);
         }
@@ -205,41 +210,78 @@ fn next_batch_limit(merged: usize, absorbed: bool, floor: usize) -> usize {
 
 /// The marginalize targets that become final within each batch of one
 /// node's fold.
-struct StreamTargets {
-    /// Per clause position, the sub-vtrees whose last mention it is, children
-    /// before parents.
-    completions: Vec<Vec<VtreeIdx>>,
-    /// What `completed_in` last returned.
-    set: Vec<VtreeIdx>,
+enum StreamTargets<'a> {
+    /// On a bare root.
+    Nodes {
+        /// Per clause position, the sub-vtrees whose last mention it is,
+        /// children before parents.
+        completions: Vec<Vec<VtreeIdx>>,
+        /// What `completed_in` last returned.
+        set: Vec<VtreeIdx>,
+    },
+    /// On a home.
+    Vars {
+        step: StepVars<'a>,
+        /// The variables the step completes, each with its last clause
+        /// position ([`step_last_clauses`]).
+        last: HashMap<VarId, u32>,
+        /// Per clause position, whether it is some variable's last mention.
+        completes: Vec<bool>,
+    },
 }
 
-impl StreamTargets {
-    fn new(clause_lits: &[&[Literal]], vtree: &Vtree, step_targets: &[VtreeIdx]) -> Self {
-        Self {
-            completions: step_completions(clause_lits, vtree, step_targets),
-            set: Vec::new(),
+/// What [`StreamTargets::completed_in`] found.
+enum Completed<'s> {
+    Nodes(&'s [VtreeIdx]),
+    Vars(Summing<'s>),
+}
+
+impl<'a> StreamTargets<'a> {
+    fn new(clause_lits: &[&[Literal]], vtree: &Vtree, step_targets: &StepTargets<'a>) -> Self {
+        match step_targets {
+            StepTargets::Nodes(targets) => StreamTargets::Nodes {
+                completions: step_completions(clause_lits, vtree, targets),
+                set: Vec::new(),
+            },
+            &StepTargets::Vars(step) => {
+                let last = step_last_clauses(clause_lits, step);
+                let mut completes = vec![false; clause_lits.len()];
+                for &at in last.values() {
+                    completes[at as usize] = true;
+                }
+                StreamTargets::Vars { step, last, completes }
+            }
         }
     }
 
     /// Whether the clause at position `p` is the last mention of some target.
     fn completes(&self, p: usize) -> bool {
-        !self.completions[p].is_empty()
+        match self {
+            StreamTargets::Nodes { completions, .. } => !completions[p].is_empty(),
+            StreamTargets::Vars { completes, .. } => completes[p],
+        }
     }
 
-    /// The sub-vtrees whose last mention falls in clause positions
-    /// `start..end`, children before parents, or `None` when there are none.
-    /// No later clause mentions them, so they can be marginalized at this
-    /// merge.
+    /// The targets whose last mention falls in clause positions
+    /// `start..end`, or `None` when there are none. No later clause mentions
+    /// them, so they can be marginalized at this merge.
     ///
-    /// Each sub-vtree has one last mention, so none is listed twice, and a
-    /// node's last mention is never before a descendant's, so reading the
-    /// positions in order keeps every child before its parent.
-    fn completed_in(&mut self, start: usize, end: usize) -> Option<&[VtreeIdx]> {
-        self.set.clear();
-        for subs in &self.completions[start..end] {
-            self.set.extend_from_slice(subs);
+    /// On a bare root each sub-vtree has one last mention, so none is listed
+    /// twice, and a node's last mention is never before a descendant's, so
+    /// reading the positions in order keeps every child before its parent.
+    fn completed_in(&mut self, start: usize, end: usize) -> Option<Completed<'_>> {
+        match self {
+            StreamTargets::Nodes { completions, set } => {
+                set.clear();
+                for subs in &completions[start..end] {
+                    set.extend_from_slice(subs);
+                }
+                if set.is_empty() { None } else { Some(Completed::Nodes(set)) }
+            }
+            StreamTargets::Vars { step, last, completes } => completes[start..end].contains(&true).then(|| {
+                Completed::Vars(Summing::Vars { step: *step, last: Some(last), through: end as u32 - 1 })
+            }),
         }
-        if self.set.is_empty() { None } else { Some(&self.set) }
     }
 }
 
@@ -273,7 +315,7 @@ fn merge_batch(
     batch: BuiltBatch<'_>,
     acc: &mut Option<Tdd>,
     state: &mut MinimizeGate,
-    merge_targets: Option<&[VtreeIdx]>,
+    merge_targets: Option<Summing<'_>>,
     acc_pairs: Option<usize>,
 ) -> Result<Merged, OperationError> {
     let acc_in = acc.take();
@@ -387,7 +429,7 @@ struct BatchStop<'a> {
     /// The accumulator the batch will be merged into.
     acc: Option<&'a Tdd>,
     /// The node's marginalize targets by clause position, when it streams.
-    streaming: Option<&'a StreamTargets>,
+    streaming: Option<&'a StreamTargets<'a>>,
     /// The batch starts on the projection of `vtree` on its first clause's
     /// variables ([`super::CompileRun::projections`]); its width and pairs
     /// are then read off the whole diagram.
@@ -401,7 +443,7 @@ impl<'a> BatchStop<'a> {
         floor: BatchFloor,
         limit: usize,
         acc: Option<&'a Tdd>,
-        streaming: Option<&'a StreamTargets>,
+        streaming: Option<&'a StreamTargets<'a>>,
     ) -> Self {
         let acc_width = acc.map_or(0, Tdd::max_width);
         Self {
@@ -608,7 +650,7 @@ fn merge_batch_into_acc(
     acc: Option<Tdd>,
     batch: Tdd,
     state: &mut MinimizeGate,
-    marginalize_targets: Option<&[VtreeIdx]>,
+    marginalize_targets: Option<Summing<'_>>,
     acc_pairs: Option<usize>,
 ) -> Result<(Tdd, bool), OperationError> {
     let Some(a) = acc else {
@@ -618,13 +660,13 @@ fn merge_batch_into_acc(
         // through.
         let mut result = batch;
         if let Some(targets) = marginalize_targets {
-            eng.marginalize_levels(&mut result, targets)?;
+            targets.sum_out(eng, &mut result)?;
         }
         return Ok((result, false));
     };
 
     let mut result = match marginalize_targets {
-        Some(targets) => eng.and_marginalizing(a, batch, targets)?,
+        Some(targets) => targets.and(eng, a, batch)?,
         None => eng.and(a, batch)?,
     };
     let (num, den) = BATCH_ABSORB_FACTOR;
@@ -644,12 +686,12 @@ fn merge_clause_into_acc(
     acc: Tdd,
     clause: &[Literal],
     state: &mut MinimizeGate,
-    marginalize_targets: Option<&[VtreeIdx]>,
+    marginalize_targets: Option<Summing<'_>>,
 ) -> Result<Tdd, OperationError> {
     let mut result = eng.and_clause(acc, clause)?;
     state.adaptive_minimize(eng, &mut result)?;
     if let Some(targets) = marginalize_targets {
-        eng.marginalize_levels(&mut result, targets)?;
+        targets.sum_out(eng, &mut result)?;
     }
     Ok(result)
 }

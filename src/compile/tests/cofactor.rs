@@ -12,7 +12,7 @@ use tididi::diagram::{Arithmetic, WeightStore};
 use vitri::cnf::CnfFormula;
 
 use crate::compile::component::{CompileJob, PassOutput};
-use crate::compile::marginalize::run_marginalize_at;
+use crate::compile::marginalize::{Schedule, run_marginalize_at};
 use crate::compile::schedule::marginalize_schedule;
 use crate::compile::scope::{ScopeGroups, group_clauses_by_scope};
 use crate::compile::step::splice_and_fold;
@@ -89,11 +89,11 @@ impl Fixture {
         CompileJob { deadline: None, output, run: Default::default(), prune_spent_us: &self.prune_spent_us }
     }
 
-    fn schedule(&self) -> Vec<Vec<VtreeIdx>> {
-        marginalize_schedule(&self.vtree, &self.last_scope_pos)
+    fn schedule(&self) -> Schedule {
+        Schedule::Nodes(marginalize_schedule(&self.vtree, &self.last_scope_pos))
     }
 
-    fn ctx<'a>(&'a self, job: CompileJob<'a>, schedule: Option<&'a [Vec<VtreeIdx>]>) -> StepContext<'a> {
+    fn ctx<'a>(&'a self, job: CompileJob<'a>, schedule: Option<&'a Schedule>) -> StepContext<'a> {
         StepContext { job, clauses: &self.clauses, clauses_at: &self.clauses_at, marginalize_schedule: schedule }
     }
 
@@ -301,11 +301,12 @@ fn the_cofactor_step_counts_under_the_marginalize_schedule() {
     let eng = &Engine::new();
     for fx in [one_variable_fixture(&[]), one_variable_fixture(&[&[1, 2], &[1, -2]]), three_variable_fixture(true)] {
         let schedule = fx.schedule();
+        let Schedule::Nodes(groups) = &schedule else { unreachable!() };
         assert!(
-            !schedule[fx.t.idx()].is_empty() && !schedule[fx.vtree.root().idx()].is_empty(),
+            !groups[fx.t.idx()].is_empty() && !groups[fx.vtree.root().idx()].is_empty(),
             "levels finish at t and at the root"
         );
-        let ctx = fx.ctx(fx.job(PassOutput::Count(None)), Some(schedule.as_slice()));
+        let ctx = fx.ctx(fx.job(PassOutput::Count(None)), Some(&schedule));
         let expected = fx.brute_count();
         assert!(expected > BigUint::ZERO, "the planted assignment is a model");
         assert_eq!(fx.pass(eng, &ctx, true).model_count().unwrap(), expected);
@@ -322,7 +323,7 @@ fn the_cofactor_step_weighs_as_the_normal_step() {
     for fx in [one_variable_fixture(&[]), three_variable_fixture(true)] {
         let schedule = fx.schedule();
         let store = fx.weight_store();
-        let ctx = fx.ctx(fx.job(PassOutput::Count(Some(&store))), Some(schedule.as_slice()));
+        let ctx = fx.ctx(fx.job(PassOutput::Count(Some(&store))), Some(&schedule));
         let value =
             |tdd: Tdd| eng.weighted_value(&tdd).unwrap().expect("a weighted diagram").as_rational().into_owned();
         let expected = fx.brute_weighted_count();

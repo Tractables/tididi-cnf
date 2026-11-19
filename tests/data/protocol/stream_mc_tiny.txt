@@ -2,7 +2,7 @@ $ tididi --mode mc --vtree portfolio --time-limit-ms 60000 --stats - tests/data/
 exit 0
 --- stdout
 model count: 7
-{"mode":"mc","exit_reason":"solved","variables":3,"clauses":1,"vtree_spec":"portfolio","satisfiable":true,"model_count":"7","peak_pairs":2,"answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":0,"sat_prune_solver_setup_us":"<t>"}
+{"mode":"mc","exit_reason":"solved","variables":3,"clauses":1,"vtree_spec":"portfolio","satisfiable":true,"model_count":"7","answered_by":"compile","preprocess_ms":"<t>","vtree_ms":"<t>","compile_ms":"<t>","cascade_ms":"<t>","backbone_ms":"<t>","backbone_found":0,"backbone_probes":0,"sat_prune_solver_setup_us":"<t>"}
 --- stderr
 [input] reading tests/data/mc_header_tiny.cnf
 [input] 3 variables, 1 clauses

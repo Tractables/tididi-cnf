@@ -98,10 +98,10 @@ pub(crate) struct CompileRun<'a> {
     /// records nothing.
     pub(crate) work: Option<&'a crate::budget::VtreeTime>,
     /// Build each clause, batch and node diagram on the projection of the
-    /// vtree on the variables it has seen, and join a node's children by
-    /// [`Engine::and`] instead of the splice. Taken by an
-    /// [`Output::Function`] compile only, whose result is moved onto the
-    /// vtree.
+    /// vtree on the variables it has seen, join a node's children by
+    /// [`Engine::and`] instead of the splice, and name what a step sums out
+    /// by variable. The vtree is then a home. A weighted compile does not
+    /// take it.
     pub(crate) projections: bool,
 }
 
@@ -428,7 +428,7 @@ pub(crate) fn compile_with(
             PassOutput::ProjectedFunction(&forget)
         }
     };
-    let run = CompileRun { projections: run.projections && matches!(output, PassOutput::Function), ..run };
+    let run = CompileRun { projections: run.projections && output.weights().is_none(), ..run };
     let prune_spent_us = Cell::new(0);
     let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
     eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;
@@ -570,12 +570,13 @@ where
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
         settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;
+        let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(sub_vtree), true);
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
         let output = comp_forget.as_ref().map_or(PassOutput::Count(None), PassOutput::ProjectedCount);
-        let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
-        let compiled = settle(compile_component(eng, sub_formula, &sub_vtree, job))?;
+        let job = CompileJob { deadline, output, run: CompileRun { projections: true, ..run }, prune_spent_us: &prune_spent_us };
+        let compiled = settle(compile_component(eng, sub_formula, &home, job))?;
         let sub_count = compiled.projected_count(eng).ok()?;
         peak = peak.max(compiled.peak_pairs);
         // A zero component zeroes the product: skip the rest of the loop.

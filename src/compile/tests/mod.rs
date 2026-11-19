@@ -227,9 +227,15 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
     let compiled = compile_cnf(eng, &formula, &vtree, options).unwrap();
     assert!(compiled.peak_pairs >= compiled.diagram.pair_count().max(1));
 
+    // The streaming count compiles the component on a home of its vtree.
+    let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)), true);
+    let prune_spent_us = Cell::new(0);
+    let run = CompileRun { projections: true, ..CompileRun::default() };
+    let job = CompileJob { deadline: None, output: PassOutput::Count(None), run, prune_spent_us: &prune_spent_us };
+    let on_home = compile_component(eng, &formula, &home, job).unwrap();
     let (_, streamed_peak) =
         model_count_streaming(eng, &formula, &components, |_| Some(Arc::clone(&vtree)), None, None, CompileRun::default()).unwrap();
-    assert_eq!(streamed_peak, compiled.peak_pairs);
+    assert_eq!(streamed_peak, on_home.peak_pairs);
 }
 
 /// The streaming count of `formula` over `components` on balanced component
@@ -325,6 +331,74 @@ fn streaming_projected_free_and_empty_vars() {
             crate::test_support::brute_projected_count(&formula, [0]),
             "{clauses:?}, {num_vars} variables",
         );
+    }
+}
+
+/// On a home a forgotten variable has no leaf left, and the diagram's count
+/// over the home doubles it as a free variable, which the divisor takes out,
+/// as it took out the structural `One` leaf on a bare root.
+#[test]
+fn a_forgotten_variable_is_a_free_home_variable() {
+    let eng = &Engine::new();
+    // (x ∨ y) ∧ (¬y ∨ z) onto {x, z}: 3.
+    let formula = dimacs(3, &[vec![1, 2], vec![-2, 3]]);
+    let forget: HashSet<VarId> = [VarId(2)].into();
+    let prune_spent_us = Cell::new(0);
+    for output in [PassOutput::ProjectedFunction(&forget), PassOutput::ProjectedCount(&forget)] {
+        let home = crate::vtree::bound(eng, Vtree::balanced(3), true);
+        let run = CompileRun { projections: true, ..CompileRun::default() };
+        let job = CompileJob { deadline: None, output, run, prune_spent_us: &prune_spent_us };
+        let compiled = compile_component(eng, &formula, &home, job).unwrap();
+        assert_eq!(compiled.forgotten, 1);
+        assert!(compiled.diagram.vtree().leaf_of(VarId(2)).is_none());
+        assert_eq!(eng.model_count(&compiled.diagram).unwrap(), BigUint::from(6u32));
+        assert_eq!(compiled.projected_count(eng).unwrap(), BigUint::from(3u32));
+    }
+}
+
+/// The projected count on a home, whose steps sum variables, against the one
+/// on a bare root, whose steps sum the schedule's nodes less the projection
+/// shield, and against brute force, on random 3-CNFs and projections.
+#[test]
+fn projected_counts_on_a_home_and_on_a_bare_root_agree() {
+    let eng = &Engine::new();
+    let mut seed = 0x2545_f491_4f6c_dd1du64;
+    let mut next = |n: u64| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed % n
+    };
+    for _ in 0..60 {
+        let num_vars = 4 + next(5) as u32;
+        let clauses: Vec<Vec<i32>> = (0..2 + next(2 * u64::from(num_vars)))
+            .map(|_| {
+                let mut clause: Vec<i32> = Vec::new();
+                for _ in 0..1 + next(3) {
+                    let var = (1 + next(u64::from(num_vars))) as i32;
+                    if !clause.iter().any(|lit| lit.abs() == var) {
+                        clause.push(if next(2) == 0 { var } else { -var });
+                    }
+                }
+                clause
+            })
+            .collect();
+        let formula = dimacs(num_vars, &clauses);
+        let show: Vec<usize> = (0..num_vars as usize).filter(|_| next(3) != 0).collect();
+        let expected = crate::test_support::brute_projected_count(&formula, show.iter().copied());
+        let component = Component {
+            clause_indices: (0..formula.clauses().len()).collect(),
+            local_to_global: (1..=num_vars).map(VarId).collect(),
+        };
+        assert_eq!(
+            streaming_projected(&formula, &show, std::slice::from_ref(&component)),
+            expected,
+            "home: {clauses:?}, show {show:?}",
+        );
+        let forget: Vec<VarId> = (0..num_vars).filter(|&i| !show.contains(&(i as usize))).map(|i| VarId(i + 1)).collect();
+        let options = CompileOptions { output: Output::ProjectedCount(&forget), plan: ComponentPlan::Whole, ..CompileOptions::default() };
+        let bare = compile_cnf(eng, &formula, &Arc::new(Vtree::balanced(num_vars)), options).unwrap();
+        assert_eq!(bare.projected_count(eng).unwrap(), expected, "bare root: {clauses:?}, show {show:?}");
     }
 }
 

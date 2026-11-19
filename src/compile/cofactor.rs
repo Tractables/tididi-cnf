@@ -259,7 +259,7 @@ fn run_cofactor(
         eng.or_many(terms)?
     };
     state.minimize.adaptive_minimize(eng, &mut joined)?;
-    marginalize_scheduled_at(eng, &mut joined, t.idx(), vtree, ctx, &state.forgotten)?;
+    marginalize_scheduled_at(eng, &mut joined, t, vtree, ctx, &state.forgotten)?;
     let pairs = joined.pair_count();
     state.tdds[t.idx()] = Some(joined);
     if deadline_passed(ctx.job.deadline) {

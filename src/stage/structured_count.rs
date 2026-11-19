@@ -31,7 +31,7 @@ use crate::convert::diagram_var;
 use crate::formula::occurrence_counts;
 use crate::problem::ShowSet;
 use tididi::query::Retention;
-use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use tididi::vtree::{Home, VarId, Vtree};
 
 /// One component of a shatter plan, in its own compact local variable space
 /// (boundary ∪ own-show ∪ hidden, nothing else — non-participating vars left in
@@ -74,40 +74,27 @@ impl ShatterComponent {
         vtree: &Arc<Vtree>,
     ) -> Option<Vec<BigUint>> {
         // Compile: exist-forget hidden during compile, the rest Boolean.
+        let home = Home::new(crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(vtree)), true));
         let compiled = settle(compile_with(
             eng,
             &self.formula,
-            vtree,
+            home.vtree(),
             CompileOptions {
                 plan: ComponentPlan::Whole,
                 output: Output::ProjectedFunction(&self.hidden_local),
                 ..CompileOptions::default()
             },
-            run,
+            CompileRun { projections: true, ..run },
         ))?;
-        let mut tdd = compiled.diagram;
+        let tdd = compiled.diagram;
         assert!(
-            Arc::ptr_eq(tdd.vtree(), vtree),
-            "Whole boundary compilation must preserve the supplied tree before readout derives indices from it",
+            tdd.vtree().is_on(&home),
+            "Whole boundary compilation must stay on the supplied tree's home before readout",
         );
-        // Forgotten hidden leaves were ×2-marginalized; divide them back out.
+        // Each forgotten hidden variable is a free home variable, ×2 in every
+        // count; divide them back out.
         let div = BigUint::from(2u32).pow(compiled.forgotten as u32);
 
-        // Marginalize only the own-show leaves (sum them out), leaving the boundary
-        // levels Boolean. Targets must be in bottom-up topo order.
-        let own_set: std::collections::HashSet<VarId> = self.own_local.iter().copied().collect();
-        let own_leaves: Vec<VtreeIdx> = vtree.bottomup_slice()
-            .iter()
-            .copied()
-            .filter(|&t| {
-                let node = vtree.node(t);
-                node.is_leaf() && own_set.contains(&vtree.leaf_var(t))
-            })
-            .collect();
-        eng.marginalize_levels(&mut tdd, &own_leaves).ok()?;
-
-        // Read w(a) for every boundary assignment via the pinned counter (it decodes
-        // the marginal tagging internally — the safe public route).
         // A structurally-zero component has no output count slot, which the pinned
         // counter needs; every w(a) is 0. Mirrors the `is_zero` guard
         // the BigUint entry points carry.
@@ -116,7 +103,8 @@ impl ShatterComponent {
         }
         // One frontier counter reads every assignment, changing only the boundary
         // pins each binary increment carries through. Evidence pins restrict the
-        // boundary; marginalized local counts retain their multiplicity.
+        // boundary, and the counter sums over every unpinned variable, the
+        // own-show ones included.
         let mut ctr =
             eng.counter_with(&tdd, Retention::Frontier, PinSemantics::Evidence).ok()?;
         let mut w = ctr.count_table(&self.boundary_local).ok()?;

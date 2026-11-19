@@ -11,13 +11,15 @@
 //! variables forgotten so far in its pass state; both are passed in here.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use tididi::diagram::Tdd;
 use tididi::{Engine, OperationError};
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
+use super::component::PassOutput;
+use super::schedule::{StepVars, VarSchedule, marginalize_schedule};
 use super::step::{PassState, StepContext};
 
 /// The projection shield: the vtree nodes that must stay explicit while a
@@ -90,41 +92,113 @@ pub(crate) fn summable<'a>(
     }
 }
 
-/// The nodes step `t` may sum out — `marginalize_schedule[t.idx()]` minus
-/// the projection shield — in the schedule's order, children before parents.
-/// Returns `None` if the pass sums nothing out or there is nothing to sum
-/// out at this step.
+/// The schedule a pass follows ([`StepContext::marginalize_schedule`]).
+pub(crate) enum Schedule {
+    /// On a bare root: per step, the nodes it frees ([`marginalize_schedule`]).
+    Nodes(Vec<Vec<VtreeIdx>>),
+    /// On a home: per variable, the step after which nothing reads it.
+    Vars(VarSchedule),
+}
+
+impl Schedule {
+    /// The schedule of a pass on `vtree` whose output is `output`.
+    pub(crate) fn new(vtree: &Vtree, last_scope_pos: &[u32], output: PassOutput<'_>, home: bool) -> Self {
+        match home {
+            true => Schedule::Vars(VarSchedule::new(vtree, last_scope_pos, output.forget())),
+            false => Schedule::Nodes(marginalize_schedule(vtree, last_scope_pos)),
+        }
+    }
+}
+
+/// What one step may sum out.
+#[derive(Clone)]
+pub(crate) enum StepTargets<'a> {
+    /// Nodes of a bare root, children before parents.
+    Nodes(Cow<'a, [VtreeIdx]>),
+    /// Variables of a home.
+    Vars(StepVars<'a>),
+}
+
+/// What one sum-out inside a step sums.
+#[derive(Clone, Copy)]
+pub(crate) enum Summing<'s> {
+    /// Nodes of a bare root, children before parents.
+    Nodes(&'s [VtreeIdx]),
+    /// The variables of `step` that no clause after position `through` of
+    /// its clauses reads, `last` giving each completed variable's last
+    /// position; with no `last`, every variable done by the step's end.
+    Vars { step: StepVars<'s>, last: Option<&'s HashMap<VarId, u32>>, through: u32 },
+}
+
+impl Summing<'_> {
+    fn summable(&self, var: VarId) -> bool {
+        let Summing::Vars { step, last, through } = self else { unreachable!("a bare root names nodes") };
+        step.summable(var) && last.and_then(|last| last.get(&var)).is_none_or(|&at| at <= *through)
+    }
+
+    /// Sum `self` out of `tdd`.
+    pub(crate) fn sum_out(self, eng: &Engine, tdd: &mut Tdd) -> Result<(), OperationError> {
+        match self {
+            Summing::Nodes(targets) => eng.marginalize_levels(tdd, targets),
+            Summing::Vars { .. } => eng.marginalize(tdd, |var| self.summable(var)),
+        }
+    }
+
+    /// Conjoin `a` and `b`, summing `self` out as the product is built.
+    pub(crate) fn and(self, eng: &Engine, a: Tdd, b: Tdd) -> Result<Tdd, OperationError> {
+        match self {
+            Summing::Nodes(targets) => eng.and_marginalizing(a, b, targets),
+            Summing::Vars { .. } => eng.and_marginalizing_where(a, b, |var| self.summable(var)),
+        }
+    }
+}
+
+/// What step `t` may sum out: on a bare root `marginalize_schedule[t]` minus
+/// the projection shield, in the schedule's order, children before parents;
+/// on a home the variables done by `t`, none while a projected variable is
+/// pending, since its shield is every node but its own leaf. Returns `None`
+/// if the pass sums nothing out or there is nothing to sum out at this step.
 ///
 /// The projection shield ([`forget_shield`]) is left out,
 /// so the levels a pending ∃-forget needs stay explicit; they remain in the
 /// full schedule, and `run_marginalize_at` marginalizes them once their
 /// variables are forgotten.
 pub(crate) fn build_marginalize_targets<'a>(
-    t_idx: usize,
+    t: VtreeIdx,
     vtree: &Vtree,
     ctx: &StepContext<'a>,
     forgotten: &HashSet<VarId>,
-) -> Option<Cow<'a, [VtreeIdx]>> {
+) -> Option<StepTargets<'a>> {
     if !ctx.job.output.marginalizes() { return None; }
-    let schedule = ctx.marginalize_schedule?;
-    let kept = unshielded(&schedule[t_idx], vtree, ctx.job.output.forget(), forgotten);
-    if kept.is_empty() { None } else { Some(kept) }
+    match ctx.marginalize_schedule? {
+        Schedule::Nodes(schedule) => {
+            let kept = unshielded(&schedule[t.idx()], vtree, ctx.job.output.forget(), forgotten);
+            if kept.is_empty() { None } else { Some(StepTargets::Nodes(kept)) }
+        }
+        Schedule::Vars(schedule) => {
+            let pending = ctx.job.output.forget().is_some_and(|forget| forget.iter().any(|var| !forgotten.contains(var)));
+            (schedule.frees(t) && !pending).then(|| StepTargets::Vars(schedule.at(vtree, t)))
+        }
+    }
 }
 
-/// Sum out any levels scheduled at step `t_idx` that are still explicit and
-/// outside the projection shield of still-unforgotten projected variables.
+/// Sum out what step `t` may sum out ([`build_marginalize_targets`]) that is
+/// still explicit.
 pub(crate) fn marginalize_scheduled_at(
     eng: &Engine,
     tdd: &mut Tdd,
-    t_idx: usize,
+    t: VtreeIdx,
     vtree: &Vtree,
     ctx: &StepContext<'_>,
     forgotten: &HashSet<VarId>,
 ) -> Result<(), OperationError> {
-    if let Some(targets) = build_marginalize_targets(t_idx, vtree, ctx, forgotten) {
-        eng.marginalize_levels(tdd, &summable(vtree, &targets, ctx.job.output.forget().is_some()))?;
+    match build_marginalize_targets(t, vtree, ctx, forgotten) {
+        Some(StepTargets::Nodes(targets)) => {
+            Summing::Nodes(&summable(vtree, &targets, ctx.job.output.forget().is_some())).sum_out(eng, tdd)
+        }
+        Some(StepTargets::Vars(step)) => Summing::Vars { step, last: None, through: 0 }.sum_out(eng, tdd),
+        None => Ok(()),
     }
-    Ok(())
 }
 
 /// What step `t` does after its fold:
@@ -147,16 +221,23 @@ pub(crate) fn run_marginalize_at(
     // scheduled to marginalize at `t` (`completion_pos[leaf(x)]`), or at the
     // root step any projected variable not yet forgotten (unit-only or free
     // variables whose clause scope was a leaf). Because `completion_pos` is
-    // monotone up the vtree and `forget_shield` keeps unforgotten projected
-    // variables' ancestors explicit, every returned variable has a
+    // monotone up the vtree and the projection shield keeps unforgotten
+    // projected variables' ancestors explicit, every returned variable has a
     // marginal-ancestor-free path.
     let mut vars_to_forget = Vec::new();
     if let Some(proj_vars) = output.forget() {
-        for &d in &schedule[t.idx()] {
-            if let VtreeNode::Leaf { var, .. } = *current_vtree.node(d)
-                && proj_vars.contains(&var) && !state.forgotten.contains(&var)
-            {
-                vars_to_forget.push(var);
+        match schedule {
+            Schedule::Nodes(schedule) => {
+                for &d in &schedule[t.idx()] {
+                    if let VtreeNode::Leaf { var, .. } = *current_vtree.node(d)
+                        && proj_vars.contains(&var) && !state.forgotten.contains(&var)
+                    {
+                        vars_to_forget.push(var);
+                    }
+                }
+            }
+            Schedule::Vars(schedule) => {
+                vars_to_forget.extend(schedule.forget_at(t).iter().filter(|var| !state.forgotten.contains(var)));
             }
         }
         if t == current_vtree.root() {
@@ -167,8 +248,12 @@ pub(crate) fn run_marginalize_at(
             }
         }
     }
+    let frees = match schedule {
+        Schedule::Nodes(schedule) => !schedule[t.idx()].is_empty(),
+        Schedule::Vars(schedule) => schedule.frees(t),
+    };
     // Nothing to marginalize and nothing to forget at this step.
-    if schedule[t.idx()].is_empty() && vars_to_forget.is_empty() { return Ok(()); }
+    if !frees && vars_to_forget.is_empty() { return Ok(()); }
     if !vars_to_forget.is_empty() && let Some(tdd_val) = state.tdds[t.idx()].take() {
         // `exists_vars` picks its own rewrite and carries the weight store to
         // its result. Every rewrite needs no marginal level on a forgotten
@@ -181,11 +266,13 @@ pub(crate) fn run_marginalize_at(
     // and sums nothing out, so a weighted fold can read the whole diagram.
     // Otherwise, keep the shield of still-unforgotten projected vars out of
     // this marginalization (`build_marginalize_targets`), while marginalizing
-    // the forgotten vars themselves (their leaf level is now a One — ×2,
-    // corrected by the 2^k divisor). A weighted compile marginalizes into the
-    // `WeightStore`, and `marginalize_levels` passes a `Stopped` cut through.
+    // the forgotten vars themselves (on a bare root their leaf level is now a
+    // One — ×2, corrected by the 2^k divisor; on a home they have no leaf and
+    // are free home variables, ×2 likewise). A weighted compile marginalizes
+    // into the `WeightStore`, and `marginalize_levels` passes a `Stopped` cut
+    // through.
     if let Some(tdd) = state.tdds[t.idx()].as_mut() {
-        marginalize_scheduled_at(eng, tdd, t.idx(), current_vtree, ctx, &state.forgotten)?;
+        marginalize_scheduled_at(eng, tdd, t, current_vtree, ctx, &state.forgotten)?;
     }
     Ok(())
 }

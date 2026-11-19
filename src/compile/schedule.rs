@@ -1,5 +1,7 @@
 //! Deciding which vtree levels may be marginal after each compilation step.
 
+use std::collections::{HashMap, HashSet};
+
 use tididi::Literal;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 
@@ -57,15 +59,7 @@ pub(crate) fn step_completions(
 /// `last_scope_pos` is [`last_scope_positions`] of the compile's clause groups.
 pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<Vec<VtreeIdx>> {
     let n = vtree.num_nodes();
-
-    // Compute completion_pos bottom-up, never before the node's own
-    // step: a leaf no clause mentions completes there, and an internal node
-    // whose subtree's clauses all lie below it still has its children joined
-    // there, which needs its level structural.
-    let completion_pos = subtree_max(vtree, |t, var| {
-        let own = vtree.topo_pos(t);
-        var.map_or(own, |var| last_scope_pos[var.idx()].max(own))
-    });
+    let completion_pos = completion_positions(vtree, last_scope_pos);
 
     // Group the nodes by the step that frees them, walking the vtree
     // bottom-up so each group lists children before parents.
@@ -79,6 +73,102 @@ pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec
     }
 
     marginalize_at
+}
+
+/// Per vtree node, the topo position of the step that frees it, never before
+/// the node's own step: a leaf no clause mentions completes there, and an
+/// internal node whose subtree's clauses all lie below it still has its
+/// children joined there.
+fn completion_positions(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<u32> {
+    subtree_max(vtree, |t, var| {
+        let own = vtree.topo_pos(t);
+        var.map_or(own, |var| last_scope_pos[var.idx()].max(own))
+    })
+}
+
+/// [`marginalize_schedule`] as a predicate per variable, for a compile on a
+/// home: the library sums an own node once every variable leaf under it is
+/// summable, and every own node of a step's diagram lies under the step, so
+/// no node is summed before its own step.
+pub(crate) struct VarSchedule {
+    /// Per variable (`VarId::idx`), the topo position of the step after which
+    /// no clause reads it: its last scope, or its leaf's own step if later.
+    done_at: Vec<u32>,
+    /// Per vtree node, whether [`marginalize_schedule`] frees a node at its
+    /// step; a step that frees none sums nothing.
+    frees: Vec<bool>,
+    /// Per vtree node, the projected variables done at its step.
+    forget_at: Vec<Vec<VarId>>,
+}
+
+impl VarSchedule {
+    pub(crate) fn new(vtree: &Vtree, last_scope_pos: &[u32], forget: Option<&HashSet<VarId>>) -> Self {
+        let step_at = |pos: u32| vtree.bottomup_slice()[pos as usize].idx();
+        let mut done_at = vec![0; vtree.num_vars() as usize];
+        let mut forget_at = vec![Vec::new(); vtree.num_nodes()];
+        for (t, var) in vtree.leaf_bottomup() {
+            let done = last_scope_pos[var.idx()].max(vtree.topo_pos(t));
+            done_at[var.idx()] = done;
+            if forget.is_some_and(|forget| forget.contains(&var)) {
+                forget_at[step_at(done)].push(var);
+            }
+        }
+        let mut frees = vec![false; vtree.num_nodes()];
+        for (t, &pos) in completion_positions(vtree, last_scope_pos).iter().enumerate() {
+            if VtreeIdx(t as u32) != vtree.root() {
+                frees[step_at(pos)] = true;
+            }
+        }
+        Self { done_at, frees, forget_at }
+    }
+
+    /// Whether step `t` frees anything.
+    pub(crate) fn frees(&self, t: VtreeIdx) -> bool {
+        self.frees[t.idx()]
+    }
+
+    /// The projected variables done at step `t`.
+    pub(crate) fn forget_at(&self, t: VtreeIdx) -> &[VarId] {
+        &self.forget_at[t.idx()]
+    }
+
+    /// What step `t` may sum out.
+    pub(crate) fn at<'a>(&'a self, vtree: &Vtree, t: VtreeIdx) -> StepVars<'a> {
+        StepVars { done_at: &self.done_at, step: vtree.topo_pos(t) }
+    }
+}
+
+/// The variables one step may sum out on a home: those done at or before it.
+#[derive(Clone, Copy)]
+pub(crate) struct StepVars<'a> {
+    done_at: &'a [u32],
+    step: u32,
+}
+
+impl StepVars<'_> {
+    /// Whether no clause after this step reads `var`.
+    pub(crate) fn summable(&self, var: VarId) -> bool {
+        self.done_at[var.idx()] <= self.step
+    }
+
+    /// Whether this step holds `var`'s last clause.
+    pub(crate) fn done_here(&self, var: VarId) -> bool {
+        self.done_at.get(var.idx()) == Some(&self.step)
+    }
+}
+
+/// [`step_completions`] for a compile on a home: the variables one step
+/// completes, each with the position of its last clause among `clause_lits`.
+pub(crate) fn step_last_clauses(clause_lits: &[&[Literal]], step: StepVars<'_>) -> HashMap<VarId, u32> {
+    let mut last = HashMap::new();
+    for (i, literals) in clause_lits.iter().enumerate() {
+        for lit in *literals {
+            if step.done_here(lit.var) {
+                last.insert(lit.var, i as u32);
+            }
+        }
+    }
+    last
 }
 
 /// For each variable (`VarId::idx`), the bottom-up topo position of the
