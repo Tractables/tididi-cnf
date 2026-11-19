@@ -116,33 +116,43 @@ fn inline_marg_refs_probe_and_rewrite_natively() {
 fn marginal_slot_donor(eng: &Engine) -> (tididi::Tdd, VtreeIdx) {
     use std::sync::Arc;
     use tididi::diagram::{ChildPair, Tdd, TddNodeId, ONE_LEAF_IDX, POS_LEAF_IDX, NEG_LEAF_IDX};
+    use tididi::vtree::VarId;
 
-    let vtree = Arc::new(Vtree::balanced(64));
-    let mut builder = Tdd::builder(eng, &vtree).unwrap();
-    let mut labels = vec![[ONE_LEAF_IDX, POS_LEAF_IDX, NEG_LEAF_IDX]; vtree.num_nodes()];
-    for level in vtree.bottomup() {
-        if vtree.node(level).is_leaf() {
-            continue;
-        }
-        let (left, right) = vtree.children(level);
-        let sub = labels[right.idx()][0];
-        labels[level.idx()] = std::array::from_fn(|label| {
-            // The builder refuses a level that names a leaf both as One and as
-            // a literal, so true over a leaf prime is the pair of its literals.
-            let primes = match (vtree.node(left).is_leaf(), label) {
-                (true, 0) => vec![POS_LEAF_IDX, NEG_LEAF_IDX],
-                _ => vec![labels[left.idx()][label]],
-            };
-            let pairs: Vec<_> = primes.into_iter().map(|prime| ChildPair::new(prime, sub)).collect();
-            builder.push(eng, level, &pairs).unwrap()
-        });
+    // Right-linear over x1..x34: the root splits x1 off `source`, which splits
+    // x2 off the level over x3..x34. The builder refuses a pair repeated in a
+    // level, across nodes too, and a leaf named both as One and as a literal,
+    // so a level over a leaf that holds true holds nothing else; the two
+    // counts are told apart from x3 up.
+    let mut chain = Vtree::leaf(VarId(34));
+    for v in (1..34).rev() {
+        chain = Vtree::join(&Vtree::leaf(VarId(v)), &chain).unwrap();
     }
-    let root = vtree.root();
-    let (left, source) = vtree.children(root);
-    let output = builder.push(eng, root, &[
-        ChildPair::new(labels[left.idx()][1], labels[source.idx()][0]),
-        ChildPair::new(labels[left.idx()][2], labels[source.idx()][1]),
-    ]).unwrap();
+    let vtree = Arc::new(chain);
+    let mut spine = vec![vtree.root()];
+    loop {
+        let (_, right) = vtree.children(*spine.last().unwrap());
+        if vtree.node(right).is_leaf() {
+            break;
+        }
+        spine.push(right);
+    }
+    let mut builder = Tdd::builder(eng, &vtree).unwrap();
+    let mut top = ONE_LEAF_IDX;
+    for &level in spine[3..].iter().rev() {
+        top = builder.push(eng, level, &[ChildPair::new(POS_LEAF_IDX, top), ChildPair::new(NEG_LEAF_IDX, top)]).unwrap();
+    }
+    let x3 = builder.push(eng, spine[2], &[ChildPair::new(POS_LEAF_IDX, top)]).unwrap();
+    let not_x3 = builder.push(eng, spine[2], &[ChildPair::new(NEG_LEAF_IDX, top)]).unwrap();
+    // x2 ∧ x3 and x2 ⊕ x3 over source's 33 variables: 2^31 and 2^32 models.
+    let source = spine[1];
+    let both = builder.push(eng, source, &[ChildPair::new(POS_LEAF_IDX, x3)]).unwrap();
+    let either = builder
+        .push(eng, source, &[ChildPair::new(NEG_LEAF_IDX, x3), ChildPair::new(POS_LEAF_IDX, not_x3)])
+        .unwrap();
+    let root = spine[0];
+    let output = builder
+        .push(eng, root, &[ChildPair::new(POS_LEAF_IDX, both), ChildPair::new(NEG_LEAF_IDX, either)])
+        .unwrap();
     let mut donor = builder.finish(TddNodeId { vtree: root, local: output }).unwrap();
     eng.marginalize_levels(&mut donor, &[source]).unwrap();
     let counts = donor.level(source).marginal_counts().unwrap();
