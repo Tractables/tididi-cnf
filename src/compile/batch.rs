@@ -325,7 +325,7 @@ fn merge_batch(
             false,
         ),
     };
-    let unsat = !super::step::satisfiable(eng, &merged)?;
+    let unsat = !eng.is_sat(&merged)?;
     *acc = Some(merged);
     Ok(Merged { unsat, absorbed })
 }

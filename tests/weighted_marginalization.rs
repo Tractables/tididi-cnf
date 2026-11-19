@@ -27,7 +27,7 @@ use num_traits::{One, Zero};
 use vitri::cnf::CnfFormula;
 
 use tididi::Engine;
-use tididi::diagram::{Arithmetic, Tdd, WeightStore};
+use tididi::diagram::{Arithmetic, Tdd, Weights};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use tididi_cnf::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
@@ -86,10 +86,12 @@ fn weighted_mc_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>, w
     .diagram
 }
 
-/// Attach `w` to `tdd` and marginalize `targets` in one batch.
+/// Move `tdd` onto a copy of its vtree weighted by `w` and marginalize
+/// `targets` in one batch.
 fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRational)], targets: &[VtreeIdx]) {
-    tdd.set_weights(WeightStore::new(rational_weight_algebra(w), Arithmetic::ExactRational))
-        .expect("the weights cover the diagram's live columns");
+    let weights = Weights::new(rational_weight_algebra(w), Arithmetic::ExactRational);
+    let weighted = Arc::new(Vtree::clone(tdd.vtree()).with_weights(weights).expect("the weights cover the vtree"));
+    *tdd = eng.embed(tdd, &weighted, |v| v).expect("the same shape").0;
     eng.marginalize_levels(tdd, targets).expect("no wall is armed");
 }
 
@@ -318,15 +320,15 @@ fn a_structural_leaf_reads_by_label_under_a_shared_store() {
     for (label, w) in weight_cases() {
         let mut a = plain_compile(eng, &leaf_formula(), &vtree);
         marginalize_weighted(eng, &mut a, &w, &[parent, leaf]);
-        let shared = a.weights().expect("weights attached").clone();
+        assert!(a.weights().is_some(), "[{label}] a weighted vtree");
         assert!(
             a.levels()[leaf.idx()].weight_values().is_some_and(|column| column.len() == 3),
             "[{label}] a subsumed leaf keeps its column"
         );
 
-        let mut b = plain_compile(eng, &leaf_formula(), &vtree);
+        let b = plain_compile(eng, &leaf_formula(), &vtree);
         let expected = b.evaluate(&rational_weight_algebra(&w)).unwrap();
-        b.set_weights(shared).expect("the weights cover the diagram's live columns");
+        let (mut b, _) = eng.embed(&b, a.vtree(), |v| v).expect("the same shape");
         eng.marginalize_levels(&mut b, &[parent]).expect("no wall is armed");
         assert_eq!(weighted_value(&b), expected, "[{label}]");
     }

@@ -247,16 +247,6 @@ fn compile_pass(
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
 }
 
-/// Whether `tdd` is satisfiable. The library does not answer for an output
-/// level that holds weight values; a weighted pass stores no unsatisfiable
-/// node, so there every diagram but ⊥ is.
-pub(super) fn satisfiable(eng: &Engine, tdd: &Tdd) -> Result<bool, OperationError> {
-    match eng.is_sat(tdd) {
-        Err(OperationError::IncompatibleWeights) => Ok(!tdd.is_zero()),
-        answer => answer,
-    }
-}
-
 /// Run after each vtree node on its step's outcome and diagram: raise the
 /// running peak to the pair count the step measured and continue while the
 /// diagram is satisfiable. UNSAT proves the formula UNSAT and answers ⊥ at
@@ -269,7 +259,7 @@ fn check_step(
     t: VtreeIdx,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
     let step = step.inspect(|&pairs| state.peak_size = state.peak_size.max(pairs));
-    let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| satisfiable(eng, tdd)));
+    let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| eng.is_sat(tdd)));
     match sat {
         Ok(true) => ControlFlow::Continue(()),
         Ok(false) => ControlFlow::Break(Ok(Compiled {
