@@ -50,7 +50,13 @@ impl SatPruneCtx {
         // The filter asks about exactly the stored structural internal nodes,
         // the only nodes the probe marks.
         let keep = |id| !probe.is_dead(id);
-        let (new_tdd, removed) = match eng.filter_nodes_with(tdd, keep, full_reduction(self.skip_content_twins, None)) {
+        let (new_tdd, removed) = match eng.filter_nodes(tdd, keep).and_then(|outcome| match outcome {
+            FilterOutcome::Filtered { mut tdd, stats } => {
+                eng.reduce(&mut tdd, full_reduction(self.skip_content_twins, None))?;
+                Ok(FilterOutcome::Filtered { tdd, stats })
+            }
+            outcome => Ok(outcome),
+        }) {
             Ok(FilterOutcome::Filtered { tdd, stats } | FilterOutcome::Unsatisfiable { tdd, stats }) => (tdd, stats),
             // Pruning is optional, so a filter or reduction that hits a limit
             // skips this prune and keeps the original TDD. That is sound for
