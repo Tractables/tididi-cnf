@@ -79,11 +79,18 @@ const CONTRACT_SKIP_COUNT: usize = 4;
 /// and those it did not at most 9.3; 16 keeps a margin above the latter.
 const SCAN_FOLD_WORK_PER_PAIR: u64 = 16;
 
+/// The pairs [`MinimizeGate::fold_paid_for_scan`] adds to a result's own for
+/// what a full reduction costs whatever the diagram's size. The reduction
+/// walks every level: on model counting instances one of a diagram of 1 to 3
+/// nodes cost 240 to 300 instructions per level, and a fit of the reductions'
+/// instructions to their pairs gave about 330,000 plus 370 per pair, about
+/// what 900 pairs cost.
+const SCAN_FIXED_COST_PAIRS: u64 = 900;
+
 /// The fraction of nodes below which a scan [`SCAN_FOLD_WORK_PER_PAIR`] forced
 /// counts as wasted and doubles the work per pair the next one needs. On small
 /// count diagrams the test holds at nearly every fold end while the scans
-/// remove under 0.1% of the nodes, and a full reduction costs as much as one
-/// over about 1,500 pairs however small the diagram.
+/// remove under 0.1% of the nodes.
 const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
 
 /// The most nodes a merge inside a fold that summed levels out may hold and
@@ -341,17 +348,19 @@ impl MinimizeGate {
         self.fold_start_work = eng.limits().work_units();
     }
 
-    /// Whether the fold ending in `result` spent enough work per pair of it
-    /// that a content-twin scan, whose cost follows the pairs, is cheap beside
-    /// it. Summing out inside a fold is what leaves count nodes with equal
-    /// contents, and such a fold does much work per pair it leaves; a fold of
-    /// one merge that only grows the diagram does little and leaves few twins
-    /// a later scan would not find anyway. The bar doubles after each forced
-    /// scan in a row that removed too little ([`SCAN_MIN_REMOVAL_FRACTION`]).
+    /// Whether the fold ending in `result` spent enough work per pair of it,
+    /// counting [`SCAN_FIXED_COST_PAIRS`] more, that a content-twin scan is
+    /// cheap beside it. Summing out inside a fold is what leaves count nodes
+    /// with equal contents, and such a fold does much work per pair it leaves;
+    /// a fold of one merge that only grows the diagram does little and leaves
+    /// few twins a later scan would not find anyway. The bar doubles after
+    /// each forced scan in a row that removed too little
+    /// ([`SCAN_MIN_REMOVAL_FRACTION`]).
     fn fold_paid_for_scan(&self, eng: &Engine, result: &Tdd) -> bool {
         result.has_marginal_level()
             && eng.limits().work_units().saturating_sub(self.fold_start_work)
-                >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff).saturating_mul(result.pair_count() as u64)
+                >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff)
+                    .saturating_mul(result.pair_count() as u64 + SCAN_FIXED_COST_PAIRS)
     }
 
     /// Whether a scan inside the root's fold pays, after a prune and
@@ -364,7 +373,7 @@ impl MinimizeGate {
     fn root_scan_pays(&self, work: u64, before: usize, after: usize) -> bool {
         let removed = before.saturating_sub(after) as u128;
         let bar = u128::from(SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff);
-        removed * u128::from(work) >= bar * after as u128 * before as u128
+        removed * u128::from(work) >= bar * (after as u128 + u128::from(SCAN_FIXED_COST_PAIRS)) * before as u128
     }
 
     /// Run twin contraction alone and record the fraction of nodes it
