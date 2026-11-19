@@ -126,7 +126,7 @@ pub struct VtreeBuild {
     pub components: Option<Vec<ComponentVtree>>,
     /// Clauses the formula implies, over its variables, which a compile of
     /// the whole formula on `root` conjoins after the formula's own
-    /// ([`Self::conjoined`]); a split build carries each component's on its
+    /// (`conjoined`); a split build carries each component's on its
     /// [`Component`] instead. Empty unless vitri's implied-clause pass ran
     /// and found some.
     pub implied: Vec<vitri::cnf::Clause>,
