@@ -141,6 +141,9 @@ pub(crate) struct ContractThrottle {
     cursor: usize,
     /// How many more contractions the throttle skips.
     skip_remaining: usize,
+    /// Whether `history` has been full once on this diagram. Until then the
+    /// gate's shared throttle decides its contractions.
+    warm: bool,
 }
 
 impl ContractThrottle {
@@ -150,6 +153,7 @@ impl ContractThrottle {
         self.cursor = (self.cursor + 1) % CONTRACT_HISTORY_SIZE;
         if self.cursor == 0 {
             self.full = true;
+            self.warm = true;
         }
     }
 
@@ -210,6 +214,11 @@ pub(crate) struct MinimizeGate {
     /// ([`Self::swap_throttle`]), so removals measured on one diagram do not
     /// throttle or rearm another's contractions.
     throttle: ContractThrottle,
+    /// The throttle over every diagram's contractions, which decides for a
+    /// diagram whose own throttle is not yet warm: a new diagram is small,
+    /// and on small diagrams a contraction's cost is the per-level walk,
+    /// which the removals on other small diagrams predict.
+    shared: ContractThrottle,
 
     /// The content-twin scan schedule of the full reduction. It lives on the
     /// gate because each merge's result is a fresh diagram.
@@ -337,6 +346,7 @@ impl MinimizeGate {
                     result.retired_marginal_slots(),
                 );
                 self.throttle.rearm();
+                self.shared.rearm();
             }
             MinimizeAction::ContractOnly => {
                 self.run_contract_and_record(eng, result, cur_nodes)?;
@@ -352,7 +362,8 @@ impl MinimizeGate {
                 // nodes, not twins, so the removal fractions still hold.
             }
             MinimizeAction::ContractUnlessThrottled => {
-                if !self.throttle.try_skip() {
+                let skip = if self.throttle.warm { self.throttle.try_skip() } else { self.shared.try_skip() };
+                if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
                 }
             }
@@ -404,6 +415,7 @@ impl MinimizeGate {
         let removed = pre_nodes.saturating_sub(post_nodes);
         let fraction = if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 };
         self.throttle.record(fraction);
+        self.shared.record(fraction);
         Ok(())
     }
 }
