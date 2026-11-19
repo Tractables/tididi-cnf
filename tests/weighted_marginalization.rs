@@ -27,7 +27,7 @@ use num_traits::{One, Zero};
 use vitri::cnf::CnfFormula;
 
 use tididi::Engine;
-use tididi::diagram::{Arithmetic, Tdd, Weights};
+use tididi::diagram::{Arithmetic, Tdd};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use tididi_cnf::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
@@ -89,7 +89,7 @@ fn weighted_mc_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>, w
 /// Move `tdd` onto a copy of its vtree weighted by `w` and marginalize
 /// `targets` in one batch.
 fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRational)], targets: &[VtreeIdx]) {
-    let weights = Weights::new(rational_weight_algebra(w), Arithmetic::ExactRational);
+    let weights = tididi::diagram::Weights::new(rational_weight_algebra(w), Arithmetic::ExactRational);
     let weighted = Arc::new(Vtree::clone(tdd.vtree()).with_weights(weights).expect("the weights cover the vtree"));
     *tdd = eng.embed(tdd, &weighted, |v| v).expect("the same shape").0;
     eng.marginalize_levels(tdd, targets).expect("no wall is armed");
