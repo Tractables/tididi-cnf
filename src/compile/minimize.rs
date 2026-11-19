@@ -72,6 +72,11 @@ const _: () = assert!(CONTRACT_HISTORY_SIZE.is_multiple_of(2));
 const CONTRACT_MIN_REMOVAL_FRACTION: f64 = 0.005;
 /// How many contractions a throttle skips.
 const CONTRACT_SKIP_COUNT: usize = 4;
+/// The work units per node of a contraction that walked its whole diagram
+/// rather than the levels a merge touched. Such walks measured 1.9 to 2.0
+/// units per node; incremental contractions stayed under 1.0, and ones that
+/// removed a third or more of a diagram reached 1.64.
+const CONTRACT_WALK_WORK_PER_NODE: f64 = 1.5;
 
 /// The work units per pair of its result from which a fold's last merge scans
 /// content twins whatever the gate and the schedule say. On model counting
@@ -219,6 +224,14 @@ pub(crate) struct MinimizeGate {
     /// and on small diagrams a contraction's cost is the per-level walk,
     /// which the removals on other small diagrams predict.
     shared: ContractThrottle,
+    /// How many more contractions on diagrams of at least
+    /// `walk_skip_min_nodes` the gate skips, on any diagram, after a
+    /// contraction walked a diagram of four times that size and removed under
+    /// [`CONTRACT_MIN_REMOVAL_FRACTION`]. A full reduction does not clear
+    /// it: the walks that remove nothing come on fresh diagrams, between
+    /// full reductions of other ones.
+    walk_skip_remaining: usize,
+    walk_skip_min_nodes: usize,
 
     /// The content-twin scan schedule of the full reduction. It lives on the
     /// gate because each merge's result is a fresh diagram.
@@ -362,6 +375,10 @@ impl MinimizeGate {
                 // nodes, not twins, so the removal fractions still hold.
             }
             MinimizeAction::ContractUnlessThrottled => {
+                if self.walk_skip_remaining > 0 && cur_nodes >= self.walk_skip_min_nodes {
+                    self.walk_skip_remaining -= 1;
+                    return Ok(());
+                }
                 let skip = if self.throttle.warm { self.throttle.try_skip() } else { self.shared.try_skip() };
                 if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
@@ -410,10 +427,16 @@ impl MinimizeGate {
         &mut self, eng: &Engine, result: &mut Tdd,
         pre_nodes: usize,
     ) -> Result<(), OperationError> {
+        let work_before = eng.limits().work_units();
         minimize_contract_only(eng, result)?;
+        let work = eng.limits().work_units().saturating_sub(work_before);
         let post_nodes = result.node_count();
         let removed = pre_nodes.saturating_sub(post_nodes);
         let fraction = if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 };
+        if fraction < CONTRACT_MIN_REMOVAL_FRACTION && work as f64 > CONTRACT_WALK_WORK_PER_NODE * pre_nodes as f64 {
+            self.walk_skip_remaining = CONTRACT_SKIP_COUNT;
+            self.walk_skip_min_nodes = pre_nodes / 4;
+        }
         self.throttle.record(fraction);
         self.shared.record(fraction);
         Ok(())
