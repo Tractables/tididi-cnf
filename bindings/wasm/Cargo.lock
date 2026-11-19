@@ -345,7 +345,7 @@ dependencies = [
 [[package]]
 name = "tididi"
 version = "0.2.0"
-source = "git+https://github.com/Tractables/tididi?branch=main#0dbadaa9d0ccbf112bbbf051cd47b5dccc6a996a"
+source = "git+https://github.com/Tractables/tididi?branch=main#7a6aa110d59d3e2deb2259b66987370c525d561a"
 dependencies = [
  "itoa",
  "num-bigint",
