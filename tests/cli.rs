@@ -288,7 +288,8 @@ fn the_mode_comes_from_the_flag_or_the_header() {
 
 /// vitri's Arjun settings reach the weighted count's Arjun reduction: with
 /// SBVA off, Arjun reduces this circuit to a different formula with the same
-/// count.
+/// count, up to the rounding of the floating-point weights, which the two
+/// compiles add in different orders.
 #[test]
 fn arjun_settings_reach_the_weighted_reduction() {
     let circuit = std::fs::read_to_string("tests/data/cnfs/LGSynth89/majority.cnf").expect("the circuit is readable");
@@ -304,7 +305,12 @@ fn arjun_settings_reach_the_weighted_reduction() {
     let (reduction_without_sbva, count_without_sbva) =
         reduction_and_count(&[("VITRI_ARJUN_SBVA", "off")]);
     assert_ne!(reduction, reduction_without_sbva, "`VITRI_ARJUN_SBVA=off` did not reach Arjun");
-    assert_eq!(count, count_without_sbva);
+    let value = |stdout: &str| -> f64 {
+        let count = stdout.trim().strip_prefix("weighted count: ").and_then(|v| v.parse().ok());
+        count.unwrap_or_else(|| panic!("no weighted count: {stdout}"))
+    };
+    let (with, without) = (value(&count), value(&count_without_sbva));
+    assert!((with - without).abs() <= 1e-12 * with.abs(), "{count} against {count_without_sbva}");
 }
 
 /// A projected count compiles on an explicit `--vtree`, and on `portfolio`
@@ -458,13 +464,14 @@ fn streaming_mc_detects_components_once() {
 /// A pass fires on this instance by default, in the compile and in the model
 /// count's cascade. The hour-long limit is the protocol row's: a pass stops
 /// at a share of the time limit, so a shorter one could stop it before it
-/// fires on a slow machine.
+/// fires on a slow machine. vitri's implied-clause pass is off: with its
+/// clauses, no pass fires in this instance's compile.
 #[test]
 fn sat_prune_off_skips_the_pass_and_keeps_the_count() {
     let cnf = "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
-    let default: Env = &[];
-    let on: Env = &[("TIDIDI_SAT_PRUNE", "on")];
-    let off: Env = &[("TIDIDI_SAT_PRUNE", "off")];
+    let default: Env = &[("VITRI_IMPLICATES_MS", "0")];
+    let on: Env = &[("TIDIDI_SAT_PRUNE", "on"), ("VITRI_IMPLICATES_MS", "0")];
+    let off: Env = &[("TIDIDI_SAT_PRUNE", "off"), ("VITRI_IMPLICATES_MS", "0")];
     let tallies = |record: &serde_json::Value| -> Vec<String> {
         record.as_object().map_or(Vec::new(), |keys| {
             keys.keys().filter(|key| key.starts_with("sat_prune_")).cloned().collect()

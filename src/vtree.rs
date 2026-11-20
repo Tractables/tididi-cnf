@@ -118,7 +118,8 @@ impl VtreeOptions {
     }
 
     /// Have vitri find the clauses the formula implies over the finished
-    /// trees, on the budget the run's `VITRI_IMPLICATES_MS` sets, as the
+    /// trees, on the run's allowance
+    /// ([`crate::frontend::request::implicates_ms`]), as the
     /// run's frontend does. A stage asks for it on the tree its main compile
     /// runs on, not on the trees it builds after a compile gives up.
     #[must_use]
