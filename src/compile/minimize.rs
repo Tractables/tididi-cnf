@@ -210,10 +210,21 @@ impl ContractThrottle {
         Some(0.5 * (xs[mid - 1] + xs[mid]))
     }
 
+    /// Whether the last two contractions recorded both removed under
+    /// [`CONTRACT_MIN_REMOVAL_FRACTION`].
+    fn last_two_empty(&self) -> bool {
+        let n = CONTRACT_HISTORY_SIZE;
+        self.full && (1..=2).all(|k| self.history[(self.cursor + n - k) % n] < CONTRACT_MIN_REMOVAL_FRACTION)
+    }
+
     /// Whether to skip this contraction, consuming one slot of the skip
     /// budget if so. Called only for
-    /// [`MinimizeAction::ContractUnlessThrottled`].
-    fn try_skip(&mut self) -> bool {
+    /// [`MinimizeAction::ContractUnlessThrottled`]. A diagram's own throttle
+    /// (`own`) also skips once its last two contractions removed too little:
+    /// its ring mixes fold-end contractions that remove 7 to 11% with empty
+    /// ones between them, the median of the mix stays over the floor, and
+    /// on a diagram of a million nodes each empty contraction costs 0.1 G.
+    fn try_skip(&mut self, own: bool) -> bool {
         if self.trial {
             return false;
         }
@@ -221,7 +232,9 @@ impl ContractThrottle {
             self.skip_remaining -= 1;
             return true;
         }
-        if let Some(median) = self.median() && median < CONTRACT_MIN_REMOVAL_FRACTION {
+        if (own && self.last_two_empty())
+            || self.median().is_some_and(|median| median < CONTRACT_MIN_REMOVAL_FRACTION)
+        {
             // Consume one slot immediately; the rest applies to future merges.
             self.skip_remaining = CONTRACT_SKIP_COUNT - 1;
             return true;
@@ -415,7 +428,7 @@ impl MinimizeGate {
                     self.walk_skip_remaining -= 1;
                     return Ok(());
                 }
-                let skip = if self.throttle.warm { self.throttle.try_skip() } else { self.shared.try_skip() };
+                let skip = if self.throttle.warm { self.throttle.try_skip(true) } else { self.shared.try_skip(false) };
                 if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
                 }
