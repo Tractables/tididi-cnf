@@ -151,11 +151,21 @@ pub(crate) struct ContractThrottle {
     warm: bool,
     /// The pair count of the diagram when the step that made it ended.
     pub(crate) pairs: usize,
+    /// Whether the next contraction runs whatever `history` says
+    /// ([`Self::reopen`]).
+    trial: bool,
 }
 
 impl ContractThrottle {
     /// Append a removal fraction to the ring buffer.
     fn record(&mut self, fraction: f64) {
+        if self.trial {
+            self.trial = false;
+            if fraction >= CONTRACT_MIN_REMOVAL_FRACTION {
+                self.full = false;
+                self.cursor = 0;
+            }
+        }
         self.history[self.cursor] = fraction;
         self.cursor = (self.cursor + 1) % CONTRACT_HISTORY_SIZE;
         if self.cursor == 0 {
@@ -164,12 +174,28 @@ impl ContractThrottle {
         }
     }
 
-    /// Forget the recent removal fractions and let the next merge contract.
-    /// Called after a full reduction, whose prune may have uncovered twins.
+    /// Forget the recent removal fractions and let the next merges contract
+    /// until the ring refills. Called after a full reduction, whose prune may
+    /// have uncovered twins.
     fn rearm(&mut self) {
         self.skip_remaining = 0;
         self.full = false;
         self.cursor = 0;
+    }
+
+    /// Let the next contraction run after a full reduction, whose prune may
+    /// have uncovered twins. A full ring keeps its fractions unless that
+    /// contraction removes at least [`CONTRACT_MIN_REMOVAL_FRACTION`]: a
+    /// diagram's ring refills only from its own contractions, and on a large
+    /// diagram each of those can cost as much as the full reduction while
+    /// removing nothing.
+    fn reopen(&mut self) {
+        if self.full {
+            self.skip_remaining = 0;
+            self.trial = true;
+        } else {
+            self.rearm();
+        }
     }
 
     /// The median of the recent removal fractions, or `None` until the ring
@@ -188,6 +214,9 @@ impl ContractThrottle {
     /// budget if so. Called only for
     /// [`MinimizeAction::ContractUnlessThrottled`].
     fn try_skip(&mut self) -> bool {
+        if self.trial {
+            return false;
+        }
         if self.skip_remaining > 0 {
             self.skip_remaining -= 1;
             return true;
@@ -360,7 +389,7 @@ impl MinimizeGate {
                     result.node_count(),
                     result.retired_marginal_slots(),
                 );
-                self.throttle.rearm();
+                self.throttle.reopen();
                 self.shared.rearm();
             }
             MinimizeAction::ContractOnly => {
