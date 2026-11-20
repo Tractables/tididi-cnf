@@ -138,8 +138,9 @@ const MID_FOLD_SAMPLE_MAX_NODES: usize = 65_536;
 /// [`MID_FOLD_SAMPLE_MAX_NODES`] admits to go on. Such scans paid off on
 /// model counting instances when they removed 84 to 98% of the nodes, and
 /// left the fold's end larger when they removed 8 to 46%; the samples of the
-/// first found 93 and 95%, of the second none to 51%.
-const MID_FOLD_SAMPLE_MIN_YIELD: f64 = 0.75;
+/// first found 72 to 95%, of the second none to 51%. At 0.75 one instance
+/// lost its 72% scan and 9% of its instructions.
+const MID_FOLD_SAMPLE_MIN_YIELD: f64 = 0.6;
 
 /// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
 const SCAN_MAX_BACKOFF: u32 = 16;
