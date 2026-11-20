@@ -119,17 +119,17 @@ const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
 /// thirds of a 250,000-node diagram had to re-anchor.
 const SCAN_KEEP_ANCHORS_FRACTION: f64 = 0.5;
 
-/// The most nodes a merge inside a fold that summed levels out may hold and
-/// still scan content twins. Summing out leaves count nodes with equal
-/// contents, and on small diagrams the scan halves the accumulator the fold's
-/// next conjunctions pay for; on larger ones a scan there can leave the fold's
-/// end with more pairs than the fold-end scan alone, which every later fold
-/// pays for.
-const MID_FOLD_SCAN_MAX_NODES: usize = 4096;
+/// The most pairs a merge inside a fold may hold and still scan content twins
+/// when the gate decides on a full reduction. On a model counting instance
+/// such scans, mostly on 5,000 to 50,000 pairs, removed most of the nodes
+/// and kept the fold's next conjunctions small: skipping them cost 31%. On
+/// others, scans of 450,000 to 1.4 million pairs left the fold's end with
+/// more pairs than the fold-end scan alone and cost 1.4% and 4.4%.
+const MID_FOLD_SCAN_MAX_PAIRS: usize = 1 << 17;
 
 /// The most nodes the reduced result of a summed-out merge inside a fold may
 /// hold for the merge to scan a copy of it, when the merge held more than
-/// [`MID_FOLD_SCAN_MAX_NODES`] and the fold's work pays for a scan
+/// [`MID_FOLD_SCAN_MAX_PAIRS`] and the fold's work pays for a scan
 /// ([`MinimizeGate::fold_paid_for_scan`]). The copy is kept only when the
 /// scan left at most a quarter of the nodes. Kept scans on model counting
 /// instances had removed 84 to 98% of the nodes; scans that removed 8 to 46%
@@ -385,16 +385,18 @@ impl MinimizeGate {
     /// Only the last merge of a fold (`fold_end`) may scan content twins,
     /// except in the root's fold ([`Self::fold_at_root`]), where any merge may
     /// when [`Self::fold_paid_for_scan`] and then [`Self::root_scan_pays`]
-    /// hold, and at a merge that summed levels out (`summed_out`) into at most
-    /// [`MID_FOLD_SCAN_MAX_NODES`] nodes, or, outside the root's fold, into a
-    /// reduced result of at most [`MID_FOLD_TRIAL_MAX_NODES`] when the scan
-    /// leaves at most a quarter of them. Contraction commutes with conjunction
-    /// and summing out, a content-twin merge does not, so a scan inside a fold
-    /// makes the fold's result depend on its batch boundaries.
+    /// hold, at a full reduction of at most [`MID_FOLD_SCAN_MAX_PAIRS`] pairs,
+    /// and, outside the root's fold, at a merge that summed levels out
+    /// (`summed_out`) into a reduced result of at most
+    /// [`MID_FOLD_TRIAL_MAX_NODES`] when the scan leaves at most a quarter of
+    /// them. Contraction commutes with conjunction and summing out, a
+    /// content-twin merge does not, so a scan inside a fold makes the fold's
+    /// result depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
         &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
+        let cur_pairs = result.pair_count();
         let cur_retired = result.retired_marginal_slots();
 
         let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
@@ -409,8 +411,8 @@ impl MinimizeGate {
                     eng.reduce(result, full_reduction(true, None))?;
                     rescan = self.root_scan_pays(work, pairs, result.pair_count());
                 }
-                let small_sum = summed_out && cur_nodes <= MID_FOLD_SCAN_MAX_NODES;
-                let skip = self.skip_content_twins || !(fold_end || rescan || small_sum);
+                let small = cur_pairs <= MID_FOLD_SCAN_MAX_PAIRS;
+                let skip = self.skip_content_twins || !(fold_end || rescan || small);
                 let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
                 if !(probed && skip) {
                     eng.reduce(result, full_reduction(skip, schedule))?;
