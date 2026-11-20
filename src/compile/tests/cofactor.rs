@@ -359,3 +359,53 @@ fn compiles_through_the_cofactor_step_answer_exactly() {
         assert_eq!(*value.as_rational(), fx.brute_weighted_count());
     }
 }
+
+/// [`one_variable_fixture`] on the vtree `(((S, B), x13), x14)`, so that the
+/// parent of `t`, where the next step splices, is not the root; `x13` gets a
+/// unit clause and `x14` a clause at the root.
+fn nested_one_variable_fixture() -> Fixture {
+    let fx = one_variable_fixture(&[]);
+    let side = |vars: std::ops::RangeInclusive<u32>| Vtree::balanced_over(&vars.map(VarId).collect::<Vec<_>>()).unwrap();
+    let t_tree = Vtree::join(&side(1..=1), &side(2..=12)).unwrap();
+    let parent = Vtree::join(&t_tree, &Vtree::leaf(VarId(13))).unwrap();
+    let vtree = Arc::new(Vtree::join(&parent, &Vtree::leaf(VarId(14))).unwrap());
+    let mut clauses: Vec<Vec<i32>> =
+        fx.formula.clauses().iter().map(|c| c.literals.iter().map(|l| l.to_dimacs()).collect()).collect();
+    clauses.extend([vec![13], vec![14, 2]]);
+    let formula = fixtures::dimacs(14, &clauses);
+    let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
+    let t = vtree.children(vtree.children(vtree.root()).0).0;
+    Fixture { clauses: DiagramClauses::new(&formula), formula, vtree, clauses_at, last_scope_pos, t, prune_spent_us: Cell::new(0) }
+}
+
+/// The step's join reaches the splice at `t`'s parent, which needs one node
+/// on `t`'s level and every level above it, however little the minimize
+/// gate reduces: here a gate anchored on a larger diagram reduces nothing.
+#[test]
+fn the_cofactor_steps_diagram_splices_at_its_parent() {
+    let eng = &Engine::new();
+    let fx = nested_one_variable_fixture();
+    {
+        let ctx = fx.ctx(fx.job(PassOutput::Function), None);
+        let mut state = fx.children(eng);
+        let mut anchor = eng.one(&fx.vtree);
+        for clause in crossing_clauses(&[1, 13, 14], &(2..=12).collect::<Vec<_>>(), 40, 7) {
+            anchor = eng.and_clause(anchor, &clause).unwrap();
+        }
+        state.minimize.adaptive_minimize(eng, &mut anchor, false, false).unwrap();
+        for _ in 0..4 {
+            state.minimize.adaptive_minimize(eng, &mut anchor.clone(), false, false).unwrap();
+        }
+        assert!(cofactor_step(eng, fx.t, &ctx, &mut state, &fx.vtree).unwrap().is_some(), "the step fires");
+        let joined = state.tdds[fx.t.idx()].as_ref().unwrap();
+        let parent = fx.vtree.node(fx.t).parent().unwrap();
+        for level in [fx.t, parent, fx.vtree.root()] {
+            assert_eq!(joined.levels()[level.idx()].slot_count(), 1, "one node at level {}", level.idx());
+        }
+        let x13 = fx.vtree.children(parent).1;
+        state.tdds[x13.idx()] = Some(eng.clause(&fx.vtree, [Literal::pos(VarId(13))]).unwrap());
+        splice_and_fold(eng, parent, &ctx, &mut state, &fx.vtree).unwrap();
+        let spliced = state.tdds[parent.idx()].take().unwrap();
+        assert!(eng.equivalent(&spliced, &fx.conjoined_under(eng, parent).unwrap()).unwrap());
+    }
+}

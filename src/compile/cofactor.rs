@@ -42,6 +42,7 @@
 use std::sync::Arc;
 
 use tididi::diagram::Tdd;
+use tididi::reduce::ReductionPlan;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
 use tididi::{Engine, Literal, OperationError};
 
@@ -256,7 +257,12 @@ fn run_cofactor(
     let mut joined = if terms.is_empty() {
         eng.zero(vtree)
     } else {
-        eng.or_many(terms)?
+        // `or_many` returns its join unminimized: the terms' wrapper chains
+        // stay side by side up to the root, and the splice at `t`'s parent
+        // needs one node on `t`'s level, which the gate may not reduce to.
+        let mut joined = eng.or_many(terms)?;
+        eng.reduce(&mut joined, ReductionPlan::default())?;
+        joined
     };
     state.minimize.adaptive_minimize(eng, &mut joined, true, false)?;
     marginalize_scheduled_at(eng, &mut joined, t, vtree, ctx, &state.forgotten)?;
