@@ -162,6 +162,21 @@ const SCAN_MAX_PAIRS_PER_NODE: usize = 256;
 /// 27% of the instructions in all.
 const SCAN_MIN_PAIR_YIELD: f64 = 0.1;
 
+/// The pairs from which a scan the gate forces at a fold's end first merges
+/// the bottom levels holding a thirty-second of the pairs and stops there
+/// unless the twins it found held [`SCAN_SAMPLE_MIN_YIELD`] of their pairs
+/// ([`ContentTwinPolicy::Sampled`]). Under it the sample is a poor guide: on
+/// a model counting instance, scans of 60,000 to 90,000 pairs whose samples
+/// held no twins removed 23 to 71% of their pairs.
+const SCAN_SAMPLE_MIN_PAIRS: usize = 1 << 19;
+
+/// The share of a forced scan's sampled pairs its twins must hold for the
+/// scan to go on. On model counting instances, forced scans of 0.6 to 10
+/// million pairs whose samples found 15 to 76% removed 5 to 47% of their
+/// pairs; one whose sample found 2.8% removed 6% of 6.9 million pairs for
+/// 1.6 G instructions, and three whose samples found none removed nothing.
+const SCAN_SAMPLE_MIN_YIELD: f64 = 0.05;
+
 /// What the gate decided this call. Each variant maps onto a minimize variant.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum MinimizeAction {
@@ -417,7 +432,8 @@ impl MinimizeGate {
     /// (`summed_out`) into a reduced result of at most
     /// [`MID_FOLD_TRIAL_MAX_NODES`] when the scan leaves at most a quarter of
     /// them. A scan the gate forces runs on a reset schedule, which it leaves
-    /// as a scan the schedule called for would. A scan the gate did not force on at least
+    /// as a scan the schedule called for would, and at a fold's end on at
+    /// least [`SCAN_SAMPLE_MIN_PAIRS`] samples its yield first. A scan the gate did not force on at least
     /// [`COSTLY_SCAN_MIN_PAIRS`] pairs is skipped at [`SCAN_MAX_PAIRS_PER_NODE`]
     /// and while `scan_wait_pairs` holds. Contraction commutes with
     /// conjunction and summing out, a content-twin merge does not, so a scan
@@ -451,7 +467,13 @@ impl MinimizeGate {
                     self.content_twin_schedule = ContentTwinSchedule::default();
                 }
                 if !(probed && skip) {
-                    eng.reduce(result, full_reduction(skip, Some(&mut self.content_twin_schedule)))?;
+                    let schedule = &mut self.content_twin_schedule;
+                    let plan = if rescan && fold_end && cur_pairs >= SCAN_SAMPLE_MIN_PAIRS {
+                        ReductionPlan::Full(ContentTwinPolicy::Sampled { schedule, min_yield: SCAN_SAMPLE_MIN_YIELD })
+                    } else {
+                        full_reduction(skip, Some(schedule))
+                    };
+                    eng.reduce(result, plan)?;
                 }
                 if skip && summed_out && !self.skip_content_twins && !self.fold_at_root
                     && result.node_count() <= MID_FOLD_TRIAL_MAX_NODES
