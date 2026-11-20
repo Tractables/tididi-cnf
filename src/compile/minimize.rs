@@ -425,7 +425,6 @@ impl MinimizeGate {
         &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
-        let cur_pairs = result.pair_count();
         let cur_retired = result.retired_marginal_slots();
 
         let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
@@ -433,6 +432,7 @@ impl MinimizeGate {
         let action = if rescan { MinimizeAction::Full } else { own };
         match action {
             MinimizeAction::Full => {
+                let cur_pairs = result.pair_count();
                 let probed = rescan && self.fold_at_root && !fold_end;
                 let mut rescan = rescan;
                 if probed {
@@ -533,10 +533,12 @@ impl MinimizeGate {
     /// each forced scan in a row that removed too little
     /// ([`SCAN_MIN_REMOVAL_FRACTION`]).
     fn fold_paid_for_scan(&self, eng: &Engine, result: &Tdd) -> bool {
-        result.has_marginal_level()
-            && eng.limits().work_units().saturating_sub(self.fold_start_work)
-                >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff)
-                    .saturating_mul(result.pair_count() as u64 + SCAN_FIXED_COST_PAIRS)
+        // On a merge's fresh result both reads sweep the levels, the marginal
+        // one all of them when there is none; the work test fails on most folds.
+        eng.limits().work_units().saturating_sub(self.fold_start_work)
+            >= (SCAN_FOLD_WORK_PER_PAIR << self.scan_backoff)
+                .saturating_mul(result.pair_count() as u64 + SCAN_FIXED_COST_PAIRS)
+            && result.has_marginal_level()
     }
 
     /// Whether a scan inside the root's fold pays, after a prune and
