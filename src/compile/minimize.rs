@@ -416,7 +416,8 @@ impl MinimizeGate {
     /// and, outside the root's fold, at a merge that summed levels out
     /// (`summed_out`) into a reduced result of at most
     /// [`MID_FOLD_TRIAL_MAX_NODES`] when the scan leaves at most a quarter of
-    /// them. A scan the gate did not force on at least
+    /// them. A scan the gate forces runs on a reset schedule, which it leaves
+    /// as a scan the schedule called for would. A scan the gate did not force on at least
     /// [`COSTLY_SCAN_MIN_PAIRS`] pairs is skipped at [`SCAN_MAX_PAIRS_PER_NODE`]
     /// and while `scan_wait_pairs` holds. Contraction commutes with
     /// conjunction and summing out, a content-twin merge does not, so a scan
@@ -446,9 +447,11 @@ impl MinimizeGate {
                     && (cur_pairs < self.scan_wait_pairs
                         || cur_pairs >= cur_nodes.saturating_mul(SCAN_MAX_PAIRS_PER_NODE));
                 let skip = self.skip_content_twins || low_yield || !(fold_end || rescan || small);
-                let schedule = (!rescan).then_some(&mut self.content_twin_schedule);
+                if rescan {
+                    self.content_twin_schedule = ContentTwinSchedule::default();
+                }
                 if !(probed && skip) {
-                    eng.reduce(result, full_reduction(skip, schedule))?;
+                    eng.reduce(result, full_reduction(skip, Some(&mut self.content_twin_schedule)))?;
                 }
                 if skip && summed_out && !self.skip_content_twins && !self.fold_at_root
                     && result.node_count() <= MID_FOLD_TRIAL_MAX_NODES
