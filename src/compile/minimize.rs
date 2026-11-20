@@ -72,6 +72,15 @@ const _: () = assert!(CONTRACT_HISTORY_SIZE.is_multiple_of(2));
 const CONTRACT_MIN_REMOVAL_FRACTION: f64 = 0.005;
 /// How many contractions a throttle skips.
 const CONTRACT_SKIP_COUNT: usize = 4;
+/// How much a diagram may grow past the size its last contraction ran on
+/// before its own throttle runs a contraction whatever its ring says. A
+/// diagram's ring refills only from its own contractions, so without this a
+/// ring of empty removals skipped every later contraction while a diagram
+/// grew from 2,000 to 196,000 nodes. The wrong skips measured came at 1.8
+/// times the measured size and above, where contractions removed 4 to 60%;
+/// at 1.17 and 1.22 times, contractions removed 0.03% and 4.7% of diagrams
+/// of 1.35M and 0.6M nodes for about 0.1 G each.
+const OWN_SKIP_MAX_GROWTH: f64 = 1.5;
 /// The work units per node of a contraction that walked its whole diagram
 /// rather than the levels a merge touched. Such walks measured 1.9 to 2.0
 /// units per node; incremental contractions stayed under 1.0, and ones that
@@ -155,14 +164,18 @@ pub(crate) struct ContractThrottle {
     warm: bool,
     /// The pair count of the diagram when the step that made it ended.
     pub(crate) pairs: usize,
+    /// The node count of the diagram the last recorded contraction ran on.
+    recorded_nodes: usize,
     /// Whether the next contraction runs whatever `history` says
     /// ([`Self::reopen`]).
     trial: bool,
 }
 
 impl ContractThrottle {
-    /// Append a removal fraction to the ring buffer.
-    fn record(&mut self, fraction: f64) {
+    /// Append the removal fraction of a contraction of a diagram of `nodes`
+    /// nodes to the ring buffer.
+    fn record(&mut self, fraction: f64, nodes: usize) {
+        self.recorded_nodes = nodes;
         if self.trial {
             self.trial = false;
             if fraction >= CONTRACT_MIN_REMOVAL_FRACTION {
@@ -224,19 +237,25 @@ impl ContractThrottle {
     /// Whether to skip this contraction, consuming one slot of the skip
     /// budget if so. Called only for
     /// [`MinimizeAction::ContractUnlessThrottled`]. A diagram's own throttle
-    /// (`own`) also skips once its last two contractions removed too little:
-    /// its ring mixes fold-end contractions that remove 7 to 11% with empty
-    /// ones between them, the median of the mix stays over the floor, and
-    /// on a diagram of a million nodes each empty contraction costs 0.1 G.
-    fn try_skip(&mut self, own: bool) -> bool {
+    /// (`own_nodes`, the diagram's node count) also skips once its last two
+    /// contractions removed too little: its ring mixes fold-end contractions
+    /// that remove 7 to 11% with empty ones between them, the median of the
+    /// mix stays over the floor, and on a diagram of a million nodes each
+    /// empty contraction costs 0.1 G. It skips nothing on a diagram grown
+    /// past [`OWN_SKIP_MAX_GROWTH`] times the one its ring last measured.
+    fn try_skip(&mut self, own_nodes: Option<usize>) -> bool {
         if self.trial {
+            return false;
+        }
+        if own_nodes.is_some_and(|nodes| nodes as f64 > self.recorded_nodes as f64 * OWN_SKIP_MAX_GROWTH) {
+            self.skip_remaining = 0;
             return false;
         }
         if self.skip_remaining > 0 {
             self.skip_remaining -= 1;
             return true;
         }
-        if (own && self.last_two_empty())
+        if (own_nodes.is_some() && self.last_two_empty())
             || self.median().is_some_and(|median| median < CONTRACT_MIN_REMOVAL_FRACTION)
         {
             // Consume one slot immediately; the rest applies to future merges.
@@ -433,7 +452,7 @@ impl MinimizeGate {
                     self.walk_skip_remaining -= 1;
                     return Ok(());
                 }
-                let skip = if self.throttle.warm { self.throttle.try_skip(true) } else { self.shared.try_skip(false) };
+                let skip = if self.throttle.warm { self.throttle.try_skip(Some(cur_nodes)) } else { self.shared.try_skip(None) };
                 if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
                 }
@@ -495,8 +514,8 @@ impl MinimizeGate {
             self.walk_skip_min_nodes = pre_nodes / 4;
             self.walk_skip_max_nodes = pre_nodes + pre_nodes / 10;
         }
-        self.throttle.record(fraction);
-        self.shared.record(fraction);
+        self.throttle.record(fraction, pre_nodes);
+        self.shared.record(fraction, pre_nodes);
         Ok(())
     }
 }
