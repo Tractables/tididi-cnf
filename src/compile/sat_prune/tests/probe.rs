@@ -111,39 +111,19 @@ fn inline_marg_refs_probe_and_rewrite_natively() {
     }
 }
 
-/// Obtain two positive slot references through checked construction and summation.
-/// The counts exceed the inline range and differ, so marginalization retains both.
+/// Two positive slot references, 2^31 and 2^32: the right child of the
+/// balanced vtree over 68 variables, summed out under
+/// `x1 x35 x36 + ¬x1 x35 ¬x36 x37`. A level's nodes are disjoint, so counts
+/// this large need a source of more than 32 variables. They exceed the inline
+/// range and differ, so marginalization retains both.
 fn marginal_slot_donor(eng: &Engine) -> (tididi::Tdd, VtreeIdx) {
     use std::sync::Arc;
-    use tididi::diagram::{ChildPair, Tdd, TddNodeId, ONE_LEAF_IDX, POS_LEAF_IDX, NEG_LEAF_IDX};
 
-    let vtree = Arc::new(Vtree::balanced(64));
-    let mut builder = Tdd::builder(eng, &vtree).unwrap();
-    let mut labels = vec![[ONE_LEAF_IDX, POS_LEAF_IDX, NEG_LEAF_IDX]; vtree.num_nodes()];
-    for level in vtree.bottomup() {
-        if vtree.node(level).is_leaf() {
-            continue;
-        }
-        let (left, right) = vtree.children(level);
-        let sub = labels[right.idx()][0];
-        labels[level.idx()] = std::array::from_fn(|label| {
-            // `finish` refuses a level that names a leaf both as One and as a
-            // literal, so true over a leaf prime is the pair of its literals.
-            let primes = match (vtree.node(left).is_leaf(), label) {
-                (true, 0) => vec![POS_LEAF_IDX, NEG_LEAF_IDX],
-                _ => vec![labels[left.idx()][label]],
-            };
-            let pairs: Vec<_> = primes.into_iter().map(|prime| ChildPair::new(prime, sub)).collect();
-            builder.push(eng, level, &pairs).unwrap()
-        });
-    }
-    let root = vtree.root();
-    let (left, source) = vtree.children(root);
-    let output = builder.push(eng, root, &[
-        ChildPair::new(labels[left.idx()][1], labels[source.idx()][0]),
-        ChildPair::new(labels[left.idx()][2], labels[source.idx()][1]),
-    ]).unwrap();
-    let mut donor = builder.finish(TddNodeId { vtree: root, local: output }).unwrap();
+    let vtree = Arc::new(Vtree::balanced(68));
+    let source = vtree.children(vtree.root()).1;
+    let first = eng.cube(&vtree, [1, 35, 36]).unwrap();
+    let second = eng.cube(&vtree, [-1, 35, -36, 37]).unwrap();
+    let mut donor = eng.or(first, second).unwrap();
     eng.marginalize_levels(&mut donor, &[source]).unwrap();
     let counts = donor.level(source).marginal_counts().unwrap();
     let mut actual = counts.to_vec();
