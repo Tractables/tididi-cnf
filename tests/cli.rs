@@ -18,9 +18,7 @@ fn run_with_record(args: &[&str]) -> (Run, serde_json::Value) {
 
 /// [`run_with_record`] with `env` added to this process's environment.
 fn run_with_record_in(args: &[&str], env: Env) -> (Run, serde_json::Value) {
-    use std::sync::atomic::{AtomicU32, Ordering};
-    static NEXT: AtomicU32 = AtomicU32::new(0);
-    let path = common::tmp_path(&format!("record_{}.json", NEXT.fetch_add(1, Ordering::Relaxed)));
+    let path = common::tmp_path("record.json");
     let out = run(&[args, &["--stats", path.to_str().unwrap()]].concat(), env);
     let record = std::fs::read_to_string(&path)
         .ok()
@@ -822,7 +820,7 @@ fn save_tdd_reloads_through_the_library() {
     use std::sync::Arc;
     for cnf in ["tests/data/cnfs/iscas89/s641.scan.cnf", "tests/data/onehot_free_residual.cnf"] {
         let saved = common::tmp_path("reload.tdd");
-        let saved_vtree = common::tmp_path("reload.tdd.vtree");
+        let saved_vtree = saved.with_extension("tdd.vtree");
         let out = run(&["--save-tdd", saved.to_str().unwrap(), cnf], &[]);
         assert!(out.ok(), "{cnf}: {}", out.stderr);
         let printed = out

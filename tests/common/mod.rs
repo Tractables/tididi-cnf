@@ -34,9 +34,14 @@ pub fn load_vtree(path: &str) -> Arc<Vtree> {
     Arc::new(Vtree::from_text(&text).unwrap_or_else(|e| panic!("{path}: {e}")))
 }
 
-/// A path in the temp directory, unique to this test process.
+/// A path in the temp directory, unique to this call: tests run in parallel
+/// threads of one process, so two of them asking for the same `name` get
+/// different paths.
 pub fn tmp_path(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("tididi_test_{}_{name}", std::process::id()))
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let n = NEXT.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("tididi_test_{}_{n}_{name}", std::process::id()))
 }
 
 /// Environment variables a binary run adds to this process's own.
