@@ -301,7 +301,7 @@ protocol_rows! {
     // under the limit the other rows run at, short enough that where a pass
     // stops could move with the machine. Under an hour the share is 6 s and
     // the walk runs to its own end every time.
-    mc_sat_prune:         ["--mode", "mc", "--time-limit-ms", "3600000"], "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
+    mc_sat_prune:         ["--mode", "mc", "--time-limit-ms", "3600000"], "tests/data/cnfs/mcc/2021/track1/mc2021_track1_177.cnf";
     // SAT pruning removes too few of the nodes it checks and stops before
     // the compile ends.
     mc_sat_prune_backs_off: ["--mode", "mc"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";

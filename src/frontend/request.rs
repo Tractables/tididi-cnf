@@ -114,7 +114,10 @@ pub(crate) fn implicates_ms(
 /// (retaining its input checkpoint for a counting run, whose cascade may retry
 /// from it) or switches it off. Function compilation asks for the parent's
 /// own vtree spelling, which vitri validates when the run starts; every
-/// counting mode asks for the portfolio.
+/// counting mode asks for the portfolio. vitri's implied-clause pass is off:
+/// the frontend's caller runs it on the tree of the run's main compile
+/// ([`super::TreeFor`]), so a retry from the frontend's session and a
+/// cofactor's frontend find no clauses.
 pub(crate) fn frontend_config(
     parent: &Config,
     mode: vitri::cnf::Mode,
@@ -124,6 +127,7 @@ pub(crate) fn frontend_config(
     let mut config = parent.vitri.clone();
     config.budget_ms = parent.time_limit_ms;
     config.deadline = deadline;
+    config.implicates_ms = None;
     config.construction_budget = crate::budget::construction_budget(parent.time_limit_ms);
     config.preprocess_clock = crate::budget::preprocess_clock(parent.time_limit_ms);
     config.mode = Some(mode);

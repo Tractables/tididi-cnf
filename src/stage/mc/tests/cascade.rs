@@ -42,7 +42,7 @@ fn count_a_monotone_product(n: i32) -> (num_bigint::BigUint, Option<(num_bigint:
     };
     let deadline = Some(Instant::now() + Duration::from_secs(3600));
     let run = crate::stage::Run { deadline, ..crate::test_support::run(eng, &config) };
-    let counted = crate::frontend::with_mc_frontend(&formula, &config, deadline, |attempt, session| {
+    let counted = crate::frontend::with_mc_frontend(&formula, &config, deadline, crate::frontend::TreeFor::MainCompile, |attempt, session| {
         let bundle = attempt.preprocessed;
         assert_eq!(bundle.stages.arjun, Some(StageOutcome::Skipped(SkipReason::Monotone)));
         let simplify_pow2 = bundle.count_lift.simplify_pow2;

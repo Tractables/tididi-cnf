@@ -69,6 +69,7 @@ fn count_mc(run: &Run<'_>, compile_formula: &CnfFormula) -> Option<McOutcome> {
         compile_formula,
         run.config,
         run.deadline,
+        crate::frontend::TreeFor::MainCompile,
         |attempt, session| {
             run_mc_cascade(run, compile_formula, no_sbva_retry_armed, attempt, session)
         },
