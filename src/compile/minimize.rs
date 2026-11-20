@@ -111,6 +111,14 @@ const SCAN_FIXED_COST_PAIRS: u64 = 900;
 /// remove under 0.1% of the nodes.
 const SCAN_MIN_REMOVAL_FRACTION: f64 = 0.01;
 
+/// The fraction of nodes under which a scan [`SCAN_FOLD_WORK_PER_PAIR`] forced
+/// where the gate decided on less than a full reduction leaves the gate's
+/// anchors as that decision would have. Re-anchoring on such scans moved the
+/// gate's later reductions: 12% to 45% removed on model counting instances
+/// cost 0.4% to 2.4% of their instructions, while a scan that removed two
+/// thirds of a 250,000-node diagram had to re-anchor.
+const SCAN_KEEP_ANCHORS_FRACTION: f64 = 0.5;
+
 /// The most nodes a merge inside a fold that summed levels out may hold and
 /// still scan content twins. Summing out leaves count nodes with equal
 /// contents, and on small diagrams the scan halves the accumulator the fold's
@@ -390,7 +398,8 @@ impl MinimizeGate {
         let cur_retired = result.retired_marginal_slots();
 
         let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
-        let action = if rescan { MinimizeAction::Full } else { self.decide(cur_nodes, cur_retired) };
+        let own = self.decide(cur_nodes, cur_retired);
+        let action = if rescan { MinimizeAction::Full } else { own };
         match action {
             MinimizeAction::Full => {
                 let probed = rescan && self.fold_at_root && !fold_end;
@@ -416,21 +425,27 @@ impl MinimizeGate {
                         *result = trial;
                     }
                 }
+                let (post_nodes, post_retired) = (result.node_count(), result.retired_marginal_slots());
+                let removed = cur_nodes.saturating_sub(post_nodes) as f64;
                 if rescan {
                     self.fold_start_work = eng.limits().work_units();
-                    let removed = cur_nodes.saturating_sub(result.node_count()) as f64;
                     self.scan_backoff = if removed < cur_nodes as f64 * SCAN_MIN_REMOVAL_FRACTION {
                         (self.scan_backoff + 1).min(SCAN_MAX_BACKOFF)
                     } else {
                         0
                     };
                 }
-                self.record_full(
-                    result.node_count(),
-                    result.retired_marginal_slots(),
-                );
-                self.throttle.reopen();
-                self.shared.rearm();
+                let keep = rescan && removed < cur_nodes as f64 * SCAN_KEEP_ANCHORS_FRACTION;
+                match own {
+                    MinimizeAction::ContractOnly if keep => self.record_threshold(post_nodes, post_retired),
+                    MinimizeAction::PruneOnly if keep => self.record_prune(post_nodes, post_retired),
+                    MinimizeAction::ContractUnlessThrottled if keep => {}
+                    _ => {
+                        self.record_full(post_nodes, post_retired);
+                        self.throttle.reopen();
+                        self.shared.rearm();
+                    }
+                }
             }
             MinimizeAction::ContractOnly => {
                 self.run_contract_and_record(eng, result, cur_nodes)?;
