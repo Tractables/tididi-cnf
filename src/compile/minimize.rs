@@ -128,13 +128,18 @@ const SCAN_KEEP_ANCHORS_FRACTION: f64 = 0.5;
 const MID_FOLD_SCAN_MAX_PAIRS: usize = 1 << 17;
 
 /// The most nodes the reduced result of a summed-out merge inside a fold may
-/// hold for the merge to scan a copy of it, when the merge held more than
+/// hold for the merge to scan it after a sample
+/// ([`MID_FOLD_SAMPLE_MIN_YIELD`]), when the merge held more than
 /// [`MID_FOLD_SCAN_MAX_PAIRS`] and the fold's work pays for a scan
-/// ([`MinimizeGate::fold_paid_for_scan`]). The copy is kept only when the
-/// scan left at most a quarter of the nodes. Kept scans on model counting
-/// instances had removed 84 to 98% of the nodes; scans that removed 8 to 46%
-/// left the fold's end larger. The bound caps what a discarded copy costs.
-const MID_FOLD_TRIAL_MAX_NODES: usize = 65_536;
+/// ([`MinimizeGate::fold_paid_for_scan`]).
+const MID_FOLD_SAMPLE_MAX_NODES: usize = 65_536;
+
+/// The share of the sampled pairs twins must hold for a scan
+/// [`MID_FOLD_SAMPLE_MAX_NODES`] admits to go on. Such scans paid off on
+/// model counting instances when they removed 84 to 98% of the nodes, and
+/// left the fold's end larger when they removed 8 to 46%; the samples of the
+/// first found 93 and 95%, of the second none to 51%.
+const MID_FOLD_SAMPLE_MIN_YIELD: f64 = 0.75;
 
 /// The most doublings [`SCAN_MIN_REMOVAL_FRACTION`] applies.
 const SCAN_MAX_BACKOFF: u32 = 16;
@@ -430,8 +435,8 @@ impl MinimizeGate {
     /// hold, at a full reduction of at most [`MID_FOLD_SCAN_MAX_PAIRS`] pairs,
     /// and, outside the root's fold, at a merge that summed levels out
     /// (`summed_out`) into a reduced result of at most
-    /// [`MID_FOLD_TRIAL_MAX_NODES`] when the scan leaves at most a quarter of
-    /// them. A scan the gate forces runs on a reset schedule, which it leaves
+    /// [`MID_FOLD_SAMPLE_MAX_NODES`] when its sample finds
+    /// [`MID_FOLD_SAMPLE_MIN_YIELD`]. A scan the gate forces runs on a reset schedule, which it leaves
     /// as a scan the schedule called for would, and at a fold's end on at
     /// least [`SCAN_SAMPLE_MIN_PAIRS`] samples its yield first. A scan the gate did not force on at least
     /// [`COSTLY_SCAN_MIN_PAIRS`] pairs is skipped at [`SCAN_MAX_PAIRS_PER_NODE`]
@@ -476,14 +481,11 @@ impl MinimizeGate {
                     eng.reduce(result, plan)?;
                 }
                 if skip && summed_out && !self.skip_content_twins && !self.fold_at_root
-                    && result.node_count() <= MID_FOLD_TRIAL_MAX_NODES
+                    && result.node_count() <= MID_FOLD_SAMPLE_MAX_NODES
                     && self.fold_paid_for_scan(eng, result)
                 {
-                    let mut trial = eng.try_clone(result)?;
-                    eng.reduce(&mut trial, full_reduction(false, None))?;
-                    if trial.node_count().saturating_mul(4) <= result.node_count() {
-                        *result = trial;
-                    }
+                    let schedule = &mut ContentTwinSchedule::default();
+                    eng.reduce(result, ReductionPlan::Full(ContentTwinPolicy::Sampled { schedule, min_yield: MID_FOLD_SAMPLE_MIN_YIELD }))?;
                 }
                 let (post_nodes, post_retired) = (result.node_count(), result.retired_marginal_slots());
                 let removed = cur_nodes.saturating_sub(post_nodes) as f64;
