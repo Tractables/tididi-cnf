@@ -90,6 +90,13 @@ const CONTRACT_WALK_WORK_PER_NODE: f64 = 1.5;
 /// 8,000-node diagram cost 2 M instructions, and the contractions its skip
 /// then dropped would have removed 5 to 29% of their diagrams.
 const WALK_SKIP_MIN_NODES: usize = 1 << 16;
+/// The largest diagram, in pairs, on which the shared throttle skips no
+/// contraction once the diagram has grown past [`OWN_SKIP_MAX_GROWTH`] times
+/// the one its ring last measured. Its skips without that bound left a fold's
+/// result of 1.68 M nodes that a contraction takes to 75,000; on diagrams of
+/// over 20 M pairs the bound's contractions cost 1.4 G instructions each and
+/// removed 1%.
+const SHARED_GROWTH_MAX_PAIRS: usize = 1 << 22;
 
 /// The work units per pair of its result from which a fold's last merge scans
 /// content twins whatever the gate and the schedule say. On model counting
@@ -303,7 +310,7 @@ impl ContractThrottle {
         if self.trial {
             return false;
         }
-        if own_nodes.is_some_and(|nodes| nodes as f64 > self.recorded_nodes as f64 * OWN_SKIP_MAX_GROWTH) {
+        if own_nodes.is_some_and(|nodes| self.outgrown(nodes)) {
             self.skip_remaining = 0;
             return false;
         }
@@ -319,6 +326,10 @@ impl ContractThrottle {
             return true;
         }
         false
+    }
+
+    fn outgrown(&self, nodes: usize) -> bool {
+        nodes as f64 > self.recorded_nodes as f64 * OWN_SKIP_MAX_GROWTH
     }
 }
 
@@ -555,6 +566,14 @@ impl MinimizeGate {
                 let skip = if self.throttle.warm { self.throttle.try_skip(Some(cur_nodes)) } else { self.shared.try_skip(None) };
                 if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
+                } else if !self.throttle.warm && self.shared.outgrown(cur_nodes) && result.pair_count() <= SHARED_GROWTH_MAX_PAIRS {
+                    // Recorded in the shared ring only: samples in the
+                    // diagram's own ring warm it, and its own growth bound
+                    // then contracts diagrams of tens of millions of pairs
+                    // at 2.5 G instructions for 2% of their nodes.
+                    self.shared.skip_remaining = 0;
+                    let (fraction, _) = contract(eng, result, cur_nodes)?;
+                    self.shared.record(fraction, cur_nodes);
                 }
             }
         }
@@ -602,12 +621,7 @@ impl MinimizeGate {
         &mut self, eng: &Engine, result: &mut Tdd,
         pre_nodes: usize,
     ) -> Result<(), OperationError> {
-        let work_before = eng.limits().work_units();
-        minimize_contract_only(eng, result)?;
-        let work = eng.limits().work_units().saturating_sub(work_before);
-        let post_nodes = result.node_count();
-        let removed = pre_nodes.saturating_sub(post_nodes);
-        let fraction = if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 };
+        let (fraction, work) = contract(eng, result, pre_nodes)?;
         if pre_nodes >= WALK_SKIP_MIN_NODES
             && fraction < CONTRACT_MIN_REMOVAL_FRACTION
             && work as f64 > CONTRACT_WALK_WORK_PER_NODE * pre_nodes as f64
@@ -620,6 +634,16 @@ impl MinimizeGate {
         self.shared.record(fraction, pre_nodes);
         Ok(())
     }
+}
+
+/// Run twin contraction alone on `result` of `pre_nodes` nodes and return the
+/// fraction of nodes it removed and its work.
+fn contract(eng: &Engine, result: &mut Tdd, pre_nodes: usize) -> Result<(f64, u64), OperationError> {
+    let work_before = eng.limits().work_units();
+    minimize_contract_only(eng, result)?;
+    let work = eng.limits().work_units().saturating_sub(work_before);
+    let removed = pre_nodes.saturating_sub(result.node_count());
+    Ok((if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 }, work))
 }
 
 #[cfg(test)]
