@@ -44,8 +44,9 @@ fn prune_fires_on_growth() {
     assert_eq!(g.decide(grown, 0, None), MinimizeAction::ContractUnlessThrottled);
 }
 
-/// Where the unnamed nodes are read, they alone decide the prune: due at
-/// the share of the nodes, growth or not, and not without it.
+/// Where the unnamed nodes are read, a prune is due at their share of the
+/// nodes, growth or not, and below it only with some and growth; with none,
+/// never.
 #[test]
 fn unnamed_nodes_decide_the_prune_where_read() {
     let g = anchored();
@@ -53,7 +54,9 @@ fn unnamed_nodes_decide_the_prune_where_read() {
     let share = (1000.0 * UNNAMED_PRUNE_FRACTION) as usize;
     assert_eq!(g.decide(1000, 0, Some(share)), MinimizeAction::PruneOnly);
     assert_eq!(g.decide(1000, 0, Some(share - 1)), MinimizeAction::ContractUnlessThrottled);
+    assert_eq!(g.decide(grown, 0, Some(1)), MinimizeAction::PruneOnly);
     assert_eq!(g.decide(grown, 0, Some(0)), MinimizeAction::ContractUnlessThrottled);
     assert_eq!(MinimizeGate::default().decide(10, 0, Some(0)), MinimizeAction::ContractOnly);
-    assert_eq!(g.decide(g.size_threshold + 1, 0, Some(share - 1)), MinimizeAction::ContractOnly);
+    assert_eq!(MinimizeGate { size_threshold: 900, ..anchored() }.decide(1000, 0, Some(share - 1)), MinimizeAction::ContractOnly);
+    assert_eq!(g.decide(g.size_threshold + 1, 0, Some(share - 1)), MinimizeAction::Full);
 }

@@ -61,7 +61,9 @@ const PRUNE_GROWTH_TRIGGER: f64 = 1.05;
 
 /// On a diagram of at least [`UNNAMED_PRUNE_MIN_NODES`] nodes whose unnamed
 /// nodes the library counts ([`Engine::unnamed_nodes`]), a prune is due when
-/// they are at least this share of its nodes, and not otherwise. Below that
+/// they are at least this share of its nodes, or when there are some and the
+/// diagram grew as the growth rule asks: a few unnamed nodes can hold a
+/// large subtree only they reach. With none, no prune is due. Below that
 /// size the growth rule decides: there a prune costs about its per-level
 /// walk whatever it removes, and the share fired on diagrams the growth
 /// rule left alone.
@@ -411,13 +413,11 @@ impl MinimizeGate {
     /// `unnamed` the diagram's unnamed nodes where read ([`UNNAMED_PRUNE_FRACTION`]).
     fn decide(&self, pre_nodes: usize, cur_retired: usize, unnamed: Option<usize>) -> MinimizeAction {
         let prune_collected = cur_retired.saturating_sub(self.last_prune_retired);
+        let grown = self.last_prune_nodes == 0
+            || (pre_nodes + prune_collected) as f64 > self.last_prune_nodes as f64 * PRUNE_GROWTH_TRIGGER;
         let do_prune = match unnamed {
-            Some(unnamed) => unnamed > 0 && unnamed as f64 >= pre_nodes as f64 * UNNAMED_PRUNE_FRACTION,
-            None => {
-                self.last_prune_nodes == 0
-                    || (pre_nodes + prune_collected) as f64
-                        > self.last_prune_nodes as f64 * PRUNE_GROWTH_TRIGGER
-            }
+            Some(unnamed) => unnamed > 0 && (grown || unnamed as f64 >= pre_nodes as f64 * UNNAMED_PRUNE_FRACTION),
+            None => grown,
         };
 
         let threshold_collected = cur_retired.saturating_sub(self.size_threshold_retired);
