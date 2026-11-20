@@ -243,8 +243,9 @@ fn compile_pass(
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the
-/// running peak to the pair count the step measured and continue while the
-/// diagram is satisfiable. UNSAT proves the formula UNSAT and answers ⊥ at
+/// running peak to the pair count the step measured, keep that count on the
+/// node's contraction throttle for its parent's lineage choice, and continue
+/// while the diagram is satisfiable. UNSAT proves the formula UNSAT and answers ⊥ at
 /// once; an error aborts the pass without making a satisfiability claim.
 fn check_step(
     eng: &Engine,
@@ -254,7 +255,10 @@ fn check_step(
     t: VtreeIdx,
     job: CompileJob<'_>,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
-    let step = step.inspect(|&pairs| state.peak_size = state.peak_size.max(pairs));
+    let step = step.inspect(|&pairs| {
+        state.peak_size = state.peak_size.max(pairs);
+        state.throttles[t.idx()].pairs = pairs;
+    });
     let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| eng.is_sat(tdd)));
     match sat {
         Ok(true) => ControlFlow::Continue(()),
@@ -394,13 +398,13 @@ pub(super) fn splice_and_fold(
 ) -> Result<usize, OperationError> {
     let (left, right) = current_vtree.children(t);
     // The larger child's diagram is the bulk of the fold's accumulator, so
-    // its throttle is the one the fold carries on. The size its throttle last
-    // recorded stands in for the diagram's: `pair_count` walks every level of
-    // a diagram changed since it was last counted, which cost model counts on
-    // small instances 0.3%.
+    // its throttle is the one the fold carries on. The pair count its step
+    // measured stands in for the diagram's: `pair_count` walks every level of
+    // a diagram changed since it was last counted, as the marginalization
+    // after a step changes it, which cost model counts on small instances 0.3%.
     let lineage = match (&state.tdds[left.idx()], &state.tdds[right.idx()]) {
         (Some(_), Some(_)) => {
-            Some(if state.throttles[right.idx()].nodes > state.throttles[left.idx()].nodes { right } else { left })
+            Some(if state.throttles[right.idx()].pairs > state.throttles[left.idx()].pairs { right } else { left })
         }
         (Some(_), None) => Some(left),
         (None, Some(_)) => Some(right),

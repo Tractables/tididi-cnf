@@ -149,14 +149,13 @@ pub(crate) struct ContractThrottle {
     /// Whether `history` has been full once on this diagram. Until then the
     /// gate's shared throttle decides its contractions.
     warm: bool,
-    /// The node count of the diagram at the last contraction recorded.
-    pub(crate) nodes: usize,
+    /// The pair count of the diagram when the step that made it ended.
+    pub(crate) pairs: usize,
 }
 
 impl ContractThrottle {
     /// Append a removal fraction to the ring buffer.
-    fn record(&mut self, fraction: f64, nodes: usize) {
-        self.nodes = nodes;
+    fn record(&mut self, fraction: f64) {
         self.history[self.cursor] = fraction;
         self.cursor = (self.cursor + 1) % CONTRACT_HISTORY_SIZE;
         if self.cursor == 0 {
@@ -440,8 +439,8 @@ impl MinimizeGate {
             self.walk_skip_remaining = CONTRACT_SKIP_COUNT;
             self.walk_skip_min_nodes = pre_nodes / 4;
         }
-        self.throttle.record(fraction, pre_nodes);
-        self.shared.record(fraction, pre_nodes);
+        self.throttle.record(fraction);
+        self.shared.record(fraction);
         Ok(())
     }
 }
