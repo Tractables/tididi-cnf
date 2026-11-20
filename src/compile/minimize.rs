@@ -77,6 +77,10 @@ const CONTRACT_SKIP_COUNT: usize = 4;
 /// units per node; incremental contractions stayed under 1.0, and ones that
 /// removed a third or more of a diagram reached 1.64.
 const CONTRACT_WALK_WORK_PER_NODE: f64 = 1.5;
+/// The smallest diagram whose walk arms the gate's walk skip. A walk of an
+/// 8,000-node diagram cost 2 M instructions, and the contractions its skip
+/// then dropped would have removed 5 to 29% of their diagrams.
+const WALK_SKIP_MIN_NODES: usize = 1 << 16;
 
 /// The work units per pair of its result from which a fold's last merge scans
 /// content twins whatever the gate and the schedule say. On model counting
@@ -270,12 +274,13 @@ pub(crate) struct MinimizeGate {
     shared: ContractThrottle,
     /// How many more contractions on diagrams of `walk_skip_min_nodes` to
     /// `walk_skip_max_nodes` nodes the gate skips, on any diagram, after a
-    /// contraction walked a diagram of a quarter of the upper bound and
+    /// contraction walked a diagram of at least [`WALK_SKIP_MIN_NODES`] and
     /// removed under [`CONTRACT_MIN_REMOVAL_FRACTION`]. A full reduction does
     /// not clear it: the walks that remove nothing come on fresh diagrams,
-    /// between full reductions of other ones. A diagram more than four times
-    /// the walked one's size is not skipped: it grew through merges the walk
-    /// never saw, and its contraction can remove nearly half of it.
+    /// between full reductions of other ones. The bounds are a quarter of the
+    /// walked diagram's size and a tenth more than it. A larger diagram grew
+    /// through merges the walk never saw: such contractions removed 11 to
+    /// 45%, while those within the tenth removed under the floor.
     walk_skip_remaining: usize,
     walk_skip_min_nodes: usize,
     walk_skip_max_nodes: usize,
@@ -482,10 +487,13 @@ impl MinimizeGate {
         let post_nodes = result.node_count();
         let removed = pre_nodes.saturating_sub(post_nodes);
         let fraction = if pre_nodes == 0 { 0.0 } else { removed as f64 / pre_nodes as f64 };
-        if fraction < CONTRACT_MIN_REMOVAL_FRACTION && work as f64 > CONTRACT_WALK_WORK_PER_NODE * pre_nodes as f64 {
+        if pre_nodes >= WALK_SKIP_MIN_NODES
+            && fraction < CONTRACT_MIN_REMOVAL_FRACTION
+            && work as f64 > CONTRACT_WALK_WORK_PER_NODE * pre_nodes as f64
+        {
             self.walk_skip_remaining = CONTRACT_SKIP_COUNT;
             self.walk_skip_min_nodes = pre_nodes / 4;
-            self.walk_skip_max_nodes = pre_nodes.saturating_mul(4);
+            self.walk_skip_max_nodes = pre_nodes + pre_nodes / 10;
         }
         self.throttle.record(fraction);
         self.shared.record(fraction);
