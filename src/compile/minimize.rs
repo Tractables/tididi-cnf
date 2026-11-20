@@ -168,12 +168,14 @@ const SCAN_MAX_PAIRS_PER_NODE: usize = 256;
 /// 27% of the instructions in all.
 const SCAN_MIN_PAIR_YIELD: f64 = 0.1;
 
-/// The pairs from which a scan the gate forces at a fold's end first merges
-/// the bottom levels holding a thirty-second of the pairs and stops there
-/// unless the twins it found held [`SCAN_SAMPLE_MIN_YIELD`] of their pairs
+/// The pairs, counted at the scan after the reduction before it, from which
+/// a scan the gate forces at a fold's end first merges the bottom levels
+/// holding a thirty-second of the pairs and stops there unless the twins it
+/// found held [`SCAN_SAMPLE_MIN_YIELD`] of their pairs
 /// ([`ContentTwinPolicy::Sampled`]). Under it the sample is a poor guide: on
-/// a model counting instance, scans of 60,000 to 90,000 pairs whose samples
-/// held no twins removed 23 to 71% of their pairs.
+/// model counting instances, scans of 60,000 to 90,000 pairs whose samples
+/// held no twins removed 23 to 71% of their pairs, and one of 410,000 pairs
+/// (4.1 million before the reduction) whose sample found 1.2% removed 26%.
 const SCAN_SAMPLE_MIN_PAIRS: usize = 1 << 19;
 
 /// The share of a forced scan's sampled pairs its twins must hold for the
@@ -474,8 +476,12 @@ impl MinimizeGate {
                 }
                 if !(probed && skip) {
                     let schedule = &mut self.content_twin_schedule;
-                    let plan = if rescan && fold_end && cur_pairs >= SCAN_SAMPLE_MIN_PAIRS {
-                        ReductionPlan::Full(ContentTwinPolicy::Sampled { schedule, min_yield: SCAN_SAMPLE_MIN_YIELD })
+                    let plan = if rescan && fold_end && !skip {
+                        ReductionPlan::Full(ContentTwinPolicy::Sampled {
+                            schedule,
+                            min_yield: SCAN_SAMPLE_MIN_YIELD,
+                            min_pairs: SCAN_SAMPLE_MIN_PAIRS,
+                        })
                     } else {
                         full_reduction(skip, Some(schedule))
                     };
@@ -486,7 +492,7 @@ impl MinimizeGate {
                     && self.fold_paid_for_scan(eng, result)
                 {
                     let schedule = &mut ContentTwinSchedule::default();
-                    eng.reduce(result, ReductionPlan::Full(ContentTwinPolicy::Sampled { schedule, min_yield: MID_FOLD_SAMPLE_MIN_YIELD }))?;
+                    eng.reduce(result, ReductionPlan::Full(ContentTwinPolicy::Sampled { schedule, min_yield: MID_FOLD_SAMPLE_MIN_YIELD, min_pairs: 0 }))?;
                 }
                 let (post_nodes, post_retired) = (result.node_count(), result.retired_marginal_slots());
                 let removed = cur_nodes.saturating_sub(post_nodes) as f64;
