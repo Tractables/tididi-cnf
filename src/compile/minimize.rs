@@ -255,14 +255,17 @@ pub(crate) struct MinimizeGate {
     /// and on small diagrams a contraction's cost is the per-level walk,
     /// which the removals on other small diagrams predict.
     shared: ContractThrottle,
-    /// How many more contractions on diagrams of at least
-    /// `walk_skip_min_nodes` the gate skips, on any diagram, after a
-    /// contraction walked a diagram of four times that size and removed under
-    /// [`CONTRACT_MIN_REMOVAL_FRACTION`]. A full reduction does not clear
-    /// it: the walks that remove nothing come on fresh diagrams, between
-    /// full reductions of other ones.
+    /// How many more contractions on diagrams of `walk_skip_min_nodes` to
+    /// `walk_skip_max_nodes` nodes the gate skips, on any diagram, after a
+    /// contraction walked a diagram of a quarter of the upper bound and
+    /// removed under [`CONTRACT_MIN_REMOVAL_FRACTION`]. A full reduction does
+    /// not clear it: the walks that remove nothing come on fresh diagrams,
+    /// between full reductions of other ones. A diagram more than four times
+    /// the walked one's size is not skipped: it grew through merges the walk
+    /// never saw, and its contraction can remove nearly half of it.
     walk_skip_remaining: usize,
     walk_skip_min_nodes: usize,
+    walk_skip_max_nodes: usize,
 
     /// The content-twin scan schedule of the full reduction. It lives on the
     /// gate because each merge's result is a fresh diagram.
@@ -406,7 +409,9 @@ impl MinimizeGate {
                 // nodes, not twins, so the removal fractions still hold.
             }
             MinimizeAction::ContractUnlessThrottled => {
-                if self.walk_skip_remaining > 0 && cur_nodes >= self.walk_skip_min_nodes {
+                if self.walk_skip_remaining > 0
+                    && (self.walk_skip_min_nodes..=self.walk_skip_max_nodes).contains(&cur_nodes)
+                {
                     self.walk_skip_remaining -= 1;
                     return Ok(());
                 }
@@ -467,6 +472,7 @@ impl MinimizeGate {
         if fraction < CONTRACT_MIN_REMOVAL_FRACTION && work as f64 > CONTRACT_WALK_WORK_PER_NODE * pre_nodes as f64 {
             self.walk_skip_remaining = CONTRACT_SKIP_COUNT;
             self.walk_skip_min_nodes = pre_nodes / 4;
+            self.walk_skip_max_nodes = pre_nodes.saturating_mul(4);
         }
         self.throttle.record(fraction);
         self.shared.record(fraction);
