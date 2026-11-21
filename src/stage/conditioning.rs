@@ -214,7 +214,9 @@ fn pmc_branch_count(
         run,
         cformula,
         super::PORTFOLIO_VTREE_SPEC,
-        &VtreeOptions::by_peak_width().with_deadline(crate::budget::vtree_deadline(deadline)),
+        &VtreeOptions::by_peak_width()
+            .with_deadline(crate::budget::vtree_deadline(deadline))
+            .with_run_settings(run.config),
         Some(cshow),
     )?;
     // The per-branch deadline, armed on the engine around the compile and the

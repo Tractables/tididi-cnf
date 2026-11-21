@@ -9,8 +9,10 @@
 //! ([`equivalence_budget_ms`]), whether Arjun runs and the vtree spelling. A stage
 //! a runner asks for later ([`arjun_stage`], [`projection_stage`]) starts from
 //! vitri's defaults with the run's Arjun options and the allowance the runner
-//! computed. Both set the monotone skip ([`skip_monotone`]) from the mode. Every
-//! vitri knob this compiler sets is set in one of the two.
+//! computed. Both set the monotone skip ([`skip_monotone`]) from the mode. A
+//! vtree a stage builds after the frontend starts from the run's settings too,
+//! with the construction's own over them (`crate::vtree`). Every vitri knob
+//! this compiler sets is set in one of the three.
 
 use crate::Error;
 use crate::config::{Config, Mode, PreprocessLevel};

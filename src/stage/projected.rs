@@ -255,7 +255,8 @@ pub(super) fn trivial_residual<D: Domain>(
 /// construction failed. On a vitri bundle's run, whose only compile is of the
 /// bundle's formula, it is the bundle's vtree (`Config::bundle_tree`). PWMC's
 /// compile uses it too; the conditioning branches build theirs with
-/// `count_vtree` on vitri's portfolio and no run policy.
+/// `count_vtree` on vitri's portfolio, from the run's vitri settings and with
+/// no other run policy.
 pub(super) fn counting_vtree(
     run: &Run<'_>,
     work: &CnfFormula,
