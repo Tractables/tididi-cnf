@@ -288,3 +288,20 @@ fn a_build_under_the_run_keeps_the_runs_vitri_settings() {
     let fresh = vitri_vtree_build_config(&VtreeOptions::default(), "portfolio", vitri::config::ComponentPolicy::Split);
     assert_eq!(fresh.reading, Reading::default());
 }
+
+/// A run's learned-tree percent reaches a portfolio build and no other, so
+/// vitri accepts the bisection retry's build under it.
+#[test]
+fn only_a_portfolio_build_asks_for_a_learned_tree() {
+    let base = crate::test_support::minimal_config();
+    let config = Config { vitri: vitri::RunConfig { model_order_percent: Some(20), ..base.vitri.clone() }, ..base };
+    let mut options = VtreeOptions::default().with_run_policy(&config);
+    options.deadline = Some(std::time::Instant::now() + std::time::Duration::from_secs(60));
+    let split = vitri::config::ComponentPolicy::Split;
+    let portfolio = vitri_vtree_build_config(&options, "portfolio", split);
+    assert_eq!(portfolio.model_order_percent, Some(20));
+    portfolio.validate().expect("a portfolio build takes a learned-tree percent");
+    let bisect = vitri_vtree_build_config(&options, "hypergraph-bisect:imbalance=0.40", split);
+    assert_eq!(bisect.model_order_percent, None);
+    bisect.validate().expect("a bisection build asks for no learned tree");
+}

@@ -243,13 +243,15 @@ pub(crate) fn spec_family(spec: &str) -> &str {
 /// it again, or under a work budget, which ignores the deadline.
 ///
 /// `spec` goes to vitri as written; the caller supplies every policy that has
-/// a vitri representation.
+/// a vitri representation. A learned tree replaces only a portfolio tree, so
+/// a build of any other spec, such as the bisection retry's, asks for none:
+/// vitri would refuse the run's `VITRI_MODEL_ORDER_PERCENT` there.
 fn vitri_vtree_build_config(
     options: &VtreeOptions,
     spec: &str,
     components: vitri::config::ComponentPolicy,
 ) -> vitri::RunConfig {
-    vitri::RunConfig {
+    let mut config = vitri::RunConfig {
         deadline: options.deadline,
         implicates_ms: options.implicates_ms,
         construction_budget: options.construction,
@@ -257,7 +259,11 @@ fn vitri_vtree_build_config(
         components,
         candidates: 1,
         ..options.vitri.clone()
+    };
+    if spec_family(spec) != "portfolio" {
+        config.model_order_percent = None;
     }
+    config
 }
 
 /// Translate the caller's [`VtreeOptions`] into vitri's selection context.
