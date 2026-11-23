@@ -27,11 +27,11 @@ fn anchored() -> MinimizeGate {
 fn expensive_tier_is_due_over_the_threshold() {
     let g = anchored();
     let threshold = g.size_threshold;
-    assert_eq!(g.decide(threshold + 1, 0), MinimizeAction::Full);
-    assert_eq!(g.decide(threshold, 0), MinimizeAction::PruneOnly);
-    assert_eq!(g.decide(threshold - 9, 10), MinimizeAction::Full);
+    assert_eq!(g.decide(threshold + 1, 0, None), MinimizeAction::Full);
+    assert_eq!(g.decide(threshold, 0, None), MinimizeAction::PruneOnly);
+    assert_eq!(g.decide(threshold - 9, 10, None), MinimizeAction::Full);
     // Over a lower threshold without growth since the last prune.
-    assert_eq!(MinimizeGate { size_threshold: 900, ..anchored() }.decide(1000, 0), MinimizeAction::ContractOnly);
+    assert_eq!(MinimizeGate { size_threshold: 900, ..anchored() }.decide(1000, 0, None), MinimizeAction::ContractOnly);
 }
 
 /// Prune re-fires on growth since the last prune, at any threshold.
@@ -40,6 +40,23 @@ fn prune_fires_on_growth() {
     let g = anchored();
     let grown = (1000.0 * PRUNE_GROWTH_TRIGGER) as usize;
     assert!(grown < g.size_threshold);
-    assert_eq!(g.decide(grown + 1, 0), MinimizeAction::PruneOnly);
-    assert_eq!(g.decide(grown, 0), MinimizeAction::ContractUnlessThrottled);
+    assert_eq!(g.decide(grown + 1, 0, None), MinimizeAction::PruneOnly);
+    assert_eq!(g.decide(grown, 0, None), MinimizeAction::ContractUnlessThrottled);
+}
+
+/// Where the unnamed nodes are read, a prune is due at their share of the
+/// nodes, growth or not, and below it only with some and growth; with none,
+/// never.
+#[test]
+fn unnamed_nodes_decide_the_prune_where_read() {
+    let g = anchored();
+    let grown = (1000.0 * PRUNE_GROWTH_TRIGGER) as usize + 1;
+    let share = (1000.0 * UNNAMED_PRUNE_FRACTION) as usize;
+    assert_eq!(g.decide(1000, 0, Some(share)), MinimizeAction::PruneOnly);
+    assert_eq!(g.decide(1000, 0, Some(share - 1)), MinimizeAction::ContractUnlessThrottled);
+    assert_eq!(g.decide(grown, 0, Some(1)), MinimizeAction::PruneOnly);
+    assert_eq!(g.decide(grown, 0, Some(0)), MinimizeAction::ContractUnlessThrottled);
+    assert_eq!(MinimizeGate::default().decide(10, 0, Some(0)), MinimizeAction::ContractOnly);
+    assert_eq!(MinimizeGate { size_threshold: 900, ..anchored() }.decide(1000, 0, Some(share - 1)), MinimizeAction::ContractOnly);
+    assert_eq!(g.decide(g.size_threshold + 1, 0, Some(share - 1)), MinimizeAction::Full);
 }
