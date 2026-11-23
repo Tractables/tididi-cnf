@@ -1,6 +1,6 @@
 //! The compiler's minimize: every reduction it asks `Engine::reduce` for, and
 //! the gate ([`MinimizeGate`]) that picks among them after each merge from the
-//! result's nodes and the growth of its pairs since the last prune, with the
+//! result's pairs and their growth since the diagram's last prune, with the
 //! contract-effectiveness throttle.
 //!
 //! Every reduction the compiler runs is built here, so a cofactor's compile
@@ -52,7 +52,9 @@ pub(crate) fn minimize_contract_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), 
 }
 
 /// After a full minimize, the size threshold is this multiple of the
-/// diagram's node count.
+/// diagram's pairs. Pairs, as for [`PRUNE_GROWTH_TRIGGER`]: on mc 2023_089 a
+/// node threshold missed by 2% the contraction that keeps the next merge
+/// within memory on a diagram that stores no pass-through nodes.
 const MIN_SIZE_MULT: f64 = 1.1;
 
 /// A prune is due once a diagram's pairs have grown past this multiple of the
@@ -359,12 +361,9 @@ impl ContractThrottle {
 /// The adaptive-minimize gate a bottom-up pass carries from merge to merge.
 #[derive(Default)]
 pub(crate) struct MinimizeGate {
-    /// When `node_count` exceeds this, the expensive tier is eligible. Reset
-    /// after each full minimize to `post_size * MIN_SIZE_MULT`.
+    /// When `pair_count` exceeds this, the expensive tier is eligible. Reset
+    /// after each full minimize to `post_pairs * MIN_SIZE_MULT`.
     size_threshold: usize,
-    /// `Tdd::retired_marginal_slots()` snapshot paired with `size_threshold` so slot
-    /// collection since the snapshot doesn't deflate the gate metric.
-    size_threshold_retired: usize,
 
     /// The contraction throttle of the diagram being reduced. A pass keeps
     /// one per vtree node's diagram and hands it on with the diagram
@@ -416,18 +415,16 @@ impl MinimizeGate {
     /// The gate's decision; [`MinimizeAction`] says when each is taken.
     ///
     /// `pre_nodes` and `pre_pairs` are `node_count()` and `pair_count()`
-    /// before this minimize; `cur_retired` is
-    /// `Tdd::retired_marginal_slots()` at the same instant (the slot-collection offset);
-    /// `unnamed` the diagram's unnamed nodes where read ([`UNNAMED_PRUNE_FRACTION`]).
-    fn decide(&self, pre_nodes: usize, pre_pairs: usize, cur_retired: usize, unnamed: Option<usize>) -> MinimizeAction {
+    /// before this minimize; `unnamed` the diagram's unnamed nodes where read
+    /// ([`UNNAMED_PRUNE_FRACTION`]).
+    fn decide(&self, pre_nodes: usize, pre_pairs: usize, unnamed: Option<usize>) -> MinimizeAction {
         let grown = self.throttle.pairs_floor.is_some_and(|floor| pre_pairs as f64 > floor as f64 * PRUNE_GROWTH_TRIGGER);
         let do_prune = match unnamed {
             Some(unnamed) => unnamed > 0 && (grown || unnamed as f64 >= pre_nodes as f64 * UNNAMED_PRUNE_FRACTION),
             None => grown,
         };
 
-        let threshold_collected = cur_retired.saturating_sub(self.size_threshold_retired);
-        let threshold_exceeded = pre_nodes + threshold_collected > self.size_threshold;
+        let threshold_exceeded = pre_pairs > self.size_threshold;
 
         match (threshold_exceeded, do_prune) {
             (true, true) => MinimizeAction::Full,
@@ -438,17 +435,16 @@ impl MinimizeGate {
     }
 
     /// Re-anchor both baselines after a full minimize (prune ran and the
-    /// threshold is reset to `post_nodes * MIN_SIZE_MULT`).
-    fn record_full(&mut self, post_nodes: usize, post_pairs: usize, post_retired: usize) {
+    /// threshold is reset to `post_pairs * MIN_SIZE_MULT`).
+    fn record_full(&mut self, post_pairs: usize) {
         self.record_prune(post_pairs);
-        self.record_threshold(post_nodes, post_retired);
+        self.record_threshold(post_pairs);
     }
 
     /// Re-anchor only the size threshold (used on the above-threshold
     /// contract-only branch, where prune did not run so its baseline is intact).
-    fn record_threshold(&mut self, post_nodes: usize, post_retired: usize) {
-        self.size_threshold = (post_nodes as f64 * MIN_SIZE_MULT) as usize;
-        self.size_threshold_retired = post_retired;
+    fn record_threshold(&mut self, post_pairs: usize) {
+        self.size_threshold = (post_pairs as f64 * MIN_SIZE_MULT) as usize;
     }
 
     /// Re-anchor only the prune baseline after a prune-only pass.
@@ -484,20 +480,19 @@ impl MinimizeGate {
         &mut self, eng: &Engine, result: &mut Tdd, fold_end: bool, summed_out: bool,
     ) -> Result<(), OperationError> {
         let cur_nodes = result.node_count();
-        let cur_retired = result.retired_marginal_slots();
         let cur_pairs = result.pair_count();
 
         let rescan = (fold_end || self.fold_at_root) && !self.skip_content_twins && self.fold_paid_for_scan(eng, result);
         // A rescan reads no unnamed count: its own decision only says whether
         // the scan keeps the anchors, under the growth rule.
         let own = match rescan {
-            true => self.decide(cur_nodes, cur_pairs, cur_retired, None),
+            true => self.decide(cur_nodes, cur_pairs, None),
             false => {
                 let unnamed = match cur_nodes >= UNNAMED_PRUNE_MIN_NODES {
                     true => eng.unnamed_nodes(result)?.map(|u| u.nodes),
                     false => None,
                 };
-                self.decide(cur_nodes, cur_pairs, cur_retired, unnamed)
+                self.decide(cur_nodes, cur_pairs, unnamed)
             }
         };
         let action = if rescan { MinimizeAction::Full } else { own };
@@ -545,10 +540,10 @@ impl MinimizeGate {
                         *result = trial;
                     }
                 }
-                let (post_nodes, post_retired) = (result.node_count(), result.retired_marginal_slots());
+                let (post_nodes, post_pairs) = (result.node_count(), result.pair_count());
                 let removed = cur_nodes.saturating_sub(post_nodes) as f64;
                 if weighed && !skip {
-                    let removed_pairs = cur_pairs.saturating_sub(result.pair_count()) as f64;
+                    let removed_pairs = cur_pairs.saturating_sub(post_pairs) as f64;
                     self.scan_wait_pairs = if removed_pairs < cur_pairs as f64 * SCAN_MIN_PAIR_YIELD {
                         cur_pairs.saturating_mul(4)
                     } else {
@@ -565,11 +560,11 @@ impl MinimizeGate {
                 }
                 let keep = rescan && removed < cur_nodes as f64 * SCAN_KEEP_ANCHORS_FRACTION;
                 match own {
-                    MinimizeAction::ContractOnly if keep => self.record_threshold(post_nodes, post_retired),
-                    MinimizeAction::PruneOnly if keep => self.record_prune(result.pair_count()),
+                    MinimizeAction::ContractOnly if keep => self.record_threshold(post_pairs),
+                    MinimizeAction::PruneOnly if keep => self.record_prune(post_pairs),
                     MinimizeAction::ContractUnlessThrottled if keep => {}
                     _ => {
-                        self.record_full(post_nodes, result.pair_count(), post_retired);
+                        self.record_full(post_pairs);
                         self.throttle.reopen();
                         self.shared.rearm();
                     }
@@ -577,10 +572,7 @@ impl MinimizeGate {
             }
             MinimizeAction::ContractOnly => {
                 self.run_contract_and_record(eng, result, cur_nodes)?;
-                self.record_threshold(
-                    result.node_count(),
-                    result.retired_marginal_slots(),
-                );
+                self.record_threshold(result.pair_count());
             }
             MinimizeAction::PruneOnly => {
                 minimize_prune_only(eng, result)?;
