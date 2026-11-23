@@ -80,12 +80,11 @@ refuses where it would do nothing:
   formula itself, and no other mode can use the skip.
 - **`VITRI_IMPLICATES_MS`.** Every mode conjoins the clauses vitri finds over
   the tree its main compile runs on, each component's after the component's
-  own. They leave every count and the compiled function unchanged. In `mc`,
-  `wmc`, `pmc` and `pwmc` the pass runs by default with 2000 ms; in `compile`
-  it runs only when the variable is set. The variable sets the allowance, and
-  `0` turns the pass off. `wmc` looks for the simplified formula's clauses
-  only when it compiles that formula, after the Arjun-reduced formula gives
-  no answer. In `mc` under
+  own. They leave every count and the compiled function unchanged. The pass
+  runs by default with 2000 ms in every mode; the variable sets another
+  allowance, and `0` turns the pass off. `wmc` looks for the simplified
+  formula's clauses only when it compiles that formula, after the
+  Arjun-reduced formula gives no answer. In `mc` under
   `--vtree` and on a bundle, which brings its clauses in its own files, there
   is no pass, and a nonzero value is refused. A tree built after a compile
   gives up gets no clauses, and neither do the trees of a projected count's

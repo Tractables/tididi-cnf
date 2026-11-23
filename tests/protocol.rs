@@ -191,18 +191,19 @@ fn expected_path(row: &str) -> PathBuf {
         .join(format!("{row}.txt"))
 }
 
-/// The whole transcript of one row, as it is stored: the argv that produced it,
-/// the exit status, then each stream.
-fn transcript(argv: &[String], status: i32, stdout: &str, stderr: &str) -> String {
+/// The whole transcript of one row, as it is stored: the environment and argv
+/// that produced it, the exit status, then each stream.
+fn transcript(env: &[(&str, &str)], argv: &[String], status: i32, stdout: &str, stderr: &str) -> String {
+    let env: String = env.iter().map(|(key, value)| format!("{key}={value} ")).collect();
     format!(
-        "$ tididi {}\nexit {status}\n--- stdout\n{}--- stderr\n{}",
+        "$ {env}tididi {}\nexit {status}\n--- stdout\n{}--- stderr\n{}",
         argv.join(" "),
         normalize(stdout),
         normalize(stderr),
     )
 }
 
-fn check_row(row: &str, flags: &[&str], cnf: &str) {
+fn check_row(row: &str, env: &[(&str, &str)], flags: &[&str], cnf: &str) {
     let mut argv: Vec<String> = flags.iter().map(|f| (*f).to_string()).collect();
     if !flags.contains(&"--time-limit-ms") {
         argv.extend(["--time-limit-ms".into(), TIME_LIMIT_MS.into()]);
@@ -212,6 +213,7 @@ fn check_row(row: &str, flags: &[&str], cnf: &str) {
 
     let output = Command::new(BINARY)
         .args(&argv)
+        .envs(env.iter().copied())
         // The rows pass repo-relative CNF paths so the transcript carries no
         // machine path; cargo already runs integration tests here, and saying
         // so keeps the expected files valid however the test is launched.
@@ -220,6 +222,7 @@ fn check_row(row: &str, flags: &[&str], cnf: &str) {
         .unwrap_or_else(|e| panic!("row {row}: could not run the binary: {e}"));
 
     let actual = transcript(
+        env,
         &argv,
         output.status.code().unwrap_or(-1),
         &String::from_utf8_lossy(&output.stdout),
@@ -280,13 +283,14 @@ fn first_difference(expected: &str, actual: &str) -> (usize, String, String) {
 /// One `#[test]` per row, so a failure names the row and cargo schedules the
 /// rows across cores. A row names its own `--time-limit-ms` only where the
 /// shared limit would make a clock-bounded stage stop at a machine-dependent
-/// point.
+/// point, and sets an environment variable (`env [...]`) only where a stage's
+/// own clock allowance would.
 macro_rules! protocol_rows {
-    ($( $row:ident : [$($flag:literal),*], $cnf:literal; )*) => {
+    ($( $row:ident : [$($flag:literal),*], $cnf:literal $(, env [$(($key:literal, $value:literal)),*])?; )*) => {
         $(
             #[test]
             fn $row() {
-                check_row(stringify!($row), &[$($flag),*], $cnf);
+                check_row(stringify!($row), &[$($(($key, $value)),*)?], &[$($flag),*], $cnf);
             }
         )*
     };
@@ -316,10 +320,13 @@ protocol_rows! {
     // diagram. The weighted row's portfolio vtree would be built under a
     // clock budget, and a SAT-pruning pass fires in its compile; it compiles on
     // a step-budgeted FlowCutter vtree under the hour-long limit, so neither
-    // stops at a machine-dependent point.
+    // stops at a machine-dependent point. The implied-clause pass has a clock
+    // allowance of its own, which at its default of 2 s ends the search for
+    // this instance's clauses early on a slow or busy machine; 20 s lets it
+    // finish everywhere.
     pmc_compile:          ["--mode", "pmc"], "tests/data/cnfs/mcc/2026/track3/mc2026_track3_187.cnf";
     pwmc_compile:         ["--mode", "pwmc", "--vtree", "flowcutter-primal:budget=1000steps,iters=10", "--time-limit-ms", "3600000"],
-                          "tests/data/pwmc_banded.cnf";
+                          "tests/data/pwmc_banded.cnf", env [("VITRI_IMPLICATES_MS", "20000")];
 
     // --- the streaming entry: --mode mc with an explicit --vtree -----------
     stream_mc_s641:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/iscas89/s641.scan.cnf";

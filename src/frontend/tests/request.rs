@@ -175,20 +175,18 @@ fn projected_stages_keep_simplify() {
     assert_eq!(tail.projection_policy, vitri::config::ProjectionPolicy::Full);
 }
 
-/// The implied-clause pass runs by default in every counting mode wherever
-/// a compile conjoins its clauses, and in function compilation only when
-/// the variable asks for it; at the allowance the variable sets when it is set, not at all
+/// The implied-clause pass runs by default wherever a compile conjoins its
+/// clauses, at the allowance the variable sets when it is set, not at all
 /// when it is `0` (which vitri reads as no allowance), and the variable is
 /// refused only where no compile conjoins the clauses: the model count
 /// under `--vtree`, and a bundle.
 #[test]
-fn implied_clauses_run_by_default_when_counting_and_are_refused_only_where_nothing_conjoins_them() {
+fn implied_clauses_run_by_default_and_are_refused_only_where_nothing_conjoins_them() {
     use crate::config::Mode;
     let set = vitri::RunConfig { implicates_ms: Some(500), ..vitri::RunConfig::default() };
     let off = vitri::RunConfig::default();
     for mode in [Mode::Compile, Mode::Mc, Mode::Wmc, Mode::Pmc, Mode::Pwmc] {
-        let default = if mode == Mode::Compile { None } else { Some(DEFAULT_IMPLICATES_MS) };
-        assert_eq!(implicates_ms(&off, false, mode, false, false).unwrap(), default, "{mode}");
+        assert_eq!(implicates_ms(&off, false, mode, false, false).unwrap(), Some(DEFAULT_IMPLICATES_MS), "{mode}");
         assert_eq!(implicates_ms(&set, true, mode, false, false).unwrap(), Some(500), "{mode}");
         assert_eq!(implicates_ms(&off, true, mode, false, false).unwrap(), None, "{mode} with 0");
 
@@ -198,7 +196,7 @@ fn implied_clauses_run_by_default_when_counting_and_are_refused_only_where_nothi
 
         let under_vtree = implicates_ms(&set, true, mode, true, false);
         assert_eq!(under_vtree.is_err(), mode == Mode::Mc, "{mode} under --vtree");
-        let default = if matches!(mode, Mode::Mc | Mode::Compile) { None } else { Some(DEFAULT_IMPLICATES_MS) };
+        let default = if mode == Mode::Mc { None } else { Some(DEFAULT_IMPLICATES_MS) };
         assert_eq!(implicates_ms(&off, false, mode, true, false).unwrap(), default, "{mode} under --vtree");
         if mode != Mode::Mc {
             assert_eq!(under_vtree.unwrap(), Some(500), "{mode} under --vtree");
