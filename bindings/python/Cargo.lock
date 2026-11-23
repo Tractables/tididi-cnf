@@ -423,7 +423,7 @@ checksum = "adb6935a6f5c20170eeceb1a3835a49e12e19d792f6dd344ccc76a985ca5a6ca"
 [[package]]
 name = "tididi"
 version = "0.2.0"
-source = "git+https://github.com/Tractables/tididi?branch=main#12043719b31af5bf36127454353fd234c5cc1c9e"
+source = "git+https://github.com/Tractables/tididi?branch=main#1d77b309818a47c159023940edb99ba128edf13a"
 dependencies = [
  "itoa",
  "num-bigint",
