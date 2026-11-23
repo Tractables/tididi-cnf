@@ -202,11 +202,9 @@ fn source_structure_profile_propagates_through_the_selection_context() {
 fn vtree_build_config_uses_the_callers_whole_remaining_window() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
     let config = vitri_vtree_build_config(
+        &VtreeOptions::default().with_deadline(Some(deadline)),
         "linear",
-        Some(deadline),
-        vitri::config::ConstructionBudget::WholeRemaining,
         vitri::config::ComponentPolicy::Whole,
-        None,
     );
 
     assert_eq!(
@@ -263,14 +261,30 @@ fn a_whole_build_conjoins_its_implied_clauses_and_keeps_the_count() {
 fn a_build_asked_for_implied_clauses_carries_the_runs_budget() {
     let base = crate::test_support::minimal_config();
     let config = Config { vitri: vitri::RunConfig { implicates_ms: Some(500), ..base.vitri.clone() }, ..base };
-    let asked = VtreeOptions::default().with_implied_clauses(&config);
-    let request = vitri_vtree_build_config(
-        "portfolio",
-        None,
-        vitri::config::ConstructionBudget::WholeRemaining,
-        vitri::config::ComponentPolicy::Split,
-        asked.implicates_ms,
-    );
+    let asked = VtreeOptions::default().with_run_policy(&config).with_implied_clauses(&config);
+    let request = vitri_vtree_build_config(&asked, "portfolio", vitri::config::ComponentPolicy::Split);
     assert_eq!(request.implicates_ms, Some(500));
-    assert_eq!(VtreeOptions::default().with_run_policy(&config).implicates_ms, None);
+    let not_asked = VtreeOptions::default().with_run_policy(&config);
+    let request = vitri_vtree_build_config(&not_asked, "portfolio", vitri::config::ComponentPolicy::Split);
+    assert_eq!(request.implicates_ms, None);
+}
+
+/// A build after the frontend starts from the run's vitri settings, as the
+/// frontend does, and sets only what the construction owns over them.
+#[test]
+fn a_build_under_the_run_keeps_the_runs_vitri_settings() {
+    use vitri::decompose::{Reading, Root};
+    let base = crate::test_support::minimal_config();
+    let reading = Reading { root: Some(Root::Centroid), ..Reading::default() };
+    let config = Config { vitri: vitri::RunConfig { reading, candidates: 4, ..base.vitri.clone() }, ..base };
+    for options in [
+        VtreeOptions::default().with_run_policy(&config),
+        VtreeOptions::by_peak_width().with_run_settings(&config),
+    ] {
+        let request = vitri_vtree_build_config(&options, "portfolio", vitri::config::ComponentPolicy::Split);
+        assert_eq!(request.reading, reading);
+        assert_eq!(request.candidates, 1);
+    }
+    let fresh = vitri_vtree_build_config(&VtreeOptions::default(), "portfolio", vitri::config::ComponentPolicy::Split);
+    assert_eq!(fresh.reading, Reading::default());
 }

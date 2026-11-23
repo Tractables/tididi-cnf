@@ -54,6 +54,13 @@ pub struct VtreeOptions {
     /// ([`crate::budget::construction_budget`]) once
     /// [`Self::with_run_policy`] has set it.
     pub(crate) construction: vitri::config::ConstructionBudget,
+    /// The vitri settings every request starts from: vitri's defaults, or
+    /// the run's once [`Self::with_run_settings`] has set them. A request is
+    /// a clone of them with only what the construction owns set over them
+    /// (`vitri_vtree_build_config`), so a build after the frontend's keeps
+    /// what the run asked of vitri, and shares with the frontend whatever
+    /// vitri tracks across the clones of one config.
+    pub(crate) vitri: vitri::RunConfig,
 }
 
 /// Clause-balance selection, no deadline, a fresh portfolio history.
@@ -66,6 +73,7 @@ impl Default for VtreeOptions {
             source_structure_profile: None,
             implicates_ms: None,
             construction: vitri::config::ConstructionBudget::WholeRemaining,
+            vitri: vitri::RunConfig::default(),
         }
     }
 }
@@ -90,13 +98,22 @@ impl VtreeOptions {
         self
     }
 
-    /// The run's portfolio history, the structure profile of its input, and
-    /// the run's construction work budget, which replaces the deadline.
+    /// The run's portfolio history, the structure profile of its input, the
+    /// run's construction work budget, which replaces the deadline, and the
+    /// run's vitri settings ([`Self::with_run_settings`]).
     #[must_use]
     pub(crate) fn with_run_policy(mut self, config: &Config) -> Self {
         self.portfolio_history = config.portfolio_history.clone();
         self.source_structure_profile = config.source_structure_profile;
         self.construction = crate::budget::construction_budget(config.time_limit_ms);
+        self.with_run_settings(config)
+    }
+
+    /// Start every request from the run's vitri settings (`Config::vitri`),
+    /// the ones its frontend starts from, rather than from vitri's defaults.
+    #[must_use]
+    pub(crate) fn with_run_settings(mut self, config: &Config) -> Self {
+        self.vitri = config.vitri.clone();
         self
     }
 
@@ -233,28 +250,28 @@ pub(crate) fn spec_family(spec: &str) -> &str {
     spec.split_once(':').map_or(spec, |(family, _)| family)
 }
 
-/// The vitri request for one construction under `construction`: in the
-/// caller's window, where the caller has carved the absolute construction
-/// deadline out of its run and vitri spends all of what remains of it rather
-/// than dividing it again, or under a work budget, which ignores the deadline.
+/// The vitri request for one construction of `spec` under `options`: a clone
+/// of [`VtreeOptions::vitri`] with the construction's own settings over it.
+/// The construction runs under `options.construction`: in the caller's
+/// window, where the caller has carved the absolute construction deadline out
+/// of its run and vitri spends all of what remains of it rather than dividing
+/// it again, or under a work budget, which ignores the deadline.
 ///
 /// `spec` goes to vitri as written; the caller supplies every policy that has
 /// a vitri representation.
 fn vitri_vtree_build_config(
+    options: &VtreeOptions,
     spec: &str,
-    deadline: Option<std::time::Instant>,
-    construction: vitri::config::ConstructionBudget,
     components: vitri::config::ComponentPolicy,
-    implicates_ms: Option<u64>,
 ) -> vitri::RunConfig {
     vitri::RunConfig {
-        deadline,
-        implicates_ms,
-        construction_budget: construction,
+        deadline: options.deadline,
+        implicates_ms: options.implicates_ms,
+        construction_budget: options.construction,
         vtree_spec: spec.to_owned(),
         components,
         candidates: 1,
-        ..vitri::RunConfig::default()
+        ..options.vitri.clone()
     }
 }
 
@@ -335,8 +352,7 @@ fn build(
     // answers one that passes mid-build: the first candidate gets one short
     // attempt and the rest are never started, so the build still returns a
     // vtree and the compile behind it decides against the wall.
-    let config =
-        vitri_vtree_build_config(spec, options.deadline, options.construction, components, options.implicates_ms);
+    let config = vitri_vtree_build_config(options, spec, components);
     vitri::component::build_vtree(formula, &config, &selection)
         .map(vtree_build_from_vitri)
         .map_err(|error| Error::VtreeSpec(format!("vtree construction for {spec:?} failed: {error}")))

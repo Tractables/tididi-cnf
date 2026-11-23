@@ -22,7 +22,7 @@ use super::batch::batch_accumulate;
 use super::cofactor::cofactor_step;
 use super::component::CompileJob;
 use super::marginalize::{Schedule, build_marginalize_targets, run_marginalize_at};
-use super::minimize::MinimizeGate;
+use super::minimize::{ContractThrottle, MinimizeGate};
 use super::sat_prune::{PruneOutcome, SatPruneCtx};
 use super::scope::{ScopeGroups, group_clauses_by_scope};
 
@@ -53,6 +53,8 @@ pub(crate) struct PassState {
     pub(crate) tdds: Vec<Option<Tdd>>,
     /// The adaptive-minimize gate.
     pub(crate) minimize: MinimizeGate,
+    /// The contraction throttle of each diagram in `tdds`, by the same index.
+    pub(crate) throttles: Vec<ContractThrottle>,
     /// The projected variables ∃-forgotten so far, in the pass's numbering.
     /// Each is forgotten once: at the step its leaf is scheduled at, or at the
     /// root.
@@ -81,7 +83,12 @@ impl PassState {
             }
             _ => None,
         };
-        let mut state = Self { tdds: vec![None; total_nodes], sat_prune, ..Self::default() };
+        let mut state = Self {
+            tdds: vec![None; total_nodes],
+            throttles: vec![ContractThrottle::default(); total_nodes],
+            sat_prune,
+            ..Self::default()
+        };
         // A pass that sums nothing out has no marginal level, so no content
         // twins: skipping the scan spares the gate's per-fold test a sweep of
         // the levels.
@@ -202,7 +209,7 @@ fn compile_pass(
         let step = if deadline_passed(job.deadline) {
             Err(OperationError::Stopped)
         } else {
-            fold_step(eng, t, &ctx, &mut state, &current_vtree, None)
+            fold_step(eng, t, &ctx, &mut state, &current_vtree, None, None)
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out;
@@ -237,8 +244,9 @@ fn compile_pass(
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the
-/// running peak to the pair count the step measured and continue while the
-/// diagram is satisfiable. UNSAT proves the formula UNSAT and answers ⊥ at
+/// running peak to the pair count the step measured, keep that count on the
+/// node's contraction throttle for its parent's lineage choice, and continue
+/// while the diagram is satisfiable. UNSAT proves the formula UNSAT and answers ⊥ at
 /// once; an error aborts the pass without making a satisfiability claim.
 fn check_step(
     eng: &Engine,
@@ -247,7 +255,10 @@ fn check_step(
     state: &mut PassState,
     t: VtreeIdx,
 ) -> ControlFlow<Result<Compiled, GiveUp>> {
-    let step = step.inspect(|&pairs| state.peak_size = state.peak_size.max(pairs));
+    let step = step.inspect(|&pairs| {
+        state.peak_size = state.peak_size.max(pairs);
+        state.throttles[t.idx()].pairs = pairs;
+    });
     let sat = step.and_then(|_| state.tdds[t.idx()].as_ref().map_or(Ok(true), |tdd| eng.is_sat(tdd)));
     match sat {
         Ok(true) => ControlFlow::Continue(()),
@@ -320,6 +331,8 @@ fn propagate_vtree_arc(
 
 /// Fold node `t`'s clauses into `children` (the conjoined child diagrams, or
 /// `None`), marginalizing in the fold, and store the result in `state.tdds[t]`.
+/// The fold's contractions read and extend the throttle of node `lineage`'s
+/// diagram, a fresh one when `None`, which then becomes `t`'s.
 /// Returns its pair count, 0 when the node has no diagram. `Err(Stopped)`
 /// when the deadline passes during the fold.
 fn fold_step(
@@ -329,15 +342,19 @@ fn fold_step(
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
     children: Option<Tdd>,
+    lineage: Option<VtreeIdx>,
 ) -> Result<usize, OperationError> {
     let targets = build_marginalize_targets(t, current_vtree, ctx, &state.forgotten);
     state.minimize.fold_at_root = t == current_vtree.root();
+    let throttle = lineage.map(|c| std::mem::take(&mut state.throttles[c.idx()])).unwrap_or_default();
+    state.minimize.swap_throttle(throttle);
     let folded = batch_accumulate(
         eng,
         &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
         state, targets.as_ref(),
     );
     state.minimize.fold_at_root = false;
+    state.throttles[t.idx()] = state.minimize.swap_throttle(ContractThrottle::default());
     state.tdds[t.idx()] = folded?;
     if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
     Ok(state.tdds[t.idx()].as_ref().map_or(0, Tdd::pair_count))
@@ -406,6 +423,19 @@ pub(super) fn splice_and_fold(
     current_vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
     let (left, right) = current_vtree.children(t);
+    // The larger child's diagram is the bulk of the fold's accumulator, so
+    // its throttle is the one the fold carries on. The pair count its step
+    // measured stands in for the diagram's: `pair_count` walks every level of
+    // a diagram changed since it was last counted, as the marginalization
+    // after a step changes it, which cost model counts on small instances 0.3%.
+    let lineage = match (&state.tdds[left.idx()], &state.tdds[right.idx()]) {
+        (Some(_), Some(_)) => {
+            Some(if state.throttles[right.idx()].pairs > state.throttles[left.idx()].pairs { right } else { left })
+        }
+        (Some(_), None) => Some(left),
+        (None, Some(_)) => Some(right),
+        (None, None) => None,
+    };
     let children_tdd = match (state.tdds[left.idx()].take(), state.tdds[right.idx()].take()) {
         (Some(mut l), Some(r)) => {
             if l.is_zero() || r.is_zero() {
@@ -440,7 +470,7 @@ pub(super) fn splice_and_fold(
         (Some(t_single), None) | (None, Some(t_single)) => Some(t_single),
         (None, None) => None,
     };
-    fold_step(eng, t, ctx, state, current_vtree, children_tdd)
+    fold_step(eng, t, ctx, state, current_vtree, children_tdd, lineage)
 }
 
 #[cfg(test)]

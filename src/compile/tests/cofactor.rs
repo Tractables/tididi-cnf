@@ -138,7 +138,8 @@ impl Fixture {
         for side in [left, right] {
             tdds[side.idx()] = self.conjoined_under(eng, side);
         }
-        PassState { tdds, ..PassState::default() }
+        let throttles = vec![ContractThrottle::default(); tdds.len()];
+        PassState { tdds, throttles, ..PassState::default() }
     }
 
     /// The node's diagram by the cofactor step, `None` when it declines
