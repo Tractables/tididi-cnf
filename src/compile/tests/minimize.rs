@@ -15,7 +15,7 @@ fn anchored() -> MinimizeGate {
     MinimizeGate {
         size_threshold: (1000.0 * MIN_SIZE_MULT) as usize,
         size_threshold_retired: 0,
-        last_prune_pairs: 1000,
+        throttle: ContractThrottle { pairs_floor: Some(1000), ..ContractThrottle::default() },
         ..MinimizeGate::default()
     }
 }
@@ -47,7 +47,29 @@ fn prune_fires_on_growth_of_pairs() {
     assert_eq!(g.decide(1000, grown() - 1, 0, None), MinimizeAction::ContractUnlessThrottled);
     assert_eq!(g.decide(g.size_threshold, 1000, 0, None), MinimizeAction::ContractUnlessThrottled);
     assert_eq!(g.decide(1000, 1000, 50, None), MinimizeAction::ContractUnlessThrottled);
-    assert_eq!(MinimizeGate::default().decide(10, 10, 0, None), MinimizeAction::Full);
+    assert_eq!(MinimizeGate::default().decide(10, 10, 0, None), MinimizeAction::ContractOnly);
+}
+
+/// A diagram's first merge sets its floor, a smaller result lowers it, and
+/// growth is judged from there; another diagram's floor is its own.
+#[test]
+fn the_pairs_floor_is_the_fewest_a_diagram_held() {
+    let eng = Engine::new();
+    let vtree = std::sync::Arc::new(tididi::vtree::Vtree::balanced(6));
+    let mut f = eng.clause(&vtree, [1, -4]).unwrap();
+    let pairs = f.pair_count();
+    let mut g = anchored();
+    assert!(pairs < 1000 && f.node_count() < g.size_threshold);
+    g.adaptive_minimize(&eng, &mut f, false, false).unwrap();
+    assert_eq!(g.throttle.pairs_floor, Some(pairs));
+    let grown = (pairs as f64 * PRUNE_GROWTH_TRIGGER) as usize + 1;
+    assert_eq!(g.decide(10, grown, 0, None), MinimizeAction::PruneOnly);
+    let first = g.swap_throttle(ContractThrottle::default());
+    assert_eq!(first.pairs_floor, Some(pairs));
+    assert_eq!(g.decide(10, grown, 0, None), MinimizeAction::ContractUnlessThrottled);
+    let now = f.pair_count();
+    g.adaptive_minimize(&eng, &mut f, false, false).unwrap();
+    assert_eq!(g.throttle.pairs_floor, Some(now));
 }
 
 /// Where the unnamed nodes are read, a prune is due at their share of the

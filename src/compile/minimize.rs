@@ -55,11 +55,15 @@ pub(crate) fn minimize_contract_only(eng: &Engine, tdd: &mut Tdd) -> Result<(), 
 /// diagram's node count.
 const MIN_SIZE_MULT: f64 = 1.1;
 
-/// A prune is due once the diagram has grown past this multiple of its pairs
-/// after the last prune, unless its unnamed nodes are read. Pairs, not nodes:
-/// a diagram that stores no pass-through nodes holds fewer nodes for nearly
-/// the same pairs. On mc 2023_089 a node rule missed by 3% the prune that
-/// keeps the next merge within memory, where the pairs had grown twofold.
+/// A prune is due once a diagram's pairs have grown past this multiple of the
+/// fewest it held since its last prune (its throttle's `pairs_floor`), unless
+/// its unnamed nodes are read. Pairs, not nodes: a diagram that stores no
+/// pass-through nodes holds fewer nodes for nearly the same pairs, and on mc
+/// 2023_089 a node rule missed by 3% the prune that keeps the next merge
+/// within memory. The fewest, not those the prune left: a sum-out removes
+/// the pairs of the levels it makes marginal. The diagram's own, not the
+/// last pruned one's: the folds of other nodes interleave diagrams of a few
+/// pairs with an accumulator of millions.
 const PRUNE_GROWTH_TRIGGER: f64 = 1.05;
 
 /// On a diagram of at least [`UNNAMED_PRUNE_MIN_NODES`] nodes whose unnamed
@@ -224,7 +228,8 @@ enum MinimizeAction {
     ContractUnlessThrottled,
 }
 
-/// Skips contractions while the recent ones on a diagram removed too little.
+/// Skips contractions while the recent ones on a diagram removed too little,
+/// and holds the diagram's floor for the prune's growth rule.
 #[derive(Clone, Default)]
 pub(crate) struct ContractThrottle {
     /// The fractions of nodes the last `CONTRACT_HISTORY_SIZE` contractions
@@ -246,6 +251,10 @@ pub(crate) struct ContractThrottle {
     /// Whether the next contraction runs whatever `history` says
     /// ([`Self::reopen`]).
     trial: bool,
+    /// The fewest pairs the diagram held at a merge since its last prune,
+    /// the prune's result included; `None` before its first merge
+    /// ([`PRUNE_GROWTH_TRIGGER`]).
+    pairs_floor: Option<usize>,
 }
 
 impl ContractThrottle {
@@ -356,10 +365,6 @@ pub(crate) struct MinimizeGate {
     /// `Tdd::retired_marginal_slots()` snapshot paired with `size_threshold` so slot
     /// collection since the snapshot doesn't deflate the gate metric.
     size_threshold_retired: usize,
-    /// Pairs after the last prune; 0 before the first. Prune re-fires when
-    /// the pairs exceed `last_prune_pairs * PRUNE_GROWTH_TRIGGER`. Marginal
-    /// slots are not pairs, so the slot prune does not deflate it.
-    last_prune_pairs: usize,
 
     /// The contraction throttle of the diagram being reduced. A pass keeps
     /// one per vtree node's diagram and hands it on with the diagram
@@ -415,8 +420,7 @@ impl MinimizeGate {
     /// `Tdd::retired_marginal_slots()` at the same instant (the slot-collection offset);
     /// `unnamed` the diagram's unnamed nodes where read ([`UNNAMED_PRUNE_FRACTION`]).
     fn decide(&self, pre_nodes: usize, pre_pairs: usize, cur_retired: usize, unnamed: Option<usize>) -> MinimizeAction {
-        let grown = self.last_prune_pairs == 0
-            || pre_pairs as f64 > self.last_prune_pairs as f64 * PRUNE_GROWTH_TRIGGER;
+        let grown = self.throttle.pairs_floor.is_some_and(|floor| pre_pairs as f64 > floor as f64 * PRUNE_GROWTH_TRIGGER);
         let do_prune = match unnamed {
             Some(unnamed) => unnamed > 0 && (grown || unnamed as f64 >= pre_nodes as f64 * UNNAMED_PRUNE_FRACTION),
             None => grown,
@@ -449,7 +453,7 @@ impl MinimizeGate {
 
     /// Re-anchor only the prune baseline after a prune-only pass.
     fn record_prune(&mut self, post_pairs: usize) {
-        self.last_prune_pairs = post_pairs;
+        self.throttle.pairs_floor = Some(post_pairs);
     }
 
     /// Make `throttle` the one the gate's contractions read and record, and
@@ -497,6 +501,7 @@ impl MinimizeGate {
             }
         };
         let action = if rescan { MinimizeAction::Full } else { own };
+        self.throttle.pairs_floor = Some(self.throttle.pairs_floor.map_or(cur_pairs, |floor| floor.min(cur_pairs)));
         match action {
             MinimizeAction::Full => {
                 let probed = rescan && self.fold_at_root && !fold_end;
