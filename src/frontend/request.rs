@@ -63,18 +63,19 @@ pub(crate) fn resolve_env_config() -> Result<vitri::RunConfig, Error> {
     Ok(config)
 }
 
-/// The allowance, in milliseconds, of vitri's implied-clause pass when
-/// `VITRI_IMPLICATES_MS` is unset.
+/// The allowance, in milliseconds, of vitri's implied-clause pass in a
+/// counting mode when `VITRI_IMPLICATES_MS` is unset.
 pub(crate) const DEFAULT_IMPLICATES_MS: u64 = 2_000;
 
 /// The run's allowance for vitri's implied-clause pass, `None` for no pass.
 /// `config` holds what vitri read from `VITRI_IMPLICATES_MS`, where `0`
 /// turns the pass off, and `env_set` says whether the variable is set at
-/// all; unset gives [`DEFAULT_IMPLICATES_MS`]. Every mode conjoins the
-/// clauses on the tree its main compile runs on, except the model count
-/// under an explicit `--vtree` (`explicit_vtree`), whose streaming route
-/// builds each component's tree as it reaches it; and a bundle brings the
-/// clauses vitri wrote for it. There the default gives no pass.
+/// all; unset gives [`DEFAULT_IMPLICATES_MS`] in a counting mode and no pass
+/// in function compilation. Every mode conjoins the clauses on the tree its
+/// main compile runs on, except the model count under an explicit `--vtree`
+/// (`explicit_vtree`), whose streaming route builds each component's tree
+/// as it reaches it; and a bundle brings the clauses vitri wrote for it.
+/// There the default gives no pass.
 ///
 /// # Errors
 ///
@@ -98,8 +99,8 @@ pub(crate) fn implicates_ms(
         None
     };
     match (env_set, inert) {
-        (false, None) => Ok(Some(DEFAULT_IMPLICATES_MS)),
-        (false, Some(_)) => Ok(None),
+        (false, None) if mode != Mode::Compile => Ok(Some(DEFAULT_IMPLICATES_MS)),
+        (false, _) => Ok(None),
         (true, Some(why)) if config.implicates_ms.is_some() => Err(Error::Environment(format!(
             "VITRI_IMPLICATES_MS is set, but {why}, so the variable would do nothing; unset it."
         ))),
