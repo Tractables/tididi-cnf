@@ -68,7 +68,8 @@ constructions, and
 [vitri's catalog](https://github.com/Tractables/vitri/blob/main/docs/env.md)
 lists them. `tididi` passes them through, and they reach every run that
 preprocesses or builds a vtree, in every mode, with three exceptions it
-refuses whenever they are set, and one it refuses where it would do nothing:
+refuses whenever they are set, and one with a default of its own that it
+refuses where it would do nothing:
 
 - **`VITRI_BUDGET_MS`.** `tididi` gives vitri its budget from the run's own
   time limit, so this variable would never take effect. Pass the limit as
@@ -79,13 +80,16 @@ refuses whenever they are set, and one it refuses where it would do nothing:
   formula itself, and no other mode can use the skip.
 - **`VITRI_IMPLICATES_MS`.** Every mode conjoins the clauses vitri finds over
   the tree its main compile runs on, each component's after the component's
-  own. They leave every count and the compiled function unchanged. `wmc`
-  looks for the simplified formula's clauses only when it compiles that
-  formula, after the Arjun-reduced formula gives no answer. The
-  variable is refused in `mc` under `--vtree` and on a bundle, which brings
-  its clauses in its own files. A tree built after a compile gives up gets no
-  clauses, and neither do the trees of a projected count's conditioning
-  branches.
+  own. They leave every count and the compiled function unchanged. In `mc`,
+  `wmc`, `pmc` and `pwmc` the pass runs by default with 2000 ms; in `compile`
+  it runs only when the variable is set. The variable sets the allowance, and
+  `0` turns the pass off. `wmc` looks for the simplified formula's clauses
+  only when it compiles that formula, after the Arjun-reduced formula gives
+  no answer. In `mc` under
+  `--vtree` and on a bundle, which brings its clauses in its own files, there
+  is no pass, and a nonzero value is refused. A tree built after a compile
+  gives up gets no clauses, and neither do the trees of a projected count's
+  conditioning branches.
 
 One setting is overridden by design: with `VITRI_ARJUN_SBVA` on, its
 default, Arjun adds variables to shorten the formula; on a formula that looks

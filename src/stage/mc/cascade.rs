@@ -51,29 +51,35 @@ pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted
 
 /// A cofactor through the run's frontend, as the input went: vitri's
 /// preprocessing, then the compile on the vtree vitri pairs with its
-/// reduction, the reduction's lift folded, so the count is in the cofactor's
-/// space. A cofactor the preprocessing settles needs no compile; a frontend
+/// reduction, with no implied clauses, the reduction's lift folded, so the
+/// count is in the cofactor's space. A cofactor the preprocessing settles needs no compile; a frontend
 /// that fails gives up with `None`, as a compile that gives up does.
 fn count_reduced_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
-    let counted = crate::frontend::with_mc_frontend(form, run.config, run.deadline, |attempt, _| {
-        let prepared = attempt.preprocessed;
-        let lift_pow2 = prepared.count_lift.total_pow2();
-        eprintln!(
-            "[mc] shannon-split: compiling a cofactor: {}v/{}c reduced to {}v/{}c, lift=2^{lift_pow2}",
-            form.num_vars(),
-            form.clauses().len(),
-            prepared.reduced.num_vars(),
-            prepared.reduced.clauses().len(),
-        );
-        match attempt.vtree {
-            crate::frontend::FrontendVtree::Built(built) => {
-                let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run), lift_pow2);
-                count_attempt(run, attempt, run.deadline)
+    let counted = crate::frontend::with_mc_frontend(
+        form,
+        run.config,
+        run.deadline,
+        crate::frontend::TreeFor::Recovery,
+        |attempt, _| {
+            let prepared = attempt.preprocessed;
+            let lift_pow2 = prepared.count_lift.total_pow2();
+            eprintln!(
+                "[mc] shannon-split: compiling a cofactor: {}v/{}c reduced to {}v/{}c, lift=2^{lift_pow2}",
+                form.num_vars(),
+                form.clauses().len(),
+                prepared.reduced.num_vars(),
+                prepared.reduced.clauses().len(),
+            );
+            match attempt.vtree {
+                crate::frontend::FrontendVtree::Built(built) => {
+                    let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run), lift_pow2);
+                    count_attempt(run, attempt, run.deadline)
+                }
+                crate::frontend::FrontendVtree::FullyResolved => Some((num_bigint::BigUint::from(1u32) << lift_pow2, 0)),
+                crate::frontend::FrontendVtree::Refuted => Some((num_bigint::BigUint::from(0u32), 0)),
             }
-            crate::frontend::FrontendVtree::FullyResolved => Some((num_bigint::BigUint::from(1u32) << lift_pow2, 0)),
-            crate::frontend::FrontendVtree::Refuted => Some((num_bigint::BigUint::from(0u32), 0)),
-        }
-    });
+        },
+    );
     counted.unwrap_or_else(|error| {
         eprintln!("[mc] shannon-split: vitri's frontend failed on a cofactor: {error}");
         None

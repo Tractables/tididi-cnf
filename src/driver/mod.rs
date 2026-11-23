@@ -72,7 +72,7 @@ fn parse_input(
     mode_flag: Option<Mode>,
     limits: &Limits,
     settings: &Settings,
-    vitri: vitri::RunConfig,
+    mut vitri: vitri::RunConfig,
 ) -> Result<Parsed, Error> {
     // Validate an explicit spec here, the one point every compile path passes
     // through: some paths never construct a vtree from it and would otherwise
@@ -122,7 +122,13 @@ fn parse_input(
         None => Mode::resolve(mode_flag, &meta)?,
     };
     settings.refuse_inert(mode_flag, &meta, mode, bundle.is_some())?;
-    crate::frontend::request::refuse_inert_implicates(&vitri, mode, settings.vtree.is_some(), bundle.is_some())?;
+    vitri.implicates_ms = crate::frontend::request::implicates_ms(
+        &vitri,
+        std::env::var_os("VITRI_IMPLICATES_MS").is_some(),
+        mode,
+        settings.vtree.is_some(),
+        bundle.is_some(),
+    )?;
 
     eprintln!(
         "[input] {} variables, {} clauses",

@@ -73,6 +73,31 @@ pub(crate) struct WmcFrontend {
     pub(crate) report: Report,
 }
 
+/// The compile a frontend's tree is for. Only the run's main compile conjoins
+/// vitri's implied clauses: a tree built after a compile gives up, such as a
+/// Shannon cofactor's, gets none, so the recovery does not pay for the pass
+/// again.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum TreeFor {
+    MainCompile,
+    Recovery,
+}
+
+/// Add to `built`, the tree a frontend built over `formula`, the clauses
+/// vitri's implied-clause pass finds for it on the run's allowance
+/// ([`request::implicates_ms`]), under `config`, the frontend's request. The
+/// frontend itself runs no pass ([`frontend_config`]); this is where the
+/// tree of a main compile gets its clauses. The pass counts as vtree time.
+fn add_implied_clauses(
+    built: &mut vitri::component::VtreeBuild,
+    formula: &CnfFormula,
+    parent: &Config,
+    config: &vitri::RunConfig,
+) {
+    let config = vitri::RunConfig { implicates_ms: parent.vitri.implicates_ms, ..config.clone() };
+    built.implied_clauses = parent.vtree_time.time(|| vitri::component::implied_clauses(formula, built, &config));
+}
+
 /// The vtree selection every frontend of a run makes: the run's portfolio
 /// history and input profile, with vitri's `VITRI_*` settings.
 fn run_selection(parent: &Config) -> Result<vitri::decompose::SelectionCtx, vitri::VitriError> {
@@ -93,10 +118,9 @@ pub(crate) fn wmc_frontend(
         None,
         Some(weights.clone()),
     )?;
-    let mut config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
     // Only the fallback compiles on this tree, so the implied-clause pass
     // waits for it ([`WmcVtree::for_fallback`]).
-    config.implicates_ms = None;
+    let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
     let selection = run_selection(parent)?;
     let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
         parent.vtree_time.count(|| vitri::bundle::run(formula, &meta, &config, &selection))?;
@@ -125,9 +149,7 @@ impl WmcVtree {
         deadline: Option<std::time::Instant>,
     ) -> VtreeBuild {
         let Self(mut built) = self;
-        let config = frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false);
-        built.implied_clauses =
-            parent.vtree_time.time(|| vitri::component::implied_clauses(formula, &built, &config));
+        add_implied_clauses(&mut built, formula, parent, &frontend_config(parent, vitri::cnf::Mode::Wmc, deadline, false));
         vtree_build_from_vitri(built)
     }
 }
@@ -146,6 +168,7 @@ pub(crate) fn mc_streaming_preprocess(
 
 /// Run vitri's paired function-preserving preprocess + vtree frontend and
 /// translate its total original-variable map exactly once at this boundary.
+/// The tree is the main compile's, with its implied clauses.
 pub(crate) fn compile_frontend(
     formula: &CnfFormula,
     parent: &Config,
@@ -154,9 +177,12 @@ pub(crate) fn compile_frontend(
     let meta = vitri::cnf::CnfMeta::default();
     let config = frontend_config(parent, vitri::cnf::Mode::Compile, deadline, true);
     let selection = run_selection(parent)?;
-    let vitri::bundle::VitriRun { preprocessed, vtree, .. } =
+    let vitri::bundle::VitriRun { preprocessed, mut vtree, .. } =
         parent.vtree_time.count(|| vitri::bundle::run(formula, &meta, &config, &selection))?;
     let PreprocessBundle { reduced, record, telemetry, .. } = preprocessed;
+    if let vitri::bundle::RunVtree::Built(built) = &mut vtree {
+        add_implied_clauses(built, &reduced, parent, &config);
+    }
     let expansion = original_expansion(&record, reduced.num_vars());
     Ok(CompileFrontendAttempt {
         reduced,
@@ -200,17 +226,24 @@ fn charged(vtree: vitri::bundle::RunVtree, vtree_time: &VtreeTime) -> vitri::bun
 /// prepared vitri session, so the cascade can ask it for the no-SBVA `retry`
 /// without cloning or replaying the primary preprocessing work. The
 /// continuation cannot let that borrowing session escape this function.
+///
+/// The prepared tree gets its implied clauses when it is for the main
+/// compile (`tree`); a tree from the session's retry never does.
 pub(crate) fn with_mc_frontend<R>(
     formula: &CnfFormula,
     parent: &Config,
     deadline: Option<std::time::Instant>,
+    tree: TreeFor,
     continuation: impl FnOnce(McFrontendAttempt, &vitri::bundle::FrontendSession<'_>) -> R,
 ) -> Result<R, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
     let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
     let selection = run_selection(parent)?;
     let mut session = parent.vtree_time.budgeted(|| vitri::bundle::frontend(formula, &meta, &config, &selection))?;
-    let run = parent.vtree_time.count(|| session.prepare())?;
+    let mut run = parent.vtree_time.count(|| session.prepare())?;
+    if let (TreeFor::MainCompile, vitri::bundle::RunVtree::Built(built)) = (tree, &mut run.vtree) {
+        add_implied_clauses(built, &run.preprocessed.reduced, parent, &config);
+    }
     let attempt = mc_frontend_attempt(run, &parent.vtree_time);
     Ok(continuation(attempt, &session))
 }

@@ -130,7 +130,7 @@ fn plain_mc_frontend_scopes_one_conversion_and_the_prepared_session() {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
 
     let reduced_vars =
-        with_mc_frontend(&formula, &parent, Some(deadline), |attempt, _session| {
+        with_mc_frontend(&formula, &parent, Some(deadline), TreeFor::MainCompile, |attempt, _session| {
             let bundle = &attempt.preprocessed;
             assert_eq!(bundle.record.mode, vitri::cnf::Mode::Mc);
             assert_eq!(bundle.count_lift.total_pow2(), bundle.record.count_lift_pow2);
@@ -163,4 +163,48 @@ fn plain_mc_frontend_scopes_one_conversion_and_the_prepared_session() {
         .expect("the whole-run frontend must reach its continuation");
 
     assert!(reduced_vars <= formula.num_vars());
+}
+
+/// The implied clauses a frontend tree carries, its components' included.
+fn implied_count(vtree: &FrontendVtree) -> usize {
+    match vtree {
+        FrontendVtree::Built(built) => {
+            built.implied.len() + built.components.iter().flatten().map(|c| c.component.implied.len()).sum::<usize>()
+        }
+        FrontendVtree::FullyResolved | FrontendVtree::Refuted => 0,
+    }
+}
+
+/// Only the main compile's tree gets implied clauses: a recovery's frontend,
+/// such as a Shannon cofactor's, and a retry from the main frontend's session
+/// find none, so a run whose main compile gave up does not pay for the pass
+/// again.
+#[test]
+fn only_the_main_compiles_frontend_tree_gets_implied_clauses() {
+    let cnf = include_bytes!("../../../tests/data/cnfs/satlib/uf100/uf100-01000.cnf");
+    let (formula, _) = crate::formula::parse_dimacs(&cnf[..]).expect("the fixture parses");
+    let mut parent = crate::config::Config {
+        mode: crate::config::Mode::Mc,
+        preprocess_level: crate::config::PreprocessLevel::Full,
+        time_limit_ms: Some(3_600_000),
+        ..fixtures::minimal_config()
+    };
+    parent.vitri.implicates_ms = Some(2_000);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3600);
+    let (main, retried) = with_mc_frontend(&formula, &parent, Some(deadline), TreeFor::MainCompile, |attempt, session| {
+        let budget = vitri::bundle::RetryBudget::new(deadline, std::time::Duration::from_secs(10)).expect("a budget");
+        let retry = vitri::bundle::FrontendRetryConfig {
+            arjun_sbva: Some(vitri::preprocess::ArjunSbva::Off),
+            ..vitri::bundle::FrontendRetryConfig::default()
+        };
+        let retried = session.retry(budget, &retry).expect("the retry runs").expect("Arjun keeps a reduction");
+        (implied_count(&attempt.vtree), implied_count(&mc_frontend_attempt(retried, &parent.vtree_time).vtree))
+    })
+    .expect("the frontend runs");
+    assert!(main > 0, "the main compile's tree has no implied clauses");
+    assert_eq!(retried, 0, "the session's retry ran the pass");
+    let recovery =
+        with_mc_frontend(&formula, &parent, Some(deadline), TreeFor::Recovery, |attempt, _| implied_count(&attempt.vtree))
+            .expect("the frontend runs");
+    assert_eq!(recovery, 0, "a recovery's frontend ran the pass");
 }
