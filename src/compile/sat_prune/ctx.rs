@@ -43,7 +43,11 @@ pub(crate) struct PruneLimits {
     pub(super) min_kill_rate: f32,
     /// How many probes the kill rate is first judged after, and then judged
     /// again every time as many more have run, so a hopeless walk stops at
-    /// its first judgement.
+    /// its first judgement. A walk probes its levels bottom-up, and the
+    /// small functions of the lowest levels rarely die, so the first
+    /// judgement must reach past them: on mc2025_track1_186 the first 30
+    /// probes of the first walk all came back SAT, 6 of its first 60 proved
+    /// their node dead, and 111 of all its 352.
     pub(super) min_probes_for_rate_check: u64,
     /// The most probes one pass issues.
     pub(super) max_probes_per_pass: u64,
@@ -107,7 +111,7 @@ impl PruneLimits {
             growth_factor: 1.1,
             max_consec_zero_passes: 2,
             min_kill_rate: 0.05,
-            min_probes_for_rate_check: 30,
+            min_probes_for_rate_check: 60,
             max_probes_per_pass: 2_000,
             probe_conflict_budget: 5_000,
             round_conflict_budget: 50,
