@@ -47,7 +47,7 @@ fn a_refused_count_readout_is_an_incomplete_run() {
 fn the_retry_vtree_is_a_vitri_spec_of_its_family() {
     vitri::spec::validate_vtree_spec(RETRY_VTREE_SPEC)
         .expect("the retry construction must stay inside vitri's spec grammar");
-    assert_eq!(spec_family(RETRY_VTREE_SPEC), "hypergraph-bisect");
+    assert_eq!(crate::vtree::spec_family(RETRY_VTREE_SPEC), "hypergraph-bisect");
 }
 
 /// The retry needs a vtree the default portfolio picked, of another family

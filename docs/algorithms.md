@@ -205,7 +205,11 @@ names the one that answered ([`stats.md`](stats.md)).
   with time left, it compiles once more on vitri's hypergraph bisection,
   `hypergraph-bisect:imbalance=0.40`, unless the portfolio's pick already was
   a `hypergraph-bisect` tree. The retry builds its tree in the time left, and
-  one that cannot finish the tree gives up. Nothing follows the retry.
+  one that cannot finish the tree gives up. Nothing follows the retry. Under
+  `mc` the same retry is the first fallback when the compile of Arjun's
+  reduction runs out of memory: it compiles the reduction on the bisection
+  up to that compile's own deadline, and the other fallbacks get what is left
+  after it.
 - **Monotone reduction** (`monotone-reduction`). Under `mc`, the run asks
   vitri to skip Arjun on a monotone formula, one in which every variable
   occurs in one polarity only: its compile usually answers sooner without the

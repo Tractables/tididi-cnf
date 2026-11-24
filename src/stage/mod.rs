@@ -27,7 +27,7 @@ use vitri::cnf::CnfFormula;
 use crate::budget::vtree_deadline;
 use crate::compile::{CompileRun, model_count_streaming};
 use crate::config::Config;
-use crate::vtree::{VtreeOptions, build_vtree, built_or_give_up, split_components};
+use crate::vtree::{VtreeOptions, build_vtree, built_or_give_up, spec_family, split_components};
 
 mod conditioning;
 mod mc;
@@ -52,13 +52,35 @@ const PORTFOLIO_VTREE_SPEC: &str = "portfolio";
 /// vitri's hypergraph bisection, which keeps each clause's variables
 /// together.
 ///
-/// Two retries use it: the model count's no-SBVA retry, which asks vitri for
-/// it beside the re-reduction on coloring-like inputs, where it keeps the
-/// clause structure that motivated removing SBVA; and the plain compile's
-/// retry when the compile on the portfolio's vtree runs out of memory. It is
+/// Three retries use it: the model count's no-SBVA retry, which asks vitri
+/// for it beside the re-reduction on coloring-like inputs, where it keeps the
+/// clause structure that motivated removing SBVA; and the bisection retry of
+/// the plain compile and of the model count, when the compile on the
+/// portfolio's vtree runs out of memory ([`bisect_retry_applies`]). It is
 /// caller policy, not a vtree path of this crate's: vitri parses the spec and
 /// owns the construction.
 pub(crate) const RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
+
+/// Whether a compile that gave up gets the retry on [`RETRY_VTREE_SPEC`]: its
+/// vtree came from the default portfolio, not an explicit `--vtree` or a
+/// bundle; the portfolio's winner, `pick`, is not already of the retry's
+/// family; and the compile's `deadline` had not passed at `now`.
+///
+/// Time left is also what makes the give-up a memory one. A compile stops at
+/// its deadline or for memory: an apply refused under the batch limits
+/// ([`crate::compile::GiveUp::Refused`]), or an allocation refused in the
+/// final reduction ([`crate::compile::GiveUp::OutOfMemory`]). So one that
+/// stopped before its deadline ran out of memory, whichever it reports.
+pub(crate) fn bisect_retry_applies(
+    explicit_vtree: bool,
+    pick: Option<&str>,
+    deadline: Option<Instant>,
+    now: Instant,
+) -> bool {
+    !explicit_vtree
+        && pick.is_none_or(|pick| spec_family(pick) != spec_family(RETRY_VTREE_SPEC))
+        && deadline.is_none_or(|deadline| now < deadline)
+}
 
 /// What every stage of one run reads: the engine it compiles on, the resolved
 /// configuration, the run's wall, and what the run sets for each compile, and

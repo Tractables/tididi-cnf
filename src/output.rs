@@ -51,8 +51,9 @@ pub(crate) enum AnsweredBy {
     MonotoneReduction,
     /// Shannon split assembled the count from cofactors.
     ShannonSplit,
-    /// The plain compile's second compile, on the hypergraph bisection, after
-    /// the compile on the portfolio's vtree ran out of memory.
+    /// The second compile, on the hypergraph bisection, after the compile on
+    /// the portfolio's vtree ran out of memory: the plain compile's, and the
+    /// model count's first fallback.
     BisectRetry,
 }
 
