@@ -194,13 +194,12 @@ const COSTLY_SCAN_MIN_PAIRS: usize = 1 << 23;
 /// most 230.
 const SCAN_MAX_PAIRS_PER_NODE: usize = 256;
 
-/// The fraction of pairs below which a full reduction that may have scanned
-/// makes the gate skip such scans until the pairs grow fourfold. On a model
-/// counting instance a full reduction of 10.6 million pairs removed 1.3% of
-/// them; skipping the next fold's scan of 15 million pairs, which removed
-/// 15% of them for 6.8 G instructions, cost the last fold 0.8 G and saved
-/// 27% of the instructions in all.
-const SCAN_MIN_PAIR_YIELD: f64 = 0.1;
+/// The growth in nodes, over the diagram the last such scan ran on, under
+/// which such a scan is skipped, whatever the library's schedule says. On a
+/// model counting instance a scan of 306 million pairs, 1.3 times the nodes
+/// of the scan before it, removed a third of the pairs for 196 million work
+/// units more than the reduction without it and saved nothing later.
+const COSTLY_SCAN_MIN_GROWTH: usize = 3;
 
 /// The pairs, counted at the scan after the reduction before it, from which
 /// a scan the gate forces at a fold's end first merges the bottom levels
@@ -405,10 +404,9 @@ pub(crate) struct MinimizeGate {
     /// How many times [`SCAN_FOLD_WORK_PER_PAIR`] is doubled: once for each
     /// forced scan in a row that removed too little.
     scan_backoff: u32,
-    /// The pairs under which scans of at least [`COSTLY_SCAN_MIN_PAIRS`] are
-    /// skipped, four times those of the last such full reduction that removed
-    /// under [`SCAN_MIN_PAIR_YIELD`] of them; 0 after one that removed more.
-    scan_wait_pairs: usize,
+    /// The nodes of the last diagram of at least [`COSTLY_SCAN_MIN_PAIRS`]
+    /// pairs whose unforced scan ran, times [`COSTLY_SCAN_MIN_GROWTH`] halves.
+    costly_scan_floor: usize,
     /// Whether the current fold is the root's, set by the step that runs it.
     /// Nothing folds the root's diagram again, so where its scans fall moves
     /// only its own work and size: any of its merges may scan when the work
@@ -478,7 +476,7 @@ impl MinimizeGate {
     /// as a scan the schedule called for would, and at a fold's end on at
     /// least [`SCAN_SAMPLE_MIN_PAIRS`] samples its yield first. A scan the gate did not force on at least
     /// [`COSTLY_SCAN_MIN_PAIRS`] pairs is skipped at [`SCAN_MAX_PAIRS_PER_NODE`]
-    /// and while `scan_wait_pairs` holds. Contraction commutes with
+    /// and under [`COSTLY_SCAN_MIN_GROWTH`]. Contraction commutes with
     /// conjunction and summing out, a content-twin merge does not, so a scan
     /// inside a fold makes the fold's result depend on its batch boundaries.
     pub(crate) fn adaptive_minimize(
@@ -514,7 +512,7 @@ impl MinimizeGate {
                 let small = cur_pairs <= MID_FOLD_SCAN_MAX_PAIRS;
                 let weighed = !rescan && cur_pairs >= COSTLY_SCAN_MIN_PAIRS;
                 let low_yield = weighed
-                    && (cur_pairs < self.scan_wait_pairs
+                    && (cur_nodes < self.costly_scan_floor
                         || cur_pairs >= cur_nodes.saturating_mul(SCAN_MAX_PAIRS_PER_NODE));
                 let skip = self.skip_content_twins || low_yield || !(fold_end || rescan || small);
                 if rescan {
@@ -548,12 +546,7 @@ impl MinimizeGate {
                 let (post_nodes, post_pairs) = (result.node_count(), result.pair_count());
                 let removed = cur_nodes.saturating_sub(post_nodes) as f64;
                 if weighed && !skip {
-                    let removed_pairs = cur_pairs.saturating_sub(post_pairs) as f64;
-                    self.scan_wait_pairs = if removed_pairs < cur_pairs as f64 * SCAN_MIN_PAIR_YIELD {
-                        cur_pairs.saturating_mul(4)
-                    } else {
-                        0
-                    };
+                    self.costly_scan_floor = cur_nodes.saturating_mul(COSTLY_SCAN_MIN_GROWTH) / 2;
                 }
                 if rescan {
                     self.fold_start_work = eng.limits().work_units();
