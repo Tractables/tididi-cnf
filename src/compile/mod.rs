@@ -97,6 +97,11 @@ pub(crate) struct CompileRun<'a> {
     /// by variable. The vtree is then a home. A weighted compile does not
     /// take it.
     pub(crate) projections: bool,
+    /// The instant from which the compile stops at its next vtree node once
+    /// the allocator has gone eager ([`crate::mem::eager_decay_latched`]),
+    /// its later nodes' applies cut there too, so that a retry gets the time
+    /// after it; `None` runs to the deadline.
+    pub(crate) retry_cut: Option<std::time::Instant>,
 }
 
 /// Why a compile has no diagram to return.

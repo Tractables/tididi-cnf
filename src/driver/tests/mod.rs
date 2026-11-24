@@ -73,6 +73,18 @@ fn the_retry_needs_the_default_portfolio_another_family_and_time_left() {
     assert!(!bisect_retry_applies(false, pick, Some(now), now), "a compile stopped at the deadline");
 }
 
+/// The first tree's retry cut leaves the retry its share of the time left;
+/// a run with no retry to follow, or no wall, has none.
+#[test]
+fn the_retry_cut_leaves_the_retry_a_share_of_the_time() {
+    let now = Instant::now();
+    let wall = now + std::time::Duration::from_secs(100);
+    assert_eq!(retry_cut(true, Some(wall), now), Some(now + std::time::Duration::from_secs(75)));
+    assert_eq!(retry_cut(false, Some(wall), now), None);
+    assert_eq!(retry_cut(true, None, now), None);
+    assert_eq!(retry_cut(true, Some(now), now), Some(now));
+}
+
 /// `(x_1 ∨ … ∨ x_n) ∧ ⋀_i (x_i ↔ y_i)` over `x_i = i`, `y_i = n + i`: one
 /// connected formula, joined by its long clause, with `2^n − 1` models.
 fn paired(n: i32) -> CnfFormula {

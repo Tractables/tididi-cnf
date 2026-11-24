@@ -83,6 +83,12 @@ pub(crate) static malloc_conf: Option<&'static libc::c_char> = Some(unsafe {
 static EAGER_DECAY_LATCHED: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
+/// Whether the allocator has gone eager: the run's footprint reached
+/// [`LAZY_FLIP_FRAC`] of its address-space limit.
+pub(crate) fn eager_decay_latched() -> bool {
+    EAGER_DECAY_LATCHED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// Fraction of `RLIMIT_AS` at which lazy decay switches to eager.
 ///
 /// Lazy decay keeps freed pages for reuse, which saves page faults at the

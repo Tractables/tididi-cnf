@@ -207,8 +207,12 @@ names the one that answered ([`stats.md`](stats.md)).
 - **Bisection retry** (`bisect-retry`). When a `compile` runs out of memory
   with time left, it compiles once more on vitri's hypergraph bisection,
   `hypergraph-bisect:imbalance=0.40`, unless the portfolio's pick already was
-  a `hypergraph-bisect` tree. The retry builds its tree in the time left, and
-  one that cannot finish the tree gives up. Nothing follows the retry. Under
+  a `hypergraph-bisect` tree. On some formulas the diagram keeps growing on
+  the pick without an apply being refused, so a compile on the pick whose
+  footprint has reached 60% of the address-space limit also stops once a
+  quarter of the time left at its start remains, and that stop gets the
+  retry too. The retry builds its tree in the time left, and one that
+  cannot finish the tree gives up. Nothing follows the retry. Under
   `mc` the same retry is the first fallback when the compile of Arjun's
   reduction runs out of memory: it compiles the reduction on the bisection
   up to that compile's own deadline, and the other fallbacks get what is left

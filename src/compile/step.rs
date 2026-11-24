@@ -15,7 +15,7 @@ use tididi::diagram::Tdd;
 use tididi::vtree::{VarId, Vtree, VtreeIdx};
 use vitri::cnf::CnfFormula;
 
-use crate::budget::deadline_passed;
+use crate::budget::{deadline_passed, deadline_scope};
 use crate::convert::diagram_literal;
 use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
@@ -206,10 +206,12 @@ fn compile_pass(
     // Each step first tests the deadline; the deadline or an apply error aborts
     // the pass, and the caller decides what runs next.
     for (t, _var) in vtree.leaf_bottomup() {
-        let step = if deadline_passed(job.deadline) {
-            Err(OperationError::Stopped)
-        } else {
-            fold_step(eng, t, &ctx, &mut state, &current_vtree, None, None)
+        let step = match step_deadline(job) {
+            deadline if deadline_passed(deadline) => Err(OperationError::Stopped),
+            deadline => {
+                let _cut = (deadline != job.deadline).then(|| deadline_scope(eng, deadline));
+                fold_step(eng, t, &ctx, &mut state, &current_vtree, None, None)
+            }
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out;
@@ -222,10 +224,12 @@ fn compile_pass(
     // already-consumed `subtree(t)`.
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
     for &t in topo {
-        let step = if deadline_passed(job.deadline) {
-            Err(OperationError::Stopped)
-        } else {
-            run_internal_step(eng, t, &ctx, &mut state, &current_vtree)
+        let step = match step_deadline(job) {
+            deadline if deadline_passed(deadline) => Err(OperationError::Stopped),
+            deadline => {
+                let _cut = (deadline != job.deadline).then(|| deadline_scope(eng, deadline));
+                run_internal_step(eng, t, &ctx, &mut state, &current_vtree)
+            }
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out;
@@ -241,6 +245,16 @@ fn compile_pass(
     }
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| eng.one(vtree));
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
+}
+
+/// The deadline of the pass's next vtree node: the compile's own, or its
+/// retry cut ([`super::CompileRun::retry_cut`]) once the allocator has gone
+/// eager.
+fn step_deadline(job: CompileJob<'_>) -> Option<std::time::Instant> {
+    match job.run.retry_cut {
+        Some(cut) if crate::mem::eager_decay_latched() => Some(job.deadline.map_or(cut, |deadline| deadline.min(cut))),
+        _ => job.deadline,
+    }
 }
 
 /// Run after each vtree node on its step's outcome and diagram: raise the

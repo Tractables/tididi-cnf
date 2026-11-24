@@ -6,6 +6,11 @@
 //! memory hooks and the recovery cascade compile unchanged and stay inert, as
 //! they do natively without a limit.
 
+/// There is no limit to approach, so the allocator never goes eager.
+pub(crate) fn eager_decay_latched() -> bool {
+    false
+}
+
 /// Nothing to check: there is no limit to approach.
 pub(crate) fn preflight_alloc_decay_check(_request_bytes: u64) {}
 
