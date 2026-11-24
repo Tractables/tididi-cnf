@@ -1,8 +1,9 @@
 //! The primary compile and the fallbacks that run when it fails.
 //!
 //! The primary compile runs first. If it fails, the fallbacks run — the
-//! no-SBVA re-reduce, support enumeration, the unreduced retry — and then
-//! Shannon split, as [`count_with_recovery`] orders them.
+//! bisection retry, the no-SBVA re-reduce, support enumeration, the
+//! unreduced retry — and then Shannon split, as [`count_with_recovery`]
+//! orders them.
 //! Each function below is one step of that order and says what it decides.
 //! The monotone reduction is the fallback of the count without a reduction
 //! instead, on a formula Arjun skipped as monotone. Every step that answers
@@ -15,13 +16,13 @@ use vitri::cnf::CnfFormula;
 use crate::compile::release_failed_compile;
 use crate::config::Config;
 use crate::output::AnsweredBy;
-use crate::stage::{PORTFOLIO_VTREE_SPEC, RETRY_VTREE_SPEC, Run};
+use crate::stage::{PORTFOLIO_VTREE_SPEC, RETRY_VTREE_SPEC, Run, bisect_retry_applies};
 
 use super::windows::{
     UNREDUCED_RETRY_RESERVE, monotone_reduction_window, no_sbva_retry_want, no_sbva_retry_window,
     unreduced_retry_window,
 };
-use super::attempt::{attempt_from_vitri_build, count_attempt, portfolio_attempt};
+use super::attempt::{attempt_from_vitri_build, attempt_on, count_attempt};
 use super::recovery::{Counted, Recovered, count_with_recovery};
 use super::support_enum::support_enum_stage;
 
@@ -46,7 +47,7 @@ pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted
         form.num_vars(),
         form.clauses().len(),
     );
-    count_attempt(run, portfolio_attempt(run, form, run.deadline)?, run.deadline)
+    count_attempt(run, attempt_on(run, form, PORTFOLIO_VTREE_SPEC, 0, run.deadline)?, run.deadline)
 }
 
 /// A cofactor through the run's frontend, as the input went: vitri's
@@ -171,7 +172,7 @@ fn retry_frontend_session(
     })
 }
 
-/// First fallback: re-reduce the same formula with SBVA off and recompile,
+/// Second fallback: re-reduce the same formula with SBVA off and recompile,
 /// inside this stage's own reserve.
 ///
 /// The primary compile keeps SBVA, which helps broadly; this stage recovers
@@ -331,7 +332,47 @@ pub(super) fn monotone_reduction(
         .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
 }
 
-/// Third fallback: compile the unreduced formula once. The primary compile's
+/// First fallback: compile the kept reduction once more on vitri's
+/// hypergraph bisection, [`RETRY_VTREE_SPEC`], as the plain compile does when
+/// its compile on the portfolio's vtree runs out of memory, and when
+/// [`bisect_retry_applies`] says so: `pick` is the portfolio's winner, and
+/// the primary compile stopped before `primary_deadline`, the run's wall
+/// when that is unarmed.
+///
+/// The portfolio scores its candidates without compiling on them, and the
+/// candidates it ranks close tend to run out of memory together, while the
+/// bisection, which keeps each clause's variables together, compiles some of
+/// those formulas in a fraction of the memory. The retry builds its
+/// tree and compiles to the primary compile's deadline: at a long limit the
+/// fallbacks behind it keep the tail that deadline reserved, and at a short
+/// one they get what a retry that runs out of memory leaves.
+fn bisect_retry(
+    run: &Run<'_>,
+    ar: &crate::frontend::record::ArjunReduction,
+    pick: Option<&str>,
+    primary_deadline: Option<Instant>,
+) -> Option<Counted> {
+    let now = Instant::now();
+    let deadline = primary_deadline.or(run.deadline);
+    if !bisect_retry_applies(run.config.explicit_vtree(), pick, deadline, now) {
+        return None;
+    }
+    eprintln!(
+        "[mc] bisect-retry: the compile on {} ran out of memory; compiling the reduction once more on \
+         {RETRY_VTREE_SPEC} ({})",
+        pick.unwrap_or(run.config.vtree_spec()),
+        deadline.map_or_else(
+            || "no time limit".to_owned(),
+            |deadline| format!("{}s left", deadline.saturating_duration_since(now).as_secs()),
+        ),
+    );
+    let attempt = attempt_on(run, &ar.formula, RETRY_VTREE_SPEC, ar.lift_pow2, deadline)?;
+    let counted = count_attempt(run, attempt, deadline)?;
+    eprintln!("[mc] bisect-retry: counted in {}ms", now.elapsed().as_millis());
+    Some(counted)
+}
+
+/// Fourth fallback: compile the unreduced formula once. The primary compile's
 /// failure — an OOM panic, or an attempt that answered nothing by its
 /// deadline — is intercepted at depth 0 (before Shannon split spends the
 /// wall) and the unreduced `compile_formula` is compiled once on a bounded
@@ -381,7 +422,7 @@ fn unreduced_retry(
     }
     // `retry_deadline` — the reserve window this retry just advertised —
     // bounds its vtree construction too, not the (looser) program deadline.
-    let attempt = portfolio_attempt(run, form, retry_deadline)?;
+    let attempt = attempt_on(run, form, PORTFOLIO_VTREE_SPEC, 0, retry_deadline)?;
     let counted = count_attempt(run, attempt, retry_deadline)?;
     eprintln!("[mc] unreduced-retry: counted");
     Some(counted)
@@ -426,12 +467,19 @@ pub(super) fn count_primary(
         }
         counted
     };
+    // The tree is named before the compile starts, as the plain compile does,
+    // so a run that gives up still says which tree it was on.
+    let pick = run.announce_tree("[mc] compile: start", " on ");
     // The fallbacks, stopping at the first that answers; each skips itself
     // when it has nothing to do.
     let fallbacks = || {
-        no_sbva_session
-            .and_then(|session| no_sbva_retry(run, compile_formula, session, false))
-            .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
+        bisect_retry(run, &ar, pick.as_deref(), primary_deadline)
+            .map(|counted| (counted, AnsweredBy::BisectRetry))
+            .or_else(|| {
+                no_sbva_session
+                    .and_then(|session| no_sbva_retry(run, compile_formula, session, false))
+                    .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
+            })
             .or_else(|| {
                 support_enum_stage(
                     &ar.formula,
@@ -448,9 +496,6 @@ pub(super) fn count_primary(
                     .map(|counted| (counted, AnsweredBy::UnreducedRetry))
             })
     };
-    // The tree is named before the compile starts, as the plain compile does,
-    // so a run that gives up still says which tree it was on.
-    run.announce_tree("[mc] compile: start", " on ");
     count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
 }
 

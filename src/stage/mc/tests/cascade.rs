@@ -71,3 +71,37 @@ fn a_reduction_no_smaller_than_the_formula_is_not_compiled_again() {
     let (want, counted) = count_a_monotone_product(4);
     assert_eq!(counted, Some((want, crate::output::AnsweredBy::SupportEnumeration)));
 }
+
+/// The retry a compile that ran out of memory gets first: under the byte
+/// budget the plain compile's retry is tested under, where the compile on the
+/// linear vtree runs out of memory, the bisection counts
+/// `(x_1 ∨ … ∨ x_n) ∧ ⋀_i (x_i ↔ y_i)` exactly, through the reduction's lift.
+/// It does not run under an explicit vtree, nor when the portfolio already
+/// picked a bisection.
+#[test]
+fn a_reduction_out_of_memory_is_counted_on_the_bisection() {
+    const N: i32 = 24;
+    const LIFT: u32 = 3;
+    let mut clauses = vec![(1..=N).collect::<Vec<_>>()];
+    for i in 1..=N {
+        clauses.push(vec![-i, N + i]);
+        clauses.push(vec![i, -(N + i)]);
+    }
+    let ar = crate::frontend::record::ArjunReduction {
+        formula: crate::test_support::dimacs(2 * N as u32, &clauses),
+        lift_pow2: LIFT,
+        support: crate::problem::ShowSet::from_vars(std::iter::empty()),
+    };
+    let context = std::sync::Arc::new(tididi::Context::new());
+    context.run(|eng| {
+        let _budget = eng.limits().edit(|limits| limits.with_memory_budget_bytes(Some(4 << 20)));
+        let config = crate::test_support::minimal_config();
+        let run = crate::test_support::run(eng, &config);
+        let (count, _) =
+            super::bisect_retry(&run, &ar, Some("linear"), None).expect("the bisection compiles under the budget");
+        assert_eq!(count, ((num_bigint::BigUint::from(1u32) << N as usize) - 1u32) << LIFT as usize);
+        assert!(super::bisect_retry(&run, &ar, Some(crate::stage::RETRY_VTREE_SPEC), None).is_none());
+        let explicit = crate::config::Config { vtree: Some("linear".to_owned()), ..crate::test_support::minimal_config() };
+        assert!(super::bisect_retry(&crate::test_support::run(eng, &explicit), &ar, Some("linear"), None).is_none());
+    });
+}

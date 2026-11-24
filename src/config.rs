@@ -242,6 +242,11 @@ impl Config {
         self.vtree.as_deref().unwrap_or("portfolio")
     }
 
+    /// Whether the caller chose the run's vtree: `--vtree`, or the bundle's.
+    pub(crate) fn explicit_vtree(&self) -> bool {
+        self.vtree.is_some() || self.input_vtree.is_some()
+    }
+
     /// The tree the run's main compile is on, as its log lines name it: the
     /// bundle's, or the construction [`Config::vtree_spec`] names.
     pub(crate) fn vtree_name(&self) -> &str {

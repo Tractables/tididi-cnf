@@ -32,10 +32,10 @@ use crate::output::{
     record_pwmc, record_wmc,
 };
 use crate::stage::{
-    RETRY_VTREE_SPEC, Run, run_mc_bundle, run_mc_count, run_mc_streaming, run_pmc_bundle, run_pmc_count,
+    RETRY_VTREE_SPEC, Run, bisect_retry_applies, run_mc_bundle, run_mc_count, run_mc_streaming, run_pmc_bundle, run_pmc_count,
     run_pwmc_bundle, run_pwmc_count, run_wmc_bundle, run_wmc_count,
 };
-use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components, spec_family};
+use crate::vtree::{VtreeBuild, VtreeOptions, build_vtree_with_components};
 
 /// Read the DIMACS file at `path` through the one reader
 /// ([`crate::parse_dimacs`] → vitri), so a run accepts and refuses exactly
@@ -229,8 +229,8 @@ fn compile_with_retry(
     };
     // Inputs that do not fit are a fault of the route, which a second vtree
     // would only hide.
-    let explicit_vtree = run.config.vtree.is_some() || run.config.input_vtree.is_some();
-    if matches!(give_up, GiveUp::Invalid(_)) || !bisect_retry_applies(explicit_vtree, pick, run.deadline, Instant::now())
+    if matches!(give_up, GiveUp::Invalid(_))
+        || !bisect_retry_applies(run.config.explicit_vtree(), pick, run.deadline, Instant::now())
     {
         return Err(gave_up(give_up));
     }
@@ -283,22 +283,6 @@ fn compile_on(run: &Run<'_>, reduced: &CnfFormula, built: VtreeBuild) -> Result<
     let plan = ComponentPlan::from_components(built.components.as_deref());
     let options = CompileOptions { plan, deadline: run.deadline, ..CompileOptions::default() };
     compile_with(run.eng, &built.conjoined(reduced), &built.root, options, run.compile)
-}
-
-/// Whether a plain compile that gave up gets the retry on
-/// [`RETRY_VTREE_SPEC`]: its vtree came from the default portfolio, not an
-/// explicit `--vtree` or a bundle; the portfolio's winner, `pick`, is not already of the
-/// retry's family; and the run has time left at `now`.
-///
-/// Time left is also what makes the give-up a memory one. A compile in this
-/// mode stops at its deadline or for memory: an apply refused under the
-/// batch limits ([`GiveUp::Refused`]), or an allocation refused in the final
-/// reduction ([`GiveUp::OutOfMemory`]). So one that stopped before the
-/// deadline ran out of memory, whichever it reports.
-fn bisect_retry_applies(explicit_vtree: bool, pick: Option<&str>, deadline: Option<Instant>, now: Instant) -> bool {
-    !explicit_vtree
-        && pick.is_none_or(|pick| spec_family(pick) != spec_family(RETRY_VTREE_SPEC))
-        && deadline.is_none_or(|deadline| now < deadline)
 }
 
 /// A give-up of the plain compile route, which has nothing to fall back to:

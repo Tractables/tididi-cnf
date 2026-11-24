@@ -3,8 +3,9 @@
 //! One attempt is one formula plus the per-component vtrees it will be compiled
 //! on. The primary compile, the no-SBVA retry and a Shannon cofactor's compile
 //! take the tree vitri built beside the reduction each is made of; the
-//! unreduced retry and a cofactor compiled as it stands have no such pairing and build their own trees through
-//! [`portfolio_attempt`], bounded by the time limit the attempt will be
+//! bisection retry, the unreduced retry and a cofactor compiled as it stands
+//! have no such pairing and build their own trees through [`attempt_on`],
+//! bounded by the time limit the attempt will be
 //! compiled against, then hand them to the same constructor. All end at the
 //! same `CompileAttempt`, so an attempt cannot arrive at the compile
 //! half-built. [`count_attempt`] compiles one under panic isolation.
@@ -16,7 +17,7 @@ use vitri::cnf::CnfFormula;
 
 use crate::budget::vtree_deadline;
 use crate::compile::model_count_streaming;
-use crate::stage::{PORTFOLIO_VTREE_SPEC, Run, run_isolated};
+use crate::stage::{Run, run_isolated};
 use crate::vtree::{
     Component, ComponentVtree, VtreeBuild, VtreeOptions, build_vtree_with_components, built_or_give_up, whole_formula_component,
 };
@@ -76,25 +77,28 @@ pub(super) fn attempt_from_vitri_build(
     CompileAttempt { formula, components, lift_pow2 }
 }
 
-/// An attempt for `formula` on vitri's portfolio, every component's vtree built
-/// up front by vitri, with no Arjun lift: the unreduced retry's and a
-/// cofactor's compiled as it stands. `None` when the construction fails, as
-/// [`built_or_give_up`] reads it.
+/// An attempt for `formula` on the construction `spec`, every component's
+/// vtree built up front by vitri, its count lifted by `lift_pow2`: the
+/// unreduced retry's and a cofactor's compiled as it stands, both on vitri's
+/// portfolio with no lift, and the bisection retry's on the kept reduction.
+/// `None` when the construction fails, as [`built_or_give_up`] reads it.
 ///
 /// `deadline` is the wall the attempt will be compiled against, and its vtree
 /// construction respects it too: an attempt that spends its window building a
 /// tree defeats the window it was given.
-pub(super) fn portfolio_attempt(
+pub(super) fn attempt_on(
     run: &Run<'_>,
     formula: &CnfFormula,
+    spec: &str,
+    lift_pow2: u32,
     deadline: Option<Instant>,
 ) -> Option<CompileAttempt> {
     let ctx = VtreeOptions::default()
         .with_deadline(vtree_deadline(deadline))
         .with_run_policy(run.config);
-    let built = run.config.vtree_time.time(|| build_vtree_with_components(formula, PORTFOLIO_VTREE_SPEC, &ctx));
+    let built = run.config.vtree_time.time(|| build_vtree_with_components(formula, spec, &ctx));
     let built = built_or_give_up(built)?.bind(run);
-    Some(attempt_from_vitri_build(formula.clone(), built, 0))
+    Some(attempt_from_vitri_build(formula.clone(), built, lift_pow2))
 }
 
 #[cfg(test)]

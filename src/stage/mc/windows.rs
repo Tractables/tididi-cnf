@@ -64,7 +64,7 @@ pub(super) fn support_enum_arjun_retry_ms(remaining_ms: Option<u64>) -> Option<u
 /// and [`unreduced_retry_window`] takes it when the run has no wall.
 pub(super) const UNREDUCED_RETRY_RESERVE: Duration = Duration::from_millis(250_000);
 
-/// Reserve window for the unreduced retry — the third fallback — which runs
+/// Reserve window for the unreduced retry — the fourth fallback — which runs
 /// on any failure of the primary compile. Pure so it can be
 /// unit-tested.
 ///
@@ -123,7 +123,7 @@ pub(super) fn unreduced_retry_window(
 }
 
 /// Share of the total declared wall (`--time-limit-ms`) reserved for the
-/// predicate-gated no-SBVA retry (the first fallback).
+/// predicate-gated no-SBVA retry (the second fallback).
 ///
 /// A quarter covers the re-reduce and the recompile, and leaves the unreduced
 /// retry and Shannon split the rest. A fraction of the declared wall, not of
