@@ -103,10 +103,15 @@ const CONTRACT_WALK_WORK_PER_NODE: f64 = 1.5;
 const WALK_SKIP_MIN_NODES: usize = 1 << 16;
 /// The largest diagram, in pairs, on which the shared throttle skips no
 /// contraction once the diagram has grown past [`OWN_SKIP_MAX_GROWTH`] times
-/// the one its ring last measured. Its skips without that bound left a fold's
-/// result of 1.68 M nodes that a contraction takes to 75,000; on diagrams of
-/// over 20 M pairs the bound's contractions cost 1.4 G instructions each and
-/// removed 1%.
+/// the size its own last contraction ran on, or, before it had one, the
+/// diagram the shared ring last measured. Its skips without that bound left a
+/// fold's result of 1.68 M nodes that a contraction takes to 75,000; on
+/// diagrams of over 20 M pairs the bound's contractions cost 1.4 G
+/// instructions each and removed 1%. Measured against the shared ring alone,
+/// whose last sample is often a diagram of a few hundred nodes folded between
+/// a large one's merges, it contracted diagrams of 330,000 to 400,000 nodes
+/// that had grown under 1.2 times since their own last contraction, for 0.005
+/// to 0.6% of their nodes.
 const SHARED_GROWTH_MAX_PAIRS: usize = 1 << 22;
 
 /// The work units per pair of its result from which a fold's last merge scans
@@ -592,14 +597,20 @@ impl MinimizeGate {
                 let skip = if self.throttle.warm { self.throttle.try_skip(Some(cur_nodes)) } else { self.shared.try_skip(None) };
                 if !skip {
                     self.run_contract_and_record(eng, result, cur_nodes)?;
-                } else if !self.throttle.warm && self.shared.outgrown(cur_nodes) && result.pair_count() <= SHARED_GROWTH_MAX_PAIRS {
+                } else if !self.throttle.warm
+                    && (if self.throttle.recorded_nodes > 0 { &self.throttle } else { &self.shared }).outgrown(cur_nodes)
+                    && result.pair_count() <= SHARED_GROWTH_MAX_PAIRS
+                {
                     // Recorded in the shared ring only: samples in the
                     // diagram's own ring warm it, and its own growth bound
                     // then contracts diagrams of tens of millions of pairs
-                    // at 2.5 G instructions for 2% of their nodes.
+                    // at 2.5 G instructions for 2% of their nodes. Its size
+                    // still becomes the diagram's reference, or each later
+                    // merge would contract it again.
                     self.shared.skip_remaining = 0;
                     let (fraction, _) = contract(eng, result, cur_nodes)?;
                     self.shared.record(fraction, cur_nodes);
+                    self.throttle.recorded_nodes = cur_nodes;
                 }
             }
         }
