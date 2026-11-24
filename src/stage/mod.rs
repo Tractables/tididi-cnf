@@ -66,11 +66,13 @@ pub(crate) const RETRY_VTREE_SPEC: &str = "hypergraph-bisect:imbalance=0.40";
 /// bundle; the portfolio's winner, `pick`, is not already of the retry's
 /// family; and the compile's `deadline` had not passed at `now`.
 ///
-/// Time left is also what makes the give-up a memory one. A compile stops at
-/// its deadline or for memory: an apply refused under the batch limits
-/// ([`crate::compile::GiveUp::Refused`]), or an allocation refused in the
-/// final reduction ([`crate::compile::GiveUp::OutOfMemory`]). So one that
-/// stopped before its deadline ran out of memory, whichever it reports.
+/// A compile stops at its deadline or for memory: an apply refused under the
+/// batch limits ([`crate::compile::GiveUp::Refused`]), or an allocation
+/// refused in the final reduction ([`crate::compile::GiveUp::OutOfMemory`]).
+/// Where the compile ran to `deadline`, time left means it ran out of memory,
+/// whichever it reports; the plain compile also stops its first tree short of
+/// `deadline` once its footprint sent the allocator eager, to leave the retry
+/// time.
 pub(crate) fn bisect_retry_applies(
     explicit_vtree: bool,
     pick: Option<&str>,

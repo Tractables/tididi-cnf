@@ -115,7 +115,9 @@ second and another not finish. Without `--vtree`, the run chooses:
 - `compile`, `pmc` and `pwmc` build vitri's `portfolio`, which constructs
   several vtrees for the formula and keeps the one that scores best. The
   portfolio scores trees without compiling on them, so a `compile` that runs
-  out of memory with time left compiles once more on a second tree; the record's `answered_by` is then `bisect-retry`.
+  out of memory with time left, or nears the memory limit with a quarter of
+  its time left and has not finished, compiles once more on a second tree; the record's
+  `answered_by` is then `bisect-retry`.
 - `mc` and `wmc` run the counting cascade: vitri's Arjun preprocessing reduces
   the formula, the portfolio picks a vtree for what is left, and if that
   compile gives up, further stages follow; under `mc` the first, when the

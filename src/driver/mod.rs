@@ -210,9 +210,15 @@ fn compile_attempt(run: &Run<'_>, attempt: CompileFrontendAttempt) -> Result<Com
 /// them, and on some formulas the diagram outgrows memory on the pick while
 /// the bisection, which keeps each clause's variables together, compiles in a
 /// small fraction of it. The retry runs only after the pick gave up, so a
-/// formula the pick compiles is never touched. Both compiles run to the run's
-/// wall, and a retry that gives up is the run's give-up: the circuit is the
-/// answer, so there is no cheaper stage to fall back to.
+/// formula the pick compiles is never touched. A diagram can also outgrow
+/// the pick without an apply being refused (the implied clauses vitri adds
+/// change which are), running the compile to the wall and leaving the retry
+/// no time. So where the retry applies, a first compile whose footprint has
+/// sent the allocator eager stops once [`RETRY_RESERVE`] of the time left at
+/// its start remains, and that stop gets the retry. The retry runs to the
+/// run's wall, and a retry that gives up is the run's
+/// give-up: the circuit is the answer, so there is no cheaper stage to fall
+/// back to.
 ///
 /// Returns the compile that answered, over `reduced`'s variables, and which
 /// one it was. The caller has named the first compile's tree in the run's
@@ -223,7 +229,9 @@ fn compile_with_retry(
     built: VtreeBuild,
     pick: Option<&str>,
 ) -> Result<(Compiled, AnsweredBy), Error> {
-    let give_up = match compile_on(run, reduced, built) {
+    let now = Instant::now();
+    let retry = bisect_retry_applies(run.config.explicit_vtree(), pick, run.deadline, now);
+    let give_up = match compile_on(run, reduced, built, retry_cut(retry, run.deadline, now)) {
         Ok(compiled) => return Ok((compiled, AnsweredBy::Compile)),
         Err(give_up) => give_up,
     };
@@ -240,9 +248,10 @@ fn compile_with_retry(
     // fallbacks do before they compile on the same engine.
     let (held_before, held_after) = crate::compile::release_failed_compile(run.eng).held_mib();
     eprintln!(
-        "[compile] bisect-retry: the compile on {} ran out of memory with {}; \
+        "[compile] bisect-retry: the compile on {} {} with {}; \
          compiling once more on {RETRY_VTREE_SPEC} (mapped+retained {} → {} MiB after the purge)",
         pick.unwrap_or(run.config.vtree_spec()),
+        if give_up == GiveUp::Stopped { "outgrew the allocator's lazy range by its retry cut" } else { "ran out of memory" },
         run.deadline.map_or_else(
             || "no time limit".to_owned(),
             |deadline| format!("{}s left", deadline.saturating_duration_since(Instant::now()).as_secs()),
@@ -268,7 +277,7 @@ fn compile_on_bisection(run: &Run<'_>, reduced: &CnfFormula) -> Result<Compiled,
         .with_run_policy(run.config);
     let built = run.config.vtree_time.time(|| build_vtree_with_components(reduced, RETRY_VTREE_SPEC, &options));
     match built {
-        Ok(built) => compile_on(run, reduced, built.bind(run.eng)),
+        Ok(built) => compile_on(run, reduced, built.bind(run.eng), None),
         Err(error) => {
             eprintln!("[compile] bisect-retry: no tree: {error}");
             Err(GiveUp::Stopped)
@@ -276,13 +285,32 @@ fn compile_on_bisection(run: &Run<'_>, reduced: &CnfFormula) -> Result<Compiled,
     }
 }
 
+/// The share of the time left when the plain compile starts on the
+/// portfolio's pick that the pick leaves for the bisection retry once the
+/// allocator has gone eager.
+const RETRY_RESERVE: f64 = 0.25;
+
+/// The retry cut ([`CompileRun::retry_cut`]) of the plain compile on its
+/// first tree, which starts at `now`: [`RETRY_RESERVE`] of the time left
+/// before the run's `deadline`, when a `retry` follows a give-up and there
+/// is a deadline.
+fn retry_cut(retry: bool, deadline: Option<Instant>, now: Instant) -> Option<Instant> {
+    let deadline = deadline.filter(|_| retry)?;
+    Some(deadline - deadline.saturating_duration_since(now).mul_f64(RETRY_RESERVE))
+}
+
 /// One compile of `reduced` on `built`, its component vtrees as the plan and
-/// its implied clauses conjoined, to the run's wall. The vtrees are dropped
-/// when it returns.
-fn compile_on(run: &Run<'_>, reduced: &CnfFormula, built: VtreeBuild) -> Result<Compiled, GiveUp> {
+/// its implied clauses conjoined, to the run's wall or the `retry_cut`
+/// ([`CompileRun::retry_cut`]). The vtrees are dropped when it returns.
+fn compile_on(
+    run: &Run<'_>,
+    reduced: &CnfFormula,
+    built: VtreeBuild,
+    retry_cut: Option<Instant>,
+) -> Result<Compiled, GiveUp> {
     let plan = ComponentPlan::from_components(built.components.as_deref());
     let options = CompileOptions { plan, deadline: run.deadline, ..CompileOptions::default() };
-    compile_with(run.eng, &built.conjoined(reduced), &built.root, options, run.compile)
+    compile_with(run.eng, &built.conjoined(reduced), &built.root, options, CompileRun { retry_cut, ..run.compile })
 }
 
 /// A give-up of the plain compile route, which has nothing to fall back to:
