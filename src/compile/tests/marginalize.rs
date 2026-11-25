@@ -7,8 +7,7 @@ use super::*;
 fn a_region_reads_as_a_marginal_level() {
     let eng = Engine::new();
     let home = tididi::vtree::Home::new(Vtree::balanced(4));
-    let own = Vtree::projection(&home, [VarId(1), VarId(2), VarId(3)]).unwrap();
-    let mut f = eng.clause(&own, [1, 2, 3]).unwrap();
+    let mut f = eng.clause(&home, [1, 2, 3]).unwrap();
     assert!(!f.has_marginal_level());
     eng.marginalize(&mut f, |v| v != VarId(3)).unwrap();
     assert!(f.vtree().bottomup().any(|t| f.vtree().node(t).is_region()));

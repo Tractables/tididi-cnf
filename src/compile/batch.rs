@@ -10,11 +10,10 @@
 //! The width caps are here as well. `step.rs` decides which node is folded and when.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
-use tididi::vtree::{VarId, Vtree};
+use tididi::vtree::{Home, VarId};
 
 use crate::budget::deadline_passed;
 use super::marginalize::Summing;
@@ -99,7 +98,7 @@ pub(crate) fn batch_accumulate(
     eng: &Engine,
     clauses: &[usize],
     ctx: &StepContext<'_>,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     mut acc: Option<Tdd>,
     state: &mut PassState,
     marginalize_targets: Option<StepVars<'_>>,
@@ -287,7 +286,7 @@ fn merge_batch(
 /// Where one batch may stop, fixed before it is built.
 struct BatchStop<'a> {
     /// The vtree the batch is built on.
-    vtree: &'a Arc<Vtree>,
+    vtree: &'a Home,
     /// The node's clause indices in the order the fold visits them.
     clauses: &'a [usize],
     /// The width that closes any batch below `floor` clauses
@@ -310,7 +309,7 @@ struct BatchStop<'a> {
 
 impl<'a> BatchStop<'a> {
     fn for_fold(
-        vtree: &'a Arc<Vtree>,
+        vtree: &'a Home,
         clauses: &'a [usize],
         floor: BatchFloor,
         limit: usize,
@@ -407,7 +406,7 @@ impl<'a> BatchStop<'a> {
         }
 
         let first = diagram_clauses.get(clauses[start]);
-        let mut local = eng.clause(&clause_vtree(vtree, first), first.iter().copied())?;
+        let mut local = eng.clause(vtree, first.iter().copied())?;
         let may_extend = self.limit > self.floor;
         let mut reach = ReachScratch::default();
         let mut built = 0usize;
@@ -460,11 +459,6 @@ impl<'a> BatchStop<'a> {
         batch_count.saturating_mul(pairs)
             >= built.saturating_add(BATCH_MERGE_COST_RATIO.saturating_mul(self.acc_pairs()))
     }
-}
-
-/// The projection of `vtree` on `clause`'s variables.
-pub(super) fn clause_vtree(vtree: &Arc<Vtree>, clause: &[Literal]) -> Arc<Vtree> {
-    Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), clause.iter().map(|lit| lit.var)).expect("the vtree has a leaf for every clause variable")
 }
 
 /// Maximum allowed batch-TDD width before the batch should be flushed into the

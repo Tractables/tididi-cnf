@@ -352,11 +352,11 @@ pub(crate) fn compile_split(
                 None => Home::new(eng.bind_vtree(Vtree::clone(sub_vtree))),
             },
         };
-        let comp = compile_component(eng, scratch.sub(), own.vtree(), CompileJob { output, ..job })?;
+        let comp = compile_component(eng, scratch.sub(), &own, CompileJob { output, ..job })?;
         forgotten += comp.forgotten;
         peak_pairs = peak_pairs.max(comp.peak_pairs);
         if comp.diagram.is_zero() {
-            return Ok(Compiled { diagram: eng.zero(home.vtree()), forgotten: 0, peak_pairs });
+            return Ok(Compiled { diagram: eng.zero(&home), forgotten: 0, peak_pairs });
         }
         let (moved, _) = eng.transport(comp.diagram, &home, |v| l2g[v.idx()], 0).map_err(|refused| match refused.error {
             TransportError::Operation(e) => GiveUp::from_operation(eng, e),
@@ -378,7 +378,7 @@ pub(crate) fn compile_split(
         }
         parts = folded;
     }
-    let mut diagram = parts.pop().unwrap_or_else(|| eng.one(home.vtree()));
+    let mut diagram = parts.pop().unwrap_or_else(|| eng.one(&home));
     minimize_full(eng, &mut diagram, job.run.cofactor).map_err(|_| GiveUp::OutOfMemory)?;
     Ok(Compiled { diagram, forgotten, peak_pairs })
 }

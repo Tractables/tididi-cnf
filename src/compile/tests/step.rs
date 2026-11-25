@@ -12,7 +12,7 @@ fn run_pass(
     deadline: Option<std::time::Instant>,
 ) -> Option<Tdd> {
     let formula = dimacs(num_vars, clauses);
-    let vtree = crate::vtree::bound(eng, Vtree::balanced(num_vars));
+    let vtree = Home::new(eng.bind_vtree(tididi::vtree::Vtree::balanced(num_vars)));
     let job = CompileJob { deadline, output: PassOutput::Function, run: Default::default() };
     compile_component(eng, &formula, &vtree, job).ok().map(|compiled| compiled.diagram)
 }
@@ -61,7 +61,7 @@ fn short_circuit_reports_unsat() {
 fn a_proof_of_unsat_under_a_deadline_is_an_answer() {
     let eng = &Engine::new();
     let formula = dimacs(2, &[&[1, 2][..], &[-1], &[-2]]);
-    let vtree = Arc::new(Vtree::balanced(2));
+    let vtree = std::sync::Arc::new(tididi::vtree::Vtree::balanced(2));
     let deadline = Some(std::time::Instant::now() + std::time::Duration::from_secs(3600));
     for output in [crate::compile::Output::Function, crate::compile::Output::Count] {
         let opts = crate::compile::CompileOptions {

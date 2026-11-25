@@ -46,9 +46,9 @@ fn an_unsat_component_answers_zero_on_the_whole_home() {
             .diagram;
         assert!(tdd.is_zero(), "weighted = {weighted}");
         assert_eq!(tdd.weights().is_some(), weighted);
-        let home = tdd.vtree().home().expect("a split answers on a home");
-        assert_eq!(home.vtree().root(), expected.root());
-        assert_eq!(nodes(home.vtree()), nodes(&expected), "weighted = {weighted}");
+        let home = tdd.home();
+        assert_eq!(home.root(), expected.root());
+        assert_eq!(nodes(&home), nodes(&expected), "weighted = {weighted}");
     }
 }
 

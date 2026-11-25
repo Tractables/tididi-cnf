@@ -9,11 +9,10 @@
 //! variables forgotten so far in its pass state; both are passed in here.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 
 use tididi::diagram::Tdd;
 use tididi::{Engine, OperationError};
-use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use tididi::vtree::{Home, VarId, Vtree, VtreeIdx};
 
 use super::schedule::StepVars;
 use super::step::{PassState, StepContext};
@@ -87,7 +86,7 @@ pub(crate) fn run_marginalize_at(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
 ) -> Result<(), OperationError> {
     let Some(schedule) = ctx.marginalize_schedule else { return Ok(()); };
     let output = ctx.job.output;

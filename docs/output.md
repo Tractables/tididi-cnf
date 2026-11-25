@@ -123,7 +123,7 @@ format. Only the compile mode builds a circuit whose count is the one
 reported, so the counting modes refuse the flag. The vtree file holds the
 home the circuit was compiled on, every variable of the formula, and the
 circuit may use fewer. The library reads a `.tdd` file over that home,
-`load_tdd(path, home.vtree())`, and checks the file against it, so reading
+`load_tdd(path, &home)`, and checks the file against it, so reading
 the circuit back takes both files: parse the vtree, make it a home, then
 read the circuit over it.
 
@@ -131,7 +131,7 @@ read the circuit over it.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vtree = tididi::Vtree::from_text(&std::fs::read_to_string("switches.tdd.vtree")?)?;
     let home = tididi::vtree::Home::new(vtree);
-    let circuit = tididi::io::load_tdd("switches.tdd", home.vtree())?;
+    let circuit = tididi::io::load_tdd("switches.tdd", &home)?;
     println!("{}", circuit.model_count()?);
     Ok(())
 }

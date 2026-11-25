@@ -69,7 +69,7 @@ fn unnamed_nodes_decide_the_prune_where_read() {
 #[test]
 fn the_pairs_floor_is_the_fewest_a_diagram_held() {
     let eng = Engine::new();
-    let vtree = std::sync::Arc::new(tididi::vtree::Vtree::balanced(6));
+    let vtree = tididi::vtree::Home::new(tididi::vtree::Vtree::balanced(6));
     let mut f = eng.clause(&vtree, [1, -4]).unwrap();
     let pairs = f.pair_count();
     let mut g = anchored();

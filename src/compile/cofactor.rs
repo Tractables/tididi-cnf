@@ -39,11 +39,9 @@
 //! branches: `ceil(|C_t| / floor) > branches`. The guard is decided from the
 //! clause count, `R`'s floor and the branches `L` allows, before any fold.
 
-use std::sync::Arc;
-
 use tididi::diagram::Tdd;
 use tididi::reduce::ReductionPlan;
-use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
+use tididi::vtree::{Home, VarId, Vtree, VtreeIdx, VtreeNode};
 use tididi::{Engine, Literal, OperationError};
 
 use crate::budget::deadline_passed;
@@ -76,7 +74,7 @@ pub(super) fn cofactor_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
 ) -> Result<Option<usize>, OperationError> {
     let Some(plan) = plan_cofactor(eng, t, ctx, &state.tdds, vtree)? else {
         return Ok(None);
@@ -224,7 +222,7 @@ fn run_cofactor(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     plan: CofactorPlan,
 ) -> Result<usize, OperationError> {
     let r = state.tdds[plan.big.idx()].take().expect("the plan read the big side's diagram");
@@ -246,9 +244,7 @@ fn run_cofactor(
             .expect("a fold from a live accumulator returns one");
         // Structural, so an unsatisfiable branch is the false sentinel.
         if !branch.is_zero() {
-            let cube_vtree = Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), plan.vars.iter().copied())
-                .expect("`vars` are leaves of the vtree");
-            let cube = eng.cube(&cube_vtree, assignment(&plan.vars, a))?;
+            let cube = eng.cube(vtree, assignment(&plan.vars, a))?;
             terms.push(eng.and(cube, branch)?);
         }
         if deadline_passed(ctx.job.deadline) {

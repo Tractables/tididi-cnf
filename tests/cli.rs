@@ -793,7 +793,7 @@ fn save_tdd_reloads_through_the_library() {
         let vtree_text = std::fs::read_to_string(&saved_vtree);
         let reloaded = vtree_text.map(|text| {
             let home = tididi::vtree::Home::new(tididi::Vtree::from_text(&text).expect("the saved vtree parses"));
-            tididi::io::load_tdd(&saved, home.vtree()).expect("the saved diagram reads over its home")
+            tididi::io::load_tdd(&saved, &home).expect("the saved diagram reads over its home")
         });
         let _ = std::fs::remove_file(&saved);
         let _ = std::fs::remove_file(&saved_vtree);

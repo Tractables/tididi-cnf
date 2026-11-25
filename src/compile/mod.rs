@@ -37,7 +37,7 @@ use std::time::Instant;
 use num_bigint::BigUint;
 use tididi::{Engine, OperationError};
 use tididi::diagram::{Arithmetic, RationalWeights, Tdd, WeightValue, Weights};
-use tididi::vtree::{VarId, Vtree};
+use tididi::vtree::{Home, VarId, Vtree};
 use vitri::cnf::CnfFormula;
 
 use crate::Error;
@@ -437,14 +437,11 @@ pub(crate) fn compile_with(
         }
     }
     // A weighted compile runs on a home that holds the weights.
-    let made;
-    let vtree = match (weights, vtree.home()) {
-        (None, Some(_)) => vtree,
-        (weights, _) => {
-            made = component::weighted_home(eng, Vtree::clone(vtree), weights)?;
-            made.vtree()
-        }
+    let home = match (weights, vtree.home()) {
+        (None, Some(home)) => home,
+        (weights, _) => component::weighted_home(eng, Vtree::clone(vtree), weights)?,
     };
+    let vtree = &home;
     if formula.clauses().is_empty() {
         let diagram = eng.one(vtree);
         // Every variable is free, ×2 in the raw count, a projected one included.
@@ -561,7 +558,7 @@ where
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
         settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;
-        let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(sub_vtree));
+        let home = Home::new(eng.bind_vtree(Arc::unwrap_or_clone(sub_vtree)));
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));

@@ -8,11 +8,10 @@
 //! constants, as one cube, and the free variables on above the root. This
 //! reconstructs the function itself, so no count lift is owed after expansion.
 
-use std::sync::Arc;
 
 use tididi::diagram::Tdd;
 use tididi::restructure::{ExpandError, VariableExpansion};
-use tididi::vtree::Vtree;
+use tididi::vtree::{Home, Vtree};
 use tididi::{Engine, OperationError};
 
 /// Expand one reduced TDD into the original variables, on the vtree it ends
@@ -39,13 +38,10 @@ pub(crate) fn expand_to_originals(
 /// variables, so there is no class, and it refuses a formula with none before
 /// it preprocesses, so the balanced vtree over the originals has a leaf.
 pub(crate) fn fully_resolved_tdd(eng: &Engine, expansion: &VariableExpansion) -> Result<Tdd, OperationError> {
-    // A plain root, for the reason the refuted zero in the driver has one.
-    let vtree = Arc::new(Vtree::balanced(expansion.num_vars));
     // With no class left, `original_expansion` put every original among the
-    // constants or the free variables. The free variables carry no literal: a
-    // cube says nothing about them, which is exactly the One leaf this
-    // expansion places for them.
-    eng.cube(&vtree, expansion.constants.iter().copied())
+    // constants or the free variables. A free variable is a leaf of the home
+    // the cube does not name, so it counts ×2.
+    eng.cube(&Home::new(Vtree::balanced(expansion.num_vars)), expansion.constants.iter().copied())
 }
 
 #[cfg(test)]

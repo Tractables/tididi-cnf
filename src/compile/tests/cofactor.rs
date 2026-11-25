@@ -56,7 +56,7 @@ fn crossing_clauses(s: &[i32], b: &[i32], n: usize, seed: u64) -> Vec<Vec<i32>> 
 
 struct Fixture {
     formula: CnfFormula,
-    vtree: Arc<Vtree>,
+    vtree: Home,
     clauses: DiagramClauses,
     clauses_at: Vec<Vec<usize>>,
     last_scope_pos: Vec<u32>,
@@ -69,7 +69,7 @@ impl Fixture {
     fn new(s: &[u32], b: std::ops::RangeInclusive<u32>, top: u32, clauses: Vec<Vec<i32>>) -> Fixture {
         let side = |vars: Vec<u32>| Vtree::balanced_over(&vars.into_iter().map(VarId).collect::<Vec<_>>()).unwrap();
         let t_tree = Vtree::join(&side(s.to_vec()), &side(b.collect())).unwrap();
-        let vtree = Arc::clone(Home::new(Vtree::join(&t_tree, &Vtree::leaf(VarId(top))).unwrap()).vtree());
+        let vtree = Home::new(Vtree::join(&t_tree, &Vtree::leaf(VarId(top))).unwrap());
         let formula = fixtures::dimacs(top, &clauses);
         let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
         let t = vtree.children(vtree.root()).0;
@@ -183,7 +183,7 @@ impl Fixture {
     /// pass runs.
     fn weighted(mut self) -> Fixture {
         let weights = Weights::new(crate::convert::rational_weight_algebra(&self.weights()), Arithmetic::ExactRational);
-        self.vtree = Arc::clone(Home::weighted(Vtree::clone(&self.vtree), weights).unwrap().vtree());
+        self.vtree = Home::weighted(Vtree::clone(&self.vtree), weights).unwrap();
         self
     }
 

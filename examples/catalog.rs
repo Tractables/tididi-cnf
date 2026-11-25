@@ -41,7 +41,7 @@ p cnf 8 11
     counter.observe([Literal::try_from(-7)?])?;
     println!("First processor, no graphics card: {}", counter.model_count()?);
 
-    let extra = Tdd::clause(rules_circuit.vtree(), [7, 8])?;
+    let extra = Tdd::clause(&rules_circuit.home(), [7, 8])?;
     let upgraded = tididi::and(rules_circuit.clone(), extra)?;
     println!("With a graphics card or larger battery: {}", upgraded.model_count()?);
     Ok(())

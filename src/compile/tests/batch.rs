@@ -34,7 +34,7 @@ fn batch_floor_without_accumulator_is_small() {
 #[test]
 fn reached_on_every_level_of_a_pruned_diagram_is_its_width() {
     let eng = &Engine::new();
-    let vtree = Arc::new(Vtree::balanced(6));
+    let vtree = Home::new(tididi::vtree::Vtree::balanced(6));
     let diagram = eng.clause(&vtree, [Literal::pos(VarId(1)), Literal::neg(VarId(4))]).unwrap();
     let mut diagram =
         eng.and_clause(diagram, &[Literal::pos(VarId(2)), Literal::pos(VarId(5)), Literal::neg(VarId(6))]).unwrap();

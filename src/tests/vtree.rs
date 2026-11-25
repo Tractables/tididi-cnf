@@ -70,28 +70,29 @@ fn component_trees_retain_run_context_and_share_batch_limits() {
         for component in built.components.as_ref().unwrap() {
             assert!(Arc::ptr_eq(component.vtree.context(), &context));
             let before = allocations.load(Ordering::Relaxed);
-            let diagram = engine.clause(&component.vtree, [1, 2]).unwrap();
+            let diagram = engine.clause(&Home::new(Arc::clone(&component.vtree)), [1, 2]).unwrap();
             let expected = num_bigint::BigUint::from(3u32)
                 << (component.vtree.num_vars() - 2) as usize;
             assert_eq!(engine.model_count(&diagram).unwrap(), expected);
             assert!(allocations.load(Ordering::Relaxed) > before);
         }
+        let root = Home::new(Arc::clone(&built.root));
         {
             let _budget = engine.limits().scope(
                 LimitConfig::none().with_memory_budget_bytes(Some(0)),
             );
             assert_eq!(
-                engine.clause(&built.root, [1, 2]).unwrap_err(),
+                engine.clause(&root, [1, 2]).unwrap_err(),
                 tididi::OperationError::OverBudget,
             );
         }
-        engine.clause(&built.root, [1, 2]).unwrap()
+        engine.clause(&root, [1, 2]).unwrap()
     });
     assert!(Arc::ptr_eq(output.vtree().context(), &context));
     assert_eq!(output.model_count().unwrap(), num_bigint::BigUint::from(48u32));
     let before = allocations.load(Ordering::Relaxed);
     context.run(|engine| {
-        let tree = engine.bind_vtree(Vtree::balanced(64));
+        let tree = Home::new(engine.bind_vtree(Vtree::balanced(64)));
         engine.clause(&tree, [1, 2]).unwrap();
     });
     assert_eq!(allocations.load(Ordering::Relaxed), before);

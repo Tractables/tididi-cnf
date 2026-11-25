@@ -8,11 +8,10 @@
 
 use std::collections::HashSet;
 use std::ops::ControlFlow;
-use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
-use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use tididi::vtree::{Home, VarId, VtreeIdx};
 use vitri::cnf::CnfFormula;
 
 use crate::budget::{deadline_passed, deadline_scope};
@@ -137,7 +136,7 @@ impl DiagramClauses {
 pub(crate) fn compile_component(
     eng: &Engine,
     formula: &CnfFormula,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
     let Some(work) = job.run.work else { return compile_pass(eng, formula, vtree, job) };
@@ -148,7 +147,7 @@ pub(crate) fn compile_component(
 fn compile_pass(
     eng: &Engine,
     formula: &CnfFormula,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     job: CompileJob<'_>,
 ) -> Result<Compiled, GiveUp> {
     // An empty clause makes the component the constant false, so it compiles
@@ -217,7 +216,7 @@ fn compile_pass(
     }
 
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| eng.one(vtree));
-    debug_assert!(diagram.home().is_some(), "a pass returns its diagram on a home");
+    debug_assert!(diagram.vtree().is_on(vtree), "a pass returns its diagram on its home");
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
 }
 
@@ -238,7 +237,7 @@ fn step_deadline(job: CompileJob<'_>) -> Option<std::time::Instant> {
 /// once; an error aborts the pass without making a satisfiability claim.
 fn check_step(
     eng: &Engine,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     step: Result<usize, OperationError>,
     state: &mut PassState,
     t: VtreeIdx,
@@ -270,7 +269,7 @@ fn marginalize_and_rotate(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
 ) -> Result<(), OperationError> {
     run_marginalize_at(eng, t, ctx, state, vtree)?;
     let PassState { tdds, cluster_tried, .. } = state;
@@ -298,7 +297,7 @@ fn fold_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
     children: Option<Tdd>,
     lineage: Option<VtreeIdx>,
 ) -> Result<usize, OperationError> {
@@ -328,7 +327,7 @@ fn run_internal_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
 ) -> Result<usize, OperationError> {
     match cofactor_step(eng, t, ctx, state, vtree)? {
         Some(pairs) => Ok(pairs),
@@ -344,7 +343,7 @@ pub(super) fn join_and_fold(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    vtree: &Arc<Vtree>,
+    vtree: &Home,
 ) -> Result<usize, OperationError> {
     let (left, right) = vtree.children(t);
     // The larger child's diagram is the bulk of the fold's accumulator, so

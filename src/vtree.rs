@@ -24,7 +24,7 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 use vitri::cnf::CnfFormula;
-use tididi::vtree::{VarId, Vtree};
+use tididi::vtree::{Home, VarId, Vtree};
 
 use crate::config::Config;
 use crate::convert::{diagram_var, vtree_from_vitri};
@@ -183,7 +183,7 @@ impl VtreeBuild {
 
 /// `vtree` attached to `engine` as a home.
 pub(crate) fn bound(engine: &tididi::Engine, vtree: Vtree) -> Arc<Vtree> {
-    Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(vtree)).vtree())
+    Arc::clone(&Home::new(engine.bind_vtree(vtree)))
 }
 
 /// An independent component of a formula: its clauses, and the formula

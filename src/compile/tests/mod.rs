@@ -99,7 +99,7 @@ fn whole_plan_keeps_the_supplied_root_on_a_decomposable_formula() {
 
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
     assert_eq!(
-        tdd.home().unwrap().vtree().to_text(),
+        tdd.home().to_text(),
         supplied.to_text(),
         "Whole must compile on a home of the caller's root instead of detecting and grafting components",
     );
@@ -121,8 +121,6 @@ fn whole_mc_plan_keeps_the_supplied_order_and_exact_count() {
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
     assert_eq!(
         tdd.home()
-            .unwrap()
-            .vtree()
             .leaf_bottomup()
             .map(|(_, var)| var)
             .collect::<Vec<_>>(),
@@ -232,7 +230,7 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
     assert!(compiled.peak_pairs >= compiled.diagram.pair_count().max(1));
 
     // The streaming count compiles the component on a home of its vtree.
-    let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)));
+    let home = Home::new(eng.bind_vtree(Arc::unwrap_or_clone(Arc::clone(&vtree))));
     let job = CompileJob { deadline: None, output: PassOutput::Count, run: CompileRun::default() };
     let on_home = compile_component(eng, &formula, &home, job).unwrap();
     let (_, streamed_peak) =
@@ -346,7 +344,7 @@ fn a_forgotten_variable_is_a_free_home_variable() {
     let formula = dimacs(3, &[vec![1, 2], vec![-2, 3]]);
     let forget: HashSet<VarId> = [VarId(2)].into();
     for output in [PassOutput::ProjectedFunction(&forget), PassOutput::ProjectedCount(&forget)] {
-        let home = crate::vtree::bound(eng, Vtree::balanced(3));
+        let home = Home::new(eng.bind_vtree(Vtree::balanced(3)));
         let job = CompileJob { deadline: None, output, run: CompileRun::default() };
         let compiled = compile_component(eng, &formula, &home, job).unwrap();
         assert_eq!(compiled.forgotten, 1);

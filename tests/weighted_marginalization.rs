@@ -88,8 +88,8 @@ fn weighted_mc_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>, w
 /// variables `summed` names in one batch.
 fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRational)], summed: impl Fn(VarId) -> bool) {
     let weights = tididi::diagram::Weights::new(rational_weight_algebra(w), Arithmetic::ExactRational);
-    let home = tdd.home().expect("a compile returns its diagram on a home");
-    let weighted = Home::weighted(eng.bind_vtree(Vtree::clone(home.vtree())), weights).expect("the weights cover the home");
+    let home = tdd.home();
+    let weighted = Home::weighted(eng.bind_vtree(Vtree::clone(&home)), weights).expect("the weights cover the home");
     *tdd = eng.transport(&*tdd, &weighted, |v| v, 0).expect("the same home, weighted").0;
     eng.marginalize(tdd, summed).expect("no wall is armed");
 }

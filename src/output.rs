@@ -615,7 +615,7 @@ fn save_diagram(tdd: &tididi::diagram::Tdd, path: &Path, mcc: bool) -> Result<()
     let (shown, vtree_shown) = (path.display(), vtree_path.display());
     tididi::io::save_tdd(tdd, path)
         .map_err(|error| Error::Artifact(format!("could not write the diagram to {shown}: {error}")))?;
-    let vtree = tdd.home().map_or_else(|| tdd.vtree().to_text(), |home| home.vtree().to_text());
+    let vtree = tdd.vtree().home().map_or_else(|| tdd.vtree().to_text(), |home| home.to_text());
     std::fs::write(&vtree_path, vtree)
         .map_err(|error| Error::Artifact(format!("could not write the vtree to {vtree_shown}: {error}")))?;
     if mcc {

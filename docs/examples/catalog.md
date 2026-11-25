@@ -120,15 +120,15 @@ Dropping the card again gives 8 or 16 GB, each with or without the battery.
 ## Add a rule to the circuit
 
 The shop now offers only laptops with a graphics card or a larger battery.
-Build that clause as a diagram on the compiled circuit's own vtree, then
+Build that clause as a diagram on the compiled circuit's home, then
 conjoin the diagrams with [`tididi::and`](crate::tididi::and). The compiler
 may return a different vtree from the one it started with, so new operands
-use the result's tree. Cloning keeps the original circuit available for
+use the result's home. Cloning keeps the original circuit available for
 other queries; the counter's observations belong to that counter and do not
 change the circuit.
 
 ```rust,ignore,{class=tested-example}
-let extra = Tdd::clause(rules_circuit.vtree(), [7, 8])?;
+let extra = Tdd::clause(&rules_circuit.home(), [7, 8])?;
 let upgraded = tididi::and(rules_circuit.clone(), extra)?;
 println!("With a graphics card or larger battery: {}", upgraded.model_count()?);
 ```
