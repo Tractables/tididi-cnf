@@ -74,7 +74,7 @@ impl ShatterComponent {
         vtree: &Arc<Vtree>,
     ) -> Option<Vec<BigUint>> {
         // Compile: exist-forget hidden during compile, the rest Boolean.
-        let home = Home::new(crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(vtree)), true));
+        let home = Home::new(crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(vtree))));
         let compiled = settle(compile_with(
             eng,
             &self.formula,
@@ -84,7 +84,7 @@ impl ShatterComponent {
                 output: Output::ProjectedFunction(&self.hidden_local),
                 ..CompileOptions::default()
             },
-            CompileRun { projections: true, ..run },
+            run,
         ))?;
         let tdd = compiled.diagram;
         assert!(

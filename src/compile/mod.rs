@@ -86,12 +86,6 @@ pub(crate) struct CompileRun<'a> {
     /// deadline and hashes each compile's input; `None`
     /// records nothing.
     pub(crate) work: Option<&'a crate::budget::VtreeTime>,
-    /// Build each clause, batch and node diagram on the projection of the
-    /// vtree on the variables it has seen, join a node's children by
-    /// [`Engine::and`] instead of the splice, and name what a step sums out
-    /// by variable. The vtree is then a home. A weighted compile does not
-    /// take it.
-    pub(crate) projections: bool,
     /// The instant from which the compile stops at its next vtree node once
     /// the allocator has gone eager ([`crate::mem::eager_decay_latched`]),
     /// its later nodes' applies cut there too, so that a retry gets the time
@@ -342,14 +336,15 @@ impl Compiled {
 /// is compiled on `vtree`. [`CompileOptions::plan`] can instead ask for the
 /// whole formula on `vtree`, or for the caller's own component vtrees.
 ///
-/// The result's vtree, the one its diagram carries, is the vtree to build any
-/// further operand on: [`and`](tididi::and) and the other operations refuse
-/// operands on different vtrees. It is `vtree` itself only when the formula was
-/// compiled whole and unweighted and no rotation fired. A weighted compile
-/// runs on a copy of `vtree` made a weighted home. A split compile's result
-/// is on a projection of a home grafted from the components' vtrees and the
-/// free variables, and a counting compile may rotate its vtree to bring
-/// marginal levels together, onto a copy; `vtree` itself is never changed.
+/// The result's vtree, the one its diagram carries, is a projection of a home,
+/// and further operands are built on that home: [`and`](tididi::and) and the
+/// other operations refuse operands on different homes. The home is `vtree`'s
+/// own when `vtree` is on one and the formula is compiled whole and
+/// unweighted; otherwise the compile makes a home of a copy of `vtree`,
+/// weighted when the compile counts weights. A split compile's result is on a
+/// projection of a home grafted from the components' vtrees and the free
+/// variables, and a counting compile may rotate its projection to bring
+/// marginal levels together; `vtree` itself is never changed.
 ///
 /// An [`Err`] is a give-up, never a partial diagram, so any count taken from an
 /// `Ok` is exact. A caller that runs this under a deadline it set — an attempt
@@ -421,8 +416,6 @@ pub(crate) fn compile_with(
             PassOutput::ProjectedFunction(&forget)
         }
     };
-    // A weighted compile runs on a home that holds the weights.
-    let run = CompileRun { projections: run.projections || weights.is_some(), ..run };
     let job = CompileJob { deadline, output, run };
     eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;
 
@@ -436,20 +429,21 @@ pub(crate) fn compile_with(
             }
             ComponentPlan::Detect => {
                 if let Some(detected) = formula.detect_components() {
-                    let split = detected_split(eng, formula, detected, job.run.projections);
+                    let split = detected_split(eng, formula, detected);
                     return compile_split(eng, formula, &split, weights.as_ref(), job);
                 }
             }
             ComponentPlan::Whole => {}
         }
     }
-    let weighted;
-    let vtree = match weights {
-        Some(weights) => {
-            weighted = component::weighted_home(eng, Vtree::clone(vtree), Some(weights))?;
-            weighted.vtree()
+    // A weighted compile runs on a home that holds the weights.
+    let made;
+    let vtree = match (weights, vtree.home()) {
+        (None, Some(_)) => vtree,
+        (weights, _) => {
+            made = component::weighted_home(eng, Vtree::clone(vtree), weights)?;
+            made.vtree()
         }
-        None => vtree,
     };
     if formula.clauses().is_empty() {
         let diagram = eng.one(vtree);
@@ -567,12 +561,12 @@ where
         let sub_formula = scratch.sub();
         let sub_vtree = build_sub_vtree(sub_formula)?;
         settle(component::check_vtree(sub_formula.num_vars(), &sub_vtree))?;
-        let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(sub_vtree), true);
+        let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(sub_vtree));
         // The projected variables, in this component's local numbering.
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
         let output = comp_forget.as_ref().map_or(PassOutput::Count, PassOutput::ProjectedCount);
-        let job = CompileJob { deadline, output, run: CompileRun { projections: true, ..run } };
+        let job = CompileJob { deadline, output, run };
         let compiled = settle(compile_component(eng, sub_formula, &home, job))?;
         let sub_count = compiled.projected_count(eng).ok()?;
         peak = peak.max(compiled.peak_pairs);

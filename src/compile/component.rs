@@ -282,13 +282,13 @@ pub(crate) fn check_partition(formula: &CnfFormula, components: &[ComponentVtree
 /// The split [`super::ComponentPlan::Detect`] compiles: each of the
 /// `detected` clause groups with its variables in ascending order and a
 /// balanced vtree over them, the default for a caller that passes one vtree
-/// for the whole formula. Each vtree is a home when `home` is set.
-pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<Vec<usize>>, home: bool) -> Vec<ComponentVtree> {
+/// for the whole formula. Each vtree is a home.
+pub(crate) fn detected_split(eng: &Engine, formula: &CnfFormula, detected: Vec<Vec<usize>>) -> Vec<ComponentVtree> {
     detected
         .into_iter()
         .map(|clause_indices| {
             let component = Component::from_clauses(formula, clause_indices);
-            let vtree = crate::vtree::bound(eng, Vtree::balanced(component.local_to_global.len() as u32), home);
+            let vtree = crate::vtree::bound(eng, Vtree::balanced(component.local_to_global.len() as u32));
             ComponentVtree { vtree, component }
         })
         .collect()
@@ -323,7 +323,6 @@ pub(crate) fn compile_split(
         .and_then(|renamed| Vtree::graft(&renamed, &free_vars))
         .map_err(|error| GiveUp::Invalid(format!("the components do not graft: {error}")))?;
     let home = weighted_home(eng, whole, weights.cloned())?;
-    let job = CompileJob { run: super::CompileRun { projections: true, ..job.run }, ..job };
     let mut parts: Vec<Tdd> = Vec::with_capacity(components.len());
     let mut forgotten = 0;
     let mut peak_pairs = 0;

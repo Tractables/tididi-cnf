@@ -8,7 +8,7 @@ the representation and what each operation does with it:
 
 | Topic | Library item |
 |---|---|
-| Marginalization and the count it keeps | `Engine::marginalize_levels`, and the library's [architecture reference](https://github.com/Tractables/tididi/blob/main/docs/architecture.md) |
+| Marginalization and the count it keeps | `Engine::marginalize`, and the library's [architecture reference](https://github.com/Tractables/tididi/blob/main/docs/architecture.md) |
 | Downward closure, value-slot uniqueness | invariants 5 and 10 in the library's [invariant table](https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants) |
 | A clause reaching a marginal level | `OperationError::MarginalLevel` |
 | Rotating next to marginal levels | `Engine::rotate_marginal_cluster` |
@@ -32,25 +32,24 @@ marginalizing each component's private show leaves), and `pwmc` compiles
 
 ## The schedule
 
-For each vtree node d, *completion(d)* is the last compilation step that can
-modify d's level: the highest-scoped step that touches any variable in d's
-subtree, or d's own step if that is later, since d's children are joined
-there. `marginalize_schedule` (`src/compile/schedule.rs`) precomputes it:
+Every diagram of a compile is on a home, the vtree the compile was given,
+and the compiler names what a step sums out by variable. A variable is done
+at the highest-scoped step that touches it, or at its leaf's own step if that
+is later; after it, no clause reads the variable. `VarSchedule`
+(`src/compile/schedule.rs`) precomputes that step for each variable, and
+which steps free anything at all. The library sums out a vtree node of the
+diagram once every variable under it is done, and every node of a step's
+diagram lies under the step, so no node is summed before its own step.
 
-1. For each variable, find the highest-scoped clause mentioning it.
-2. Bottom-up, `completion_pos[t] = max(completion_pos[left], completion_pos[right], pos(t))`
-   for internal nodes; a leaf takes the later of its variable's last-scope
-   position and its own.
-3. Group the nodes by the step that frees them, in bottom-up order. The root
-   is never scheduled.
-
-This is an early schedule: d marginalizes as soon as its own content is final,
-not when its parent's is.
+This is an early schedule: a node marginalizes as soon as its own content is
+final, not when its parent's is. A projected count sums nothing out while a
+projected variable is still to be forgotten, so the ∃-forget meets no
+marginal level on its path.
 
 ## During the compile
 
-Most marginalization happens inside a step's fold: `step_completions`
-refines the step's group down to the clause after which each subtree is last
+Most marginalization happens inside a step's fold: `step_last_clauses`
+finds the clause after which each variable the step completes is last
 mentioned, so it is summed out at the merge of the batch that holds that
 clause (`src/compile/batch.rs`). After each internal step, `run_marginalize_at`
 (`src/compile/marginalize.rs`) marginalizes any scheduled level the fold left

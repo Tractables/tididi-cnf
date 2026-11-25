@@ -5,6 +5,21 @@ fn last_scopes(vtree: &Vtree, literals: &[&[Literal]], scopes: &[Vec<usize>]) ->
     last_scope_positions(vtree, scopes, |ci| literals[ci].iter().map(|lit| lit.var))
 }
 
+/// The nodes each step frees, each group bottom-up: a node is freed at the
+/// step of the highest-scoped clause mentioning a variable of its subtree, or
+/// at its own step if that is later. The oracle the variable schedule is
+/// checked against.
+fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<Vec<VtreeIdx>> {
+    let completion_pos = completion_positions(vtree, last_scope_pos);
+    let mut marginalize_at: Vec<Vec<VtreeIdx>> = vec![Vec::new(); vtree.num_nodes()];
+    for node in vtree.bottomup() {
+        if node != vtree.root() {
+            marginalize_at[vtree.bottomup_slice()[completion_pos[node.idx()] as usize].idx()].push(node);
+        }
+    }
+    marginalize_at
+}
+
 fn tree() -> Vtree {
     Vtree::from_nodes(vec![
         VtreeNode::Leaf { var: VarId(1), parent: None },
@@ -13,36 +28,6 @@ fn tree() -> Vtree {
         VtreeNode::Internal { left: VtreeIdx(0), right: VtreeIdx(1), parent: None },
         VtreeNode::Internal { left: VtreeIdx(3), right: VtreeIdx(2), parent: None },
     ], VtreeIdx(4), 3).unwrap()
-}
-
-#[test]
-fn the_schedule_waits_for_the_last_mention_and_keeps_children_first() {
-    let vtree = tree();
-    let clauses = [
-        vec![Literal::new(VarId(1), true), Literal::new(VarId(2), true)],
-        vec![Literal::new(VarId(2), false), Literal::new(VarId(3), true)],
-    ];
-    let literals: Vec<&[_]> = clauses.iter().map(Vec::as_slice).collect();
-    let scopes = vec![vec![], vec![], vec![], vec![0], vec![1]];
-    let schedule = marginalize_schedule(&vtree, &last_scopes(&vtree, &literals, &scopes));
-    assert_eq!(schedule[3], vec![VtreeIdx(0)]);
-    assert_eq!(schedule[4], vec![VtreeIdx(1), VtreeIdx(2), VtreeIdx(3)]);
-    assert!(!schedule.iter().flatten().any(|&t| t == vtree.root()));
-    assert!(schedule.iter().all(|group| group.windows(2).all(|w| vtree.topo_pos(w[0]) < vtree.topo_pos(w[1]))));
-}
-
-#[test]
-fn step_completion_only_frees_the_step_targets_after_their_last_clause() {
-    let vtree = tree();
-    let clauses = [
-        vec![Literal::new(VarId(1), true), Literal::new(VarId(3), true)],
-        vec![Literal::new(VarId(2), true)],
-        vec![Literal::new(VarId(1), false)],
-    ];
-    let literals: Vec<&[_]> = clauses.iter().map(Vec::as_slice).collect();
-    let completions = step_completions(&literals, &vtree, &[VtreeIdx(0), VtreeIdx(1), VtreeIdx(3)]);
-    assert_eq!(completions, vec![vec![], vec![VtreeIdx(1)], vec![VtreeIdx(0), VtreeIdx(3)]]);
-    assert!(step_completions(&[], &vtree, &[VtreeIdx(0)]).is_empty());
 }
 
 /// A node whose subtree's clauses all lie below it is scheduled at its own

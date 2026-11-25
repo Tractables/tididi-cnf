@@ -120,17 +120,18 @@ prints no `tdd written to` line.
 `--save-tdd <file>` writes the compiled diagram to `<file>` in the tididi
 library's text format, and its vtree to `<file>.vtree` in the vtree text
 format. Only the compile mode builds a circuit whose count is the one
-reported, so the counting modes refuse the flag. The library reads a `.tdd`
-file over the vtree it was compiled on, `load_tdd(path, &vtree)`, and checks
-the file against that vtree, so reading the circuit back takes both files:
-parse the vtree, then read the circuit over it.
+reported, so the counting modes refuse the flag. The vtree file holds the
+home the circuit was compiled on, every variable of the formula, and the
+circuit may use fewer. The library reads a `.tdd` file over that home,
+`load_tdd(path, home.vtree())`, and checks the file against it, so reading
+the circuit back takes both files: parse the vtree, make it a home, then
+read the circuit over it.
 
 ```rust
-use std::sync::Arc;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vtree = tididi::Vtree::from_text(&std::fs::read_to_string("switches.tdd.vtree")?)?;
-    let circuit = tididi::io::load_tdd("switches.tdd", &Arc::new(vtree))?;
+    let home = tididi::vtree::Home::new(vtree);
+    let circuit = tididi::io::load_tdd("switches.tdd", home.vtree())?;
     println!("{}", circuit.model_count()?);
     Ok(())
 }

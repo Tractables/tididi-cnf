@@ -7,21 +7,20 @@
 //! cost against the merge's accumulator cost, UNSAT), `merge_batch` merges
 //! one batch and says whether the accumulator went UNSAT and whether the
 //! merge stayed absorbing, and `batch_accumulate` is the fold over the two.
-//! The width caps and the spine marking that reads a batch's width and pairs
-//! are here as well. `step.rs` decides which node is folded and when.
+//! The width caps are here as well. `step.rs` decides which node is folded and when.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use tididi::{Engine, Literal, OperationError};
 use tididi::diagram::Tdd;
-use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use tididi::vtree::{VarId, Vtree};
 
 use crate::budget::deadline_passed;
-use super::marginalize::{StepTargets, Summing, summable};
+use super::marginalize::Summing;
 use super::minimize::{MinimizeGate, minimize_contract_only};
 use super::reach::ReachScratch;
-use super::schedule::{StepVars, step_completions, step_last_clauses};
+use super::schedule::{StepVars, step_last_clauses};
 use super::step::{DiagramClauses, PassState, StepContext};
 
 /// Clauses per batch below which a batch never stops for its cost, the floor
@@ -103,18 +102,18 @@ pub(crate) fn batch_accumulate(
     vtree: &Arc<Vtree>,
     mut acc: Option<Tdd>,
     state: &mut PassState,
-    marginalize_targets: Option<&StepTargets<'_>>,
+    marginalize_targets: Option<StepVars<'_>>,
 ) -> Result<Option<Tdd>, OperationError> {
     if clauses.is_empty() {
         return Ok(acc);
     }
 
-    // For each of the node's clauses, the targets the schedule frees at this
-    // step whose last mention it is: each is summed out at the merge of the
-    // batch that holds that clause, rather than at the step's end.
-    let mut streaming = marginalize_targets.map(|targets| {
+    // For each of the node's clauses, the variables the schedule frees at
+    // this step whose last mention it is: each is summed out at the merge of
+    // the batch that holds that clause, rather than at the step's end.
+    let streaming = marginalize_targets.map(|step| {
         let clause_lits: Vec<&[Literal]> = clauses.iter().map(|&ci| ctx.clauses.get(ci)).collect();
-        StreamTargets::new(&clause_lits, vtree, targets)
+        StreamTargets::new(&clause_lits, step)
     });
 
     // `limit` is the most clauses the next batch may hold: the floor until a
@@ -127,27 +126,15 @@ pub(crate) fn batch_accumulate(
     while i < clauses.len() {
         if deadline_passed(ctx.job.deadline) { return Err(OperationError::Stopped); }
         let start_clause = i;
-        let mut stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
-        stop.projections = ctx.job.run.projections;
-        let (batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause, &mut state.on_spine)?;
+        let stop = BatchStop::for_fold(vtree, clauses, floor, limit, acc.as_ref(), streaming.as_ref());
+        let (batch, next) = stop.build_one_batch(eng, ctx.clauses, start_clause)?;
         i = next;
         // Absorption decides whether the next batch may extend, so it is only
         // measured when enough clauses remain for the next batch to pass the
         // floor. It needs the accumulator's pairs, which the stop rule may
         // already have read.
         let acc_pairs = (clauses.len() - i > floor.size).then(|| stop.acc_pairs());
-        // The targets this merge may sum out: a projecting compile keeps its
-        // leaf levels Boolean, which can leave a merge that completes targets
-        // with none to sum out.
-        let kept;
-        let merge_targets = match streaming.as_mut().and_then(|s| s.completed_in(start_clause, i)) {
-            Some(Completed::Nodes(targets)) => {
-                kept = summable(vtree, targets, ctx.job.output.forget().is_some());
-                Some(Summing::Nodes(&kept))
-            }
-            Some(Completed::Vars(summing)) => Some(summing),
-            None => None,
-        };
+        let merge_targets = streaming.as_ref().and_then(|s| s.completed_in(start_clause, i));
         let merged =
             merge_batch(eng, batch, &mut acc, &mut state.minimize, merge_targets, acc_pairs, i == clauses.len())?;
         if merged.unsat {
@@ -204,80 +191,41 @@ fn next_batch_limit(merged: usize, absorbed: bool, floor: usize) -> usize {
     if absorbed { merged.max(floor) * BATCH_GROWTH.0 / BATCH_GROWTH.1 } else { floor }
 }
 
-/// The marginalize targets that become final within each batch of one
-/// node's fold.
-enum StreamTargets<'a> {
-    /// On a bare root.
-    Nodes {
-        /// Per clause position, the sub-vtrees whose last mention it is,
-        /// children before parents.
-        completions: Vec<Vec<VtreeIdx>>,
-        /// What `completed_in` last returned.
-        set: Vec<VtreeIdx>,
-    },
-    /// On a home.
-    Vars {
-        step: StepVars<'a>,
-        /// The variables the step completes, each with its last clause
-        /// position ([`step_last_clauses`]).
-        last: HashMap<VarId, u32>,
-        /// Per clause position, whether it is some variable's last mention.
-        completes: Vec<bool>,
-    },
-}
-
-/// What [`StreamTargets::completed_in`] found.
-enum Completed<'s> {
-    Nodes(&'s [VtreeIdx]),
-    Vars(Summing<'s>),
+/// The variables whose sum-out becomes final within each batch of one node's
+/// fold.
+struct StreamTargets<'a> {
+    step: StepVars<'a>,
+    /// The variables the step completes, each with its last clause position
+    /// ([`step_last_clauses`]).
+    last: HashMap<VarId, u32>,
+    /// Per clause position, whether it is some variable's last mention.
+    completes: Vec<bool>,
 }
 
 impl<'a> StreamTargets<'a> {
-    fn new(clause_lits: &[&[Literal]], vtree: &Vtree, step_targets: &StepTargets<'a>) -> Self {
-        match step_targets {
-            StepTargets::Nodes(targets) => StreamTargets::Nodes {
-                completions: step_completions(clause_lits, vtree, targets),
-                set: Vec::new(),
-            },
-            &StepTargets::Vars(step) => {
-                let last = step_last_clauses(clause_lits, step);
-                let mut completes = vec![false; clause_lits.len()];
-                for &at in last.values() {
-                    completes[at as usize] = true;
-                }
-                StreamTargets::Vars { step, last, completes }
-            }
+    fn new(clause_lits: &[&[Literal]], step: StepVars<'a>) -> Self {
+        let last = step_last_clauses(clause_lits, step);
+        let mut completes = vec![false; clause_lits.len()];
+        for &at in last.values() {
+            completes[at as usize] = true;
         }
+        StreamTargets { step, last, completes }
     }
 
-    /// Whether the clause at position `p` is the last mention of some target.
+    /// Whether the clause at position `p` is the last mention of some variable.
     fn completes(&self, p: usize) -> bool {
-        match self {
-            StreamTargets::Nodes { completions, .. } => !completions[p].is_empty(),
-            StreamTargets::Vars { completes, .. } => completes[p],
-        }
+        self.completes[p]
     }
 
-    /// The targets whose last mention falls in clause positions
+    /// The variables whose last mention falls in clause positions
     /// `start..end`, or `None` when there are none. No later clause mentions
     /// them, so they can be marginalized at this merge.
-    ///
-    /// On a bare root each sub-vtree has one last mention, so none is listed
-    /// twice, and a node's last mention is never before a descendant's, so
-    /// reading the positions in order keeps every child before its parent.
-    fn completed_in(&mut self, start: usize, end: usize) -> Option<Completed<'_>> {
-        match self {
-            StreamTargets::Nodes { completions, set } => {
-                set.clear();
-                for subs in &completions[start..end] {
-                    set.extend_from_slice(subs);
-                }
-                if set.is_empty() { None } else { Some(Completed::Nodes(set)) }
-            }
-            StreamTargets::Vars { step, last, completes } => completes[start..end].contains(&true).then(|| {
-                Completed::Vars(Summing::Vars { step: *step, last: Some(last), through: end as u32 - 1 })
-            }),
-        }
+    fn completed_in(&self, start: usize, end: usize) -> Option<Summing<'_>> {
+        self.completes[start..end].contains(&true).then(|| Summing {
+            step: self.step,
+            last: Some(&self.last),
+            through: end as u32 - 1,
+        })
     }
 }
 
@@ -336,63 +284,6 @@ fn merge_batch(
     Ok(Merged { unsat, absorbed })
 }
 
-/// Accumulate the ancestor paths of a batch's variables, recording only new marks.
-/// Variables have already been validated against the compilation vtree.
-#[inline]
-fn mark_clause_levels(
-    vtree: &Vtree,
-    clause: &[Literal],
-    visited: &mut [bool],
-    newly_marked: &mut Vec<VtreeIdx>,
-) {
-    for literal in clause {
-        let mut level = vtree.leaf_of(literal.var).expect("the vtree carries this variable");
-        loop {
-            if visited[level.idx()] { break; }
-            visited[level.idx()] = true;
-            newly_marked.push(level);
-            match vtree.node(level).parent() {
-                Some(parent) => level = parent,
-                None => break,
-            }
-        }
-    }
-}
-
-/// The arena width of a batch diagram under construction on the union of the
-/// folded clauses' spines (`spine`): its `Tdd::max_width`, which counts the
-/// nodes an operation left unnamed as well, read without sweeping every vtree
-/// level. It bounds the reached width ([`ReachScratch::width_on_spine`]) from
-/// above, so a cap it does not pass needs no reachability walk.
-///
-/// Why the spine suffices. A batch starts as `Tdd::clause(first clause)`, which
-/// gives every internal level outside that clause's spine a single One node
-/// and every leaf level none; [`Engine::and_clause`] rebuilds only the paths
-/// from the clause's variables to the root, and `minimize_contract_only` only
-/// merges twins, so a level off the running spine union keeps width at most 1.
-/// The root is on every spine and holds a live node once the batch is
-/// satisfiable, which the caller tests first.
-fn batch_max_width(local: &Tdd, spine: &[VtreeIdx]) -> usize {
-    spine.iter().map(|&t| local.level(t).slot_count()).max().unwrap_or(0)
-}
-
-/// The batch diagram's arena pairs on the spine union `spine`: its
-/// `pair_count` less the one trivial pair of each internal level off the union
-/// (off-spine levels never grow, [`batch_max_width`]). The extension rule reads
-/// it as the cost of conjoining one more clause. Unlike the width it counts
-/// the nodes an operation left unnamed: a reached count needs a walk over
-/// every reached pair at every check, which costs Boolean compiles up to 8% of
-/// their instructions, while this sum reads one count per node.
-fn batch_spine_pairs(local: &Tdd, spine: &[VtreeIdx]) -> usize {
-    spine
-        .iter()
-        .map(|&t| {
-            let level = local.level(t);
-            (0..level.nodes().len()).map(|n| level.pair_count_at(n)).sum::<usize>()
-        })
-        .sum()
-}
-
 /// Where one batch may stop, fixed before it is built.
 struct BatchStop<'a> {
     /// The vtree the batch is built on.
@@ -415,10 +306,6 @@ struct BatchStop<'a> {
     acc: Option<&'a Tdd>,
     /// The node's marginalize targets by clause position, when it streams.
     streaming: Option<&'a StreamTargets<'a>>,
-    /// The batch starts on the projection of `vtree` on its first clause's
-    /// variables ([`super::CompileRun::projections`]); its width and pairs
-    /// are then read off the whole diagram.
-    projections: bool,
 }
 
 impl<'a> BatchStop<'a> {
@@ -440,7 +327,6 @@ impl<'a> BatchStop<'a> {
             limit,
             acc,
             streaming,
-            projections: false,
         }
     }
 
@@ -457,7 +343,6 @@ impl<'a> BatchStop<'a> {
     /// Build one batch by conjoining clauses one by one from
     /// `self.clauses[start]`. Each conjoin is followed by twin contraction,
     /// which keeps the width and pair count the stop checks read honest.
-    /// `on_spine` is the pass's spine-marking scratch.
     ///
     /// The batch stops on UNSAT, at `self.limit` clauses, and otherwise where
     /// its floor and its extension say:
@@ -486,11 +371,11 @@ impl<'a> BatchStop<'a> {
     ///   never delays a marginalization past the boundary the floor would
     ///   have given it.
     ///
-    /// The width is that of the nodes the batch's output reaches on the spine
-    /// union ([`ReachScratch::width_on_spine`]), so that nodes the library
-    /// leaves unnamed move no width stop; the walk runs only when the arena width
-    /// ([`batch_max_width`]) passes the cap that applies. The pairs are the
-    /// arena's on the spine union ([`batch_spine_pairs`]). The accumulator's
+    /// The batch starts on the projection of the vtree on its first clause's
+    /// variables. Its width is that of the nodes its output reaches
+    /// ([`ReachScratch::reached_width`]), so that nodes the library leaves
+    /// unnamed move no width stop; the walk runs only when the arena width
+    /// passes the cap that applies. The pairs are the arena's. The accumulator's
     /// pair count is its cached one ([`BatchStop::acc_pairs`]), which the
     /// extension decision and the merge's absorption check share.
     ///
@@ -508,7 +393,6 @@ impl<'a> BatchStop<'a> {
         eng: &Engine,
         diagram_clauses: &'c DiagramClauses,
         start: usize,
-        on_spine: &mut Vec<bool>,
     ) -> Result<(BuiltBatch<'c>, usize), OperationError> {
         let vtree = self.vtree;
         let clauses = self.clauses;
@@ -523,68 +407,34 @@ impl<'a> BatchStop<'a> {
         }
 
         let first = diagram_clauses.get(clauses[start]);
-        let mut local = match self.projections {
-            true => eng.clause(&clause_vtree(vtree, first), first.iter().copied())?,
-            false => eng.clause(vtree, first.iter().copied())?,
-        };
-        // The running union of the folded clauses' spines, from which the stop
-        // checks read the batch's width and pairs instead of sweeping every
-        // level (`batch_max_width`, `batch_spine_pairs`). Tracked only when a
-        // width cap is on or the batch may extend. All false on entry: only
-        // spine entries are ever set, and they are reset from `touched` before
-        // returning. An error return skips the reset, but an error ends the
-        // pass, whose state the scratch is part of.
+        let mut local = eng.clause(&clause_vtree(vtree, first), first.iter().copied())?;
         let may_extend = self.limit > self.floor;
-        let track_spine = !self.projections && (self.width_cap != usize::MAX || may_extend);
         let mut reach = ReachScratch::default();
-        let mut touched = Vec::new();
-        if track_spine {
-            if on_spine.len() < vtree.num_nodes() {
-                on_spine.resize(vtree.num_nodes(), false);
-            }
-            mark_clause_levels(vtree, diagram_clauses.get(clauses[start]), on_spine, &mut touched);
-        }
         let mut built = 0usize;
-        let spine_pairs = |local: &Tdd, touched: &[VtreeIdx]| match self.projections {
-            true => local.pair_count(),
-            false => batch_spine_pairs(local, touched),
-        };
-        let mut pairs = if may_extend { spine_pairs(&local, &touched) } else { 0 };
+        let mut pairs = if may_extend { local.pair_count() } else { 0 };
         let mut holds_completion = self.completes(start);
         let mut i = start + 1;
         let mut batch_count = 1;
         while extends_past(i, batch_count) {
-            if track_spine {
-                mark_clause_levels(vtree, diagram_clauses.get(clauses[i]), on_spine, &mut touched);
-            }
             local = eng.and_clause(local, diagram_clauses.get(clauses[i]))?;
             minimize_contract_only(eng, &mut local)?;
             holds_completion |= self.completes(i);
             i += 1;
             batch_count += 1;
             if !eng.is_sat(&local)? { break; }
-            let mut width = 0;
-            if track_spine {
-                width = batch_max_width(&local, &touched);
-            } else if self.projections && self.width_cap != usize::MAX {
-                width = local.max_width();
-            }
+            let mut width = if self.width_cap != usize::MAX { local.max_width() } else { 0 };
             let cap = if batch_count < self.floor { self.width_cap } else { self.guard };
             if width > cap {
-                width = match self.projections {
-                    true => reach.width_on_spine(&local, local.vtree().internal_bottomup_slice()),
-                    false => reach.width_on_spine(&local, &touched),
-                };
+                width = reach.reached_width(&local);
             }
             if may_extend {
                 built += pairs;
-                pairs = spine_pairs(&local, &touched);
+                pairs = local.pair_count();
             }
             if self.stops_after(batch_count, width, holds_completion, built, pairs) {
                 break;
             }
         }
-        for &t in &touched { on_spine[t.idx()] = false; }
         Ok((BuiltBatch::Diagram(Box::new(local)), i))
     }
 
@@ -669,8 +519,7 @@ fn merge_batch_into_acc(
     let (num, den) = BATCH_ABSORB_FACTOR;
     let absorbed = acc_pairs.is_some_and(|n| result.pair_count().saturating_mul(den) <= num.saturating_mul(n));
 
-    let summed_out = marginalize_targets.is_some_and(|t| !t.is_empty());
-    state.adaptive_minimize(eng, &mut result, fold_end, summed_out)?;
+    state.adaptive_minimize(eng, &mut result, fold_end, marginalize_targets.is_some())?;
 
     Ok((result, absorbed))
 }

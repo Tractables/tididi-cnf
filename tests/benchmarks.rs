@@ -114,8 +114,8 @@ benchmark!(pm1, cnf("cnfs/LGSynth89/pm1.cnf"), 65536: balanced = 16469, linear =
 benchmark!(cc, cnf("cnfs/LGSynth89/cc.cnf"), 2097152: random1 = 138348, minfill, flowcutter);
 benchmark!(ldd, cnf("cnfs/LGSynth89/ldd.cnf"), 512: reverse_linear = 2511, interleaved, minfill, flowcutter);
 benchmark!(pigeonhole_8_7, pigeonhole(8, 7), 0: balanced = 0, linear, random42, minfill, flowcutter);
-benchmark!(rand_3_40_24_2, common::random_3cnf(40, 24, 2), 49341714432: balanced = 47179);
-benchmark!(rand_3_40_28_2, common::random_3cnf(40, 28, 2), 29676369920: balanced = 43455);
+benchmark!(rand_3_40_24_2, common::random_3cnf(40, 24, 2), 49341714432: balanced = 47158);
+benchmark!(rand_3_40_28_2, common::random_3cnf(40, 28, 2), 29676369920: balanced = 43434);
 benchmark!(pigeonhole_7_6, pigeonhole(7, 6), 0: balanced = 0, linear);
 benchmark!(f51m, cnf("cnfs/LGSynth89/f51m.cnf"), 256: linear = 13731, random42 = 3388, random0, minfill, flowcutter);
 benchmark!(my_adder, cnf("cnfs/LGSynth89/my_adder.cnf"), 17179869184: minfill, flowcutter);

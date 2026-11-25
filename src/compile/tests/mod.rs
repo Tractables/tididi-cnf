@@ -98,9 +98,10 @@ fn whole_plan_keeps_the_supplied_root_on_a_decomposable_formula() {
     let tdd = compile_cnf(eng, &formula, &supplied, opts).unwrap().diagram;
 
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
-    assert!(
-        Arc::ptr_eq(tdd.vtree(), &supplied),
-        "Whole must compile on the caller's exact root instead of detecting and grafting components",
+    assert_eq!(
+        tdd.home().unwrap().vtree().to_text(),
+        supplied.to_text(),
+        "Whole must compile on a home of the caller's root instead of detecting and grafting components",
     );
 }
 
@@ -119,7 +120,9 @@ fn whole_mc_plan_keeps_the_supplied_order_and_exact_count() {
 
     assert_eq!(tdd.model_count().unwrap(), BigUint::from(9u32));
     assert_eq!(
-        tdd.vtree()
+        tdd.home()
+            .unwrap()
+            .vtree()
             .leaf_bottomup()
             .map(|(_, var)| var)
             .collect::<Vec<_>>(),
@@ -229,9 +232,8 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
     assert!(compiled.peak_pairs >= compiled.diagram.pair_count().max(1));
 
     // The streaming count compiles the component on a home of its vtree.
-    let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)), true);
-    let run = CompileRun { projections: true, ..CompileRun::default() };
-    let job = CompileJob { deadline: None, output: PassOutput::Count, run };
+    let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)));
+    let job = CompileJob { deadline: None, output: PassOutput::Count, run: CompileRun::default() };
     let on_home = compile_component(eng, &formula, &home, job).unwrap();
     let (_, streamed_peak) =
         model_count_streaming(eng, &formula, &components, |_| Some(Arc::clone(&vtree)), None, None, CompileRun::default()).unwrap();
@@ -336,8 +338,7 @@ fn streaming_projected_free_and_empty_vars() {
 }
 
 /// On a home a forgotten variable has no leaf left, and the diagram's count
-/// over the home doubles it as a free variable, which the divisor takes out,
-/// as it took out the structural `One` leaf on a bare root.
+/// over the home doubles it as a free variable, which the divisor takes out.
 #[test]
 fn a_forgotten_variable_is_a_free_home_variable() {
     let eng = &Engine::new();
@@ -345,9 +346,8 @@ fn a_forgotten_variable_is_a_free_home_variable() {
     let formula = dimacs(3, &[vec![1, 2], vec![-2, 3]]);
     let forget: HashSet<VarId> = [VarId(2)].into();
     for output in [PassOutput::ProjectedFunction(&forget), PassOutput::ProjectedCount(&forget)] {
-        let home = crate::vtree::bound(eng, Vtree::balanced(3), true);
-        let run = CompileRun { projections: true, ..CompileRun::default() };
-        let job = CompileJob { deadline: None, output, run };
+        let home = crate::vtree::bound(eng, Vtree::balanced(3));
+        let job = CompileJob { deadline: None, output, run: CompileRun::default() };
         let compiled = compile_component(eng, &formula, &home, job).unwrap();
         assert_eq!(compiled.forgotten, 1);
         assert!(compiled.diagram.vtree().leaf_of(VarId(2)).is_none());
@@ -356,11 +356,10 @@ fn a_forgotten_variable_is_a_free_home_variable() {
     }
 }
 
-/// The projected count on a home, whose steps sum variables, against the one
-/// on a bare root, whose steps sum the schedule's nodes less the projection
-/// shield, and against brute force, on random 3-CNFs and projections.
+/// The streaming projected count and the whole formula's projected compile
+/// against brute force, on random 3-CNFs and projections.
 #[test]
-fn projected_counts_on_a_home_and_on_a_bare_root_agree() {
+fn streaming_and_whole_projected_counts_agree() {
     let eng = &Engine::new();
     let mut seed = 0x2545_f491_4f6c_dd1du64;
     let mut next = |n: u64| {
@@ -394,12 +393,12 @@ fn projected_counts_on_a_home_and_on_a_bare_root_agree() {
         assert_eq!(
             streaming_projected(&formula, &show, std::slice::from_ref(&component)),
             expected,
-            "home: {clauses:?}, show {show:?}",
+            "streaming: {clauses:?}, show {show:?}",
         );
         let forget: Vec<VarId> = (0..num_vars).filter(|&i| !show.contains(&(i as usize))).map(|i| VarId(i + 1)).collect();
         let options = CompileOptions { output: Output::ProjectedCount(&forget), plan: ComponentPlan::Whole, ..CompileOptions::default() };
-        let bare = compile_cnf(eng, &formula, &Arc::new(Vtree::balanced(num_vars)), options).unwrap();
-        assert_eq!(bare.projected_count(eng).unwrap(), expected, "bare root: {clauses:?}, show {show:?}");
+        let whole = compile_cnf(eng, &formula, &Arc::new(Vtree::balanced(num_vars)), options).unwrap();
+        assert_eq!(whole.projected_count(eng).unwrap(), expected, "whole: {clauses:?}, show {show:?}");
     }
 }
 

@@ -771,8 +771,10 @@ counts! {
 /// binary printed, free variables included.
 #[test]
 fn save_tdd_reloads_through_the_library() {
-    use std::sync::Arc;
-    for cnf in ["tests/data/cnfs/iscas89/s641.scan.cnf", "tests/data/onehot_free_residual.cnf"] {
+    let resolved = common::tmp_path("resolved_free.cnf");
+    // Preprocessing resolves x1 and leaves x2 and x3 free: 4 models.
+    std::fs::write(&resolved, "p cnf 3 1\n1 0\n").unwrap();
+    for cnf in ["tests/data/cnfs/iscas89/s641.scan.cnf", "tests/data/onehot_free_residual.cnf", resolved.to_str().unwrap()] {
         let saved = common::tmp_path("reload.tdd");
         let saved_vtree = saved.with_extension("tdd.vtree");
         let out = run(&["--save-tdd", saved.to_str().unwrap(), cnf], &[]);
@@ -790,14 +792,15 @@ fn save_tdd_reloads_through_the_library() {
         );
         let vtree_text = std::fs::read_to_string(&saved_vtree);
         let reloaded = vtree_text.map(|text| {
-            let vtree = Arc::new(tididi::Vtree::from_text(&text).expect("the saved vtree parses"));
-            tididi::io::load_tdd(&saved, &vtree).expect("the saved diagram reads over its vtree")
+            let home = tididi::vtree::Home::new(tididi::Vtree::from_text(&text).expect("the saved vtree parses"));
+            tididi::io::load_tdd(&saved, home.vtree()).expect("the saved diagram reads over its home")
         });
         let _ = std::fs::remove_file(&saved);
         let _ = std::fs::remove_file(&saved_vtree);
         let reloaded = reloaded.unwrap_or_else(|e| panic!("{cnf}: no vtree file beside the diagram: {e}"));
         assert_eq!(reloaded.model_count().expect("the reloaded circuit counts").to_string(), printed, "{cnf}");
     }
+    let _ = std::fs::remove_file(&resolved);
 }
 
 // ── The MCC answer ───────────────────────────────────────────────────────────

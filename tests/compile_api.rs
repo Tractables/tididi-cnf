@@ -271,7 +271,7 @@ fn forgetting_without_marginalizing_compiles_the_projected_function() {
                 let diagram = compile_cnf(eng, &formula, &vtree, opts).unwrap().diagram;
                 let label = format!("clauses {clauses:?}, show {show:?}");
                 assert!(
-                    vtree.bottomup().all(|t| !diagram.level(t).is_marginal()),
+                    diagram.vtree().bottomup().all(|t| !diagram.level(t).is_marginal()),
                     "a level was marginalized, {label}"
                 );
                 assert_eq!(

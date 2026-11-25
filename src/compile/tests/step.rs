@@ -12,7 +12,7 @@ fn run_pass(
     deadline: Option<std::time::Instant>,
 ) -> Option<Tdd> {
     let formula = dimacs(num_vars, clauses);
-    let vtree = Arc::new(Vtree::balanced(num_vars));
+    let vtree = crate::vtree::bound(eng, Vtree::balanced(num_vars));
     let job = CompileJob { deadline, output: PassOutput::Function, run: Default::default() };
     compile_component(eng, &formula, &vtree, job).ok().map(|compiled| compiled.diagram)
 }

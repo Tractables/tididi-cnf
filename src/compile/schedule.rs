@@ -1,79 +1,9 @@
-//! Deciding which vtree levels may be marginal after each compilation step.
+//! Deciding which variables may be summed out after each compilation step.
 
 use std::collections::{HashMap, HashSet};
 
 use tididi::Literal;
 use tididi::vtree::{VarId, Vtree, VtreeIdx, VtreeNode};
-
-/// Refine one step's [`marginalize_schedule`] group down to the step's
-/// clauses.
-///
-/// `completes_at[i]` lists the vtree nodes whose last mention among the
-/// step's clauses is `clause_lits[i]`: once that clause is conjoined, no later
-/// clause of the step reads those subtrees, so they can be summed out before
-/// the step ends. Only the nodes the schedule frees at this step
-/// (`step_targets`) are considered, the rest wait for their own step, and
-/// each clause's list keeps their order.
-///
-/// Costs O(total clause length + number of vtree nodes) per step.
-pub(crate) fn step_completions(
-    clause_lits: &[&[Literal]],
-    vtree: &Vtree,
-    step_targets: &[VtreeIdx],
-) -> Vec<Vec<VtreeIdx>> {
-    let num_vars = vtree.num_vars() as usize;
-
-    // last_clause_pos[v] = largest i where clause_lits[i] mentions v, else None.
-    let mut last_clause_pos: Vec<Option<u32>> = vec![None; num_vars];
-    for (i, literals) in clause_lits.iter().enumerate() {
-        for lit in *literals {
-            let v = lit.var.idx();
-            if v < num_vars {
-                last_clause_pos[v] = Some(i as u32);
-            }
-        }
-    }
-
-    // A subtree outside the step's node has no mention among its clauses,
-    // whose variables all lie under that node, so its completion stays None.
-    let completion = subtree_max(vtree, |_, var| var.and_then(|var| last_clause_pos[var.idx()]));
-
-    let mut completes_at: Vec<Vec<VtreeIdx>> = vec![Vec::new(); clause_lits.len()];
-    for &t in step_targets {
-        if let Some(c) = completion[t.idx()] {
-            completes_at[c as usize].push(t);
-        }
-    }
-
-    completes_at
-}
-
-/// Decide which vtree levels may be marginal after each compilation step.
-///
-/// Returns `schedule[t]`: the vtree nodes whose levels
-/// [`marginalize_levels`](tididi::Engine::marginalize_levels) may sum out once
-/// step `t` completes, each group sorted bottom-up so a node's children are
-/// marginal before it. A node is scheduled at the step of the highest-scoped
-/// clause mentioning any variable of its subtree — after that step nothing
-/// reads the subtree explicitly again — or at its own step if that is later.
-/// `last_scope_pos` is [`last_scope_positions`] of the compile's clause groups.
-pub(crate) fn marginalize_schedule(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<Vec<VtreeIdx>> {
-    let n = vtree.num_nodes();
-    let completion_pos = completion_positions(vtree, last_scope_pos);
-
-    // Group the nodes by the step that frees them, walking the vtree
-    // bottom-up so each group lists children before parents.
-    let mut marginalize_at: Vec<Vec<VtreeIdx>> = vec![Vec::new(); n];
-    for node in vtree.bottomup() {
-        if vtree.node(node).parent().is_none() {
-            continue;
-        }
-        let pos = completion_pos[node.idx()];
-        marginalize_at[vtree.bottomup_slice()[pos as usize].idx()].push(node);
-    }
-
-    marginalize_at
-}
 
 /// Per vtree node, the topo position of the step that frees it, never before
 /// the node's own step: a leaf no clause mentions completes there, and an
@@ -86,16 +16,18 @@ fn completion_positions(vtree: &Vtree, last_scope_pos: &[u32]) -> Vec<u32> {
     })
 }
 
-/// [`marginalize_schedule`] as a predicate per variable, for a compile on a
-/// home: the library sums an own node once every variable leaf under it is
-/// summable, and every own node of a step's diagram lies under the step, so
-/// no node is summed before its own step.
+/// Which variables may be summed out after each step. A variable is done at
+/// the step of the highest-scoped clause that mentions it, or at its leaf's
+/// own step if that is later; after it no clause reads the variable. The
+/// library sums an own node once every variable leaf under it is summable,
+/// and every own node of a step's diagram lies under the step, so no node is
+/// summed before its own step.
 pub(crate) struct VarSchedule {
     /// Per variable (`VarId::idx`), the topo position of the step after which
     /// no clause reads it: its last scope, or its leaf's own step if later.
     done_at: Vec<u32>,
-    /// Per vtree node, whether [`marginalize_schedule`] frees a node at its
-    /// step; a step that frees none sums nothing.
+    /// Per vtree node, whether some non-root node's [`completion_positions`]
+    /// is its step; a step that frees none sums nothing.
     frees: Vec<bool>,
     /// Per vtree node, the projected variables done at its step.
     forget_at: Vec<Vec<VarId>>,
@@ -138,7 +70,7 @@ impl VarSchedule {
     }
 }
 
-/// The variables one step may sum out on a home: those done at or before it.
+/// The variables one step may sum out: those done at or before it.
 #[derive(Clone, Copy)]
 pub(crate) struct StepVars<'a> {
     done_at: &'a [u32],
@@ -157,8 +89,8 @@ impl StepVars<'_> {
     }
 }
 
-/// [`step_completions`] for a compile on a home: the variables one step
-/// completes, each with the position of its last clause among `clause_lits`.
+/// The variables one step completes, each with the position of its last
+/// clause among `clause_lits`.
 pub(crate) fn step_last_clauses(clause_lits: &[&[Literal]], step: StepVars<'_>) -> HashMap<VarId, u32> {
     let mut last = HashMap::new();
     for (i, literals) in clause_lits.iter().enumerate() {

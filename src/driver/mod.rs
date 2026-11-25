@@ -179,7 +179,10 @@ fn compile_attempt(run: &Run<'_>, attempt: CompileFrontendAttempt) -> Result<Com
             // there is at least one: vitri refuses a formula with none before
             // it preprocesses. Nothing is selected and nothing is compiled:
             // the refutation is the answer, and the zero output is the same
-            // shape compiling a contradiction reaches by short-circuit.
+            // shape compiling a contradiction reaches by short-circuit. It
+            // stays on a plain root, as `expand_to_originals` leaves its
+            // result: a saved `.tdd` counts over the variables of its own
+            // vtree, and a projection of a home would drop them.
             let zero = Tdd::zero(&Arc::new(Vtree::balanced(expansion.num_vars)));
             (zero, 0, 0, AnsweredBy::Preprocessing)
         }
@@ -387,7 +390,6 @@ fn solve_on(
             deadline: program_deadline,
             compile: CompileRun {
                 work: Some(&config.vtree_time),
-                projections: config.mode == Mode::Compile,
                 ..CompileRun::default()
             },
             started_on: &started_on,

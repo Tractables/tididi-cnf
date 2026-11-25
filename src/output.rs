@@ -584,14 +584,17 @@ fn write_record(stats: &Stats, path: &Path) -> Result<(), Error> {
 fn save_diagram(tdd: &tididi::diagram::Tdd, path: &Path, mcc: bool) -> Result<(), Error> {
     // The `.tdd` format labels vtree nodes but does not describe the tree,
     // and `tididi::io::load_tdd` takes the vtree as an argument, so the
-    // vtree goes beside the circuit in its own text format.
+    // vtree goes beside the circuit in its own text format. A diagram on a
+    // home is on the projection of the variables it uses, so the home's
+    // vtree goes there, which keeps the variables the diagram leaves free.
     let mut vtree_path = path.as_os_str().to_owned();
     vtree_path.push(".vtree");
     let vtree_path = PathBuf::from(vtree_path);
     let (shown, vtree_shown) = (path.display(), vtree_path.display());
     tididi::io::save_tdd(tdd, path)
         .map_err(|error| Error::Artifact(format!("could not write the diagram to {shown}: {error}")))?;
-    std::fs::write(&vtree_path, tdd.vtree().to_text())
+    let vtree = tdd.home().map_or_else(|| tdd.vtree().to_text(), |home| home.vtree().to_text());
+    std::fs::write(&vtree_path, vtree)
         .map_err(|error| Error::Artifact(format!("could not write the vtree to {vtree_shown}: {error}")))?;
     if mcc {
         return Ok(());

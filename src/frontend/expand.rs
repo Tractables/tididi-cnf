@@ -39,6 +39,7 @@ pub(crate) fn expand_to_originals(
 /// variables, so there is no class, and it refuses a formula with none before
 /// it preprocesses, so the balanced vtree over the originals has a leaf.
 pub(crate) fn fully_resolved_tdd(eng: &Engine, expansion: &VariableExpansion) -> Result<Tdd, OperationError> {
+    // A plain root, for the reason the refuted zero in the driver has one.
     let vtree = Arc::new(Vtree::balanced(expansion.num_vars));
     // With no class left, `original_expansion` put every original among the
     // constants or the free variables. The free variables carry no literal: a

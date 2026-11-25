@@ -7,8 +7,8 @@
 use tididi::diagram::{ChildDecoder, ChildRef, EncodedChildRef, NodeIdx, Tdd, ValueRef, ZERO};
 use tididi::vtree::VtreeIdx;
 
-/// Mark rows reused across calls of [`ReachScratch::width_on_spine`]: one flat row
-/// of slots, and each spine level's offset into it.
+/// Mark rows reused across calls of [`ReachScratch::reached_width`]: one flat
+/// row of slots, and each internal level's offset into it.
 #[derive(Default)]
 pub(super) struct ReachScratch {
     marks: Vec<bool>,
@@ -17,17 +17,15 @@ pub(super) struct ReachScratch {
 }
 
 impl ReachScratch {
-    /// The largest count of reached nodes on one level of `spine`, an
-    /// ancestor-closed set of levels, at a cost in proportion to their slots.
-    /// Levels off `spine` are not read; a node there reaches nothing counted.
-    pub(super) fn width_on_spine(&mut self, tdd: &Tdd, spine: &[VtreeIdx]) -> usize {
+    /// The largest count of reached nodes on one internal level, at a cost in
+    /// proportion to their slots.
+    pub(super) fn reached_width(&mut self, tdd: &Tdd) -> usize {
         if tdd.is_zero() {
             return 0;
         }
         let vtree = tdd.vtree();
         self.order.clear();
-        self.order.extend(spine.iter().copied().filter(|&t| !vtree.node(t).is_leaf()));
-        self.order.sort_unstable_by_key(|&t| std::cmp::Reverse(vtree.topo_pos(t)));
+        self.order.extend(vtree.internal_bottomup_slice().iter().rev().copied());
         if self.offset.len() < vtree.num_nodes() {
             self.offset.resize(vtree.num_nodes(), usize::MAX);
         }

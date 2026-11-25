@@ -151,20 +151,18 @@ pub struct VtreeBuild {
 }
 
 impl VtreeBuild {
-    /// Attach freshly built trees to the run's engine before any diagram is
-    /// built on them, each as a home when the run's compiles build
-    /// projections ([`bound`]).
+    /// Attach freshly built trees to the run's engine as homes before any
+    /// diagram is built on them ([`bound`]).
     pub(crate) fn bind(mut self, run: &crate::stage::Run<'_>) -> Self {
         let implied = self.implied.len()
             + self.components.iter().flatten().map(|c| c.component.implied.len()).sum::<usize>();
         if implied > 0 {
             eprintln!("[vtree] implied clauses: {implied}");
         }
-        let home = run.compile.projections;
-        self.root = bound(run.eng, Arc::unwrap_or_clone(self.root), home);
+        self.root = bound(run.eng, Arc::unwrap_or_clone(self.root));
         self.components = self.components.map(|components| {
             components.into_iter().map(|mut component| {
-                component.vtree = bound(run.eng, Arc::unwrap_or_clone(component.vtree), home);
+                component.vtree = bound(run.eng, Arc::unwrap_or_clone(component.vtree));
                 component
             }).collect()
         });
@@ -183,18 +181,9 @@ impl VtreeBuild {
     }
 }
 
-/// `vtree` attached to `engine`, as a home when `home` is set.
-///
-/// Only a compile that builds projections may run on a home: there every
-/// library operation returns the diagram on the projection of the variables
-/// it uses, while a compile without projections names levels by the nodes of
-/// the full vtree, which such a diagram does not have.
-pub(crate) fn bound(engine: &tididi::Engine, vtree: Vtree, home: bool) -> Arc<Vtree> {
-    let vtree = engine.bind_vtree(vtree);
-    match home {
-        true => Arc::clone(tididi::vtree::Home::new(vtree).vtree()),
-        false => vtree,
-    }
+/// `vtree` attached to `engine` as a home.
+pub(crate) fn bound(engine: &tididi::Engine, vtree: Vtree) -> Arc<Vtree> {
+    Arc::clone(tididi::vtree::Home::new(engine.bind_vtree(vtree)).vtree())
 }
 
 /// An independent component of a formula: its clauses, and the formula

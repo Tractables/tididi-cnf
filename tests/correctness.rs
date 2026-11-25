@@ -35,7 +35,10 @@ fn check_on_every_shape(eng: &Engine, num_vars: u32, clauses: &[Vec<i32>], expec
         assert_eq!(tdd.is_zero(), expected == 0, "{label}: is_zero");
         check_all_fast(&tdd, &label);
         check_determinism(&tdd).unwrap_or_else(|e| panic!("{label}: determinism: {e}"));
-        check_minimize_soundness(&mut tdd, 3).unwrap_or_else(|e| panic!("{label}: minimize soundness: {e}"));
+        // The oracle reads no level of a constant on an empty projection.
+        if !tdd.is_zero() && !tdd.is_one() {
+            check_minimize_soundness(&mut tdd, 3).unwrap_or_else(|e| panic!("{label}: minimize soundness: {e}"));
+        }
     }
 }
 

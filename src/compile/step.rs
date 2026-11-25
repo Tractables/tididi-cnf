@@ -21,8 +21,9 @@ use super::{Compiled, GiveUp};
 use super::batch::batch_accumulate;
 use super::cofactor::cofactor_step;
 use super::component::CompileJob;
-use super::marginalize::{Schedule, build_marginalize_targets, run_marginalize_at};
+use super::marginalize::{build_marginalize_targets, run_marginalize_at};
 use super::minimize::{ContractThrottle, MinimizeGate};
+use super::schedule::VarSchedule;
 use super::scope::{ScopeGroups, group_clauses_by_scope};
 
 /// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
@@ -42,7 +43,7 @@ pub(crate) struct StepContext<'a> {
     pub(crate) clauses_at: &'a [Vec<usize>],
     /// What each step may marginalize. `None` for an output that follows no
     /// schedule.
-    pub(crate) marginalize_schedule: Option<&'a Schedule>,
+    pub(crate) marginalize_schedule: Option<&'a VarSchedule>,
 }
 
 /// What one bottom-up pass changes as it goes.
@@ -58,10 +59,6 @@ pub(crate) struct PassState {
     /// Each is forgotten once: at the step its leaf is scheduled at, or at the
     /// root.
     pub(crate) forgotten: HashSet<VarId>,
-    /// The batch builder's spine-marking scratch, one flag per vtree node,
-    /// grown on first use and all false between batches, so the zeroing is
-    /// paid once per pass rather than once per batch.
-    pub(crate) on_spine: Vec<bool>,
     /// The marginal-clustering rotation scratch (`Engine::rotate_marginal_cluster`).
     pub(crate) cluster_tried: Vec<u8>,
     /// The largest pair count any step's diagram reached during the pass.
@@ -167,7 +164,7 @@ fn compile_pass(
     // variable may be marginalized.
     let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(formula, vtree);
     let marginalize_schedule =
-        job.output.scheduled().then(|| Schedule::new(vtree, &last_scope_pos, job.output, job.run.projections));
+        job.output.scheduled().then(|| VarSchedule::new(vtree, &last_scope_pos, job.output.forget()));
     // Converted once for the bottom-up pass.
     let clauses = DiagramClauses::new(formula);
 
@@ -176,10 +173,6 @@ fn compile_pass(
     // meter and the refused size a previous attempt left, so an allocator
     // refusal a give-up names is this attempt's own.
     eng.limits().reset_meters();
-    // Live vtree pointer that `batch_accumulate` and the conjunction use. Mid-compile
-    // rotation search reseats this Arc; downstream ptr_eq checks require
-    // every live Tdd in `state.tdds` to share the same Arc, so we propagate.
-    let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
     let mut state = PassState::new(vtree.num_nodes(), job);
     let ctx = StepContext {
         job,
@@ -196,7 +189,7 @@ fn compile_pass(
             deadline if deadline_passed(deadline) => Err(OperationError::Stopped),
             deadline => {
                 let _cut = (deadline != job.deadline).then(|| deadline_scope(eng, deadline));
-                fold_step(eng, t, &ctx, &mut state, &current_vtree, None, None)
+                fold_step(eng, t, &ctx, &mut state, vtree, None, None)
             }
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
@@ -205,27 +198,26 @@ fn compile_pass(
     }
 
     // Internal levels: conjoin child TDDs, then accumulate any clauses scoped
-    // to this level. Iterating over the original outer Arc's structure is safe
-    // after marginal-cluster rotations, which only swap slot content inside
-    // already-consumed `subtree(t)`.
+    // to this level.
     let topo: &[VtreeIdx] = vtree.internal_bottomup_slice();
     for &t in topo {
         let step = match step_deadline(job) {
             deadline if deadline_passed(deadline) => Err(OperationError::Stopped),
             deadline => {
                 let _cut = (deadline != job.deadline).then(|| deadline_scope(eng, deadline));
-                run_internal_step(eng, t, &ctx, &mut state, &current_vtree)
+                run_internal_step(eng, t, &ctx, &mut state, vtree)
             }
         };
         if let ControlFlow::Break(out) = check_step(eng, vtree, step, &mut state, t) {
             return out;
         }
-        if let Err(e) = marginalize_and_rotate(eng, t, &ctx, &mut state, &mut current_vtree) {
+        if let Err(e) = marginalize_and_rotate(eng, t, &ctx, &mut state, vtree) {
             return Err(GiveUp::from_operation(eng, e));
         }
     }
 
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| eng.one(vtree));
+    debug_assert!(diagram.home().is_some(), "a pass returns its diagram on a home");
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
 }
 
@@ -271,56 +263,26 @@ fn check_step(
 /// internal step `t`: after step `t` marginalized levels in `subtree(t)`, try
 /// rotations that bring two marginal levels under one parent so it too
 /// collapses to counts, shrinking the in-flight diagram (see
-/// `Engine::rotate_marginal_cluster`). On a home this merges sibling regions
-/// and leaves the home as it is.
+/// `Engine::rotate_marginal_cluster`). The rotation changes the diagram's own
+/// vtree, a projection of the home, and leaves the home as it is.
 fn marginalize_and_rotate(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    current_vtree: &mut Arc<Vtree>,
+    vtree: &Arc<Vtree>,
 ) -> Result<(), OperationError> {
-    run_marginalize_at(eng, t, ctx, state, current_vtree)?;
+    run_marginalize_at(eng, t, ctx, state, vtree)?;
     let PassState { tdds, cluster_tried, .. } = state;
-    if ctx.job.run.projections {
-        // The rotation changes the diagram's own vtree only. A Boolean
-        // function has no marginal level to cluster.
-        if let Some(tdd) = tdds[t.idx()].as_mut()
-            && tdd.has_marginal_level()
-        {
-            cluster_tried.clear();
-            let root = tdd.vtree().root();
-            eng.rotate_marginal_cluster(tdd, root, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
-        }
-        return Ok(());
+    // A Boolean function has no marginal level to cluster.
+    if let Some(tdd) = tdds[t.idx()].as_mut()
+        && tdd.has_marginal_level()
+    {
+        cluster_tried.clear();
+        let root = tdd.vtree().root();
+        eng.rotate_marginal_cluster(tdd, root, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
     }
-    if let Some(tdd) = tdds[t.idx()].as_mut() {
-        eng.rotate_marginal_cluster(tdd, t, MARGINAL_CLUSTER_BOUND_FACTOR, cluster_tried)?;
-    }
-    propagate_vtree_arc(tdds, current_vtree, t);
     Ok(())
-}
-
-/// Reseat every TDD's `vtree` Arc to match `current_vtree` if a marginal-cluster
-/// rotation just rotated the vtree held by `tdds[just_updated.idx()]`.
-fn propagate_vtree_arc(
-    tdds: &mut [Option<Tdd>],
-    current_vtree: &mut Arc<Vtree>,
-    just_updated: VtreeIdx,
-) {
-    let Some(tdd) = tdds[just_updated.idx()].as_ref() else { return; };
-    if Arc::ptr_eq(tdd.vtree(), current_vtree) { return; }
-    *current_vtree = Arc::clone(tdd.vtree());
-    for (slot_idx, slot) in tdds.iter_mut().enumerate() {
-        if slot_idx == just_updated.idx() { continue; }
-        if let Some(td) = slot.as_mut() && !Arc::ptr_eq(td.vtree(), current_vtree) {
-            // Safety: the rotation is confined to the just-completed subtree.
-            // Other in-flight diagrams constrain disjoint subtrees; any retained
-            // levels here are true wrappers with node-0 references. Rotation
-            // preserves leaf indices, so those references remain valid.
-            unsafe { td.reseat_vtree_unchecked(current_vtree); }
-        }
-    }
 }
 
 // ── The steps ────────────────────────────────────────────────────────────────
@@ -336,18 +298,18 @@ fn fold_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    current_vtree: &Arc<Vtree>,
+    vtree: &Arc<Vtree>,
     children: Option<Tdd>,
     lineage: Option<VtreeIdx>,
 ) -> Result<usize, OperationError> {
-    let targets = build_marginalize_targets(t, current_vtree, ctx, &state.forgotten);
-    state.minimize.fold_at_root = t == current_vtree.root();
+    let targets = build_marginalize_targets(t, vtree, ctx, &state.forgotten);
+    state.minimize.fold_at_root = t == vtree.root();
     let throttle = lineage.map(|c| std::mem::take(&mut state.throttles[c.idx()])).unwrap_or_default();
     state.minimize.swap_throttle(throttle);
     let folded = batch_accumulate(
         eng,
-        &ctx.clauses_at[t.idx()], ctx, current_vtree, children,
-        state, targets.as_ref(),
+        &ctx.clauses_at[t.idx()], ctx, vtree, children,
+        state, targets,
     );
     state.minimize.fold_at_root = false;
     state.throttles[t.idx()] = state.minimize.swap_throttle(ContractThrottle::default());
@@ -358,7 +320,7 @@ fn fold_step(
 
 /// Process a single internal vtree node: the cofactor step when the node
 /// qualifies for it ([`cofactor_step`]), otherwise conjoin the children and
-/// fold the node's clauses ([`splice_and_fold`]). Returns the pair count of
+/// fold the node's clauses ([`join_and_fold`]). Returns the pair count of
 /// the node's diagram. `Err(Stopped)` when the deadline passes during the
 /// step.
 fn run_internal_step(
@@ -366,26 +328,25 @@ fn run_internal_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    current_vtree: &Arc<Vtree>,
+    vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
-    match cofactor_step(eng, t, ctx, state, current_vtree)? {
+    match cofactor_step(eng, t, ctx, state, vtree)? {
         Some(pairs) => Ok(pairs),
-        None => splice_and_fold(eng, t, ctx, state, current_vtree),
+        None => join_and_fold(eng, t, ctx, state, vtree),
     }
 }
 
-/// The normal internal step at `t`: conjoin the children's diagrams, by
-/// [`Engine::and`] on a home and by an O(1) splice on a bare root (a weighted
-/// compile), fold the node's clauses into the result ([`fold_step`]) and
-/// store it in `state.tdds[t]`. Returns its pair count.
-pub(super) fn splice_and_fold(
+/// The normal internal step at `t`: conjoin the children's diagrams by
+/// [`Engine::and`], fold the node's clauses into the result ([`fold_step`])
+/// and store it in `state.tdds[t]`. Returns its pair count.
+pub(super) fn join_and_fold(
     eng: &Engine,
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    current_vtree: &Arc<Vtree>,
+    vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
-    let (left, right) = current_vtree.children(t);
+    let (left, right) = vtree.children(t);
     // The larger child's diagram is the bulk of the fold's accumulator, so
     // its throttle is the one the fold carries on. The pair count its step
     // measured stands in for the diagram's: `pair_count` walks every level of
@@ -400,40 +361,19 @@ pub(super) fn splice_and_fold(
         (None, None) => None,
     };
     let children_tdd = match (state.tdds[left.idx()].take(), state.tdds[right.idx()].take()) {
-        (Some(mut l), Some(r)) => {
+        (Some(l), Some(r)) => {
             if l.is_zero() || r.is_zero() {
-                Some(eng.zero(current_vtree))
-            } else if ctx.job.run.projections {
+                Some(eng.zero(vtree))
+            } else {
                 // On the projections under `t`'s two children, the library
                 // joins them at `t` without a sweep.
                 Some(eng.and(l, r)?)
-            } else {
-                // The schedule marginalizes no node before its own step
-                // (`marginalize_schedule`), so level `t` is still a
-                // structural wrapper in both children.
-                assert!(
-                    !l.levels()[t.idx()].is_marginal() && !r.levels()[t.idx()].is_marginal(),
-                    "level {} was marginalized before its own step",
-                    t.idx(),
-                );
-                // The children cover disjoint variables, so their conjunction
-                // creates no twins: it is the single pair at `t` naming both
-                // roots, every other level moved across unchanged — an O(1)
-                // splice, not an apply.
-                //
-                // Safety: the compiler built both operands on the current
-                // shared vtree, from its disjoint left/right child scopes.
-                // Their stored wrapper nodes are single pairs with a true
-                // opposite side, and compilation uses one compatible weight
-                // configuration. The assertion above checks the stored wrappers.
-                unsafe { l.splice_subtree_unchecked(eng, r, t); }
-                Some(l)
             }
         }
         (Some(t_single), None) | (None, Some(t_single)) => Some(t_single),
         (None, None) => None,
     };
-    fold_step(eng, t, ctx, state, current_vtree, children_tdd, lineage)
+    fold_step(eng, t, ctx, state, vtree, children_tdd, lineage)
 }
 
 #[cfg(test)]

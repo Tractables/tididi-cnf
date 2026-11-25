@@ -2,9 +2,7 @@
 //! `compile_cnf` evaluated under the same weights, which shares no
 //! marginal-store code with it. Covers the weighted marginalizing compile
 //! (`Output::WeightedCount`, the compile the binary's weighted count runs),
-//! weighted marginalization of a plain compile, and the weight-marginal
-//! vtree leaf: its column, the diagrams that share it, and the equal-weight
-//! ref canonicalization.
+//! and weighted marginalization of a plain compile by any set of variables.
 //!
 //! The fuzz test is ignored and reads its ranges from the environment, and
 //! refuses a value it cannot read:
@@ -29,7 +27,7 @@ use vitri::cnf::CnfFormula;
 use tididi::Engine;
 use tididi::diagram::{Arithmetic, Tdd};
 use tididi::test_helpers::{Lcg, exact_weight, rat};
-use tididi::vtree::{VarId, Vtree, VtreeIdx};
+use tididi::vtree::{Home, VarId, Vtree};
 use tididi_cnf::compile::{CompileOptions, ComponentPlan, Output, compile_cnf};
 use tididi_cnf::vtree::{VtreeOptions, build_vtree};
 
@@ -47,7 +45,7 @@ fn rational_weight_algebra(weights: &[(BigRational, BigRational)]) -> tididi::di
 }
 
 /// A plain compile of `formula` on `vtree` as one component, so that the
-/// diagram is on `vtree`, where levels can be summed out by index.
+/// diagram is on a home made of `vtree`.
 fn plain_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>) -> Tdd {
     compile_cnf(eng, formula, vtree, CompileOptions { plan: ComponentPlan::Whole, ..CompileOptions::default() }).unwrap().diagram
 }
@@ -86,13 +84,14 @@ fn weighted_mc_compile(eng: &Engine, formula: &CnfFormula, vtree: &Arc<Vtree>, w
     .diagram
 }
 
-/// Move `tdd` onto a copy of its vtree weighted by `w` and marginalize
-/// `targets` in one batch.
-fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRational)], targets: &[VtreeIdx]) {
+/// Move `tdd` onto a copy of its home weighted by `w` and sum out the
+/// variables `summed` names in one batch.
+fn marginalize_weighted(eng: &Engine, tdd: &mut Tdd, w: &[(BigRational, BigRational)], summed: impl Fn(VarId) -> bool) {
     let weights = tididi::diagram::Weights::new(rational_weight_algebra(w), Arithmetic::ExactRational);
-    let weighted = Arc::new(Vtree::clone(tdd.vtree()).with_weights(weights).expect("the weights cover the vtree"));
-    *tdd = eng.embed(tdd, &weighted, |v| v).expect("the same shape").0;
-    eng.marginalize_levels(tdd, targets).expect("no wall is armed");
+    let home = tdd.home().expect("a compile returns its diagram on a home");
+    let weighted = Home::weighted(eng.bind_vtree(Vtree::clone(home.vtree())), weights).expect("the weights cover the home");
+    *tdd = eng.transport(&*tdd, &weighted, |v| v, 0).expect("the same home, weighted").0;
+    eng.marginalize(tdd, summed).expect("no wall is armed");
 }
 
 fn weighted_value(tdd: &Tdd) -> BigRational {
@@ -150,7 +149,7 @@ fn weighted_counts_match_the_oracle() {
             assert_eq!(expected, BigRational::from_integer(plain.model_count().unwrap().into()), "unit weights count models");
         }
         assert_eq!(marginalizing(&formula, &vtree, &w), expected, "marginalizing compile, {clauses:?}");
-        marginalize_weighted(eng, &mut plain, &w, vtree.bottomup_slice());
+        marginalize_weighted(eng, &mut plain, &w, |_| true);
         assert_eq!(weighted_value(&plain), expected, "marginalized plain compile, {clauses:?}");
     }
 }
@@ -180,25 +179,16 @@ fn weighted_marginalizing_compile_keeps_all_model_mass() {
     assert_eq!(actual, expected, "lost model mass: deficit {}", &expected - &actual);
 }
 
-// ── Weight-marginal vtree leaves ─────────────────────────────────────────────
-//
-// A weight-marginal leaf holds a 3-slot column in `LeafLabel::from_idx` order
-// (0 = One = w⁺ + w⁻, 1 = Pos = w⁺, 2 = Neg = w⁻). The column is a
-// compile-wide cache keyed by vtree index and shared by every diagram of the
-// compile, so no one diagram may compact, erase or reinterpret it.
+// ── Summing some variables ───────────────────────────────────────────────────
 
-/// 4 variables, satisfiable, each in a clause, so every leaf is a real
-/// marginalize target.
+/// 4 variables, satisfiable, each in a clause.
 fn leaf_formula() -> CnfFormula {
     make_formula(4, vec![vec![1, 2], vec![-2, 3], vec![3, -4]])
 }
 
-/// The weights a leaf column has to survive: fractional w⁺ ≠ w⁻, a negative
-/// weight, a zero weight, w⁺ + w⁻ = 0 (an exactly zero One slot), and the
-/// three shapes of the equal-value ref canonicalization: w⁺ = w⁻ (Neg → Pos),
-/// w⁻ = 0 (Pos → One), w⁺ = 0 (Neg → One). "mixed-canon" puts all three and
-/// an asymmetric variable in one compile, so a per-leaf map cannot pass as a
-/// per-compile one; the rest must leave the canonicalization idle.
+/// The weights a sum-out has to survive: fractional w⁺ ≠ w⁻, a negative
+/// weight, a zero weight, w⁺ + w⁻ = 0, and w⁺ = w⁻, w⁻ = 0 and w⁺ = 0 side
+/// by side.
 fn weight_cases() -> Vec<(&'static str, Weights)> {
     vec![
         ("fractional", vec![(rat(1, 2), rat(1, 3)), (rat(2, 5), rat(3, 7)), (rat(5, 11), rat(2, 9)), (rat(1, 1), rat(4, 9))]),
@@ -211,176 +201,35 @@ fn weight_cases() -> Vec<(&'static str, Weights)> {
     ]
 }
 
-/// The leaf of variable `var` (zero-based) is weight-marginal and holds its
-/// full column.
-fn assert_leaf_column(tdd: &Tdd, vtree: &Vtree, var: u32, w: &(BigRational, BigRational), label: &str) {
-    let leaf = vtree.leaf_of(VarId(var + 1)).expect("the vtree carries this variable");
-    let level = &tdd.levels()[leaf.idx()];
-    assert!(level.is_weight_marginal(), "[{label}] leaf of x{} is not weight-marginal", var + 1);
-    assert_eq!(level.slot_count(), 3, "[{label}] leaf of x{}: the slot count must stay at `LEAF_WIDTH`", var + 1);
-    let column = level
-        .weight_values()
-        .unwrap_or_else(|| panic!("[{label}] leaf of x{} lost its column", var + 1));
-    let (w_neg, w_pos) = w;
-    assert_eq!(column.len(), 3, "[{label}] the leaf column carries One, Pos and Neg");
-    assert_eq!(exact_weight(&column[0]), w_pos + w_neg, "[{label}] slot 0 is One = w⁺ + w⁻");
-    assert_eq!(exact_weight(&column[1]), w_pos.clone(), "[{label}] slot 1 is Pos = w⁺");
-    assert_eq!(exact_weight(&column[2]), w_neg.clone(), "[{label}] slot 2 is Neg = w⁻");
-}
-
-/// A lone leaf target turns weight-marginal and leaves the value alone.
+/// Summing out one variable, a pair, three or all four leaves the weighted
+/// value as it is, and a second sum-out over a diagram already summed in part
+/// reads what the first stored.
 #[test]
-fn a_leaf_target_turns_weight_marginal() {
+fn any_set_of_summed_variables_keeps_the_value() {
     let eng = &Engine::new();
     let vtree = Arc::new(Vtree::balanced(4));
+    let sets: [&[u32]; 8] = [&[1], &[2], &[3], &[4], &[1, 2], &[3, 4], &[1, 3, 4], &[1, 2, 3, 4]];
     for (label, w) in weight_cases() {
         let expected = oracle(&leaf_formula(), &vtree, &w);
-        for var in 0..4u32 {
+        for set in sets {
             let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
-            let leaf = vtree.leaf_of(VarId(var + 1)).expect("the vtree carries this variable");
-            marginalize_weighted(eng, &mut tdd, &w, &[leaf]);
-            assert_leaf_column(&tdd, &vtree, var, &w[var as usize], label);
-            assert_eq!(weighted_value(&tdd), expected, "[{label}] marginalizing the leaf of x{}", var + 1);
+            marginalize_weighted(eng, &mut tdd, &w, |v| set.contains(&v.0));
+            assert_eq!(weighted_value(&tdd), expected, "[{label}] summing {set:?}");
+            eng.marginalize(&mut tdd, |_| true).expect("no wall is armed");
+            assert_eq!(weighted_value(&tdd), expected, "[{label}] summing {set:?}, then the rest");
         }
     }
 }
 
-/// One batch with an internal target and a leaf outside its subtree: the
-/// internal one takes the main cascade, the leaf the closing leaf pass.
+/// With w⁺ = w⁻ everywhere the weighted compile keeps the value. Weights
+/// differ across variables, so a read of the wrong polarity changes it.
 #[test]
-fn a_batch_mixes_leaf_and_internal_targets() {
-    let eng = &Engine::new();
-    let vtree = Arc::new(Vtree::balanced(4));
-    let leaf = vtree.leaf_of(VarId(1)).expect("the vtree carries this variable");
-    let (a, b) = vtree.children(vtree.root());
-    let mut climb = vtree.node(leaf).parent();
-    while let Some(p) = climb.filter(|&p| p != a && p != b) {
-        climb = vtree.node(p).parent();
-    }
-    let internal = if climb == Some(a) { b } else { a };
-    assert!(!vtree.node(internal).is_leaf(), "the other root child of balanced(4) is internal");
-
-    for (label, w) in weight_cases() {
-        let expected = oracle(&leaf_formula(), &vtree, &w);
-        let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
-        marginalize_weighted(eng, &mut tdd, &w, &[internal, leaf]);
-        assert!(tdd.levels()[internal.idx()].is_weight_marginal(), "[{label}] internal target");
-        assert_leaf_column(&tdd, &vtree, 0, &w[0], label);
-        assert_eq!(weighted_value(&tdd), expected, "[{label}]");
-    }
-}
-
-/// Marginalizing only the leaves (each parent stays structural, so each
-/// column is a boundary store the slot prune walks) and marginalizing
-/// everything (each leaf under a marginal parent, the prune's dead-store
-/// walk) both keep every leaf's full column. A column compacted to the slots
-/// one diagram's parent uses would break every other diagram reading it.
-#[test]
-fn leaf_columns_survive_the_slot_prune() {
-    let eng = &Engine::new();
-    let vtree = Arc::new(Vtree::balanced(4));
-    for (label, w) in weight_cases() {
-        let expected = oracle(&leaf_formula(), &vtree, &w);
-        for (phase, targets) in [
-            ("leaves", vtree.leaf_bottomup().map(|(t, _)| t).collect::<Vec<_>>()),
-            ("everything", vtree.bottomup_slice().to_vec()),
-        ] {
-            let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
-            marginalize_weighted(eng, &mut tdd, &w, &targets);
-            for var in 0..4u32 {
-                assert_leaf_column(&tdd, &vtree, var, &w[var as usize], &format!("{label}/{phase}"));
-            }
-            let subsumed = tididi::test_helpers::check::marginal::subsumed_marginal_data_violations(&tdd);
-            assert!(subsumed.is_empty(), "[{label}/{phase}] data left under a marginal parent at {subsumed:?}");
-            assert_eq!(weighted_value(&tdd), expected, "[{label}/{phase}]");
-        }
-    }
-}
-
-/// Diagram A marginalizes an internal node and a leaf under it; diagram B
-/// takes A's store (as a conjunction of the two would) but keeps that leaf
-/// structural, so B's parent refs to it are leaf labels. They must resolve by
-/// label, not through the column, and a subsumed leaf keeps its full column,
-/// so B neither reads out of bounds nor drops the leaf's mass.
-#[test]
-fn a_structural_leaf_reads_by_label_under_a_shared_store() {
-    let eng = &Engine::new();
-    let vtree = Arc::new(Vtree::balanced(4));
-    let parent = (0..vtree.num_nodes() as u32)
-        .map(VtreeIdx)
-        .find(|&p| {
-            !vtree.node(p).is_leaf() && {
-                let (l, r) = vtree.children(p);
-                vtree.node(l).is_leaf() && vtree.node(r).is_leaf()
-            }
-        })
-        .expect("balanced(4) has an internal node over two leaves");
-    let (leaf, _) = vtree.children(parent);
-
-    for (label, w) in weight_cases() {
-        let mut a = plain_compile(eng, &leaf_formula(), &vtree);
-        marginalize_weighted(eng, &mut a, &w, &[parent, leaf]);
-        assert!(a.weights().is_some(), "[{label}] a weighted vtree");
-        assert!(
-            a.levels()[leaf.idx()].weight_values().is_some_and(|column| column.len() == 3),
-            "[{label}] a subsumed leaf keeps its column"
-        );
-
-        let b = plain_compile(eng, &leaf_formula(), &vtree);
-        let expected = b.evaluate(&rational_weight_algebra(&w)).unwrap();
-        let (mut b, _) = eng.embed(&b, a.vtree(), |v| v).expect("the same shape");
-        eng.marginalize_levels(&mut b, &[parent]).expect("no wall is armed");
-        assert_eq!(weighted_value(&b), expected, "[{label}]");
-    }
-}
-
-/// Counts the parent refs into weight-marginal leaves under structural
-/// parents, asserting none names the Neg slot (raw 2). With w⁺ = w⁻ at every
-/// variable the equal-value map sends Neg to Pos, so a canonical ref never
-/// names slot 2.
-fn count_canonical_leaf_refs(tdd: &Tdd, label: &str) -> usize {
-    let vtree = tdd.vtree();
-    let mut seen = 0;
-    for (leaf, _) in vtree.leaf_bottomup() {
-        let Some(parent) = vtree.node(leaf).parent() else { continue };
-        if !tdd.levels()[leaf.idx()].is_weight_marginal() || tdd.levels()[parent.idx()].is_marginal() {
-            continue;
-        }
-        let leaf_is_left = vtree.children(parent).0 == leaf;
-        let level = &tdd.levels()[parent.idx()];
-        for n in 0..level.nodes().len() {
-            for pair in level.pairs_iter_of_idx(n) {
-                let raw = if leaf_is_left { pair.left.raw() } else { pair.right.raw() };
-                assert_ne!(raw, 2, "[{label}] a Neg-slot ref into weight-marginal leaf {leaf:?} under equal weights");
-                seen += 1;
-            }
-        }
-    }
-    seen
-}
-
-/// With w⁺ = w⁻ everywhere, no ref into a weight-marginal leaf names the Neg
-/// slot after a leaves-only batch (where the leaf pass rewrites them) or
-/// after the weighted compile (where conjunction and the duplicate-pair fold
-/// create them), and the value is unchanged. Weights differ across variables,
-/// so a wrong-slot read changes the value.
-#[test]
-fn equal_weights_leave_no_neg_slot_refs() {
+fn equal_weights_keep_the_value() {
     let eng = &Engine::new();
     let vtree = Arc::new(Vtree::balanced(4));
     let w: Weights = (1..=4).map(|i| (rat(i, 3), rat(i, 3))).collect();
     let expected = oracle(&leaf_formula(), &vtree, &w);
-
-    let mut tdd = plain_compile(eng, &leaf_formula(), &vtree);
-    let leaves: Vec<VtreeIdx> = vtree.leaf_bottomup().map(|(t, _)| t).collect();
-    marginalize_weighted(eng, &mut tdd, &w, &leaves);
-    assert!(count_canonical_leaf_refs(&tdd, "leaves") > 0, "the leaves-only batch left no ref to inspect");
-    assert_eq!(weighted_value(&tdd), expected, "leaves-only batch");
-
-    // A fully marginalized diagram may leave no such ref; any that is there
-    // must be canonical.
     let tdd = weighted_mc_compile(eng, &leaf_formula(), &vtree, &w);
-    count_canonical_leaf_refs(&tdd, "compile");
     assert_eq!(weighted_value(&tdd), expected, "weighted compile");
 }
 
@@ -405,7 +254,6 @@ fn equal_weight_duplicate_runs_keep_the_value() {
         }
         let tdd = weighted_mc_compile(eng, &formula, &vtree, &w);
         assert_eq!(weighted_value(&tdd), expected, "[{label}]");
-        count_canonical_leaf_refs(&tdd, label);
     }
 }
 

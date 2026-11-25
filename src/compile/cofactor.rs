@@ -3,9 +3,9 @@
 //! the other child's diagram alone.
 //!
 //! At node `t` with children `small`, over the variables `S` (at most
-//! [`COFACTOR_MAX_VARS`] of them), and `big`, the normal step splices the
+//! [`COFACTOR_MAX_VARS`] of them), and `big`, the normal step conjoins the
 //! children's diagrams `L` and `R` and folds the node's clauses `C_t` into the
-//! result, a batch at a time ([`super::step::splice_and_fold`]). Every clause
+//! result, a batch at a time ([`super::step::join_and_fold`]). Every clause
 //! of `C_t` has literals on both sides, so every merge of that fold carries the
 //! `S` structure at `t` across the whole of `R`. The cofactor step fixes `S`
 //! instead: for each full assignment `a` of `S` that `L` allows, it folds the
@@ -76,12 +76,12 @@ pub(super) fn cofactor_step(
     t: VtreeIdx,
     ctx: &StepContext<'_>,
     state: &mut PassState,
-    current_vtree: &Arc<Vtree>,
+    vtree: &Arc<Vtree>,
 ) -> Result<Option<usize>, OperationError> {
-    let Some(plan) = plan_cofactor(eng, t, ctx, &state.tdds, current_vtree)? else {
+    let Some(plan) = plan_cofactor(eng, t, ctx, &state.tdds, vtree)? else {
         return Ok(None);
     };
-    run_cofactor(eng, t, ctx, state, current_vtree, plan).map(Some)
+    run_cofactor(eng, t, ctx, state, vtree, plan).map(Some)
 }
 
 /// A node the cofactor step takes, worked out before any diagram is folded.
@@ -246,10 +246,8 @@ fn run_cofactor(
             .expect("a fold from a live accumulator returns one");
         // Structural, so an unsatisfiable branch is the false sentinel.
         if !branch.is_zero() {
-            let cube_vtree = match ctx.job.run.projections {
-                true => Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), plan.vars.iter().copied()).expect("`vars` are leaves of the vtree"),
-                false => Arc::clone(vtree),
-            };
+            let cube_vtree = Vtree::projection(&tididi::vtree::Home::new(Arc::clone(vtree)), plan.vars.iter().copied())
+                .expect("`vars` are leaves of the vtree");
             let cube = eng.cube(&cube_vtree, assignment(&plan.vars, a))?;
             terms.push(eng.and(cube, branch)?);
         }
@@ -261,9 +259,7 @@ fn run_cofactor(
     let mut joined = if terms.is_empty() {
         eng.zero(vtree)
     } else {
-        // `or_many` returns its join unminimized: the terms' wrapper chains
-        // stay side by side up to the root, and the splice at `t`'s parent
-        // needs one node on `t`'s level, which the gate may not reduce to.
+        // `or_many` returns its join unminimized.
         let mut joined = eng.or_many(terms)?;
         eng.reduce(&mut joined, ReductionPlan::default())?;
         joined
