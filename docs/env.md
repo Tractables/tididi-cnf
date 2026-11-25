@@ -66,7 +66,8 @@ refuses where it would do nothing:
 One setting is overridden by design: with `VITRI_ARJUN_SBVA` on, its
 default, Arjun adds variables to shorten the formula; on a formula that looks
 like a graph colouring, a model count whose first compile gives up retries
-with a second reduction that has it off. The record's `answered_by` is
+with a second reduction that has it off, made from the input with vitri's
+defined-variable elimination off as well. The record's `answered_by` is
 `no-sbva-retry` when that retry produced the count ([`stats.md`](stats.md)).
 
 vitri's catalog also lists the variables that act when `tididi` is built

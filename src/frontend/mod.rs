@@ -236,8 +236,23 @@ pub(crate) fn with_mc_frontend<R>(
     tree: TreeFor,
     continuation: impl FnOnce(McFrontendAttempt, &vitri::bundle::FrontendSession<'_>) -> R,
 ) -> Result<R, vitri::VitriError> {
+    with_mc_frontend_adjusted(formula, parent, deadline, tree, |_| {}, continuation)
+}
+
+/// [`with_mc_frontend`] with `adjust` applied to the frontend's vitri
+/// settings before it starts, for a fallback that asks vitri for a different
+/// reduction or tree.
+pub(crate) fn with_mc_frontend_adjusted<R>(
+    formula: &CnfFormula,
+    parent: &Config,
+    deadline: Option<std::time::Instant>,
+    tree: TreeFor,
+    adjust: impl FnOnce(&mut vitri::RunConfig),
+    continuation: impl FnOnce(McFrontendAttempt, &vitri::bundle::FrontendSession<'_>) -> R,
+) -> Result<R, vitri::VitriError> {
     let meta = vitri::cnf::CnfMeta::default();
-    let config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
+    let mut config = frontend_config(parent, vitri::cnf::Mode::Mc, deadline, true);
+    adjust(&mut config);
     let selection = run_selection(parent)?;
     let mut session = parent.vtree_time.budgeted(|| vitri::bundle::frontend(formula, &meta, &config, &selection))?;
     let mut run = parent.vtree_time.count(|| session.prepare())?;
