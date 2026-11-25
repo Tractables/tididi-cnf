@@ -32,6 +32,36 @@ fn a_run_that_gives_up_names_the_tree_its_compile_started_on() {
     assert_eq!(stats.vtree_candidate.as_deref(), Some("goatd-primal"));
 }
 
+/// A model count's record keeps the tree its first compile started on apart
+/// from the tree of the fallback that answered, and drops the latter with the
+/// answer when the run gives up.
+#[test]
+fn a_model_count_records_its_first_tree_and_the_answering_one() {
+    let config = crate::test_support::minimal_config();
+    let formula = crate::test_support::formula(2, vec![]);
+    let answer = || McAnswer {
+        count: BigUint::from(4u32),
+        peak_pairs: 0,
+        preprocessing: PreprocessReport::of(&Default::default()),
+        compile_ms: 0,
+        vtrees: Some(CascadeVtrees {
+            first: Some("force".to_owned()),
+            answered: Some(crate::stage::RETRY_VTREE_SPEC.to_owned()),
+        }),
+        attribution: Attribution { answered_by: AnsweredBy::BisectRetry, reduction: None, arjun_ms: None, cascade_ms: None },
+    };
+    let mut stats = super::open_record(&config, &formula);
+    let verdict = super::record_mc(&mut stats, &config, answer());
+    super::close_record(&mut stats, &Ok(verdict), &Default::default(), Some("force".to_owned()));
+    assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
+    assert_eq!(stats.answered_vtree.as_deref(), Some(crate::stage::RETRY_VTREE_SPEC));
+    let mut stats = super::open_record(&config, &formula);
+    super::record_mc(&mut stats, &config, answer());
+    super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), &Default::default(), None);
+    assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
+    assert!(stats.answered_by.is_none() && stats.answered_vtree.is_none());
+}
+
 #[test]
 fn log10_zero_is_neg_inf() {
     let v = log10_biguint(&BigUint::ZERO);

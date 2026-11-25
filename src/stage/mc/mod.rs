@@ -22,8 +22,8 @@
 //! returns, and no caller folds it again.
 
 use vitri::cnf::CnfFormula;
-use crate::output::{AnsweredBy, Attribution, McAnswer, PreprocessReport, Reduction};
-use crate::stage::Run;
+use crate::output::{AnsweredBy, Attribution, CascadeVtrees, McAnswer, PreprocessReport, Reduction};
+use crate::stage::{RETRY_VTREE_SPEC, Run};
 
 use attempt::{attempt_from_vitri_build, count_attempt};
 use cascade::{arm_no_sbva_retry, count_cofactor, count_primary, monotone_reduction};
@@ -156,8 +156,9 @@ fn run_mc_cascade(
     })
 }
 
-/// No kept reduction: say why, then compile the simplified formula on the
-/// vtree vitri built for it, with one fallback and Shannon split behind it.
+/// No kept reduction: say why, name the tree, then compile the simplified
+/// formula on the vtree vitri built for it, with one fallback and Shannon
+/// split behind it.
 /// The fallback is the support-enum stage on a fresh, bounded Arjun pass, or,
 /// when Arjun skipped the formula as monotone, the [`monotone_reduction`],
 /// which asks `session` for the reduction it skipped. `None` when nothing
@@ -175,7 +176,9 @@ fn count_without_reduction(
         Some(vitri::bundle::StageOutcome::Skipped(vitri::bundle::SkipReason::Monotone))
     );
     log_arjun_unused(outcome.as_ref());
-    eprintln!("[mc] compile: no kept reduction — compiling the simplified formula on {}", run.config.vtree_spec());
+    // Named before the compile starts, as on the primary compile, so a run
+    // that gives up still says which tree it was on.
+    run.announce_tree("[mc] compile: no kept reduction — compiling the simplified formula", " on ");
 
     // A failure here enters the recovery like the primary compile's: this path
     // is taken whenever Arjun kept no reduction, often on the hard instances
@@ -264,11 +267,14 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
     // preprocessing, Arjun included, and the vtree construction are out.
     let preprocess_ms = telemetry.simplify_ms.unwrap_or(0);
     let compile_ms = clock.compile_ms(telemetry.total_ms);
+    let first = run.started_on.borrow().clone();
+    let answered = answered_vtree(run, out.answered_by, first.clone());
     Ok(McAnswer {
         count: out.count,
         peak_pairs: out.peak_pairs,
         preprocessing: PreprocessReport { preprocess_ms, ..PreprocessReport::of(&telemetry) },
         compile_ms,
+        vtrees: Some(CascadeVtrees { first, answered }),
         attribution: Attribution {
             answered_by: out.answered_by,
             reduction: out.reduction,
@@ -276,6 +282,21 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
             cascade_ms: out.cascade_ms,
         },
     })
+}
+
+/// The tree the cascade's answering route compiled on, by its spec: `first`,
+/// the tree the first compile started on, when that compile answered; the
+/// hypergraph bisection for the two retries that build their tree on it; the
+/// portfolio's last winner for the two that build theirs on the portfolio.
+/// `None` when the answer came from no one tree: preprocessing, support
+/// enumeration, or Shannon split's cofactors.
+fn answered_vtree(run: &Run<'_>, answered_by: AnsweredBy, first: Option<String>) -> Option<String> {
+    match answered_by {
+        AnsweredBy::Compile => first,
+        AnsweredBy::BisectRetry | AnsweredBy::NoSbvaRetry => Some(RETRY_VTREE_SPEC.to_owned()),
+        AnsweredBy::UnreducedRetry | AnsweredBy::MonotoneReduction => run.config.portfolio_history.last_winning_spec(),
+        AnsweredBy::Preprocessing | AnsweredBy::SupportEnumeration | AnsweredBy::ShannonSplit => None,
+    }
 }
 
 /// Integer MC on an explicit `--vtree`: one vitri simplify-only bundle, then
@@ -366,6 +387,7 @@ fn count_preprocessed(
             peak_pairs: 0,
             preprocessing,
             compile_ms: 0,
+            vtrees: None,
             attribution: Attribution {
                 answered_by: AnsweredBy::Preprocessing,
                 reduction: None,
@@ -389,6 +411,7 @@ fn count_preprocessed(
         peak_pairs,
         preprocessing,
         compile_ms: clock.compile_ms(0),
+        vtrees: None,
         attribution: Attribution {
             answered_by,
             reduction: None,

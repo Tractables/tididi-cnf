@@ -12,7 +12,7 @@ tididi --stats - tests/data/mcc_mc_sat.cnf
 
 ```text
 model count: 22
-{"mode":"mc","exit_reason":"solved","variables":6,"clauses":4,"vtree_spec":"portfolio","vtree_candidate":"force","satisfiable":true,"model_count":"22","peak_pairs":6,"answered_by":"compile","reduction":"used","preprocess_ms":1,"arjun_ms":4,"vtree_ms":14,"compile_ms":1,"cascade_ms":0,"backbone_ms":0,"backbone_found":0,"backbone_probes":2}
+{"mode":"mc","exit_reason":"solved","variables":6,"clauses":4,"vtree_spec":"portfolio","vtree_candidate":"force","answered_vtree":"force","satisfiable":true,"model_count":"22","peak_pairs":6,"answered_by":"compile","reduction":"used","preprocess_ms":1,"arjun_ms":4,"vtree_ms":14,"compile_ms":1,"cascade_ms":0,"backbone_ms":0,"backbone_found":0,"backbone_probes":2}
 ```
 
 ## Conventions
@@ -43,7 +43,8 @@ The last column says in which modes a key can appear.
 | `variables` | integer | Variables the `p cnf` line declares. | all |
 | `clauses` | integer | Clauses read from the file, less those every assignment satisfies ([`input.md`](input.md#dimacs)). | all |
 | `vtree_spec` | string | The vtree construction asked for: the `--vtree` spec, or `portfolio` without the flag. Absent when the input is a vitri bundle, which brings its vtree. | all |
-| `vtree_candidate` | string | A vtree construction the run used, by its spec. An `mc` or `wmc` answer names the winner of the run's last portfolio selection. Under `compile` it is the tree the last compile ran on, named as that compile starts, so a run that gives up carries it too: the portfolio's winner, or `hypergraph-bisect:imbalance=0.40` once the retry on it ran. Under `mc` it is named as the primary compile of Arjun's reduction starts, so a run that gives up names the primary's tree; a run whose Arjun kept no reduction names it only with an answer. | `compile`, `mc`, `wmc`, when a portfolio ran |
+| `vtree_candidate` | string | A vtree construction the run used, by its spec. An `mc` or `wmc` answer names the winner of the run's last portfolio selection. Under `compile` it is the tree the last compile ran on, named as that compile starts, so a run that gives up carries it too: the portfolio's winner, or `hypergraph-bisect:imbalance=0.40` once the retry on it ran. Under `mc` it is the tree the first compile started on, named as it starts, so a run that gives up names it too, and a fallback that answers does not replace it. | `compile`, `mc`, `wmc`, when a portfolio ran |
+| `answered_vtree` | string | The tree the stage in `answered_by` compiled on, by its spec: `vtree_candidate` when the first compile answered, `hypergraph-bisect:imbalance=0.40` for `bisect-retry` and `no-sbva-retry`, and the portfolio's winner for its own tree under `unreduced-retry` and `monotone-reduction`. Absent for `preprocessing`, `support-enumeration` and `shannon-split`, which answer on no one tree. | `mc` without `--vtree`, once answered |
 | `satisfiable` | boolean | Whether the formula has a model. A weighted count can be 0 on a satisfiable formula. | all, once known |
 | `model_count` | string | The count, in decimal. | `compile`, `mc`, `pmc` |
 | `weighted_count` | string | The count as the answer line prints it: `<n>/<d>` for `pwmc`, `<mantissa>e<exponent>` for `wmc`. | `wmc`, `pwmc` |

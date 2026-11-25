@@ -135,10 +135,14 @@ pub struct Stats {
     /// The portfolio candidate that won selection, when a portfolio ran. In
     /// the plain compile it is the vtree the answering compile ran on: the
     /// portfolio's winner, or the retry's hypergraph bisection. In the model
-    /// count the primary compile names its tree as it starts, so a run that
-    /// gives up names it too.
+    /// count it is the tree the first compile started on, named as it starts,
+    /// so a run that gives up names it too.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_candidate: Option<String>,
+    /// The model count's: the tree the stage in `answered_by` compiled on, by
+    /// its spec. Absent when that stage compiled on no one tree.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub answered_vtree: Option<String>,
 
     /// Whether the formula has a model, as the run found it.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -306,6 +310,7 @@ pub(crate) fn close_record(
         stats.weighted_count_log10 = None;
         stats.weighted_count_sign = None;
         stats.answered_by = None;
+        stats.answered_vtree = None;
     }
     stats.vtree_ms = vtree.total().map(|time| time.as_millis() as u64);
     stats.vtree_instructions = vtree.instructions();
@@ -424,17 +429,34 @@ pub(crate) struct McAnswer {
     pub(crate) peak_pairs: usize,
     pub(crate) preprocessing: PreprocessReport,
     pub(crate) compile_ms: u128,
+    /// The cascade's trees; `None` off the cascade, where the record names
+    /// the portfolio's last winner.
+    pub(crate) vtrees: Option<CascadeVtrees>,
     pub(crate) attribution: Attribution,
+}
+
+/// The trees a model count's cascade compiled on, by their specs: the one its
+/// first compile started on, and the one of the route that answered, where
+/// that route compiled on one tree.
+pub(crate) struct CascadeVtrees {
+    pub(crate) first: Option<String>,
+    pub(crate) answered: Option<String>,
 }
 
 /// The verdict and the record of a model count.
 pub(crate) fn record_mc(stats: &mut Stats, config: &Config, answer: McAnswer) -> Verdict {
-    let McAnswer { count, peak_pairs, preprocessing, compile_ms, attribution } = answer;
+    let McAnswer { count, peak_pairs, preprocessing, compile_ms, vtrees, attribution } = answer;
     stats.answered_by = Some(attribution.answered_by.token());
     stats.reduction = attribution.reduction.map(Reduction::token);
     stats.arjun_ms = attribution.arjun_ms.map(|ms| ms as u64);
     stats.cascade_ms = attribution.cascade_ms.map(|ms| ms as u64);
-    record_vtree_candidate(stats, config);
+    match vtrees {
+        Some(CascadeVtrees { first, answered }) => {
+            stats.vtree_candidate = first;
+            stats.answered_vtree = answered;
+        }
+        None => record_vtree_candidate(stats, config),
+    }
     record_integer(stats, count, peak_pairs, preprocessing, compile_ms, None)
 }
 
