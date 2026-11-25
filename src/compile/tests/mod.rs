@@ -230,9 +230,8 @@ fn the_compile_returns_its_peak_beside_the_diagram() {
 
     // The streaming count compiles the component on a home of its vtree.
     let home = crate::vtree::bound(eng, Arc::unwrap_or_clone(Arc::clone(&vtree)), true);
-    let prune_spent_us = Cell::new(0);
     let run = CompileRun { projections: true, ..CompileRun::default() };
-    let job = CompileJob { deadline: None, output: PassOutput::Count, run, prune_spent_us: &prune_spent_us };
+    let job = CompileJob { deadline: None, output: PassOutput::Count, run };
     let on_home = compile_component(eng, &formula, &home, job).unwrap();
     let (_, streamed_peak) =
         model_count_streaming(eng, &formula, &components, |_| Some(Arc::clone(&vtree)), None, None, CompileRun::default()).unwrap();
@@ -345,11 +344,10 @@ fn a_forgotten_variable_is_a_free_home_variable() {
     // (x ∨ y) ∧ (¬y ∨ z) onto {x, z}: 3.
     let formula = dimacs(3, &[vec![1, 2], vec![-2, 3]]);
     let forget: HashSet<VarId> = [VarId(2)].into();
-    let prune_spent_us = Cell::new(0);
     for output in [PassOutput::ProjectedFunction(&forget), PassOutput::ProjectedCount(&forget)] {
         let home = crate::vtree::bound(eng, Vtree::balanced(3), true);
         let run = CompileRun { projections: true, ..CompileRun::default() };
-        let job = CompileJob { deadline: None, output, run, prune_spent_us: &prune_spent_us };
+        let job = CompileJob { deadline: None, output, run };
         let compiled = compile_component(eng, &formula, &home, job).unwrap();
         assert_eq!(compiled.forgotten, 1);
         assert!(compiled.diagram.vtree().leaf_of(VarId(2)).is_none());

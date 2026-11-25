@@ -79,14 +79,13 @@ pub(crate) struct Cli {
     pub(crate) mode: Option<Mode>,
     /// `--time-limit-ms` (or `TIDIDI_TIME_LIMIT_MS`) and `--mem-limit-mb`.
     pub(crate) limits: Limits,
-    /// `--vtree`, `--preprocess`, whether `--save-tdd` was given, and
-    /// `TIDIDI_SAT_PRUNE`.
+    /// `--vtree`, `--preprocess` and whether `--save-tdd` was given.
     pub(crate) settings: Settings,
     /// How stdout spells the answer (`--output-format`).
     pub(crate) output_format: OutputFormat,
     /// `--stats <path>`: write the run's stats record — mode, counts, sizes,
-    /// per-stage timings, the preprocessing and SAT-pruning tallies, how the run
-    /// ended — as one JSON object at `<path>`, or to stdout after the answer
+    /// per-stage timings, the preprocessing tallies, how the run ended — as
+    /// one JSON object at `<path>`, or to stdout after the answer
     /// when the path is `-`. Valid in every mode.
     /// `docs/stats.md` is the field table.
     pub(crate) stats_path: Option<PathBuf>,
@@ -139,7 +138,7 @@ Options:
                        c s type, c s log10-estimate, c s exact), with `s UNKNOWN`
                        when the run gives up (mcc).
   --stats <path>       Write the run's stats record (mode, counts, sizes, per-stage
-                       timings, preprocessing and SAT-pruning tallies, exit reason)
+                       timings, preprocessing tallies, exit reason)
                        as one JSON object at <path>. `-` writes it to stdout after
                        the answer.
   --time-limit-ms <ms> Time limit for the whole run, in milliseconds. Every stage
@@ -264,15 +263,15 @@ fn parse_args() -> Result<Request, Error> {
     }
 
     let path = dimacs_path.ok_or_else(|| usage_error(&prog, "no DIMACS file or vitri bundle given."))?;
-    let (time_limit_ms, sat_prune) = parse_env_overrides(time_limit_ms)?;
-    let settings = Settings { vtree: vtree_spec, preprocess, save_tdd: save_tdd_path.is_some(), sat_prune };
+    let time_limit_ms = parse_env_time_limit(time_limit_ms)?;
+    let settings = Settings { vtree: vtree_spec, preprocess, save_tdd: save_tdd_path.is_some() };
     let limits = Limits { time_limit_ms, mem_limit_mb };
     Ok(Request::Run(Cli { path, mode: mode_flag, limits, settings, output_format, stats_path, save_tdd_path }))
 }
 
 /// Read `TIDIDI_TIME_LIMIT_MS` (when `flag_time_limit_ms` is absent, though an
-/// unparseable value is refused either way) and `TIDIDI_SAT_PRUNE`.
-fn parse_env_overrides(flag_time_limit_ms: Option<u64>) -> Result<(Option<u64>, Option<bool>), Error> {
+/// unparseable value is refused either way).
+fn parse_env_time_limit(flag_time_limit_ms: Option<u64>) -> Result<Option<u64>, Error> {
     let mut time_limit_ms = flag_time_limit_ms;
     // The flag wins over `TIDIDI_TIME_LIMIT_MS`, but a set value that does not
     // parse is refused either way: it is an invalid setting, and ignoring it
@@ -287,25 +286,5 @@ fn parse_env_overrides(flag_time_limit_ms: Option<u64>) -> Result<(Option<u64>, 
         })?;
         time_limit_ms = time_limit_ms.or(Some(env_ms));
     }
-
-    // `TIDIDI_SAT_PRUNE=off` switches the in-compile SAT pruning off for the
-    // run, a diagnostic for paired on/off measurements; `on` is the default.
-    // This is the variable's one reader. Any other value is refused rather
-    // than read as either, and `Settings::refuse_inert` refuses the variable,
-    // set either way, in the mode whose compiles never prune.
-    let sat_prune = match std::env::var_os("TIDIDI_SAT_PRUNE") {
-        None => None,
-        Some(value) => Some(match value.to_str() {
-            Some("on") => true,
-            Some("off") => false,
-            _ => {
-                return Err(Error::Environment(format!(
-                    "environment variable TIDIDI_SAT_PRUNE: {:?} is not on or off",
-                    value.to_string_lossy()
-                )));
-            }
-        }),
-    };
-
-    Ok((time_limit_ms, sat_prune))
+    Ok(time_limit_ms)
 }

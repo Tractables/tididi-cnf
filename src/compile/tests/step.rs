@@ -13,13 +13,7 @@ fn run_pass(
 ) -> Option<Tdd> {
     let formula = dimacs(num_vars, clauses);
     let vtree = Arc::new(Vtree::balanced(num_vars));
-    let prune_spent_us = std::cell::Cell::new(0);
-    let job = CompileJob {
-        deadline,
-        output: PassOutput::Function,
-        run: Default::default(),
-        prune_spent_us: &prune_spent_us,
-    };
+    let job = CompileJob { deadline, output: PassOutput::Function, run: Default::default() };
     compile_component(eng, &formula, &vtree, job).ok().map(|compiled| compiled.diagram)
 }
 

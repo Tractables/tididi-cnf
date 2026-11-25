@@ -4,8 +4,8 @@
 //! count with its attribution, a weighted count, a projected count with the
 //! fields its stages measured, the compiled diagram — and the driver records
 //! it once, here: the verdict and the count, and the run's record, [`Stats`]:
-//! sizes, timings, which stage answered, the preprocessing and SAT-pruning
-//! tallies, how the run ended. `driver::solve` hands both back as an
+//! sizes, timings, which stage answered, the preprocessing tallies, how the
+//! run ended. `driver::solve` hands both back as an
 //! [`Answer`], which is what [`crate::count`] returns. `eprintln!` diagnostics
 //! stay with the stage that emits them.
 //!
@@ -17,7 +17,6 @@
 //!
 //! `docs/stats.md` is the record's field table.
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
@@ -210,7 +209,7 @@ pub struct Stats {
     /// User-mode instructions in every stage that stops on time or on a
     /// time-derived cap, over the whole run, counted as `vtree_instructions`
     /// is and including it: vitri's preprocessing and Arjun (whose forked
-    /// child is counted), SAT pruning, the enumeration oracles, and a compile
+    /// child is counted), the enumeration oracles, and a compile
     /// that stopped at a deadline. The rest of the run's instructions do not
     /// depend on the time those stages got, given what they decided, which
     /// the two hashes below name. Absent when the counter could not be opened
@@ -247,20 +246,6 @@ pub struct Stats {
     /// answered on, after preprocessing; `None` without a show set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_vars: Option<u64>,
-
-    /// `off` when `TIDIDI_SAT_PRUNE=off` switched the SAT-pruning pass off for
-    /// the run, a diagnostic for paired on/off measurements. Absent when the
-    /// pass is on, the default.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sat_prune: Option<&'static str>,
-    /// Why the SAT-pruning pass stood down, when it did.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sat_prune_disabled_by: Option<&'static str>,
-    /// The SAT-pruning tallies, keyed `sat_prune_<tally>`, each present only when
-    /// it is nonzero. Times end `_us` and are microseconds, the unit the pass
-    /// accumulates them in. The JSON object carries them as top-level keys.
-    #[serde(flatten)]
-    pub sat_prune_tallies: BTreeMap<&'static str, u64>,
 }
 
 /// What a mode answered: whether the formula has a model, its count, and in
@@ -284,7 +269,6 @@ pub(crate) fn open_record(config: &Config, formula: &vitri::cnf::CnfFormula) -> 
         clauses: Some(formula.clauses().len() as u64),
         // A bundle's run builds no vtree for its main compile.
         vtree_spec: config.input_vtree.is_none().then(|| config.vtree_spec().to_owned()),
-        sat_prune: (!config.sat_prune).then_some("off"),
         ..Stats::default()
     }
 }
@@ -303,15 +287,13 @@ pub(crate) fn exit_reason<T>(outcome: &Result<T, Error>) -> &'static str {
 /// the run's and not any one stage's: how the run ended, the time and
 /// instructions its vtree constructions took (`vtree`), the tree its main compile last started
 /// on (`started_on`), which names the run's `vtree_candidate` when no answer
-/// named one, and the SAT-pruning tallies of its compiles (`sat_prune`).
-/// Recording each in one place is also what keeps the record of a run that
-/// gave up carrying them.
+/// named one. Recording each in one place is also what keeps the record of a
+/// run that gave up carrying them.
 pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
     vtree: &crate::budget::VtreeTime,
     started_on: Option<String>,
-    sat_prune: Option<crate::compile::sat_prune::SatPruneStats>,
 ) {
     stats.exit_reason = Some(exit_reason(outcome));
     // A stage can finish after the whole-run deadline, and its answer reach
@@ -331,12 +313,6 @@ pub(crate) fn close_record(
     (stats.compiled_formulas_hash, stats.compiled_vtrees_hash) = vtree.compiled_hashes();
     if stats.vtree_candidate.is_none() {
         stats.vtree_candidate = started_on;
-    }
-    // Each tally is recorded only when it is nonzero: presence is the "this
-    // happened" signal. None is there when no pass ran to its end.
-    if let Some(prune) = sat_prune {
-        stats.sat_prune_tallies = prune.tallies().filter(|(_, v)| *v > 0).collect();
-        stats.sat_prune_disabled_by = prune.disabled_by.map(crate::compile::sat_prune::PruneStop::key);
     }
 }
 

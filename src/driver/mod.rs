@@ -20,7 +20,6 @@ use tididi::vtree::Vtree;
 use vitri::cnf::CnfFormula;
 
 use crate::compile::{CompileOptions, CompileRun, Compiled, ComponentPlan, GiveUp, compile_with};
-use crate::compile::sat_prune::SatPrune;
 use crate::config::{Config, Limits, Mode, Settings};
 use crate::frontend::CompileFrontendAttempt;
 use crate::frontend::record::Outcome;
@@ -374,7 +373,6 @@ fn solve_on(
     // mode and the resolved vtree construction and every mode fills the same
     // one.
     let mut stats = crate::output::open_record(&config, &formula);
-    let sat_prune = SatPrune::new(config.time_limit_ms);
     let started_on = std::cell::RefCell::new(None);
 
     // One engine scope covers the whole mode, including expansion and final
@@ -388,7 +386,6 @@ fn solve_on(
             config: &config,
             deadline: program_deadline,
             compile: CompileRun {
-                sat_prune: config.sat_prune.then_some(&sat_prune),
                 work: Some(&config.vtree_time),
                 projections: config.mode == Mode::Compile,
                 ..CompileRun::default()
@@ -397,13 +394,7 @@ fn solve_on(
         };
         dispatch_mode(&run, &mut stats, formula, &meta, record.as_ref())
     });
-    crate::output::close_record(
-        &mut stats,
-        &verdict,
-        &config.vtree_time,
-        started_on.into_inner(),
-        sat_prune.into_stats(),
-    );
+    crate::output::close_record(&mut stats, &verdict, &config.vtree_time, started_on.into_inner());
     match verdict {
         Ok(Verdict { satisfiable, count, diagram }) => {
             Ok(Answer { mode: config.mode, satisfiable, count, diagram, stats })

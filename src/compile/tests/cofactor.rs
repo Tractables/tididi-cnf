@@ -4,7 +4,6 @@
 //! side `B`, and the root adds one more variable.
 
 use super::*;
-use std::cell::Cell;
 
 use num_bigint::BigUint;
 use num_rational::BigRational;
@@ -63,7 +62,6 @@ struct Fixture {
     last_scope_pos: Vec<u32>,
     /// The node under test: the root's left child, joining `S` to `B`.
     t: VtreeIdx,
-    prune_spent_us: Cell<u64>,
 }
 
 impl Fixture {
@@ -75,19 +73,11 @@ impl Fixture {
         let formula = fixtures::dimacs(top, &clauses);
         let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
         let t = vtree.children(vtree.root()).0;
-        Fixture {
-            clauses: DiagramClauses::new(&formula),
-            formula,
-            vtree,
-            clauses_at,
-            last_scope_pos,
-            t,
-            prune_spent_us: Cell::new(0),
-        }
+        Fixture { clauses: DiagramClauses::new(&formula), formula, vtree, clauses_at, last_scope_pos, t }
     }
 
     fn job<'a>(&'a self, output: PassOutput<'a>) -> CompileJob<'a> {
-        CompileJob { deadline: None, output, run: Default::default(), prune_spent_us: &self.prune_spent_us }
+        CompileJob { deadline: None, output, run: Default::default() }
     }
 
     fn schedule(&self) -> Schedule {
@@ -376,7 +366,7 @@ fn nested_one_variable_fixture() -> Fixture {
     let formula = fixtures::dimacs(14, &clauses);
     let ScopeGroups { clauses_at, last_scope_pos } = group_clauses_by_scope(&formula, &vtree);
     let t = vtree.children(vtree.children(vtree.root()).0).0;
-    Fixture { clauses: DiagramClauses::new(&formula), formula, vtree, clauses_at, last_scope_pos, t, prune_spent_us: Cell::new(0) }
+    Fixture { clauses: DiagramClauses::new(&formula), formula, vtree, clauses_at, last_scope_pos, t }
 }
 
 /// The step's join reaches the splice at `t`'s parent, which needs one node

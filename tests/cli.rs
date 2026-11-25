@@ -144,9 +144,6 @@ fn refusals_name_what_is_wrong() {
         (2, vec![TINY, "--mode", "mc"], &[("VITRI_ARJUN_SKIP_MONOTONE", "1")], vec!["VITRI_ARJUN_SKIP_MONOTONE", "model count"]),
         (2, vec![TINY, "--time-limit-ms", "60000"], &[("TIDIDI_TIME_LIMIT_MS", "12s")], vec!["TIDIDI_TIME_LIMIT_MS", "\"12s\""]),
         (2, vec![TINY, "--mode", "mc", "--time-limit-ms", "60000"], &[("VITRI_BUDGET_MS", "60000")], vec!["VITRI_BUDGET_MS", "time limit"]),
-        (2, vec![TINY], &[("TIDIDI_SAT_PRUNE", "maybe")], vec!["TIDIDI_SAT_PRUNE", "\"maybe\"", "on", "off"]),
-        (2, vec!["--mode", "wmc", TINY], &[("TIDIDI_SAT_PRUNE", "off")], vec!["TIDIDI_SAT_PRUNE", "--mode wmc", "compile, mc, pmc and pwmc"]),
-        (2, vec![weighted.path()], &[("TIDIDI_SAT_PRUNE", "on")], vec!["TIDIDI_SAT_PRUNE", "c t wmc"]),
     ];
 
     for (code, args, env, names) in rows {
@@ -459,45 +456,6 @@ fn streaming_mc_detects_components_once() {
     assert_eq!(out.stderr.matches("[vtree] 2 independent components").count(), 1, "{}", out.stderr);
 }
 
-/// `TIDIDI_SAT_PRUNE=off` turns SAT pruning off, and the record says so in
-/// its `sat_prune` key and carries none of the pass's tallies; the count is
-/// the same. `on` is the default, and the record then has no `sat_prune` key.
-/// A pass fires on this instance by default, in the compile and in the model
-/// count's cascade. The hour-long limit is the protocol row's: a pass stops
-/// at a share of the time limit, so a shorter one could stop it before it
-/// fires on a slow machine. vitri's implied-clause pass is off: with its
-/// clauses, no pass fires in this instance's compile.
-#[test]
-fn sat_prune_off_skips_the_pass_and_keeps_the_count() {
-    let cnf = "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
-    let default: Env = &[("VITRI_IMPLICATES_MS", "0")];
-    let on: Env = &[("TIDIDI_SAT_PRUNE", "on"), ("VITRI_IMPLICATES_MS", "0")];
-    let off: Env = &[("TIDIDI_SAT_PRUNE", "off"), ("VITRI_IMPLICATES_MS", "0")];
-    let tallies = |record: &serde_json::Value| -> Vec<String> {
-        record.as_object().map_or(Vec::new(), |keys| {
-            keys.keys().filter(|key| key.starts_with("sat_prune_")).cloned().collect()
-        })
-    };
-    for mode in ["compile", "mc"] {
-        let args = ["--mode", mode, "--time-limit-ms", "3600000", cnf];
-        for env in [default, on, off] {
-            let (out, record) = run_with_record_in(&args, env);
-            assert!(out.ok(), "{mode} {env:?}: {}", out.stderr);
-            assert!(out.prints("model count: 16963"), "{mode} {env:?}: {}", out.stdout);
-            if env == off {
-                assert_eq!(record["sat_prune"], "off", "{mode}: {record}");
-                assert!(tallies(&record).is_empty(), "{mode}: the pass ran with the switch off: {record}");
-            } else {
-                assert!(record.get("sat_prune").is_none(), "{mode} {env:?}: {record}");
-                assert!(
-                    record["sat_prune_passes_triggered"].as_u64().is_some_and(|passes| passes > 0),
-                    "{mode} {env:?}: no pass fired, so the instance does not test the switch: {record}"
-                );
-            }
-        }
-    }
-}
-
 /// The Arjun phase must not build a FlowCutter vtree on the whole pre-Arjun
 /// formula: FlowCutter allocates an n×n bit matrix, which on ~1M variables
 /// exhausts memory.
@@ -720,13 +678,6 @@ counts! {
     all_backbone: [] "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf" => "model count: 1", "every variable is a backbone";
     all_backbone_mc: ["--mode", "mc", "--vtree", "portfolio"] "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf"
         => "model count: 1", "every variable is a backbone";
-    /// A SAT-pruning pass fires on this instance under a FlowCutter primal
-    /// vtree: it enumerates models under blocking clauses, retires them
-    /// before it probes the nodes no model reached, and finds hundreds of
-    /// those unsatisfiable. A probe that wrongly came out unsatisfiable would
-    /// prune a live node, and the count would come out low.
-    sat_prune_blockers_stay_off_during_probes: ["--mode", "mc", "--vtree", "flowcutter-primal"]
-        "tests/data/cnfs/satlib/uf100/uf100-01000.cnf" => "model count: 16963";
 
     // Compile mode through preprocessing, each count by brute force.
     identity_map: ["--preprocess", "none", "--vtree", "portfolio"] "p cnf 3 3\n1 2 -3 0\n-1 3 0\n2 -3 0\n"

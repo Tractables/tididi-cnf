@@ -212,8 +212,7 @@ pub(crate) fn marginalize_scheduled_at(
 /// - ∃-forget each projected variable whose leaf is scheduled at `t`.
 /// - Marginalize every scheduled level the fold did not sum out. A level that
 ///   is already marginal, empty or a leaf is left as it is, so where the fold
-///   summed everything out this does nothing; it is not an assertion because a
-///   SAT pruning pass can leave a scheduled level explicit.
+///   summed everything out this does nothing.
 pub(crate) fn run_marginalize_at(
     eng: &Engine,
     t: VtreeIdx,

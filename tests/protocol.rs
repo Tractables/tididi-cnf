@@ -65,20 +65,14 @@ fn drop_key(line: &str, key: &str) -> String {
     format!("{}{}", &line[..start], &line[end..])
 }
 
-/// `"preprocess_ms":14` -> `"preprocess_ms":"<t>"`, for any `_ms`/`_us` key.
+/// `"preprocess_ms":14` -> `"preprocess_ms":"<t>"`, for any `_ms` key.
 fn blank_stat_fields(line: &str) -> String {
     let bytes = line.as_bytes();
     let mut out = String::with_capacity(line.len());
     let mut i = 0;
     while i < bytes.len() {
-        // A stat key ends `_ms":` or `_us":` — both 5 bytes — optionally
-        // followed by spaces.
-        let key_end = line[i..]
-            .find("_ms\":")
-            .into_iter()
-            .chain(line[i..].find("_us\":"))
-            .min();
-        let Some(offset) = key_end else {
+        // A stat key ends `_ms":`, optionally followed by spaces.
+        let Some(offset) = line[i..].find("_ms\":") else {
             out.push_str(&line[i..]);
             break;
         };
@@ -301,14 +295,6 @@ protocol_rows! {
     compile_tiny:         ["--mode", "compile"], "tests/data/tiny.cnf";
     mc_all_backbone:      ["--mode", "mc"], "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf";
     mc_s641:              ["--mode", "mc"], "tests/data/cnfs/iscas89/s641.scan.cnf";
-    // SAT pruning bounds each probe pass by a share of the time limit, 200 ms
-    // under the limit the other rows run at, short enough that where a pass
-    // stops could move with the machine. Under an hour the share is 6 s and
-    // the walk runs to its own end every time.
-    mc_sat_prune:         ["--mode", "mc", "--time-limit-ms", "3600000"], "tests/data/cnfs/mcc/2021/track1/mc2021_track1_177.cnf";
-    // SAT pruning removes too few of the nodes it checks and stops before
-    // the compile ends.
-    mc_sat_prune_backs_off: ["--mode", "mc"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
     wmc_tiny_sat:         ["--mode", "wmc"], "tests/data/wmc_header_tiny_sat.cnf";
     wmc_unsat:            ["--mode", "wmc"], "tests/data/wmc_unsat.cnf";
     pwmc_arjun_defined:   ["--mode", "pwmc"], "tests/data/pwmc_arjun_defined_weight.cnf";
@@ -318,9 +304,8 @@ protocol_rows! {
     // The only rows that reach the projected compile: no earlier stage answers
     // either instance, so the run falls through to preprocessing and a
     // diagram. The weighted row's portfolio vtree would be built under a
-    // clock budget, and a SAT-pruning pass fires in its compile; it compiles on
-    // a step-budgeted FlowCutter vtree under the hour-long limit, so neither
-    // stops at a machine-dependent point. The implied-clause pass has a clock
+    // clock budget; it compiles on a step-budgeted FlowCutter vtree instead,
+    // so it does not stop at a machine-dependent point. The implied-clause pass has a clock
     // allowance of its own, which at its default of 2 s ends the search for
     // this instance's clauses early on a slow or busy machine; 20 s lets it
     // finish everywhere.
@@ -331,8 +316,6 @@ protocol_rows! {
     // --- the streaming entry: --mode mc with an explicit --vtree -----------
     stream_mc_s641:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/iscas89/s641.scan.cnf";
     stream_mc_all_backbone: ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/pmc/bmc/cnt06.shuffled.cnf";
-    stream_mc_sat_prune:  ["--mode", "mc", "--vtree", "portfolio", "--time-limit-ms", "3600000"], "tests/data/cnfs/satlib/uf100/uf100-01000.cnf";
-    stream_mc_sat_prune_backs_off: ["--mode", "mc", "--vtree", "portfolio"], "tests/data/cnfs/mcc/2025/track1/mc2025_track1_025.cnf";
     stream_mc_tiny:       ["--mode", "mc", "--vtree", "portfolio"], "tests/data/mc_header_tiny.cnf";
     stream_mc_onehot:     ["--mode", "mc", "--vtree", "portfolio"], "tests/data/onehot_free_residual.cnf";
 }
@@ -340,10 +323,10 @@ protocol_rows! {
 /// The normalizer must blank clock and counter readings and nothing else.
 #[test]
 fn normalization_blanks_only_readings() {
-    let stats = r#"{"model_count":"18014398509481984","preprocess_ms":14,"arjun_ms":0,"backbone_probes":37,"sat_prune_probe_us":175411}"#;
+    let stats = r#"{"model_count":"18014398509481984","preprocess_ms":14,"arjun_ms":0,"backbone_probes":37}"#;
     assert_eq!(
         blank_durations(stats),
-        r#"{"model_count":"18014398509481984","preprocess_ms":"<t>","arjun_ms":"<t>","backbone_probes":37,"sat_prune_probe_us":"<t>"}"#
+        r#"{"model_count":"18014398509481984","preprocess_ms":"<t>","arjun_ms":"<t>","backbone_probes":37}"#
     );
 
     assert_eq!(

@@ -120,26 +120,16 @@ pub(crate) fn minimal_config() -> Config {
         preprocess_level: PreprocessLevel::None,
         mode: Mode::Compile,
         time_limit_ms: None,
-        sat_prune: true,
         vitri: vitri::RunConfig::default(),
         input_vtree: None,
     }
 }
 
-/// A run on `eng` under `config`, with no wall and no SAT-pruning pass, as a
-/// stage sees it. Its slot for the tree it starts on is its own, leaked: a
+/// A run on `eng` under `config`, with no wall, as a stage sees it. Its slot for the tree it starts on is its own, leaked: a
 /// test's run lasts as long as the test.
 pub(crate) fn run<'a>(eng: &'a tididi::Engine, config: &'a Config) -> crate::stage::Run<'a> {
     let started_on: &std::cell::RefCell<Option<String>> = Box::leak(Box::default());
     crate::stage::Run { eng, config, deadline: None, compile: Default::default(), started_on }
-}
-
-/// A SAT pruning context for `formula`, the first of its compile, under the
-/// limits of a run with no time limit.
-pub(crate) fn sat_prune_ctx(formula: &CnfFormula) -> crate::compile::sat_prune::SatPruneCtx {
-    crate::compile::sat_prune::SatPrune::default()
-        .context(formula, false, 0)
-        .expect("CaDiCaL builds a solver")
 }
 
 /// A path in the temp directory, unique to this test process.

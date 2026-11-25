@@ -23,7 +23,6 @@ use super::cofactor::cofactor_step;
 use super::component::CompileJob;
 use super::marginalize::{Schedule, build_marginalize_targets, run_marginalize_at};
 use super::minimize::{ContractThrottle, MinimizeGate};
-use super::sat_prune::{PruneOutcome, SatPruneCtx};
 use super::scope::{ScopeGroups, group_clauses_by_scope};
 
 /// The marginal-clustering rotation's `bound_mult`: a trial's intermediate
@@ -59,8 +58,6 @@ pub(crate) struct PassState {
     /// Each is forgotten once: at the step its leaf is scheduled at, or at the
     /// root.
     pub(crate) forgotten: HashSet<VarId>,
-    /// The SAT pruning context; `None` when the compile does not prune.
-    pub(crate) sat_prune: Option<SatPruneCtx>,
     /// The batch builder's spine-marking scratch, one flag per vtree node,
     /// grown on first use and all false between batches, so the zeroing is
     /// paid once per pass rather than once per batch.
@@ -72,21 +69,10 @@ pub(crate) struct PassState {
 }
 
 impl PassState {
-    fn new(formula: &CnfFormula, vtree: &Arc<Vtree>, total_nodes: usize, job: CompileJob<'_>) -> Self {
-        // A weighted compile builds no pruning context: its marginal levels hold
-        // weights, and the per-node counts a pass orders its probes by are
-        // refused for them.
-        let weighted = vtree.home().is_some_and(|home| home.weights().is_some());
-        let sat_prune = match job.run.sat_prune {
-            Some(run_pass) if !weighted => {
-                run_pass.context(formula, job.run.cofactor, job.prune_spent_us.get())
-            }
-            _ => None,
-        };
+    fn new(total_nodes: usize, job: CompileJob<'_>) -> Self {
         let mut state = Self {
             tdds: vec![None; total_nodes],
             throttles: vec![ContractThrottle::default(); total_nodes],
-            sat_prune,
             ..Self::default()
         };
         // A pass that sums nothing out has no marginal level, so no content
@@ -194,7 +180,7 @@ fn compile_pass(
     // rotation search reseats this Arc; downstream ptr_eq checks require
     // every live Tdd in `state.tdds` to share the same Arc, so we propagate.
     let mut current_vtree: Arc<Vtree> = Arc::clone(vtree);
-    let mut state = PassState::new(formula, vtree, vtree.num_nodes(), job);
+    let mut state = PassState::new(vtree.num_nodes(), job);
     let ctx = StepContext {
         job,
         clauses: &clauses,
@@ -239,10 +225,6 @@ fn compile_pass(
         }
     }
 
-    if let (Some(prune), Some(run_pass)) = (state.sat_prune.take(), job.run.sat_prune) {
-        job.prune_spent_us.set(prune.compile_spent_us());
-        run_pass.absorb(prune.into_stats());
-    }
     let diagram = state.tdds[vtree.root().idx()].take().unwrap_or_else(|| eng.one(vtree));
     Ok(Compiled { diagram, forgotten: state.forgotten.len(), peak_pairs: state.peak_size })
 }
@@ -376,10 +358,9 @@ fn fold_step(
 
 /// Process a single internal vtree node: the cofactor step when the node
 /// qualifies for it ([`cofactor_step`]), otherwise conjoin the children and
-/// fold the node's clauses ([`splice_and_fold`]); then prune the node's
-/// diagram when a pass fires. Returns the pair count of the node's diagram,
-/// measured once by the step and again only if the pruning replaced it.
-/// `Err(Stopped)` when the deadline passes during the step.
+/// fold the node's clauses ([`splice_and_fold`]). Returns the pair count of
+/// the node's diagram. `Err(Stopped)` when the deadline passes during the
+/// step.
 fn run_internal_step(
     eng: &Engine,
     t: VtreeIdx,
@@ -387,42 +368,10 @@ fn run_internal_step(
     state: &mut PassState,
     current_vtree: &Arc<Vtree>,
 ) -> Result<usize, OperationError> {
-    let mut pairs = match cofactor_step(eng, t, ctx, state, current_vtree)? {
-        Some(pairs) => pairs,
-        None => splice_and_fold(eng, t, ctx, state, current_vtree)?,
-    };
-    // Prune the node's diagram when the pass's trigger fires.
-    if let Some(prune) = state.sat_prune.as_mut()
-        && let Some(tdd) = state.tdds[t.idx()].as_ref()
-        && prune.should_fire(trigger_size(tdd, pairs, current_vtree))
-    {
-        let size = trigger_size(tdd, pairs, current_vtree);
-        let outcome = match ctx.job.run.work {
-            Some(work) => work.budgeted(|| prune.probe_tdd(eng, tdd, size)),
-            None => prune.probe_tdd(eng, tdd, size),
-        };
-        let pruned = match outcome {
-            PruneOutcome::DeadRoot => Some(eng.zero(current_vtree)),
-            PruneOutcome::Rewritten(new_tdd) => Some(*new_tdd),
-            PruneOutcome::NoOp => None,
-        };
-        if let Some(pruned) = pruned {
-            pairs = pruned.pair_count();
-            state.tdds[t.idx()] = Some(pruned);
-        }
+    match cofactor_step(eng, t, ctx, state, current_vtree)? {
+        Some(pairs) => Ok(pairs),
+        None => splice_and_fold(eng, t, ctx, state, current_vtree),
     }
-    Ok(pairs)
-}
-
-/// `pairs`, the pair count of `tdd`, as the SAT-prune trigger reads it: on a
-/// projection of `vtree`, one pair more for each leaf of `vtree` the
-/// projection lacks. On `vtree` itself the diagram holds a one-pair node on
-/// each internal level the projection lacks, and there are as many of those,
-/// so the trigger's thresholds, set on `vtree`, fire at the same sizes on
-/// both. A level `vtree` adds between two of the projection's holds as many
-/// nodes as the level under it, which this leaves out.
-fn trigger_size(tdd: &Tdd, pairs: usize, vtree: &Vtree) -> usize {
-    pairs + vtree.num_leaves().saturating_sub(tdd.vtree().num_leaves()) as usize
 }
 
 /// The normal internal step at `t`: conjoin the children's diagrams, by

@@ -105,7 +105,6 @@ variables it left free — or a `GiveUp` that says why it has no diagram.
 | `schedule.rs` | When each level may be summed out: after which step, and after which clause within it. |
 | `marginalize.rs` | Summing levels out as the pass climbs, a projection's ∃-forget, and the shield that keeps the levels a pending forget reads. |
 | `minimize.rs` | The reductions the pass asks for, and the gate that picks one after each merge. |
-| `sat_prune/` | SAT-based pruning of nodes no model of the formula reaches. |
 
 ### The counting stages
 
@@ -114,7 +113,7 @@ for the driver to record.
 
 | file | what it holds |
 |---|---|
-| `mod.rs` | `Run`, what every stage reads: the engine, the configuration, the run's deadline, the SAT-pruning pass its compiles share and where the run names the tree its main compile starts on. `run_isolated`, which a leaf compile that may panic runs under, and `count_streaming`, the component-at-a-time count the model count and the projected weighted count share. |
+| `mod.rs` | `Run`, what every stage reads: the engine, the configuration, the run's deadline, what the run sets for its compiles and where the run names the tree its main compile starts on. `run_isolated`, which a leaf compile that may panic runs under, and `count_streaming`, the component-at-a-time count the model count and the projected weighted count share. |
 | `mc/` | The model count. The cascade: Arjun reduces the formula, the primary compile runs on the reduction, then the fallbacks, support enumeration among them, and Shannon split when they fail. The streaming compile under an explicit `--vtree`, with Shannon split behind it. One recovery orders both. |
 | `wmc.rs` | The weighted count: Arjun's reduction first, then the simplified formula. |
 | `pmc.rs` | The projected count: a first compile, show-variable conditioning when it fails, and a last compile on the time left. |
@@ -175,8 +174,6 @@ the failed allocation, and `src/stage/mc/recovery.rs` catches it.
   counts once no later step can change them, and the peak size they save.
 - [Weighted marginal levels][weighted-marginal-levels]: the arithmetic a
   weighted run gets, and how to test a weighted change.
-- [SAT-based pruning][sat-pruning]: dropping intermediate nodes that no
-  model of the formula passes through.
 - [The support-enumeration stage][support-enum-stage]: a fallback of the
   model count cascade: when it runs and why its count is sound; and the same
   estimate as the count forecast of the projected enumerations.
@@ -191,7 +188,6 @@ module (src/guide.rs), where a relative link would not resolve. -->
 [library-invariants]: https://github.com/Tractables/tididi/blob/main/docs/architecture.md#invariants
 [marginal-tdd-levels]: https://github.com/Tractables/tididi-cnf/blob/main/docs/marginal-tdd-levels.md
 [paper]: https://arxiv.org/abs/2604.05537
-[sat-pruning]: https://github.com/Tractables/tididi-cnf/blob/main/docs/sat-pruning.md
 [stats]: https://github.com/Tractables/tididi-cnf/blob/main/docs/stats.md
 [support-enum-stage]: https://github.com/Tractables/tididi-cnf/blob/main/docs/support-enum-stage.md
 [weighted-marginal-levels]: https://github.com/Tractables/tididi-cnf/blob/main/docs/weighted-marginal-levels.md

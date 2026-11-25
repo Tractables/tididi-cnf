@@ -153,7 +153,7 @@ disjunction of `cube(a) ∧ R_a`.
   branches are joined, the step marginalizes the levels the normal fold would
   have summed out inside its merges (`build_marginalize_targets`). Then
   `run_marginalize_at` forgets and marginalizes the node's schedule, as after
-  any step, and the SAT pruning trigger sees the result.
+  any step.
 - **Cost guard.** Each branch costs at least one merge into a copy of `R` plus
   a disjunction in the join. The normal fold merges about once per floor's
   worth of clauses (`batch_floor` at `R`). So the step is taken only when

@@ -61,7 +61,7 @@ fn test_files_are_recognized_at_the_crate_root_and_within_modules() {
         "tests/common/mod.rs",
         "src/tests/support.rs",
         "src/compile/tests/step.rs",
-        "src/compile/sat_prune/tests/mod.rs",
+        "src/stage/mc/tests/windows.rs",
     ] {
         assert!(is_test_file(rel), "{rel}");
     }
@@ -172,7 +172,7 @@ fn all_caps_words(prose: &str) -> Vec<String> {
 }
 
 /// The `<file>.rs` paths cited in `prose`, with any URL removed first. A
-/// citation may name directories (`compile/sat_prune/mod.rs`); a leading
+/// citation may name directories (`stage/mc/windows.rs`); a leading
 /// `src/` is dropped, since that is where the crate's sources are.
 fn cited_paths(prose: &str) -> Vec<String> {
     let without_urls: String = prose
@@ -484,7 +484,7 @@ fn a_comment_backticks_the_crate_items_it_names() {
             let prose = without_link_targets(&prose);
             for (word, at) in words_with_offsets(&prose) {
                 // A path component is not a name the reader mistakes for a
-                // word: `compile/sat_prune/mod.rs` is a citation, and the
+                // word: `stage/mc/windows.rs` is a citation, and the
                 // citation rule reads it whole.
                 let bytes = prose.as_bytes();
                 let before = at.checked_sub(1).map(|i| bytes[i]);

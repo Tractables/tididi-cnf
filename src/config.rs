@@ -63,9 +63,9 @@ pub struct Limits {
 }
 
 /// What the command line sets beyond the mode and the limits: `--vtree`,
-/// `--preprocess`, whether `--save-tdd` asks for the circuit, and the
-/// `TIDIDI_SAT_PRUNE` switch. The library's [`crate::count`] leaves all four
-/// unset, so none of them can be inert there.
+/// `--preprocess` and whether `--save-tdd` asks for the circuit. The
+/// library's [`crate::count`] leaves all three unset, so none of them can be
+/// inert there.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Settings {
     /// `--vtree`: compile on this spec instead of the default construction.
@@ -75,10 +75,6 @@ pub(crate) struct Settings {
     /// Whether `--save-tdd` was on the command line. The run must then be a
     /// plain compile, whose circuit the command line writes out.
     pub(crate) save_tdd: bool,
-    /// `TIDIDI_SAT_PRUNE`, when it is set: `Some(false)` for `off`,
-    /// `Some(true)` for `on`. The weighted count refuses it set either way,
-    /// since its compiles never prune.
-    pub(crate) sat_prune: Option<bool>,
 }
 
 impl Settings {
@@ -153,17 +149,6 @@ impl Settings {
                 cause()
             )));
         }
-        // The weighted count compiles with a weight store, which the SAT-pruning
-        // pass cannot read, so its compiles never prune. The projected
-        // weighted count compiles without one and prunes.
-        if self.sat_prune.is_some() && mode == Mode::Wmc {
-            return Err(crate::Error::Environment(format!(
-                "TIDIDI_SAT_PRUNE is set, but it applies to the compile, mc, pmc and pwmc \
-                 modes, and {} makes this run a weighted count (mode wmc), whose \
-                 compiles never run SAT pruning. Unset TIDIDI_SAT_PRUNE.",
-                cause()
-            )));
-        }
         Ok(())
     }
 }
@@ -194,14 +179,9 @@ pub(crate) struct Config {
     /// [`Mode::resolve`]. Read, never re-derived, below the driver.
     pub(crate) mode: Mode,
     /// The run's time limit in ms, [`Limits::time_limit_ms`]. Internal budgets
-    /// (Arjun, the Shannon split, SAT pruning) are shares of it; without it the
-    /// absolute defaults apply.
+    /// (Arjun, the Shannon split) are shares of it; without it the absolute
+    /// defaults apply.
     pub(crate) time_limit_ms: Option<u64>,
-    /// Whether the run's compiles may run the SAT-pruning pass: on unless
-    /// `TIDIDI_SAT_PRUNE=off`, a diagnostic off-switch for paired on/off
-    /// measurements. The driver hands the run's compiles a SAT-pruning pass
-    /// ([`crate::compile::sat_prune::SatPrune`]) only when it is set.
-    pub(crate) sat_prune: bool,
     /// vitri's `VITRI_*` settings, read and checked from the environment as
     /// the run starts: the base of every vitri request the run makes.
     pub(crate) vitri: vitri::RunConfig,
@@ -231,7 +211,6 @@ impl Config {
             preprocess_level: settings.preprocess.unwrap_or(PreprocessLevel::Full),
             mode,
             time_limit_ms: limits.time_limit_ms,
-            sat_prune: settings.sat_prune.unwrap_or(true),
             vitri,
             input_vtree,
         }

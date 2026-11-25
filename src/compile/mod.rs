@@ -26,12 +26,10 @@ mod component;
 mod marginalize;
 mod minimize;
 mod reach;
-pub(crate) mod sat_prune;
 mod schedule;
 mod scope;
 mod step;
 
-use std::cell::Cell;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
@@ -76,19 +74,16 @@ impl<'a> ComponentPlan<'a> {
 }
 
 /// What a run sets for one compile, beyond what the compile is asked to
-/// produce: the run's SAT pruning, whether the compile is a Shannon
-/// cofactor's, and the run's budgeted work.
+/// produce: whether the compile is a Shannon cofactor's, and the run's
+/// budgeted work.
 #[derive(Clone, Copy, Default)]
 pub(crate) struct CompileRun<'a> {
-    /// The run's SAT pruning, which a compile that runs to its end adds its
-    /// tallies to; `None` prunes nothing.
-    pub(crate) sat_prune: Option<&'a sat_prune::SatPrune>,
     /// A recovery cofactor's compile, which skips the content-twin scan: the
     /// cascade recompiles cofactors under memory pressure, and scanning a
     /// diagram about to be split or dropped adds no useful work.
     pub(crate) cofactor: bool,
-    /// The run's budgeted work, which counts the SAT pruning and a compile
-    /// that stopped at a deadline and hashes each compile's input; `None`
+    /// The run's budgeted work, which counts a compile that stopped at a
+    /// deadline and hashes each compile's input; `None`
     /// records nothing.
     pub(crate) work: Option<&'a crate::budget::VtreeTime>,
     /// Build each clause, batch and node diagram on the projection of the
@@ -380,8 +375,7 @@ pub fn compile_cnf(
     vtree: &Arc<Vtree>,
     opts: CompileOptions<'_>,
 ) -> Result<Compiled, GiveUp> {
-    let sat_prune = sat_prune::SatPrune::default();
-    compile_with(eng, formula, vtree, opts, CompileRun { sat_prune: Some(&sat_prune), ..CompileRun::default() })
+    compile_with(eng, formula, vtree, opts, CompileRun::default())
 }
 
 /// [`compile_cnf`] under what the run sets for it (`run`).
@@ -429,8 +423,7 @@ pub(crate) fn compile_with(
     };
     // A weighted compile runs on a home that holds the weights.
     let run = CompileRun { projections: run.projections || weights.is_some(), ..run };
-    let prune_spent_us = Cell::new(0);
-    let job = CompileJob { deadline, output, run, prune_spent_us: &prune_spent_us };
+    let job = CompileJob { deadline, output, run };
     eng.limits().poll_host_work(0).map_err(|error| GiveUp::from_operation(eng, error))?;
 
     // The empty clause is the constant false, which the whole-formula pass
@@ -564,7 +557,6 @@ where
     // Restored when the count returns, on every path.
     let _apply_deadline_guard = deadline_scope(eng, deadline);
 
-    let prune_spent_us = Cell::new(0);
     let mut total = BigUint::from(1u32);
     let mut peak = 0usize;
     for comp in components {
@@ -580,7 +572,7 @@ where
         let comp_forget =
             forget.as_ref().map(|forget| component::local_vars_in(&comp.local_to_global, forget));
         let output = comp_forget.as_ref().map_or(PassOutput::Count, PassOutput::ProjectedCount);
-        let job = CompileJob { deadline, output, run: CompileRun { projections: true, ..run }, prune_spent_us: &prune_spent_us };
+        let job = CompileJob { deadline, output, run: CompileRun { projections: true, ..run } };
         let compiled = settle(compile_component(eng, sub_formula, &home, job))?;
         let sub_count = compiled.projected_count(eng).ok()?;
         peak = peak.max(compiled.peak_pairs);
