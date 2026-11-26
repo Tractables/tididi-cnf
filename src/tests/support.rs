@@ -128,7 +128,7 @@ pub(crate) fn minimal_config() -> Config {
 /// A run on `eng` under `config`, with no wall, as a stage sees it. Its slot for the tree it starts on is its own, leaked: a
 /// test's run lasts as long as the test.
 pub(crate) fn run<'a>(eng: &'a tididi::Engine, config: &'a Config) -> crate::stage::Run<'a> {
-    let started_on: &std::cell::RefCell<Option<String>> = Box::leak(Box::default());
+    let started_on: &std::cell::RefCell<Option<crate::output::ChosenTree>> = Box::leak(Box::default());
     crate::stage::Run { eng, config, deadline: None, compile: Default::default(), started_on }
 }
 

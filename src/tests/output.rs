@@ -24,11 +24,11 @@ fn a_run_that_gives_up_names_the_tree_its_compile_started_on() {
     let formula = crate::test_support::formula(2, vec![]);
     let gave_up = || Err(crate::Error::Incomplete(String::new()));
     let mut stats = super::open_record(&config, &formula);
-    super::close_record(&mut stats, &gave_up(), &Default::default(), Some("force".to_owned()));
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some(ChosenTree::of_spec("force")));
     assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
     let mut stats = super::open_record(&config, &formula);
     stats.vtree_candidate = Some("goatd-primal".to_owned());
-    super::close_record(&mut stats, &gave_up(), &Default::default(), Some("force".to_owned()));
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some(ChosenTree::of_spec("force")));
     assert_eq!(stats.vtree_candidate.as_deref(), Some("goatd-primal"));
 }
 
@@ -45,14 +45,14 @@ fn a_model_count_records_its_first_tree_and_the_answering_one() {
         preprocessing: PreprocessReport::of(&Default::default()),
         compile_ms: 0,
         vtrees: Some(CascadeVtrees {
-            first: Some("force".to_owned()),
+            first: Some(ChosenTree::of_spec("force")),
             answered: Some(crate::stage::RETRY_VTREE_SPEC.to_owned()),
         }),
         attribution: Attribution { answered_by: AnsweredBy::BisectRetry, reduction: None, arjun_ms: None, cascade_ms: None },
     };
     let mut stats = super::open_record(&config, &formula);
     let verdict = super::record_mc(&mut stats, &config, answer());
-    super::close_record(&mut stats, &Ok(verdict), &Default::default(), Some("force".to_owned()));
+    super::close_record(&mut stats, &Ok(verdict), &Default::default(), Some(ChosenTree::of_spec("force")));
     assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
     assert_eq!(stats.answered_vtree.as_deref(), Some(crate::stage::RETRY_VTREE_SPEC));
     let mut stats = super::open_record(&config, &formula);
@@ -60,6 +60,39 @@ fn a_model_count_records_its_first_tree_and_the_answering_one() {
     super::close_record(&mut stats, &Err(crate::Error::Incomplete(String::new())), &Default::default(), None);
     assert_eq!(stats.vtree_candidate.as_deref(), Some("force"));
     assert!(stats.answered_by.is_none() && stats.answered_vtree.is_none());
+}
+
+/// The record gives the learned tree's time with the tree it names, from the
+/// same portfolio build, and none with a tree no portfolio build chose.
+#[test]
+fn the_record_gives_the_learned_trees_time_with_the_tree_it_names() {
+    let config = crate::test_support::minimal_config();
+    let formula = crate::test_support::formula(2, vec![]);
+    let gave_up = || Err(crate::Error::Incomplete(String::new()));
+    let learned = ChosenTree { spec: "model-order".to_owned(), learned_ms: Some(7) };
+    let mut stats = super::open_record(&config, &formula);
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some(learned.clone()));
+    assert_eq!((stats.vtree_candidate.as_deref(), stats.learned_ms), (Some("model-order"), Some(7)));
+    let json = serde_json::to_value(&stats).unwrap();
+    assert_eq!(json["learned_ms"], 7);
+    let mut stats = super::open_record(&config, &formula);
+    let answer = McAnswer {
+        count: BigUint::from(4u32),
+        peak_pairs: 0,
+        preprocessing: PreprocessReport::of(&Default::default()),
+        compile_ms: 0,
+        vtrees: Some(CascadeVtrees { first: Some(learned), answered: Some("model-order".to_owned()) }),
+        attribution: Attribution { answered_by: AnsweredBy::Compile, reduction: None, arjun_ms: None, cascade_ms: None },
+    };
+    let verdict = super::record_mc(&mut stats, &config, answer);
+    super::close_record(&mut stats, &Ok(verdict), &Default::default(), None);
+    assert_eq!(stats.learned_ms, Some(7));
+    let mut stats = super::open_record(&config, &formula);
+    let retry = ChosenTree::of_spec(crate::stage::RETRY_VTREE_SPEC);
+    super::close_record(&mut stats, &gave_up(), &Default::default(), Some(retry));
+    assert_eq!(stats.learned_ms, None);
+    assert!(serde_json::to_value(&stats).unwrap().get("learned_ms").is_none());
+    assert_eq!(ChosenTree::last_winner(&Default::default()), None);
 }
 
 #[test]

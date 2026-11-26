@@ -101,22 +101,24 @@ pub(crate) struct Run<'a> {
     /// its primary compile starts. The driver owns it and records it as `vtree_candidate` when no
     /// answer named one, so a run that gives up still says which tree it was
     /// on.
-    pub(crate) started_on: &'a RefCell<Option<String>>,
+    pub(crate) started_on: &'a RefCell<Option<crate::output::ChosenTree>>,
 }
 
 impl Run<'_> {
     /// Name the portfolio's last winner as the tree the run's main compile
     /// starts on: on stderr, `line` followed by `joiner` and the winner's
     /// spec, or `line` alone when no portfolio ran, and in
-    /// [`Run::started_on`]. Returns the winner.
+    /// [`Run::started_on`] with the learned tree's time in that build.
+    /// Returns the winner's spec.
     pub(crate) fn announce_tree(&self, line: &str, joiner: &str) -> Option<String> {
-        let tree = self.config.portfolio_history.last_winning_spec();
+        let tree = crate::output::ChosenTree::last_winner(&self.config.portfolio_history);
         match &tree {
-            Some(tree) => eprintln!("{line}{joiner}{tree}"),
+            Some(tree) => eprintln!("{line}{joiner}{}", tree.spec),
             None => eprintln!("{line}"),
         }
-        self.started_on.replace(tree.clone());
-        tree
+        let spec = tree.as_ref().map(|tree| tree.spec.clone());
+        self.started_on.replace(tree);
+        spec
     }
 }
 

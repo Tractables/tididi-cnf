@@ -59,6 +59,7 @@ The last column says in which modes a key can appear.
 | `preprocess_ms` | integer | Time simplifying the formula; under `mc`, without Arjun, which has its own key. | `compile`, `mc` |
 | `arjun_ms` | integer | Time in Arjun's reduction. | `mc` |
 | `vtree_ms` | integer | Time building vtrees, over the whole run. | all, once a vtree was built |
+| `learned_ms` | integer | Time vitri spent on its learned tree in the portfolio build that chose `vtree_candidate`, whether it took the tree or not; part of `vtree_ms`. When it took the tree, `vtree_candidate` is `model-order`. | `compile`, `mc`, `wmc`, when that build built the learned tree |
 | `compile_ms` | integer | Time compiling, not counting the keys above; under `mc` and `compile` it includes the stages that take over from a compile that gave up, and under `pmc` and `pwmc` every stage that did not rewrite the formula, enumeration included. 0 when preprocessing settled a `compile` or `mc` count. | `compile`, `mc`, `pmc`, `pwmc` |
 | `cascade_ms` | integer | Time from the count's first compile to the answer, vtree construction and the stages that take over from a compile that gave up included. Absent when preprocessing settled the count. | `mc` |
 | `backbone_ms` | integer | Time finding the formula's backbone, the literals every model shares. | `compile`, `mc` |

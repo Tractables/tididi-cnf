@@ -258,7 +258,7 @@ fn compile_with_retry(
         held_before,
         held_after,
     );
-    run.started_on.replace(Some(RETRY_VTREE_SPEC.to_owned()));
+    run.started_on.replace(Some(crate::output::ChosenTree::of_spec(RETRY_VTREE_SPEC)));
     compile_on_bisection(run, reduced).map(|compiled| (compiled, AnsweredBy::BisectRetry)).map_err(gave_up)
 }
 

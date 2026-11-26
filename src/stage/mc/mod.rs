@@ -268,7 +268,7 @@ pub(crate) fn run_mc_count(run: &Run<'_>, formula: &CnfFormula) -> Result<McAnsw
     let preprocess_ms = telemetry.simplify_ms.unwrap_or(0);
     let compile_ms = clock.compile_ms(telemetry.total_ms);
     let first = run.started_on.borrow().clone();
-    let answered = answered_vtree(run, out.answered_by, first.clone());
+    let answered = answered_vtree(run, out.answered_by, first.as_ref().map(|tree| tree.spec.clone()));
     Ok(McAnswer {
         count: out.count,
         peak_pairs: out.peak_pairs,

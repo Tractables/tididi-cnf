@@ -201,6 +201,11 @@ pub struct Stats {
     /// Wall-clock time building vtrees, over the whole run, in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vtree_ms: Option<u64>,
+    /// Wall-clock time vitri spent on its learned tree in the portfolio build
+    /// that chose `vtree_candidate`, taken or not, in milliseconds; part of
+    /// `vtree_ms`. Absent when that build did not build the learned tree.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub learned_ms: Option<u64>,
     /// User-mode instructions in the calls that build vtrees, over the whole
     /// run, read from a Linux perf counter on the run's thread: the
     /// portfolio's trial compiles included, and the preprocessing a vitri
@@ -297,7 +302,7 @@ pub(crate) fn close_record(
     stats: &mut Stats,
     outcome: &Result<Verdict, Error>,
     vtree: &crate::budget::VtreeTime,
-    started_on: Option<String>,
+    started_on: Option<ChosenTree>,
 ) {
     stats.exit_reason = Some(exit_reason(outcome));
     // A stage can finish after the whole-run deadline, and its answer reach
@@ -316,8 +321,10 @@ pub(crate) fn close_record(
     stats.vtree_instructions = vtree.instructions();
     stats.budgeted_instructions = vtree.budgeted_instructions();
     (stats.compiled_formulas_hash, stats.compiled_vtrees_hash) = vtree.compiled_hashes();
-    if stats.vtree_candidate.is_none() {
-        stats.vtree_candidate = started_on;
+    if stats.vtree_candidate.is_none()
+        && let Some(tree) = started_on
+    {
+        tree.record(stats);
     }
 }
 
@@ -355,8 +362,36 @@ fn recorded_integer(stats: &mut Stats, count: num_bigint::BigUint, diagram: Opti
 /// settled before the mode dispatches and is recorded once, in
 /// [`open_record`].
 fn record_vtree_candidate(stats: &mut Stats, config: &Config) {
-    if let Some(candidate) = config.portfolio_history.last_winning_spec() {
-        stats.vtree_candidate = Some(candidate);
+    if let Some(tree) = ChosenTree::last_winner(&config.portfolio_history) {
+        tree.record(stats);
+    }
+}
+
+/// A tree a compile ran on, by its spec, with the wall time vitri spent on
+/// its learned tree in the portfolio build that chose it, taken or not:
+/// `vtree_candidate` and `learned_ms` in the record.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ChosenTree {
+    pub(crate) spec: String,
+    pub(crate) learned_ms: Option<u64>,
+}
+
+impl ChosenTree {
+    /// The winner of the last portfolio build in `history`; `None` when no
+    /// portfolio ran.
+    pub(crate) fn last_winner(history: &vitri::decompose::PortfolioBuildHistory) -> Option<Self> {
+        let spec = history.last_winning_spec()?;
+        Some(ChosenTree { spec, learned_ms: history.last_learned_ms() })
+    }
+
+    /// A tree built on its own spec, with no portfolio build behind it.
+    pub(crate) fn of_spec(spec: &str) -> Self {
+        ChosenTree { spec: spec.to_owned(), learned_ms: None }
+    }
+
+    fn record(self, stats: &mut Stats) {
+        stats.vtree_candidate = Some(self.spec);
+        stats.learned_ms = self.learned_ms;
     }
 }
 
@@ -439,7 +474,7 @@ pub(crate) struct McAnswer {
 /// first compile started on, and the one of the route that answered, where
 /// that route compiled on one tree.
 pub(crate) struct CascadeVtrees {
-    pub(crate) first: Option<String>,
+    pub(crate) first: Option<ChosenTree>,
     pub(crate) answered: Option<String>,
 }
 
@@ -452,7 +487,9 @@ pub(crate) fn record_mc(stats: &mut Stats, config: &Config, answer: McAnswer) ->
     stats.cascade_ms = attribution.cascade_ms.map(|ms| ms as u64);
     match vtrees {
         Some(CascadeVtrees { first, answered }) => {
-            stats.vtree_candidate = first;
+            if let Some(first) = first {
+                first.record(stats);
+            }
             stats.answered_vtree = answered;
         }
         None => record_vtree_candidate(stats, config),
