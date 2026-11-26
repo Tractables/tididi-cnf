@@ -128,7 +128,7 @@ fn run_mc_cascade(
         );
         let no_sbva_retry = (no_sbva_retry_armed
             && matches!(bundle.stages.sbva, Some(vitri::bundle::StageOutcome::Ran)))
-        .then_some(session);
+        .then_some(cascade::NoSbvaRoute { input: compile_formula, simplify_pow2 });
         let ar = crate::frontend::record::arjun_reduction(bundle)
             .expect("a kept plain-MC Arjun result carries its support");
         count_primary(run, &arjun_input, ar, primary_vtree, no_sbva_retry)

@@ -172,6 +172,85 @@ fn retry_frontend_session(
     })
 }
 
+/// The input formula and the simplify chain's lift, for the no-SBVA retry of
+/// [`count_primary`], which re-reduces the input with vitri's DVE off.
+pub(super) struct NoSbvaRoute<'a> {
+    pub(super) input: &'a CnfFormula,
+    pub(super) simplify_pow2: u32,
+}
+
+/// The no-SBVA retry of [`count_primary`]: as [`no_sbva_retry`], but from the
+/// run's input through a fresh frontend with vitri's DVE and gate detection
+/// off, SBVA off and the bisection tree. On a formula at the edge of the
+/// memory cap, the variables DVE takes out change Arjun's output and the tree
+/// enough to decide whether the compile fits, and the route without DVE is
+/// the other draw. The count comes back in the input's space and is returned
+/// in the simplified formula's, as the other fallbacks of [`count_primary`]
+/// are.
+fn no_sbva_retry_without_dve(run: &Run<'_>, route: &NoSbvaRoute<'_>) -> Option<Counted> {
+    let program_deadline = run.deadline;
+    let now = Instant::now();
+    let reserve = no_sbva_retry_window(run.config.time_limit_ms, program_deadline, now)?;
+    let stage_deadline = crate::budget::not_past(now + reserve, program_deadline);
+    eprintln!(
+        "[mc] no-sbva-retry: re-reducing the input without DVE or SBVA and recompiling on {} \
+         for up to {}s before the fallbacks after it and Shannon split",
+        RETRY_VTREE_SPEC,
+        reserve.as_secs(),
+    );
+    let t_reduce = Instant::now();
+    let arjun_budget = vitri::config::ArjunBudget::derived_duration(run.config.time_limit_ms).min(reserve / 2);
+    let input = route.input;
+    let counted = crate::frontend::with_mc_frontend_adjusted(
+        input,
+        run.config,
+        Some(stage_deadline),
+        crate::frontend::TreeFor::Recovery,
+        |config| {
+            // vitri refuses a simplify policy under a disabled simplify stage.
+            if config.stages.simplify {
+                config.simplify.dve = None;
+                config.simplify.detect_gates = false;
+            }
+            config.arjun.sbva = vitri::preprocess::ArjunSbva::Off;
+            config.arjun_budget = vitri::config::ArjunBudget::Exact(arjun_budget);
+            config.vtree_spec = RETRY_VTREE_SPEC.to_owned();
+        },
+        |attempt, _| {
+            let prepared = attempt.preprocessed;
+            let lift_pow2 = prepared.count_lift.total_pow2();
+            eprintln!(
+                "[mc] no-sbva-retry: arjun reduced in {}ms — {}v/{}c → {}v/{}c, lift=2^{lift_pow2}",
+                prepared.telemetry.arjun_ms.unwrap_or(prepared.telemetry.total_ms),
+                input.num_vars(),
+                input.clauses().len(),
+                prepared.reduced.num_vars(),
+                prepared.reduced.clauses().len(),
+            );
+            match attempt.vtree {
+                crate::frontend::FrontendVtree::Built(built) => {
+                    let attempt = attempt_from_vitri_build(prepared.reduced, built.bind(run), lift_pow2);
+                    count_attempt(run, attempt, Some(stage_deadline))
+                }
+                crate::frontend::FrontendVtree::FullyResolved => Some((num_bigint::BigUint::from(1u32) << lift_pow2, 0)),
+                crate::frontend::FrontendVtree::Refuted => Some((num_bigint::BigUint::from(0u32), 0)),
+            }
+        },
+    );
+    let (count, peak_pairs) = counted.unwrap_or_else(|error| {
+        eprintln!("[mc] no-sbva-retry: vitri's frontend failed ({error}) — leaving the formula to the next fallback");
+        None
+    })?;
+    // The input's count is the simplified formula's times 2^simplify_pow2, so
+    // a count with fewer trailing zeros is a wrong count, never returned.
+    if count.trailing_zeros().is_some_and(|zeros| zeros < u64::from(route.simplify_pow2)) {
+        eprintln!("[mc] no-sbva-retry: the count is not a multiple of the simplify lift — discarded");
+        return None;
+    }
+    eprintln!("[mc] no-sbva-retry: counted in {}ms", t_reduce.elapsed().as_millis());
+    Some((count >> route.simplify_pow2, peak_pairs))
+}
+
 /// Second fallback: re-reduce the same formula with SBVA off and recompile,
 /// inside this stage's own reserve.
 ///
@@ -446,13 +525,13 @@ pub(super) fn count_primary(
     compile_formula: &CnfFormula,
     ar: crate::frontend::record::ArjunReduction,
     vtree: crate::vtree::VtreeBuild,
-    no_sbva_session: Option<&vitri::bundle::FrontendSession<'_>>,
+    no_sbva: Option<NoSbvaRoute<'_>>,
 ) -> Option<Recovered> {
     // The primary compile's own deadline (`program_deadline - tail`), armed when
     // the remaining wall exceeds twice the reserved tail (`UNREDUCED_RETRY_RESERVE`
-    // plus the no-SBVA retry's want when `no_sbva_session` is set).
+    // plus the no-SBVA retry's want when `no_sbva` is set).
     let mut tail = UNREDUCED_RETRY_RESERVE;
-    if no_sbva_session.is_some() && let Some(total_ms) = run.config.time_limit_ms {
+    if no_sbva.is_some() && let Some(total_ms) = run.config.time_limit_ms {
         tail += no_sbva_retry_want(total_ms);
     }
     let primary_deadline = run.deadline.and_then(|d| {
@@ -476,8 +555,9 @@ pub(super) fn count_primary(
         bisect_retry(run, &ar, pick.as_deref(), primary_deadline)
             .map(|counted| (counted, AnsweredBy::BisectRetry))
             .or_else(|| {
-                no_sbva_session
-                    .and_then(|session| no_sbva_retry(run, compile_formula, session, false))
+                no_sbva
+                    .as_ref()
+                    .and_then(|route| no_sbva_retry_without_dve(run, route))
                     .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
             })
             .or_else(|| {
