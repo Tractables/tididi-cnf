@@ -509,7 +509,7 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 [[package]]
 name = "vitri"
 version = "0.3.0"
-source = "git+https://github.com/Tractables/vitri?rev=e455c763d3015dcd0715ba1b7c6a89dd759a49f9#e455c763d3015dcd0715ba1b7c6a89dd759a49f9"
+source = "git+https://github.com/Tractables/vitri?rev=02d04f95049800e4d4c1c039b2a599a478643ade#02d04f95049800e4d4c1c039b2a599a478643ade"
 dependencies = [
  "goatd",
  "libc",
