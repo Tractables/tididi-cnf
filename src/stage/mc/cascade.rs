@@ -24,7 +24,7 @@ use super::windows::{
 };
 use super::attempt::{attempt_from_vitri_build, attempt_on, count_attempt};
 use super::recovery::{Counted, Recovered, count_with_recovery};
-use super::support_enum::support_enum_stage;
+use super::support_enum::{EnumOutcome, ProbeMode, support_enum_stage};
 
 /// A Shannon cofactor's count, in both cascades, taken the way the input's
 /// is: the compile of its reduction, then, when that gives up with the run's
@@ -407,8 +407,17 @@ pub(super) fn monotone_reduction(
     if no_sbva && let Some(counted) = no_sbva_retry(run, formula, session, true) {
         return Some((counted, AnsweredBy::NoSbvaRetry));
     }
-    support_enum_stage(&ar.formula, &ar.support, ar.lift_pow2, "monotone reduction", run.deadline, &run.config.vtree_time)
-        .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
+    support_enum_stage(
+        &ar.formula,
+        &ar.support,
+        ar.lift_pow2,
+        "monotone reduction",
+        run.deadline,
+        &run.config.vtree_time,
+        ProbeMode::Gate,
+    )
+    .count()
+    .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
 }
 
 /// First fallback: compile the kept reduction once more on vitri's
@@ -422,9 +431,11 @@ pub(super) fn monotone_reduction(
 /// candidates it ranks close tend to run out of memory together, while the
 /// bisection, which keeps each clause's variables together, compiles some of
 /// those formulas in a fraction of the memory. The retry builds its
-/// tree and compiles to the primary compile's deadline: at a long limit the
-/// fallbacks behind it keep the tail that deadline reserved, and at a short
-/// one they get what a retry that runs out of memory leaves.
+/// tree and compiles to the primary compile's deadline, and when that is armed
+/// for at most a quarter of the declared wall: at a long limit the fallbacks
+/// behind it keep the tail that deadline reserved and whatever the quarter
+/// leaves of the time before it, and at a short one they get what a retry
+/// that runs out of memory leaves.
 fn bisect_retry(
     run: &Run<'_>,
     ar: &crate::frontend::record::ArjunReduction,
@@ -432,7 +443,14 @@ fn bisect_retry(
     primary_deadline: Option<Instant>,
 ) -> Option<Counted> {
     let now = Instant::now();
-    let deadline = primary_deadline.or(run.deadline);
+    // With the primary deadline armed, the retry gets at most the no-SBVA
+    // retry's window, a quarter of the declared wall, so a retry that does
+    // not run out of memory still leaves the stages behind it their time.
+    let cap = run.config.time_limit_ms.map(|total_ms| now + no_sbva_retry_want(total_ms));
+    let deadline = match (primary_deadline, cap) {
+        (Some(primary), Some(cap)) => Some(primary.min(cap)),
+        (primary, _) => primary.or(run.deadline),
+    };
     if !bisect_retry_applies(run.config.explicit_vtree(), pick, deadline, now) {
         return None;
     }
@@ -561,19 +579,32 @@ pub(super) fn count_primary(
                     .map(|counted| (counted, AnsweredBy::NoSbvaRetry))
             })
             .or_else(|| {
-                support_enum_stage(
-                    &ar.formula,
-                    &ar.support,
-                    ar.lift_pow2,
-                    "kept reduction",
-                    run.deadline,
-                    &run.config.vtree_time,
-                )
-                .map(|count| ((count, 0), AnsweredBy::SupportEnumeration))
-            })
-            .or_else(|| {
-                unreduced_retry(run, compile_formula, primary_deadline)
-                    .map(|counted| (counted, AnsweredBy::UnreducedRetry))
+                // Support enumeration, then the unreduced retry; a probe that
+                // has disproved the enumeration's estimate puts the retry
+                // first and the enumeration on what it leaves.
+                let enumerate = |mode| {
+                    support_enum_stage(
+                        &ar.formula,
+                        &ar.support,
+                        ar.lift_pow2,
+                        "kept reduction",
+                        run.deadline,
+                        &run.config.vtree_time,
+                        mode,
+                    )
+                };
+                let enumerated = |count| ((count, 0), AnsweredBy::SupportEnumeration);
+                let unreduced = || {
+                    unreduced_retry(run, compile_formula, primary_deadline)
+                        .map(|counted| (counted, AnsweredBy::UnreducedRetry))
+                };
+                match enumerate(ProbeMode::DeferWhenDisproved) {
+                    EnumOutcome::Counted(count) => Some(enumerated(count)),
+                    EnumOutcome::Stopped => unreduced(),
+                    EnumOutcome::Deferred => {
+                        unreduced().or_else(|| enumerate(ProbeMode::Resume).count().map(enumerated))
+                    }
+                }
             })
     };
     count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)

@@ -202,7 +202,9 @@ fn count_without_reduction(
             "fresh reduction",
             run.deadline,
             &run.config.vtree_time,
-        )?;
+            support_enum::ProbeMode::Gate,
+        )
+        .count()?;
         Some(((count, 0), AnsweredBy::SupportEnumeration))
     };
     count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)

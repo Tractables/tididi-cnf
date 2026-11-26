@@ -8,7 +8,11 @@ reduction in `src/stage/mc/mod.rs`.
 
 The stage runs only after the compile has failed, as a fallback. Behind
 the primary compile the hook tries the no-SBVA retry, then support
-enumeration, then the unreduced retry; behind the count without a reduction,
+enumeration, then the unreduced retry. When the probe has already tallied
+more models than the estimate, the estimate is wrong and the count unknown, so
+the unreduced retry runs first and the enumeration comes back after it, with
+no estimate and no probe, on the time the retry leaves. Behind the count
+without a reduction,
 support enumeration alone, except on a formula Arjun skipped as monotone,
 where the monotone reduction runs it on the reduction it asks Arjun for. When
 they fail, the Shannon-split recovery cascade runs.

@@ -29,6 +29,40 @@ use crate::problem::ShowSet;
 
 use super::windows::{shannon_split_reserve_ms, support_enum_arjun_retry_ms};
 
+/// How the stage treats its probe.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ProbeMode {
+    /// Estimate, probe, then commit or bail on the estimate.
+    Gate,
+    /// As `Gate`, but a probe whose tally has passed the estimate hands the
+    /// stage back as [`EnumOutcome::Deferred`], so the caller can run another
+    /// fallback first and come back with [`ProbeMode::Resume`].
+    DeferWhenDisproved,
+    /// The stage was deferred: no estimate and no probe, it commits the window
+    /// at once (still stopping at [`TALLY_CEILING`]).
+    Resume,
+}
+
+/// How the stage ended.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) enum EnumOutcome {
+    /// The model count, in the space the stage's caller asked for.
+    Counted(num_bigint::BigUint),
+    /// Skipped or stopped; the next fallback runs.
+    Stopped,
+    /// The probe tallied past the estimate under [`ProbeMode::DeferWhenDisproved`].
+    Deferred,
+}
+
+impl EnumOutcome {
+    pub(super) fn count(self) -> Option<num_bigint::BigUint> {
+        match self {
+            Self::Counted(count) => Some(count),
+            Self::Stopped | Self::Deferred => None,
+        }
+    }
+}
+
 /// Largest independent support the stage will enumerate over: the shared
 /// fastpath's band ceiling, past which it declines anyway.
 const MAX_SUPPORT: usize = crate::enumeration::MAX_ENUM_SHOW;
@@ -227,30 +261,56 @@ fn run_support_enum(
     support: &ShowSet,
     probe_wall_ms: u64,
     enum_wall_ms: u64,
-) -> Option<num_bigint::BigUint> {
+    mode: ProbeMode,
+) -> EnumOutcome {
     use crate::enumeration::{AllsatCtl, AllsatStop, Models, WallGrant};
     use tididi::vtree::VarId;
     use std::time::Duration;
 
     // The estimate gates entry and is reused at the probe's wall.
-    let show_vec: Vec<VarId> = crate::enumeration::show_vars(support);
-    let t_est = Instant::now();
-    let est = estimate_projected_count(reduced, &show_vec);
-    log_path_estimate(&est, t_est.elapsed().as_millis());
-    if let Err(why) = commit_decision(&est, enum_wall_ms, 0) {
+    // A resumed stage has no estimate to consult: it commits at once.
+    let est = (mode != ProbeMode::Resume).then(|| {
+        let show_vec: Vec<VarId> = crate::enumeration::show_vars(support);
+        let t_est = Instant::now();
+        let est = estimate_projected_count(reduced, &show_vec);
+        log_path_estimate(&est, t_est.elapsed().as_millis());
+        est
+    });
+    if let Some(est) = &est
+        && let Err(why) = commit_decision(est, enum_wall_ms, 0)
+    {
         eprintln!("[mc] support-enumeration: skipped (estimate): {why}");
-        return None;
+        return EnumOutcome::Stopped;
     }
+    let probe_wall_ms = if est.is_some() { probe_wall_ms } else { 0 };
 
     let stage_deadline = Instant::now() + Duration::from_millis(enum_wall_ms);
     let mut committed = false;
+    let deferred = std::cell::Cell::new(false);
     let mut at_wall = |models: u64, elapsed: Duration| {
         if std::mem::replace(&mut committed, true) {
             return None;
         }
         let available_ms = crate::budget::left_ms(Some(stage_deadline)).unwrap_or(0);
-        let verdict = commit_decision(&est, available_ms, models);
-        log_probe_decision(models, elapsed, &est, available_ms, &verdict);
+        let Some(est) = &est else {
+            eprintln!(
+                "[mc] support-enumeration: resumed: COMMIT {}s (abort past {TALLY_CEILING} models)",
+                available_ms / 1000
+            );
+            return (available_ms > 0).then(|| WallGrant {
+                extra: Duration::from_millis(available_ms),
+                abort_at_models: TALLY_CEILING,
+            });
+        };
+        let mut verdict = commit_decision(est, available_ms, models);
+        if verdict.is_ok()
+            && mode == ProbeMode::DeferWhenDisproved
+            && est.mean().is_some_and(|n_hat| models as f64 > n_hat)
+        {
+            deferred.set(true);
+            verdict = Err("the probe tallied past the estimate: the unreduced retry runs first");
+        }
+        log_probe_decision(models, elapsed, est, available_ms, &verdict);
         verdict.ok().map(|ms| WallGrant {
             extra: Duration::from_millis(ms),
             abort_at_models: TALLY_CEILING,
@@ -277,8 +337,9 @@ fn run_support_enum(
             eprintln!(
                 "[mc] support-enumeration: {method} counted the Arjun-reduced formula in {elapsed_ms}ms"
             );
-            Some(count)
+            EnumOutcome::Counted(count)
         }
+        None if deferred.get() => EnumOutcome::Deferred,
         None => {
             let reason = match ctl.bust {
                 Some(AllsatStop::TallyCeiling) => format!(
@@ -291,7 +352,7 @@ fn run_support_enum(
                 "[mc] support-enumeration: enumeration stopped: {reason} ({} models tallied)",
                 ctl.models,
             );
-            None
+            EnumOutcome::Stopped
         }
     }
 }
@@ -309,8 +370,9 @@ pub(super) fn support_enum_stage(
     site: &'static str,
     program_deadline: Option<Instant>,
     work: &crate::budget::VtreeTime,
-) -> Option<num_bigint::BigUint> {
-    work.budgeted(|| support_enum_within(reduced, support, lift_pow2, site, program_deadline))
+    mode: ProbeMode,
+) -> EnumOutcome {
+    work.budgeted(|| support_enum_within(reduced, support, lift_pow2, site, program_deadline, mode))
 }
 
 fn support_enum_within(
@@ -319,12 +381,13 @@ fn support_enum_within(
     lift_pow2: u32,
     site: &'static str,
     program_deadline: Option<Instant>,
-) -> Option<num_bigint::BigUint> {
+    mode: ProbeMode,
+) -> EnumOutcome {
     let remaining_ms = crate::budget::left_ms(program_deadline);
     match plan_support_enum(support.len(), remaining_ms) {
         Err(why) => {
             eprintln!("[mc] support-enumeration: skipped ({site}): {why}");
-            None
+            EnumOutcome::Stopped
         }
         Ok(enum_wall_ms) => {
             eprintln!(
@@ -340,21 +403,22 @@ fn support_enum_within(
                 remaining_ms.unwrap_or(0) / 1000,
             );
             let t_enum = Instant::now();
-            match run_support_enum(reduced, support, PROBE_WALL_MS, enum_wall_ms) {
-                Some(reduced_count) => {
+            match run_support_enum(reduced, support, PROBE_WALL_MS, enum_wall_ms, mode) {
+                EnumOutcome::Counted(reduced_count) => {
                     eprintln!(
                         "[mc] support-enumeration: counted in {}ms — lifting the reduced count by 2^{}",
                         t_enum.elapsed().as_millis(),
                         lift_pow2,
                     );
-                    Some(reduced_count << lift_pow2 as usize)
+                    EnumOutcome::Counted(reduced_count << lift_pow2 as usize)
                 }
-                None => {
+                EnumOutcome::Deferred => EnumOutcome::Deferred,
+                EnumOutcome::Stopped => {
                     eprintln!(
                         "[mc] support-enumeration: stopped after {}ms — the next fallback runs",
                         t_enum.elapsed().as_millis(),
                     );
-                    None
+                    EnumOutcome::Stopped
                 }
             }
         }

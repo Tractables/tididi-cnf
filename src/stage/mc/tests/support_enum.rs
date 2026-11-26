@@ -176,7 +176,7 @@ fn chain_with_defined_var(k: u32) -> (CnfFormula, ShowSet) {
 fn enumerates_the_support_exactly_through_the_shared_fastpath() {
     let (f, support) = chain_with_defined_var(20);
     // 20 support vars ⇒ past the 2^K sweep's ceiling ⇒ projected AllSAT.
-    let count = run_support_enum(&f, &support, 60_000, 60_000)
+    let count = run_support_enum(&f, &support, 60_000, 60_000, ProbeMode::Gate).count()
         .expect("the enumeration fits both caps");
     assert_eq!(count, num_bigint::BigUint::from(21u32));
 }
@@ -186,8 +186,17 @@ fn enumerates_the_support_exactly_through_the_shared_fastpath() {
 #[test]
 fn resumes_past_a_busted_probe_to_the_same_exact_count() {
     let (f, support) = chain_with_defined_var(20);
-    let count = run_support_enum(&f, &support, 0, 60_000)
+    let count = run_support_enum(&f, &support, 0, 60_000, ProbeMode::Gate).count()
         .expect("a 0ms probe must estimate, commit and finish");
+    assert_eq!(count, num_bigint::BigUint::from(21u32));
+}
+
+/// A resumed stage skips the estimate and the probe and still counts exactly.
+#[test]
+fn a_resumed_stage_commits_at_once_to_the_same_exact_count() {
+    let (f, support) = chain_with_defined_var(20);
+    let count = run_support_enum(&f, &support, 60_000, 60_000, ProbeMode::Resume).count()
+        .expect("a resumed stage commits its window and finishes");
     assert_eq!(count, num_bigint::BigUint::from(21u32));
 }
 
@@ -196,7 +205,7 @@ fn declines_when_the_stage_wall_trips() {
     let (f, support) = chain_with_defined_var(20);
     // No probe wall and no stage wall ⇒ the estimator's commit cannot fit ⇒
     // bail without enumerating the rest.
-    assert_eq!(run_support_enum(&f, &support, 0, 0), None);
+    assert_eq!(run_support_enum(&f, &support, 0, 0, ProbeMode::Gate), EnumOutcome::Stopped);
 }
 
 /// The estimator must land in the right universe on a formula whose
