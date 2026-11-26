@@ -29,7 +29,7 @@ fn simplify_via_unit_reports_unsat() {
 }
 
 /// A cofactor compile that must not be reached.
-fn no_cofactor(_: &Run<'_>, _: &CnfFormula) -> Option<Counted> {
+fn no_cofactor(_: &Run<'_>, _: &CnfFormula, _: Route) -> Option<Counted> {
     unreachable!("no cofactor is compiled here")
 }
 
@@ -41,7 +41,7 @@ fn recovery_names_the_first_compile() {
     let config = fixtures::minimal_config();
     let f = dimacs(2, &[&[1]]);
     let first = || Some((BigUint::from(2u32), 1024usize));
-    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, &Route::ALL, no_cofactor).unwrap();
     assert_eq!((got.count, got.peak_pairs, got.answered_by), (BigUint::from(2u32), 1024, AnsweredBy::Compile));
 }
 
@@ -53,7 +53,7 @@ fn recovery_names_the_fallback_that_answers() {
     let f = dimacs(2, &[&[1, 2]]);
     let first = || -> Option<Counted> { panic!("the first compile fails") };
     let fallbacks = || Some(((BigUint::from(3u32), 0usize), AnsweredBy::SupportEnumeration));
-    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, Some(&fallbacks), no_cofactor).unwrap();
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, Some(&fallbacks), &Route::ALL, no_cofactor).unwrap();
     assert_eq!((got.count, got.answered_by), (BigUint::from(3u32), AnsweredBy::SupportEnumeration));
 }
 
@@ -70,7 +70,7 @@ fn recovery_names_the_split_when_no_cofactor_compiles() {
         calls.set(calls.get() + 1);
         panic!("the first compile fails")
     };
-    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, no_cofactor).unwrap();
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, first, None, &Route::ALL, no_cofactor).unwrap();
     assert_eq!((got.count, got.answered_by), (BigUint::ZERO, AnsweredBy::ShannonSplit));
     assert_eq!(calls.get(), 1);
 }
@@ -83,11 +83,11 @@ fn a_compile_that_gives_up_with_time_left_is_split() {
     let eng = &Engine::new();
     let config = fixtures::minimal_config();
     let f = dimacs(3, &[&[1, 2], &[-1, 3]]);
-    let cofactor = |run: &Run<'_>, form: &CnfFormula| {
+    let cofactor = |run: &Run<'_>, form: &CnfFormula, _: Route| {
         assert!(run.compile.cofactor, "a cofactor compiles as a cofactor's compile");
         Some((fixtures::brute_projected_count(form, 0..form.num_vars() as usize), 0))
     };
-    let got = count_with_recovery(&fixtures::run(eng, &config), &f, || None, None, cofactor).unwrap();
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, || None, None, &Route::ALL, cofactor).unwrap();
     assert_eq!(got.answered_by, AnsweredBy::ShannonSplit);
     assert_eq!(got.count, fixtures::brute_projected_count(&f, 0..3));
 }
@@ -106,7 +106,7 @@ fn mc_recovery_honors_past_deadline_without_compiling() {
         calls.set(calls.get() + 1);
         panic!("compile forced to fail — must not be reached past the deadline");
     };
-    assert!(count_with_recovery(&run, &f, first, None, no_cofactor).is_none(), "past-deadline recovery must give up");
+    assert!(count_with_recovery(&run, &f, first, None, &Route::ALL, no_cofactor).is_none(), "past-deadline recovery must give up");
     assert_eq!(calls.get(), 0, "past-deadline recovery must not invoke the compile at all");
 }
 
@@ -138,11 +138,111 @@ fn mc_recovery_skips_the_fallbacks_once_the_wall_passes_mid_attempt() {
         fallbacks_called.set(true);
         Some(((BigUint::from(1u32), 0), AnsweredBy::UnreducedRetry))
     };
-    let _ = count_with_recovery(&run, &f, first, Some(&fallbacks), no_cofactor);
+    let _ = count_with_recovery(&run, &f, first, Some(&fallbacks), &Route::ALL, no_cofactor);
     assert_eq!(compile_calls.get(), 1, "the first compile must run exactly once");
     assert!(
         !fallbacks_called.get(),
         "the fallbacks must not start once the wall has passed, \
          even though it was still in the future when the panicking attempt started"
     );
+}
+
+/// Once two cofactors at a depth were compiled and more failed than
+/// answered, the others at that depth are split without a compile, and the
+/// count stays exact. Here a compile of a cofactor with `x1`, `x2` or `x3`
+/// still free fails on both routes: both cofactors at depth 1 are compiled,
+/// two of the four at depth 2, and the other two are split straight away.
+#[test]
+fn a_depth_where_compiles_fail_is_split_through() {
+    let eng = &Engine::new();
+    let config = fixtures::minimal_config();
+    // Every clause has x1, x2 and x3 and two of x4..x6, so the split branches
+    // on x1, x2, x3 in turn and no cofactor down to depth 3 runs out of clauses.
+    let f = dimacs(
+        6,
+        &[
+            &[1, 2, 3, 4, 5],
+            &[1, 2, -3, -4, 6],
+            &[1, -2, 3, 5, -6],
+            &[1, -2, -3, -4, -5],
+            &[-1, 2, 3, 4, -6],
+            &[-1, 2, -3, -5, 6],
+            &[-1, -2, 3, -4, 5],
+            &[-1, -2, -3, 4, 6],
+        ],
+    );
+    let compiles = std::cell::RefCell::new(Vec::new());
+    let cofactor = |_: &Run<'_>, form: &CnfFormula, _: Route| {
+        let fixed = |v: i32| {
+            form.clauses().iter().any(|c| c.literals.len() == 1 && c.literals[0].var == VarId::from_dimacs(v))
+        };
+        let free = (1..=3).filter(|&v| !fixed(v)).count();
+        compiles.borrow_mut().push(free);
+        (free == 0).then(|| (fixtures::brute_projected_count(form, 0..form.num_vars() as usize), 0))
+    };
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, || None, None, &Route::ALL, cofactor).unwrap();
+    assert_eq!(got.count, fixtures::brute_projected_count(&f, 0..6));
+    let compiles = compiles.into_inner();
+    let failed = compiles.iter().filter(|&&free| free > 0).count();
+    assert_eq!(failed, 2 * (2 + 2), "four cofactors failed on both routes: {compiles:?}");
+}
+
+/// The route that answers goes first: here the reduced compile never
+/// answers and the compile as it stands always does, so after the first
+/// cofactor only the compile as it stands runs.
+#[test]
+fn the_route_that_answers_goes_first() {
+    let eng = &Engine::new();
+    let config = fixtures::minimal_config();
+    let f = dimacs(3, &[&[1, 2], &[-1, 3], &[2, 3]]);
+    let routes = std::cell::RefCell::new(Vec::new());
+    let cofactor = |_: &Run<'_>, form: &CnfFormula, route: Route| {
+        routes.borrow_mut().push(route);
+        (route == Route::AsItStands).then(|| (fixtures::brute_projected_count(form, 0..form.num_vars() as usize), 0))
+    };
+    let got = count_with_recovery(&fixtures::run(eng, &config), &f, || None, None, &Route::ALL, cofactor).unwrap();
+    assert_eq!(got.count, fixtures::brute_projected_count(&f, 0..3));
+    assert_eq!(routes.into_inner(), [Route::Reduced, Route::AsItStands, Route::AsItStands]);
+}
+
+/// The route order by record: the better answers + 1 over compiles + 2
+/// first, ties to the order offered. Cofactors where both routes fail move
+/// the order but drop neither route; the fallback goes only after it lost
+/// three cofactors to the other route without ever answering, and one that
+/// answered once stays, so two routes that answer different cofactors both
+/// keep running.
+#[test]
+fn the_route_order_follows_the_record() {
+    let (r, a) = (Route::Reduced, Route::AsItStands);
+    let tally = Tally { offered: &Route::ALL, ..Tally::default() };
+    assert_eq!(tally.route_order(), [r, a], "ties go to the order offered");
+    for _ in 0..5 {
+        tally.record_routes(&[r, a], None);
+    }
+    assert_eq!(tally.route_order(), [r, a], "failing together drops neither");
+    tally.record_routes(&[r], Some(a));
+    assert_eq!(tally.route_order(), [a, r]);
+    tally.record_routes(&[a], Some(r));
+    assert_eq!(tally.route_order(), [r, a], "both answered once, ties to reduced");
+    tally.record_routes(&[r], Some(a));
+    tally.record_routes(&[r], Some(a));
+    tally.record_routes(&[r], Some(a));
+    assert_eq!(tally.route_order(), [a, r], "a fallback that answered stays");
+
+    let lost = |reduced_lost: u32| {
+        let tally = Tally { offered: &Route::ALL, ..Tally::default() };
+        *tally.routes.borrow_mut() = [
+            RouteRecord { answered: 0, failed: reduced_lost + 4, lost: reduced_lost },
+            RouteRecord { answered: 5, failed: 4, lost: 0 },
+        ];
+        tally.route_order()
+    };
+    assert_eq!(lost(2), [a, r], "two losses keep the fallback");
+    assert_eq!(lost(3), [a], "three losses without an answer drop it");
+
+    let single = Tally { offered: &[Route::Reduced], ..Tally::default() };
+    for _ in 0..9 {
+        single.record_routes(&[r], None);
+    }
+    assert_eq!(single.route_order(), [r], "the first is always tried");
 }

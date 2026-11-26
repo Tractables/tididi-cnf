@@ -25,10 +25,15 @@
 //!     count(F) = count(F ∧ x) + count(F ∧ ¬x)
 //! ```
 //!
-//! and each cofactor is counted by the caller's cofactor compile, split again
-//! on its failure. Each sub-formula gets a fresh compile attempt with a clean
-//! allocator state (jemalloc's retained extents are still mapped, but the
-//! live working set has been reset to zero). Any panic splits, not only a
+//! and each cofactor is counted by the caller's cofactor compile on each
+//! [`Route`], split again when none answers. Above the depth where cofactor
+//! compiles fit, a cofactor at a depth where at least two were compiled
+//! and more of them failed than answered is split without one, so the split
+//! goes straight to the depth where cofactors fit instead of failing
+//! compiles at every depth on the way; the route with the better record goes
+//! first, the other behind it. Each sub-formula gets a fresh compile attempt
+//! with a clean allocator state (jemalloc's retained extents are still
+//! mapped, but the live working set has been reset to zero). Any panic splits, not only a
 //! refused allocation, so a logic bug splits too; each caught panic's message
 //! and a memory-state snapshot go to stderr, so it stays visible in the log.
 //! Each split strictly shrinks the formula's support, so the cascade ends
@@ -88,8 +93,8 @@ pub(super) struct Recovered {
 
 /// Count `formula` by `first`, the first compile, and on its failure by the
 /// recovery the module doc describes: `fallbacks`, when the caller has any,
-/// then a Shannon split whose cofactors `cofactor` counts, on the run as a
-/// cofactor's compile sees it. Each fallback names the stage that answered.
+/// then a Shannon split whose cofactors `cofactor` counts on each of
+/// `routes`, on the run as a cofactor's compile sees it. Each fallback names the stage that answered.
 /// Peak sizes combine by `max` across the split.
 ///
 /// Prints the stage that answered and the wall it took. `None` when nothing
@@ -100,7 +105,8 @@ pub(super) fn count_with_recovery(
     formula: &CnfFormula,
     first: impl FnOnce() -> Option<Counted>,
     fallbacks: Option<&dyn Fn() -> Option<(Counted, AnsweredBy)>>,
-    cofactor: impl Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
+    routes: &'static [Route],
+    cofactor: impl Fn(&Run<'_>, &CnfFormula, Route) -> Option<Counted>,
 ) -> Option<Recovered> {
     let started = Instant::now();
     let answered = |(count, peak_pairs): Counted, answered_by: AnsweredBy| {
@@ -128,7 +134,8 @@ pub(super) fn count_with_recovery(
         }
     }
     let cofactor_run = Run { compile: CompileRun { cofactor: true, ..run.compile }, ..*run };
-    let counted = split(&cofactor_run, formula, 0, &[], &cofactor, &trigger)?;
+    let tally = Tally { offered: routes, ..Tally::default() };
+    let counted = split(&cofactor_run, formula, 0, &[], &cofactor, &tally, &trigger)?;
     answered(counted, AnsweredBy::ShannonSplit)
 }
 
@@ -144,8 +151,133 @@ fn failure(run: &Run<'_>, compile: impl FnOnce() -> Option<Counted>) -> Result<C
     }
 }
 
-/// One cofactor at recovery `depth` counted: by `cofactor`, and on its
-/// failure split again.
+/// The two ways the split compiles a cofactor: its reduction on the tree
+/// vitri pairs with it, as the input's primary compile, or the cofactor as
+/// it stands on the portfolio's tree for it, as the unreduced retry compiles
+/// the input. The two trees cut the cofactor in different places, and either
+/// can fit where the other runs out of memory.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Route {
+    Reduced,
+    AsItStands,
+}
+
+impl Route {
+    pub(super) const ALL: [Route; 2] = [Route::Reduced, Route::AsItStands];
+}
+
+/// The split's record of its cofactor compiles: per depth, how many cofactors
+/// a compile answered and how many no compile did; the shallowest depth where
+/// compiles answered at least as often as they failed; and each route's
+/// [`RouteRecord`].
+#[derive(Default)]
+struct Tally {
+    depths: std::cell::RefCell<Vec<(u32, u32)>>,
+    fit: std::cell::Cell<Option<u32>>,
+    routes: std::cell::RefCell<[RouteRecord; 2]>,
+    offered: &'static [Route],
+}
+
+/// One route's cofactor compiles: how many answered, how many failed, and how
+/// many of those failures were on a cofactor the other route then answered.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct RouteRecord {
+    answered: u32,
+    failed: u32,
+    lost: u32,
+}
+
+impl Tally {
+    fn record_depth(&self, depth: u32, answered: bool) {
+        let mut depths = self.depths.borrow_mut();
+        let at = depth as usize;
+        if depths.len() <= at {
+            depths.resize(at + 1, (0, 0));
+        }
+        let (ok, failed) = &mut depths[at];
+        if answered {
+            *ok += 1;
+        } else {
+            *failed += 1;
+        }
+        if *ok > 0 && *ok >= *failed && self.fit.get().is_none_or(|fit| depth < fit) {
+            self.fit.set(Some(depth));
+        }
+    }
+
+    /// Why a cofactor at `depth` is split without a compile: the depth is
+    /// above any where compiles fit, at least [`DEPTH_EVIDENCE`] cofactors
+    /// there were compiled, and more of them failed than answered. `None`
+    /// when it is compiled.
+    fn skip_depth(&self, depth: u32) -> Option<String> {
+        if self.fit.get().is_some_and(|fit| depth >= fit) {
+            return None;
+        }
+        let (ok, failed) = self.depths.borrow().get(depth as usize).copied().unwrap_or((0, 0));
+        (ok + failed >= DEPTH_EVIDENCE && failed > ok).then(|| format!("{failed} of {} compiles at depth {depth} failed", ok + failed))
+    }
+
+    /// One cofactor's compiles: `failed` the routes that failed on it, in the
+    /// order tried, and `answered` the route that then answered, if any.
+    fn record_routes(&self, failed: &[Route], answered: Option<Route>) {
+        let mut routes = self.routes.borrow_mut();
+        for &route in failed {
+            routes[route as usize].failed += 1;
+            routes[route as usize].lost += u32::from(answered.is_some());
+        }
+        if let Some(route) = answered {
+            routes[route as usize].answered += 1;
+        }
+    }
+
+    /// The routes to try on the next cofactor, in order: the one with the
+    /// better record first, by answers + 1 over compiles + 2, ties in the
+    /// order offered; the other behind it as its fallback, left out once it
+    /// lost [`FALLBACK_GIVE_UP`] cofactors to the other route without ever
+    /// answering. A cofactor where both routes fail is too big at its depth
+    /// and costs neither route its place. The first is always tried.
+    fn route_order(&self) -> Vec<Route> {
+        let record = self.routes.borrow();
+        let score = |route: Route| {
+            let RouteRecord { answered, failed, .. } = record[route as usize];
+            (u64::from(answered) + 1, u64::from(answered + failed) + 2)
+        };
+        let mut order = self.offered.to_vec();
+        // Higher score first; the sort is stable, so ties keep the offered order.
+        order.sort_by(|&a, &b| {
+            let ((a_num, a_den), (b_num, b_den)) = (score(a), score(b));
+            (b_num * a_den).cmp(&(a_num * b_den))
+        });
+        let mut order = order.into_iter();
+        let first = order.next();
+        first
+            .into_iter()
+            .chain(order.filter(|&route| {
+                let RouteRecord { answered, lost, .. } = record[route as usize];
+                answered > 0 || lost < FALLBACK_GIVE_UP
+            }))
+            .collect()
+    }
+}
+
+/// How many cofactors at a depth are compiled before the split judges the
+/// depth: one failure says little, since in depth-first order the first
+/// cofactors to reach a depth are the halves of ones that failed.
+const DEPTH_EVIDENCE: u32 = 2;
+
+/// How many cofactors a fallback route loses to the other route, never
+/// answering, before the split stops trying it.
+const FALLBACK_GIVE_UP: u32 = 3;
+
+/// One cofactor at recovery `depth` counted: by `cofactor` on each route the
+/// split still tries, and when none answers, split again.
+///
+/// The split learns as it goes. Above the shallowest depth where cofactor
+/// compiles fit, a cofactor at a depth where at least [`DEPTH_EVIDENCE`]
+/// were compiled and more failed than answered is split straight away: a
+/// compile that fails costs about what one that answers does, and the halves
+/// of a split fit more often. The route that answered more often goes first,
+/// and the other only when it fails ([`Tally::route_order`]).
 ///
 /// `branched` holds the variables the enclosing splits fixed.
 fn count_or_split<F>(
@@ -154,18 +286,37 @@ fn count_or_split<F>(
     depth: u32,
     branched: &[VarId],
     cofactor: &F,
+    tally: &Tally,
 ) -> Option<Counted>
 where
-    F: Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
+    F: Fn(&Run<'_>, &CnfFormula, Route) -> Option<Counted>,
 {
     // Past the deadline: stop before any more vtree-build / compile work.
     if deadline_passed(run.deadline) {
         return None;
     }
-    match failure(run, || cofactor(run, formula)) {
-        Ok(counted) => Some(counted),
-        Err(trigger) => split(run, formula, depth, branched, cofactor, &trigger?),
+    if let Some(why) = tally.skip_depth(depth) {
+        return split(run, formula, depth, branched, cofactor, tally, &format!("no compile: {why}"));
     }
+    let mut trigger = None;
+    let mut failed = Vec::new();
+    for route in tally.route_order() {
+        match failure(run, || cofactor(run, formula, route)) {
+            Ok(counted) => {
+                tally.record_routes(&failed, Some(route));
+                tally.record_depth(depth, true);
+                return Some(counted);
+            }
+            Err(why) => {
+                trigger = Some(why?);
+                failed.push(route);
+            }
+        }
+    }
+    tally.record_routes(&failed, None);
+    tally.record_depth(depth, false);
+    let trigger = trigger.expect("the split always tries one route");
+    split(run, formula, depth, branched, cofactor, tally, &trigger)
 }
 
 /// The split itself: branch on one variable, BCP-close both cofactors, count
@@ -176,13 +327,19 @@ fn split<F>(
     depth: u32,
     branched: &[VarId],
     cofactor: &F,
+    tally: &Tally,
     trigger: &str,
 ) -> Option<Counted>
 where
-    F: Fn(&Run<'_>, &CnfFormula) -> Option<Counted>,
+    F: Fn(&Run<'_>, &CnfFormula, Route) -> Option<Counted>,
 {
     // Log trigger + purge jemalloc pages from the just-failed compile.
     log_and_purge_recovery(run.eng, "[mc] shannon-split", formula, depth, &format!("split, after: {trigger}"));
+    if depth == 0
+        && let Some(deadline) = run.deadline
+    {
+        eprintln!("[mc] shannon-split: {}s left", deadline.saturating_duration_since(Instant::now()).as_secs());
+    }
 
     // Branch on the most frequent variable no enclosing split fixed, lowest
     // index on a tie, so every recovery level strictly shrinks the
@@ -217,7 +374,7 @@ where
             eprintln!("[mc] shannon-split: child {}/2: UNSAT after BCP — 0 models", child_idx + 1);
             continue;
         };
-        let (count, peak) = count_or_split(run, &sub, depth + 1, &child_branched, cofactor)?;
+        let (count, peak) = count_or_split(run, &sub, depth + 1, &child_branched, cofactor, tally)?;
         // Purge between siblings so the next cofactor doesn't inherit this
         // one's retained extents.
         let _ = purge_all_arenas();

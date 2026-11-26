@@ -17,7 +17,7 @@ fn a_cofactor_is_counted_in_its_own_space() {
         dimacs(2, &[&[1, 2], &[1, -2], &[-1, 2], &[-1, -2]]),
     ];
     for cofactor in &cofactors {
-        let (count, _) = super::count_cofactor(&run, cofactor).expect("a small cofactor counts");
+        let (count, _) = super::count_cofactor(&run, cofactor, super::Route::Reduced).expect("a small cofactor counts");
         assert_eq!(count, brute_projected_count(cofactor, 0..cofactor.num_vars() as usize));
     }
 }
@@ -104,4 +104,19 @@ fn a_reduction_out_of_memory_is_counted_on_the_bisection() {
         let explicit = crate::config::Config { vtree: Some("linear".to_owned()), ..crate::test_support::minimal_config() };
         assert!(super::bisect_retry(&crate::test_support::run(eng, &explicit), &ar, Some("linear"), None).is_none());
     });
+}
+
+/// The unreduced retry is skipped only when the reduction is the formula: the
+/// same variables occur, and at most 1% of the clauses went, none came.
+#[test]
+fn a_reduction_that_removed_nothing_is_the_same_formula() {
+    let dimacs = crate::test_support::dimacs;
+    let clauses: Vec<Vec<i32>> = (1..=200).map(|i| vec![i % 50 + 1, -((i * 7 + 1) % 50 + 1)]).collect();
+    let refs: Vec<&[i32]> = clauses.iter().map(Vec::as_slice).collect();
+    let form = dimacs(50, &refs);
+    assert!(super::the_same_formula(&form, &form));
+    assert!(super::the_same_formula(&dimacs(50, &refs[1..]), &form), "a dropped duplicate");
+    assert!(!super::the_same_formula(&dimacs(50, &refs[10..]), &form), "5% of the clauses went");
+    let fewer: Vec<&[i32]> = refs.iter().copied().filter(|c| c.iter().all(|l| l.unsigned_abs() != 1)).collect();
+    assert!(!super::the_same_formula(&dimacs(50, &fewer), &form), "a variable went");
 }

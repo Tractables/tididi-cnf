@@ -27,7 +27,7 @@ use crate::stage::{RETRY_VTREE_SPEC, Run};
 
 use attempt::{attempt_from_vitri_build, count_attempt};
 use cascade::{arm_no_sbva_retry, count_cofactor, count_primary, monotone_reduction};
-use recovery::{Recovered, count_with_recovery};
+use recovery::{Recovered, Route, count_with_recovery};
 use support_enum::{reduce_for_support, support_enum_stage};
 
 mod attempt;
@@ -207,7 +207,7 @@ fn count_without_reduction(
         .count()?;
         Some(((count, 0), AnsweredBy::SupportEnumeration))
     };
-    count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), count_cofactor)
+    count_with_recovery(run, &fallback_formula, first, Some(&fallbacks), &Route::ALL, count_cofactor)
 }
 
 /// Log why Arjun kept no reduction: the single sink for every non-`Ran`
@@ -404,9 +404,9 @@ fn count_preprocessed(
     let clock = crate::budget::CompileClock::start(&run.config.vtree_time);
     // Each cofactor streams over its own components, building each vtree, on
     // the run's construction, as the compile reaches it.
-    let cofactor = |run: &Run<'_>, form: &CnfFormula| super::count_streaming(run, form, None);
+    let cofactor = |run: &Run<'_>, form: &CnfFormula, _: Route| super::count_streaming(run, form, None);
     let Recovered { count, peak_pairs, answered_by, cascade_ms } =
-        count_with_recovery(run, reduced, compile, None, cofactor)
+        count_with_recovery(run, reduced, compile, None, &[Route::Reduced], cofactor)
             .ok_or_else(crate::Error::compile_gave_up)?;
     Ok(McAnswer {
         count: count << lift_pow2,

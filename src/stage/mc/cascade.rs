@@ -23,39 +23,29 @@ use super::windows::{
     unreduced_retry_window,
 };
 use super::attempt::{attempt_from_vitri_build, attempt_on, count_attempt};
-use super::recovery::{Counted, Recovered, count_with_recovery};
+use super::recovery::{Counted, Recovered, Route, count_with_recovery};
 use super::support_enum::{EnumOutcome, ProbeMode, support_enum_stage};
 
-/// A Shannon cofactor's count, in both cascades, taken the way the input's
-/// is: the compile of its reduction, then, when that gives up with the run's
-/// wall left, one compile of the cofactor as it stands on the portfolio's tree
-/// for it, as the unreduced retry compiles the input. The two trees cut the
-/// cofactor in different places, and either can fit where the other ran out
-/// of memory. The run's wall bounds both. `None` when neither answers.
-pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
-    if let Some(counted) = count_reduced_cofactor(run, form) {
-        return Some(counted);
+/// A Shannon cofactor's count, in both cascades, on `route`. As it stands:
+/// one compile on the portfolio's tree for it, as the unreduced retry
+/// compiles the input. Reduced: taken the way the input's is, through the
+/// run's frontend, vitri's preprocessing, then the compile on the vtree vitri
+/// pairs with its reduction, with no implied clauses, the reduction's lift
+/// folded, so the count is in the cofactor's space. A cofactor the
+/// preprocessing settles needs no compile; a frontend that fails gives up
+/// with `None`, as a compile that gives up does. The run's wall bounds both.
+pub(super) fn count_cofactor(run: &Run<'_>, form: &CnfFormula, route: Route) -> Option<Counted> {
+    if route == Route::AsItStands {
+        // A failed compile's scratch and dirty pages go back first, as before
+        // any compile that follows a failed one.
+        release_failed_compile(run.eng);
+        eprintln!(
+            "[mc] shannon-split: compiling the cofactor as it stands: {}v/{}c",
+            form.num_vars(),
+            form.clauses().len(),
+        );
+        return count_attempt(run, attempt_on(run, form, PORTFOLIO_VTREE_SPEC, 0, run.deadline)?, run.deadline);
     }
-    if crate::budget::deadline_passed(run.deadline) {
-        return None;
-    }
-    // The failed compile's scratch and dirty pages go back first, as before
-    // any compile that follows a failed one.
-    release_failed_compile(run.eng);
-    eprintln!(
-        "[mc] shannon-split: compiling the cofactor as it stands: {}v/{}c",
-        form.num_vars(),
-        form.clauses().len(),
-    );
-    count_attempt(run, attempt_on(run, form, PORTFOLIO_VTREE_SPEC, 0, run.deadline)?, run.deadline)
-}
-
-/// A cofactor through the run's frontend, as the input went: vitri's
-/// preprocessing, then the compile on the vtree vitri pairs with its
-/// reduction, with no implied clauses, the reduction's lift folded, so the
-/// count is in the cofactor's space. A cofactor the preprocessing settles needs no compile; a frontend
-/// that fails gives up with `None`, as a compile that gives up does.
-fn count_reduced_cofactor(run: &Run<'_>, form: &CnfFormula) -> Option<Counted> {
     let counted = crate::frontend::with_mc_frontend(
         form,
         run.config,
@@ -485,11 +475,27 @@ fn bisect_retry(
 /// whether or not `primary_deadline` armed: at short windows the absolute
 /// reserve is inert, and the unreduced retry still has to run ahead of
 /// Shannon split rather than after it.
+///
+/// Skipped when `reduction`, the formula the primary compile ran on, is
+/// [`the_same_formula`] as `form`: the retry would compile again what just
+/// failed, on the tree the portfolio picks again, and its window goes to
+/// the stages after it.
 fn unreduced_retry(
     run: &Run<'_>,
     form: &CnfFormula,
+    reduction: &CnfFormula,
     primary_deadline: Option<Instant>,
 ) -> Option<Counted> {
+    if the_same_formula(reduction, form) {
+        eprintln!(
+            "[mc] unreduced-retry: skipped — the reduction ({}v/{}c) removed no variable from the formula ({}v/{}c)",
+            reduction.num_vars(),
+            reduction.clauses().len(),
+            form.num_vars(),
+            form.clauses().len(),
+        );
+        return None;
+    }
     let program_deadline = run.deadline;
     let now = Instant::now();
     let reserve = unreduced_retry_window(primary_deadline, program_deadline, now)?;
@@ -523,6 +529,16 @@ fn unreduced_retry(
     let counted = count_attempt(run, attempt, retry_deadline)?;
     eprintln!("[mc] unreduced-retry: counted");
     Some(counted)
+}
+
+/// Whether `reduction` leaves the compile `form` itself: as many variables
+/// occur in it as in `form`, and it keeps at least 99% of `form`'s clauses
+/// and adds none, as when Arjun finds nothing to eliminate and only drops a
+/// duplicate.
+fn the_same_formula(reduction: &CnfFormula, form: &CnfFormula) -> bool {
+    let occurring = |f: &CnfFormula| crate::formula::occurrence_counts(f, 0).iter().filter(|&&n| n > 0).count();
+    let (kept, had) = (reduction.clauses().len(), form.clauses().len());
+    kept <= had && kept * 100 >= had * 99 && occurring(reduction) == occurring(form)
 }
 
 /// The kept reduction: compile it on the vtree vitri built for it, under
@@ -595,7 +611,7 @@ pub(super) fn count_primary(
                 };
                 let enumerated = |count| ((count, 0), AnsweredBy::SupportEnumeration);
                 let unreduced = || {
-                    unreduced_retry(run, compile_formula, primary_deadline)
+                    unreduced_retry(run, compile_formula, &ar.formula, primary_deadline)
                         .map(|counted| (counted, AnsweredBy::UnreducedRetry))
                 };
                 match enumerate(ProbeMode::DeferWhenDisproved) {
@@ -607,7 +623,7 @@ pub(super) fn count_primary(
                 }
             })
     };
-    count_with_recovery(run, compile_formula, first, Some(&fallbacks), count_cofactor)
+    count_with_recovery(run, compile_formula, first, Some(&fallbacks), &Route::ALL, count_cofactor)
 }
 
 #[cfg(test)]
